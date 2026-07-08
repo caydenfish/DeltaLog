@@ -478,7 +478,16 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
   // refresh should drop someone back on EXACTLY what they were looking
   // at, not just the right exercise index.
   useEffect(() => {
-    if (!workoutId) return;
+    // Guard on `booting` too, not just `workoutId`: on a resumed workout,
+    // workoutId is set (via setWorkoutId) several state updates before the
+    // saved exIdx/view/etc are applied, since the boot effect awaits
+    // hydrateExercise per row in between. Without this guard, React can
+    // render in that in-between window with exIdx still at its useState(0)
+    // default, and this effect fires and overwrites the just-loaded saved
+    // session state with exIdx: 0 before it's ever read back — which is
+    // why resuming always landed on the first exercise instead of wherever
+    // the workout was actually left off.
+    if (!workoutId || booting) return;
     saveSessionState(workoutId, {
       view, exIdx, showCalc, showMenu,
       wizardOpen, editIndex, weight, reps, rir,
@@ -488,7 +497,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
       restEndsAt,
     });
   }, [
-    workoutId, view, exIdx, showCalc, showMenu,
+    workoutId, booting, view, exIdx, showCalc, showMenu,
     wizardOpen, editIndex, weight, reps, rir,
     pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
     showSetup, showMachineSetup, showWorkoutPrefs, showIdeology, showTargetInfo,
@@ -502,7 +511,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
   // interval as a last-resort backstop — belt and suspenders, since this
   // is the one thing that must never silently fail to persist.
   useEffect(() => {
-    if (!workoutId) return;
+    if (!workoutId || booting) return;
     const flush = () => {
       saveSessionState(workoutId, {
         view, exIdx, showCalc, showMenu,
@@ -527,7 +536,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
       window.removeEventListener("blur", flush);
     };
   }, [
-    workoutId, view, exIdx, showCalc, showMenu,
+    workoutId, booting, view, exIdx, showCalc, showMenu,
     wizardOpen, editIndex, weight, reps, rir,
     pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
     showSetup, showMachineSetup, showWorkoutPrefs, showIdeology, showTargetInfo,
