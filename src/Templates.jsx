@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { fetchExercises, fetchTemplates, saveWorkoutAsTemplate, deleteTemplate, fetchPerformedExerciseIds, fetchFavoriteExerciseIds, setFavoriteExercise, fetchTemplateForEdit, updateTemplate, reorderTemplates, setTemplateArchived, fetchArchivedTemplates, exportTemplate, fetchSharedTemplate, importSharedTemplate } from "./lib/queries";
 import { computeMuscleSetCounts } from "./lib/volume";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel, genericBucket } from "./lib/muscleNomenclature";
 import BodyHeatmap from "./BodyHeatmap";
 import { IconStar, IconX } from "./Icons";
 
@@ -287,11 +287,11 @@ export default function Templates({ user, onClose }) {
   }
 
   const q = search.toLowerCase();
-  const heatmapEntries = picks.map((p) => ({ muscle: p.muscle, secondaryMuscles: p.secondaryMuscles, sets: Array(p.planned).fill({ weight: 1, reps: 1 }) }));
+  const heatmapEntries = picks.map((p) => ({ muscle: genericBucket(p.muscle), secondaryMuscles: p.secondaryMuscles, sets: Array(p.planned).fill({ weight: 1, reps: 1 }) }));
   const { primary: heatPrimary, secondary: heatSecondary, fullBodySets: heatFullBodySets } = computeMuscleSetCounts(heatmapEntries);
   const candidates = library
     ? library.filter((l) => !picks.some((p) => p.id === l.id) && (
-        !q || l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || l.muscle.toLowerCase().includes(q) || l.equipment.toLowerCase().includes(q)
+        !q || l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || (l.equipment || "").toLowerCase().includes(q)
       ))
     : [];
 
@@ -527,7 +527,7 @@ export default function Templates({ user, onClose }) {
                 if (library === null) return <div style={{ fontSize: 13, color: T.dim, padding: "8px 6px" }}>Loading exercises…</div>;
                 const q = replaceSearch.toLowerCase();
                 const replaceCandidates = library.filter((l) => !picks.some((p) => p.id === l.id) && (
-                  !q || l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || l.muscle.toLowerCase().includes(q) || l.equipment.toLowerCase().includes(q)
+                  !q || l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || (l.equipment || "").toLowerCase().includes(q)
                 ));
                 if (replaceCandidates.length === 0) return <div style={{ fontSize: 13, color: T.dim, padding: "8px 6px" }}>No matches.</div>;
                 const shown = replaceCandidates.slice(0, 40);

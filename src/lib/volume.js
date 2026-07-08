@@ -1,4 +1,4 @@
-import { normalizeMuscleList } from "./muscleNomenclature";
+import { normalizeMuscleList, genericBucket } from "./muscleNomenclature";
 import { toLocalDateStr } from "./time";
 
 // Computes total working volume (weight × reps, summed across sets) per
@@ -24,7 +24,7 @@ export function computeMuscleVolumes(entries) {
       continue;
     }
     primaryRaw[entry.muscle] = (primaryRaw[entry.muscle] || 0) + vol;
-    for (const sec of normalizeMuscleList(entry.secondaryMuscles)) {
+    for (const sec of entry.secondaryMuscles || []) {
       if (sec === "Full Body") continue;
       secondaryRaw[sec] = (secondaryRaw[sec] || 0) + vol * 0.5;
     }
@@ -64,7 +64,7 @@ export function computeMuscleSetCounts(entries) {
       continue;
     }
     primary[entry.muscle] = (primary[entry.muscle] || 0) + count;
-    for (const sec of normalizeMuscleList(entry.secondaryMuscles)) {
+    for (const sec of entry.secondaryMuscles || []) {
       if (sec === "Full Body") continue;
       secondary[sec] = (secondary[sec] || 0) + count;
     }
@@ -206,7 +206,7 @@ export function summarizeHistory(history) {
       const workingSets = (we.sets || []).filter((s) => !s.is_warmup);
       const vol = workingSets.reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
       byDate[date] += vol;
-      entries.push({ muscle: ex.muscle_group, secondaryMuscles: normalizeMuscleList(ex.secondary_muscles), sets: workingSets, exerciseName: ex.name, date });
+      entries.push({ muscle: genericBucket(ex.muscle_group), secondaryMuscles: normalizeMuscleList(ex.secondary_muscles), sets: workingSets, exerciseName: ex.name, date });
     }
   }
 

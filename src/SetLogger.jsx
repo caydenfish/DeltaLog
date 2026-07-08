@@ -1310,7 +1310,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
     const q = pickerSearch.toLowerCase();
     return library.filter((l) => {
       if (exclude.has(l.name)) return false;
-      if (q && !(l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || l.muscle.toLowerCase().includes(q) || l.equipment.toLowerCase().includes(q))) return false;
+      if (q && !(l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || (l.equipment || "").toLowerCase().includes(q))) return false;
       if (muscleFilter.length && !muscleFilter.includes(l.muscle)) return false;
       if (equipFilter.length && !equipFilter.includes(l.equipment)) return false;
       if (performedFilter === "performed" && l.sessions === 0) return false;

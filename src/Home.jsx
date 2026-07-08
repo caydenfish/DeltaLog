@@ -127,6 +127,11 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   const [plate55Scope, setPlate55ScopeState] = useState(() => getPrefs().plate55Scope);
   const [trainingIdeology, setTrainingIdeologyState] = useState(() => getPrefs().trainingIdeology);
   const [timeFormat, setTimeFormatState] = useState(() => getPrefs().timeFormat);
+  const [adminViewMode, setAdminViewModeState] = useState(() => getPrefs().adminViewMode);
+  function setAdminViewMode(mode) {
+    setAdminViewModeState(mode);
+    setPref("adminViewMode", mode);
+  }
   const tutorial = useTutorial();
   // Settings search: a section stays visible if the query is empty or
   // found in its keyword string. Deliberately simple substring matching —
@@ -187,6 +192,13 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
     const d = new Date(); d.setDate(1); return d;
   });
   const [profile, setProfile] = useState(null);
+  const isRealAdmin = !!profile?.is_admin;
+  // Lets an admin preview the app as a regular user without a second
+  // account. Toggled from the Admin menu; persisted so it survives a
+  // refresh. The Admin menu entry itself always stays reachable off
+  // `isRealAdmin`, never off this, so flipping to "normal" can't lock
+  // the admin out of flipping back.
+  const effectiveIsAdmin = isRealAdmin && adminViewMode === "admin";
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showMyCustomExercises, setShowMyCustomExercises] = useState(false);
   const [showSplits, setShowSplits] = useState(false);
@@ -681,7 +693,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
               )}
 
               {/* Admin */}
-              {profile?.is_admin && settingsMatch("admin custom exercises feedback bugs simulate new user version history changelog exercise library muscle groups permissions") && (
+              {isRealAdmin && settingsMatch("admin custom exercises feedback bugs simulate new user version history changelog exercise library muscle groups permissions admin view normal") && (
                 <>
                   <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Admin</div>
                   <button
@@ -801,10 +813,12 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
           onOpenPermissions={() => setShowAdminPermissions(true)}
           onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setAdminSimulateNewUser(true); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
+          adminViewMode={adminViewMode}
+          onSetAdminViewMode={setAdminViewMode}
         />
       )}
       {showAdmin && <AdminExercises user={user} onClose={() => setShowAdmin(false)} />}
-      {showExerciseLibraryView && <ExerciseLibraryView muscleNameMode={muscleNameMode} isAdmin={!!profile?.is_admin} userId={user.id} onClose={() => setShowExerciseLibraryView(false)} />}
+      {showExerciseLibraryView && <ExerciseLibraryView muscleNameMode={muscleNameMode} isAdmin={effectiveIsAdmin} userId={user.id} onClose={() => setShowExerciseLibraryView(false)} />}
       {muscleDetail && (
         <MuscleSetsDetail
           muscle={muscleDetail.muscle}
@@ -847,7 +861,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
               <div style={{ width: 26 }} />
             </div>
             <div style={{ padding: 16, flex: 1 }}>
-              {profile?.is_admin && (
+              {effectiveIsAdmin && (
                 <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 16 }}>
                   <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Post an announcement</div>
                   <textarea
@@ -872,7 +886,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
                   <div style={{ color: T.text, fontSize: 14, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{a.message}</div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                     <div style={{ fontSize: 11, color: T.dim }}>{new Date(a.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</div>
-                    {profile?.is_admin && a.kind === "global" && (
+                    {effectiveIsAdmin && a.kind === "global" && (
                       <button onClick={() => removeAnnouncement(a.id)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Delete</button>
                     )}
                   </div>

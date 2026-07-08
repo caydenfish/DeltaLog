@@ -26,10 +26,32 @@ function Row({ onClick, title, subtitle, badge }) {
   );
 }
 
+// Two-state pill switch for "Admin" vs "Normal" view. Kept as an explicit
+// two-way toggle (not a boolean checkbox) so the current mode is always
+// legible at a glance, not just inferred from an on/off position.
+function ViewModeToggle({ mode, onChange }) {
+  const optionStyle = (active) => ({
+    flex: 1,
+    padding: "8px 0",
+    borderRadius: 8,
+    border: "none",
+    background: active ? T.accent : "transparent",
+    color: active ? "#fff" : T.dim,
+    fontSize: 13,
+    fontWeight: 700,
+  });
+  return (
+    <div style={{ display: "flex", gap: 4, background: T.bg, border: `1px solid ${T.line}`, borderRadius: 10, padding: 4 }}>
+      <button style={optionStyle(mode === "admin")} onClick={() => onChange("admin")}>Admin</button>
+      <button style={optionStyle(mode === "normal")} onClick={() => onChange("normal")}>Normal</button>
+    </div>
+  );
+}
+
 // One entry point for every admin-only tool, reached via a single "Admin"
 // row in Settings instead of a growing list of admin buttons living
 // alongside everyday preferences.
-export default function AdminHome({ onClose, onOpenExercises, onOpenFeedback, onSimulateNewUser, onOpenVersionHistory, onOpenPermissions, unseenFeedbackCount }) {
+export default function AdminHome({ onClose, onOpenExercises, onOpenFeedback, onSimulateNewUser, onOpenVersionHistory, onOpenPermissions, unseenFeedbackCount, adminViewMode, onSetAdminViewMode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -40,6 +62,15 @@ export default function AdminHome({ onClose, onOpenExercises, onOpenFeedback, on
         </div>
 
         <div style={{ padding: 16, flex: 1 }}>
+          <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
+            <div style={{ color: T.text, fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Admin View</div>
+            <div style={{ color: T.dim, fontSize: 11, marginBottom: 10 }}>
+              {adminViewMode === "admin"
+                ? "You see every admin control across the app."
+                : "Admin controls are hidden — you see exactly what a regular user sees. Come back here anytime to switch back."}
+            </div>
+            <ViewModeToggle mode={adminViewMode} onChange={onSetAdminViewMode} />
+          </div>
           <Row onClick={onOpenExercises} title="Custom Exercises" subtitle="Review and promote user submissions" />
           <Row onClick={onOpenFeedback} title="Feedback & Bugs" subtitle="Bug reports, feature requests, and privacy submissions from users" badge={unseenFeedbackCount} />
           <Row onClick={onOpenPermissions} title="Permissions" subtitle="Grant or remove admin access for other users" />
