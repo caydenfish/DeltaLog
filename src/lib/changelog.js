@@ -9,6 +9,16 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.13": {
+    title: "Warmups carry over, streak moves to the calendar",
+    items: [
+      "Last session's warmup sets now show up correctly labeled (W1, W2...) when you're logging that exercise again, instead of blending in with working sets.",
+      "Sets shown around the app now separate working sets from warmups wherever the two could be confused, like the workout summary and history.",
+      "Fixed the muscle breakdown showing a different set count on the row than in the drill-down sheet.",
+      "The home screen's time range (7D/30D/90D/1Y) now stays put between visits instead of resetting to 30 days.",
+      "Streak moved down next to the calendar.",
+    ],
+  },
   "1.9.12": {
     title: "Announcements get polls, and a sharper muscle breakdown",
     items: [

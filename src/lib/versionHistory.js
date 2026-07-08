@@ -5,6 +5,21 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.9.13",
+    date: "2026-07-08",
+    items: [
+      "lib/queries.js: fetchLastSession() was only selecting weight/reps/rir/set_number from `sets`, dropping is_warmup entirely -- every set returned from last session read as isWarmup=undefined (falsy), so setLabels() in the live workout view always numbered last session's sets as plain working sets (1,2,3...) even if some had been marked as warmups, instead of the W1/W2 convention used everywhere else. Now selects is_warmup and maps it to isWarmup on the returned objects.",
+      "SetLogger.jsx: added matchingLastWeekSet(lastWeek, sets, i), which aligns today's set to last session's set of the same type (warmup-to-warmup, working-to-working) by occurrence index within that type. Replaces the old comparison={lastWeek[i]} raw-index lookup, which would badge today's working set against last session's warmup (or vice versa) whenever the warmup counts didn't match between sessions -- silent before this version since lastWeek sets never carried a real isWarmup flag, but a real bug now that they do.",
+      "SetLogger.jsx: targetFor() now derives bestFromHistory/anchored source from lastWeek's working sets only (was: all of lastWeek, unfiltered) -- prevents a warmup's e1RM from setting next session's target weight.",
+      "SetLogger.jsx: summary view's PR detection (bestToday/bestLast) and two-for-two check (finalToday/finalLast) now consistently use working-sets-only on both today's and last week's side. bestToday previously included warmup sets; finalLast previously read lastWeek's raw final array element (a warmup, if one happened to be last) instead of its final working set.",
+      "SetLogger.jsx summary view + WorkoutHistory.jsx detail view: the \"Sets\" stat now shows the working-set count with a \"+N warmup\" sub-line when warmups were logged, instead of one combined total sitting next to a Volume figure that's always working-only -- was the most visible spot where the working/warmup/total distinction got lost. WorkoutHistory's compact list row and ExportWorkoutModal payload updated to match (both now pass/display the working count).",
+      "WorkoutHistory.jsx: workoutSetCount(w) now returns {total, working, warmup} instead of a single combined number.",
+      "MuscleSetsDetail.jsx: fixed the Home muscle breakdown showing a smaller count on the row than the drill-down sheet totaled (e.g. Lats: 8 on the row, 12 in the sheet). Root cause: computeMuscleSetCounts() in lib/volume.js explicitly skips any entry bucketed as muscle === \"Full Body\" for primary/secondary aggregation, redirecting it into fullBodySets instead -- but MuscleSetsDetail's row filter had no equivalent exclusion, so a Full-Body-bucketed exercise that also had a specific primary muscle tagged (e.g. a complex tagged with Lats as a primary mover) got pulled into the Lats detail sheet despite being excluded from the Lats row count upstream. Added the same `muscle !== \"Full Body\"` filter, plus the secondary-side `sec !== \"Full Body\"` guard computeMuscleSetCounts already had.",
+      "Home.jsx: `range` (7D/30D/90D/1Y) now initializes from and persists to prefs.homeRange (lib/prefs.js) instead of always resetting to a hardcoded \"30d\" on reload.",
+      "Home.jsx: moved the Streak stat out of the top header row (it sat to the left of the logo) and into the calendar card, under the month/year title, right-aligned as a small accent-colored line that only renders when streak > 0. Header's left grid track is now an empty spacer div so the logo stays centered.",
+    ],
+  },
+  {
     version: "1.9.6",
     date: "2026-07-07",
     items: [

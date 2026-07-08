@@ -106,10 +106,11 @@ function diffBadge(diff, unit) {
 function targetFor(ex, ideologyName, unit) {
   const { low, high } = IDEOLOGIES[ideologyName];
   const reps = Math.round((low + high) / 2);
-  const bestFromHistory = ex.lastWeek.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
+  const lastWorkingSets = ex.lastWeek.filter((s) => !s.isWarmup);
+  const bestFromHistory = lastWorkingSets.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
   let baseE1RM, anchored, source;
   if (bestFromHistory > 0) {
-    const bestSet = ex.lastWeek.reduce((best, s) => (e1RM(s.weight, s.reps, s.rir) > e1RM(best.weight, best.reps, best.rir) ? s : best));
+    const bestSet = lastWorkingSets.reduce((best, s) => (e1RM(s.weight, s.reps, s.rir) > e1RM(best.weight, best.reps, best.rir) ? s : best));
     baseE1RM = bestFromHistory;
     anchored = true;
     source = bestSet;
@@ -322,6 +323,17 @@ function setLabels(sets) {
   let working = 0;
   let warmup = 0;
   return (sets || []).map((s) => (s.isWarmup ? `W${++warmup}` : `${++working}`));
+}
+
+// Finds the set in `lastWeek` that corresponds to `sets[i]` for comparison
+// badges: same type (warmup vs working) at the same occurrence index within
+// that type, e.g. today's 2nd working set compares to last session's 2nd
+// working set, even if the warmup counts differ between sessions.
+function matchingLastWeekSet(lastWeek, sets, i) {
+  const isWarmup = sets[i].isWarmup;
+  const occurrence = sets.slice(0, i + 1).filter((s) => !!s.isWarmup === !!isWarmup).length - 1;
+  const sameType = (lastWeek || []).filter((s) => !!s.isWarmup === !!isWarmup);
+  return sameType[occurrence];
 }
 
 function SetCard({ s, label, ghost, actions, comparison, unit, onToggleWarmup }) {
@@ -1660,27 +1672,33 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
   // ---------- Summary view ----------
   if (view === "summary") {
     const totalSets = allSets.flat().length;
+    const totalWorkingSets = allSets.flat().filter((s) => !s.isWarmup).length;
+    const totalWarmupSets = totalSets - totalWorkingSets;
     const totalVolume = Math.round(allSets.flat().filter((s) => !s.isWarmup).reduce((v, s) => v + s.weight * s.reps, 0));
     const durationMin = Math.max(1, Math.round((Date.now() - startTime.current) / 60000));
     const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
     // Gather per-exercise PR flags and the single best e1RM of the session
     // (used as the "current strength" input to the DOTS score below).
+    // PRs are judged on working sets only on both sides — a warmup set's
+    // lighter e1RM shouldn't mask a true PR, and a warmup set showing up
+    // as last week's "final set" shouldn't set the two-for-two bar.
     let prCount = 0;
     let bestE1RMOverall = 0;
     const exerciseRows = workout.map((w, i) => {
       const exSets = allSets[i];
       if (exSets.length === 0) return null;
-      const bestToday = exSets.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
+      const workingSets = exSets.filter((s) => !s.isWarmup);
+      const lastWorkingSets = w.lastWeek.filter((s) => !s.isWarmup);
+      const bestToday = workingSets.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
       bestE1RMOverall = Math.max(bestE1RMOverall, bestToday);
-      const bestLast = w.lastWeek.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
-      const hasHistory = w.lastWeek.length > 0;
+      const bestLast = lastWorkingSets.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
+      const hasHistory = lastWorkingSets.length > 0;
       const delta = bestToday - bestLast;
       const isPR = hasHistory && delta > 0.5;
       if (isPR) prCount++;
-      const workingSets = exSets.filter((s) => !s.isWarmup);
       const finalToday = workingSets[workingSets.length - 1];
-      const finalLast = w.lastWeek[w.lastWeek.length - 1];
+      const finalLast = lastWorkingSets[lastWorkingSets.length - 1];
       const twoForTwo = finalToday && finalLast && finalToday.reps >= finalLast.reps + 2;
       return { w, i, exSets, bestToday, bestLast, hasHistory, delta, isPR, twoForTwo };
     });
@@ -1705,10 +1723,15 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
             <div style={{ color: T.dim, fontSize: 13, marginTop: 2 }}>{dateStr}</div>
           </div>
           <div style={{ display: "flex", gap: 8, padding: "14px 16px" }}>
-            {[{ label: "Sets", value: totalSets }, { label: "Volume", value: `${totalVolume.toLocaleString()} ${unit}` }, { label: "Duration", value: `${durationMin} min` }].map((s) => (
+            {[
+              { label: "Sets", value: totalWorkingSets, sub: totalWarmupSets > 0 ? `+${totalWarmupSets} warmup` : null },
+              { label: "Volume", value: `${totalVolume.toLocaleString()} ${unit}` },
+              { label: "Duration", value: `${durationMin} min` },
+            ].map((s) => (
               <div key={s.label} style={{ flex: 1, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
                 <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>{s.value}</div>
                 <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{s.label}</div>
+                {s.sub && <div style={{ fontSize: 10, color: T.dim, marginTop: 1 }}>{s.sub}</div>}
               </div>
             ))}
           </div>
@@ -1836,7 +1859,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
             data={{
               dateLabel: dateStr,
               unit,
-              totalSets,
+              totalSets: totalWorkingSets,
               totalVolume,
               durationMin,
               bodyWeight: bodyWeightInput ? parseFloat(bodyWeightInput) : null,
@@ -2332,7 +2355,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
           {lastWeek.map((s, i) => <SetCard key={"lw" + i} s={s} label={setLabels(lastWeek)[i]} ghost unit={unit} actions={<button onClick={() => openWizard(s)} style={smallBtn}>Copy</button>} />)}
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 8px" }}>Today</div>
           {sets.length === 0 && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>No sets logged yet.</div>}
-          {sets.map((s, i) => <SetCard key={i} s={s} label={setLabels(sets)[i]} comparison={lastWeek[i]} unit={unit} onToggleWarmup={() => toggleSetWarmup(exIdx, i)} actions={<button onClick={() => openWizard(s, i)} style={smallBtn}>Edit</button>} />)}
+          {sets.map((s, i) => <SetCard key={i} s={s} label={setLabels(sets)[i]} comparison={matchingLastWeekSet(lastWeek, sets, i)} unit={unit} onToggleWarmup={() => toggleSetWarmup(exIdx, i)} actions={<button onClick={() => openWizard(s, i)} style={smallBtn}>Edit</button>} />)}
         </div>
         )}
 

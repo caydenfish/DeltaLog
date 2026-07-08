@@ -283,12 +283,12 @@ export async function fetchLastSession(userId, exerciseId) {
 
   const { data: sets, error: setsErr } = await supabase
     .from("sets")
-    .select("weight, reps, rir, set_number")
+    .select("weight, reps, rir, set_number, is_warmup")
     .eq("workout_exercise_id", lastWorkoutExercise.id)
     .order("set_number");
 
   if (setsErr) throw setsErr;
-  return sets;
+  return (sets || []).map((s) => ({ weight: s.weight, reps: s.reps, rir: s.rir, set_number: s.set_number, isWarmup: !!s.is_warmup }));
 }
 
 // Counts how many completed workouts have included this exercise, ever.

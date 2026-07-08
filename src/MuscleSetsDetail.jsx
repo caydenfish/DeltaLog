@@ -29,12 +29,13 @@ export default function MuscleSetsDetail({ muscle, role, entries, nameMode, unit
   const [openIdx, setOpenIdx] = useState(null);
 
   const rows = (entries || [])
+    .filter((e) => e.muscle !== "Full Body")
     .filter((e) => {
       if (role === "primary") {
         const rawPrimary = e.primaryMuscles && e.primaryMuscles.length > 0 ? e.primaryMuscles : [e.muscle];
         return rawPrimary.some((p) => isRealMuscle(p) && muscleLabel(p, nameMode) === muscle);
       }
-      return (e.secondaryMuscles || []).some((sec) => isRealMuscle(sec) && muscleLabel(sec, nameMode) === muscle);
+      return (e.secondaryMuscles || []).some((sec) => isRealMuscle(sec) && sec !== "Full Body" && muscleLabel(sec, nameMode) === muscle);
     })
     .map((e) => ({ exerciseName: e.exerciseName, date: e.date, sets: e.sets }))
     .sort((a, b) => b.date.localeCompare(a.date));

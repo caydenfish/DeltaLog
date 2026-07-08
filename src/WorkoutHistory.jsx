@@ -38,7 +38,9 @@ function workoutVolume(w) {
   ));
 }
 function workoutSetCount(w) {
-  return (w.workout_exercises || []).reduce((sum, we) => sum + (we.sets || []).length, 0);
+  const all = (w.workout_exercises || []).reduce((sum, we) => sum + (we.sets || []).length, 0);
+  const working = (w.workout_exercises || []).reduce((sum, we) => sum + (we.sets || []).filter((set) => !set.is_warmup).length, 0);
+  return { total: all, working, warmup: all - working };
 }
 function workoutDurationMin(w) {
   if (!w.started_at || !w.completed_at) return null;
@@ -125,7 +127,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
   const isoDate = toLocalDateStr(workout.completed_at);
   const duration = workoutDurationMin(workout);
   const volume = Math.round(toDisplay(workoutVolume(workout), units));
-  const totalSets = workoutSetCount(workout);
+  const setCounts = workoutSetCount(workout);
   const exercises = [...(workout.workout_exercises || [])].sort((a, b) => (a.position || 0) - (b.position || 0));
   const [editing, setEditing] = useState(null); // { weId, setNumber } | null
   const [editWeight, setEditWeight] = useState("");
@@ -181,7 +183,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
     return {
       dateLabel: dateStr,
       unit: units,
-      totalSets,
+      totalSets: setCounts.working,
       totalVolume: volume,
       durationMin: duration,
       bodyWeight: workout.body_weight != null ? formatWeight(workout.body_weight, units) : null,
@@ -335,8 +337,9 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
           <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Volume ({units})</div>
         </div>
         <div>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{totalSets}</div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{setCounts.working}</div>
           <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Sets</div>
+          {setCounts.warmup > 0 && <div style={{ fontSize: 10, color: T.dim, marginTop: 1 }}>+{setCounts.warmup} warmup</div>}
         </div>
         {duration != null && (
           <div>
@@ -678,7 +681,7 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>{dateStr}{startTimeStr && <span style={{ color: T.dim, fontWeight: 400, fontSize: 13 }}> · {startTimeStr}</span>}</div>
-                      <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{exCount} exercise{exCount === 1 ? "" : "s"} · {workoutSetCount(w)} sets · {Math.round(toDisplay(workoutVolume(w), units)).toLocaleString()} {units}</div>
+                      <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{exCount} exercise{exCount === 1 ? "" : "s"} · {workoutSetCount(w).working} sets · {Math.round(toDisplay(workoutVolume(w), units)).toLocaleString()} {units}</div>
                     </div>
                     {!selectMode && <div style={{ color: T.dim, fontSize: 16 }}>›</div>}
                   </button>

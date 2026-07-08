@@ -126,7 +126,11 @@ function buildLastWorkoutInsight(history) {
 }
 
 export default function Home({ user, onStartWorkout, onDataReset }) {
-  const [range, setRange] = useState("30d");
+  const [range, setRangeState] = useState(() => getPrefs().homeRange);
+  function setRange(key) {
+    setRangeState(key);
+    setPref("homeRange", key);
+  }
   const [history, setHistory] = useState(null); // null = loading
   const [streak, setStreak] = useState(0);
   const [error, setError] = useState(null);
@@ -525,12 +529,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
         <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 100px" }}>
           {/* Header — scrolls with the rest of the page */}
           <div style={{ padding: "20px 0 8px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }}>
-            <div>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: streak > 0 ? T.accent : T.dim }}>
-                {streak}
-              </div>
-              <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Streak</div>
-            </div>
+            <div />
             <Logo size={64} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button onClick={openAnnouncements} data-tutorial="announcements-btn" aria-label="Announcements" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
@@ -673,8 +672,15 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
               <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <button onClick={() => shiftMonth(setCalendarMonth, -1)} style={navBtn}>‹</button>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
-                    {calendarMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
+                      {calendarMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}
+                    </div>
+                    {streak > 0 && (
+                      <div style={{ fontSize: 10, color: T.accent, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginTop: 1 }}>
+                        {streak} day streak
+                      </div>
+                    )}
                   </div>
                   <button onClick={() => shiftMonth(setCalendarMonth, 1)} style={navBtn}>›</button>
                 </div>
