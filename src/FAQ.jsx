@@ -1,0 +1,177 @@
+import { useState } from "react";
+
+const T = {
+  bg: "#101216",
+  surface: "#1A1D23",
+  surface2: "#22262E",
+  line: "#2C313B",
+  text: "#F2F1EC",
+  dim: "#8B919D",
+  accent: "#E8442E",
+};
+
+// Grouped so beginners can scan by category instead of one long list.
+// Keep entries short — this is a quick-reference, not a textbook.
+const SECTIONS = [
+  {
+    title: "Training Concepts",
+    items: [
+      {
+        term: "RIR (Reps in Reserve)",
+        body: "How many more reps you could have done before failure. RIR 2 means you stopped with 2 good reps left in the tank. Most working sets in DeltaLog target RIR 1–3.",
+      },
+      {
+        term: "RPE (Rate of Perceived Exertion)",
+        body: "A 1–10 scale for how hard a set felt, with 10 being max effort. RPE and RIR describe the same idea from opposite directions — RPE 9 is roughly the same as RIR 1.",
+      },
+      {
+        term: "Progressive Overload",
+        body: "Gradually increasing the demand on your muscles over time — more weight, more reps, more sets, or better form — so they're forced to keep adapting. It's the core driver of long-term strength and muscle gain.",
+      },
+      {
+        term: "Hypertrophy",
+        body: "Muscle growth in size. Hypertrophy training typically uses moderate weight, higher reps (roughly 6–20), and stops a couple reps shy of failure.",
+      },
+      {
+        term: "Volume",
+        body: "The total amount of work done for a muscle, usually counted in hard sets per week. More volume generally drives more growth, up to a point where recovery becomes the limit.",
+      },
+      {
+        term: "Failure",
+        body: "The point in a set where you physically cannot complete another rep with good form. Training to failure isn't required every set — it's one tool, not the only one.",
+      },
+      {
+        term: "Deload",
+        body: "A planned week of reduced volume or intensity that lets your body recover before fatigue starts hurting performance. Usually done every 4–8 weeks of hard training.",
+      },
+      {
+        term: "Mind-Muscle Connection",
+        body: "Deliberately focusing on the target muscle while it works, rather than just moving the weight. Can improve how well a muscle is activated during a lift.",
+      },
+    ],
+  },
+  {
+    title: "Movement & Programming",
+    items: [
+      {
+        term: "Compound Exercise",
+        body: "A movement that works multiple joints and muscle groups at once, like a squat or bench press. Efficient for building overall strength.",
+      },
+      {
+        term: "Isolation Exercise",
+        body: "A movement that targets one joint and mostly one muscle, like a bicep curl or leg extension. Useful for bringing up a specific muscle.",
+      },
+      {
+        term: "Superset",
+        body: "Two exercises performed back-to-back with no rest in between, then rested as a pair. Saves time and can add extra fatigue to a muscle group.",
+      },
+      {
+        term: "Working Set",
+        body: "A set that's hard enough to count toward your training goal, as opposed to a warm-up set. Warm-ups don't count toward volume.",
+      },
+      {
+        term: "Split",
+        body: "How your weekly training is divided by muscle group or movement pattern, e.g. Push/Pull/Legs or Upper/Lower.",
+      },
+      {
+        term: "Primary / Secondary Muscle",
+        body: "The primary muscle does most of the work in an exercise; secondary muscles assist. A bench press primarily hits chest, with triceps and shoulders as secondary.",
+      },
+    ],
+  },
+  {
+    title: "Tracking & Scoring",
+    items: [
+      {
+        term: "PR (Personal Record)",
+        body: "Your best-ever result on an exercise, whether that's heaviest weight, most reps, or best estimated one-rep max.",
+      },
+      {
+        term: "DOTS Score",
+        body: "A formula that adjusts your lift total for bodyweight and gender, letting you compare relative strength across different body sizes. Used mainly by powerlifters.",
+      },
+      {
+        term: "Percentile",
+        body: "Where your strength on a lift ranks compared to other DeltaLog users of similar bodyweight and gender. DeltaLog's default strength metric — easier to read at a glance than DOTS.",
+      },
+      {
+        term: "1RM (One-Rep Max)",
+        body: "The most weight you can lift for a single rep with good form. Often estimated from a higher-rep set rather than tested directly, since true max attempts carry more injury risk.",
+      },
+    ],
+  },
+];
+
+export default function FAQ({ onClose }) {
+  const [open, setOpen] = useState(() => new Set());
+  const [search, setSearch] = useState("");
+
+  const toggle = (key) => {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const q = search.trim().toLowerCase();
+  const filteredSections = SECTIONS.map((section) => ({
+    ...section,
+    items: q
+      ? section.items.filter(
+          (item) => item.term.toLowerCase().includes(q) || item.body.toLowerCase().includes(q)
+        )
+      : section.items,
+  })).filter((section) => section.items.length > 0);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
+      <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>FAQ & GLOSSARY</div>
+          <div style={{ width: 26 }} />
+        </div>
+
+        <div style={{ padding: 16 }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search a term…"
+            style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box", marginBottom: 20 }}
+          />
+
+          {filteredSections.length === 0 && (
+            <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No matches for "{search}".</div>
+          )}
+
+          {filteredSections.map((section) => (
+            <div key={section.title} style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{section.title}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {section.items.map((item) => {
+                  const key = `${section.title}:${item.term}`;
+                  const isOpen = open.has(key);
+                  return (
+                    <div key={key} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, overflow: "hidden" }}>
+                      <button
+                        onClick={() => toggle(key)}
+                        style={{ width: "100%", padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left", background: "none", border: "none" }}
+                      >
+                        <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>{item.term}</div>
+                        <div style={{ color: T.dim, fontSize: 14, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>›</div>
+                      </button>
+                      {isOpen && (
+                        <div style={{ padding: "0 14px 14px", color: T.dim, fontSize: 13, lineHeight: 1.5 }}>{item.body}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

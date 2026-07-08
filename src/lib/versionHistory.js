@@ -1,0 +1,181 @@
+// Admin-only, in-depth version history. Unlike src/lib/changelog.js (the
+// customer-facing "What's New" copy), this is meant to be thorough and
+// technical — implementation detail, not marketing. Add an entry here
+// alongside every changelog.js entry so the two never fall out of sync;
+// this one just says more.
+export const VERSION_HISTORY = [
+  {
+    version: "1.9.6",
+    date: "2026-07-07",
+    items: [
+      "AppSplash.jsx: added a new \"horizon\" phase (700ms) between \"extend\" and \"separate\" in the phase state machine (loading -> extend -> horizon -> separate -> done). Moved the `dl-splash-${phase}` className onto the outer fixed container (kept on the svg too) so CSS for the new HTML horizon layer, which sits outside the svg, can key off the same phase classes as the existing barbell/triangle transforms.",
+      "New .dl-splash-horizon-wrap: absolutely positioned at `top: calc(50% + 44px)`, which is the exact pixel offset of the barbell's bar line within the fixed 220x154 splash svg -- computed once from the viewBox math (line at y=55 of a 0-70 viewBox, 154px tall render, minus half the render height to get the offset from viewport center). Fades in over EXTEND_MS as the bar finishes stretching, holds through the horizon phase, then translateY(140vh) + fades out in lockstep with the bar during the separate phase so it reads as one continuous piece exiting downward rather than a separate element.",
+      "Inside it: .dl-splash-horizon-glow is a blurred radial-gradient ellipse in the accent color sitting right on the line for a bit of bloom, and .dl-splash-horizon-floor is the actual grid -- a 320vw x 140vh div with `perspective(240px) rotateX(66deg)` off a top-center transform-origin, giving the classic Tron/outrun converging-floor look, built from two 1px-line background gradients (vertical + horizontal) at a 46px cell size. A mask-image fades the top ~12% of it so the grid blends into the glow instead of starting with a hard edge. dl-horizon-scroll animates just the horizontal-line layer's background-position over 900ms linear infinite, which reads as the grid scrolling toward the viewer.",
+      "Outer splash container gained `overflow: hidden` (previously unset) so the barbell's scaleX(18) stretch and the new 320vw floor plane are reliably clipped at the viewport edge instead of relying on incidental fixed-position behavior.",
+    ],
+  },
+  {
+    version: "1.9.5",
+    date: "2026-07-07",
+    items: [
+      "ExerciseLibraryView.jsx: dropped autoFocus from the narrowed-list search input -- it was stealing focus and popping the keyboard the instant a muscle group tile was tapped. Added a second browse layer (browseDetail state) between the generic group tiles and the exercise list: tiles are derived live from the loaded exercises' primary_muscles (via muscleLabel(..., \"detailed\")) rather than a separate fetch, with a \"View All {Group}\" wide tile to skip straight to the list. backFromList() routes to the tile grid or the detail layer depending on how the user got into the list.",
+      "ExerciseLibraryView.jsx: exercise rows are now clickable for admins too (previously only non-admins could open the view-only sheet; admins only got Edit). Edit button calls e.stopPropagation() so it doesn't also trigger the view sheet. The view sheet itself was reordered/expanded to Equipment, Muscle group, Primary muscles, Secondary muscles (all view-only, all via muscleLabel(..., \"detailed\")) -- previously it only showed primary muscles and never secondary at all.",
+      "lib/volume.js: summarizeHistory() now attaches exerciseName and date to each entry it builds, alongside the existing muscle/secondaryMuscles/sets -- needed so the new drill-down sheet can list real exercises and dates rather than just aggregate counts. No existing consumer of entries broke since they only ever destructured the fields they needed.",
+      "New MuscleSetsDetail.jsx: bottom sheet opened by tapping a \"N sets\" count in BodyHeatmap. Filters Home's existing `entries` array by muscle + role (primary: entry.muscle === muscle; secondary: entry.secondaryMuscles.includes(muscle)), sorted newest-first, each row expandable to show every set's weight (via formatWeight) and reps. No new fetch -- reuses the same entries the heatmap already computes.",
+      "BodyHeatmap.jsx: MuscleRow's set count is now a button wired to a new onSelectMuscle(muscle, role) prop threaded from Home.jsx, which opens MuscleSetsDetail with muscleDetail state.",
+      "lib/muscleNomenclature.js: root-caused Cayden's report of \"Adductor Longus\"/\"Adductor Magnus\" showing up unmerged in the secondary-muscle breakdown -- the ALIASES fallback table only had a combined \"adductors\" key, and the DB muscle_taxonomy table (migration_036) only seeded \"Adductor Longus/Magnus\" as one combined scientific name, so whatever's actually stored in production as two split values matches neither and falls through to raw. Added \"adductor longus\", \"adductor magnus\", and \"adductor longus/magnus\" fallback entries (generic Legs, detailed Adductors, scientific Hip Adductors). Also fixed \"adductors\", \"hip flexors\", and \"quads\" entries, which still carried the pre-overhaul generic value \"Quads\" -- not a valid key in the current 8-bucket system (Arms/Back/Chest/Core/Full Body/Legs/Neck/Shoulders) -- to \"Legs\". Flagging for Cayden: several other ALIASES entries (biceps, triceps, forearms, calves, glutes, hamstrings, traps, rear deltoid) still carry pre-overhaul generic values too; they're only load-bearing if a raw secondary-muscle value slips through without a matching row in muscle_taxonomy, but worth a pass if similar mismatches show up again. The DB table is still the real source of truth and can be edited directly from the Taxonomy admin screen.",
+    ],
+  },
+  {
+    version: "1.9.4",
+    date: "2026-07-07",
+    items: [
+      "ExerciseLibraryView.jsx: replaced the flat searchable list with a tile-first browse flow. Default state shows a 2-column grid of the 8 generic muscle group tiles (from MUSCLE_COLORS keys) plus a full-width \"View All\" tile below; tapping either sets a new browseGroup state that narrows into the search + list view, with a back control to return to the tile grid. Search and the existing admin edit/create/taxonomy flows are unchanged once inside a narrowed view.",
+      "Exercise rows across the app now show only the exercise name -- ExerciseLibraryView.jsx dropped its muscle/equipment (or muscle/primary/secondary, for admin) subtitle line, and the now-unused displayList() helper was removed.",
+      "ExerciseThumb.jsx: removed the colored muscle-dot fallback for exercises with no media_url. Replaced with a neutral stroke-only IconBarbell in a flat surface2 square, consistent with the rest of the icon set -- no more per-muscle color coding next to exercises in SetLogger.jsx, WorkoutHistory.jsx, AdminExercises.jsx, MyCustomExercises.jsx, and ExerciseLibraryView.jsx, all of which share this component.",
+    ],
+  },
+  {
+    version: "1.9.1",
+    date: "2026-07-07",
+    items: [
+      "Recovered from a bad CSV import into the exercises table: the import had renamed name/aliases/muscle_group/primary_muscles/secondary_muscles/equipment to raw spreadsheet headers (Exercise Name, Nicknames, Primary/Secondary Muscle(s) Level 1/2/3, Equipment) and dropped mechanism/pattern/equipment_type/laterality/grip/skill_level outright, breaking every exercise query in the app (PostgREST error surfaced as \"column exercises_2.name does not exist\").",
+      "migration_037_exercise_library_column_reconciliation.sql: renamed Exercise Name -> name, Nicknames -> aliases, Equipment -> equipment (1:1, no transform). Added muscle_group/primary_muscles/secondary_muscles as derived columns, populated from the raw Level 1 (Generic) and Level 3 (Scientific) sheet columns, which are left in place as the source of truth for future re-imports (maintenance query included in the migration file).",
+      "Per explicit decision, mechanism/pattern/equipment_type/laterality/grip/skill_level are removed from the app entirely rather than recovered (the CSV merge had deleted that underlying data with no backup) -- normalizeExercise() in queries.js no longer returns any of the six, and createSharedExercise/createCustomExercise/updateCustomExercise no longer write them.",
+      "Added deriveEquipmentBucket() in queries.js: maps an exercise's raw equipment array onto the single Barbell/Dumbbell/Cable/Machine/Kettlebell/Bodyweight/Other bucket the picker's equipment filter needs, replacing the old stored equipment_type column. CustomExerciseModal's equipment dropdown now writes into the equipment array (as a one-item array) instead of a separate scalar column.",
+      "bigPlateAllowed() in lib/weight.js now keys the \"lower body\" big-plate scope off muscle group (Legs, Full Body) instead of the removed pattern field (previously squat/hinge specifically) -- slightly broader than before (e.g. leg extensions now count), flagged for Cayden to revisit if it's not the right call.",
+      "Removed the workout generator's pattern-gap \"balance popup\" (SetLogger.jsx) entirely -- it existed to suggest a second exercise when all picks in a muscle group shared the same movement pattern, which no longer exists as data. generateWorkout() now goes straight to finishGenerateWorkout().",
+      "Removed pattern/mechanism/laterality/grip/skill_level from all display surfaces: AdminExercises.jsx and MyCustomExercises.jsx row subtitles now show the equipment array instead of equipment_type/pattern; ExerciseLibraryView.jsx dropped its Pattern/Laterality/Grip/Skill level detail rows; CustomExerciseModal.jsx dropped its \"Movement pattern\" input entirely.",
+    ],
+  },
+  {
+    version: "1.6.2",
+    date: "2026-07-06",
+    items: [
+      "SetLogger.jsx: consolidated the two narrow session-persistence effects (rest timer, view/exIdx/showCalc) into one comprehensive snapshot effect covering wizardOpen/editIndex/weight/reps/rir, pickerFor and its filters (pickerSearch/showPickerFilters/muscleFilter/equipFilter/performedFilter/sourceFilter), showMenu, showSetup, showMachineSetup, showWorkoutPrefs, showIdeology, showTargetInfo, editingNote/noteDraft, and restEndsAt. Boot-time rehydration in the resumeWorkout branch now restores all of these, not just exercise/view/timer, addressing reports that reload dropped people back on the main workout screen instead of the set logger/picker/etc they were actually in.",
+      "Fixed the rest timer bar's visibility condition, which was gated on `!wizardOpen` — once wizardOpen started being persisted/restored (above), reopening the app while the wizard was open hid an still-running rest timer entirely. Removed the wizardOpen gate from the rest timer bar so it shows regardless of what else is open. Also added a visibilitychange/pagehide listener that force-flushes the session snapshot immediately on backgrounding, as a safety net beyond the reactive persistence effect.",
+      "Added AppSplash.jsx: a fixed-overlay boot animation (logo pulses centered while loading, then the barbell group scales horizontally off-screen via CSS transform, then the barbell translates down / triangle translates up while the backdrop fades, revealing the app). App.jsx restructured from per-gate early-return loading divs to a single `ready` boolean plus a `content` variable, so the splash can render on top of already-mounting real content instead of a blank placeholder.",
+      "Added AdminHome.jsx: single Admin entry point in Settings replacing four separate admin buttons (Custom Exercises, Feedback & Bugs, Simulate new-user experience, Version History), each still rendering the same existing screens via callback props from Home.jsx.",
+      "Added DangerZone.jsx: extracted the Reset All Data and Delete Account cards out of the main Settings list into their own screen, reached via a single \"Danger Zone\" row — one extra deliberate tap before either destructive action (each still behind its own existing confirm step) is even visible.",
+      "queries.js: added deleteSet(workoutExerciseId, setNumber) — deletes the row and renumbers subsequent sets down by one to keep set_number contiguous. WorkoutHistory.jsx's DetailView now supports adding sets (logSet), removing sets (deleteSet), adding exercises (addWorkoutExercise, with an inline searchable picker backed by fetchExercises), and removing exercises (removeWorkoutExercise) on completed workouts — all propagated back to Home's cached history state via four new callbacks (onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved) so volume/set-count/etc recompute from the same derived helpers already used for display.",
+      "fetchWorkoutHistory's started_at was already selected but unused — WorkoutHistory.jsx now displays it (list row and detail header) via a new lib/time.js formatClockTime() helper.",
+      "Added timeFormat pref (\"12h\" | \"24h\", default \"12h\") in lib/prefs.js. Preferences.jsx gained a Time Format row (top-level, alongside Units) wired through Home.jsx's existing controlled-value pattern (timeFormat state + setTimeFormat wrapper).",
+      "SetupWizard.jsx: added an InfoBox explanation and a duplicated PlateCalcVisual (same looping SVG plate-slide animation as TutorialOverlay.jsx's plate-calculator tutorial step, copied rather than extracted to a shared module) to the \"Default set entry\" step.",
+      "Moved the Splits button out of Settings' standalone \"Splits\" section into HelpSupport.jsx under Guides (onOpenSplits prop threaded through from Home.jsx); removed the now-empty section from Home's Settings list.",
+      "queries.js: fetchCustomExercisesForReview now does a second query against profiles for the distinct creator ids and attaches creator_first_name/creator_last_name to each row (embedded PostgREST select was avoided since the FK constraint name wasn't known to be reliable). AdminExercises.jsx now shows \"Added by {name}\" instead of a truncated user id, and gates the Promote button behind having opened a new Review & Edit panel (reused CustomExerciseModal.jsx in edit mode) at least once per row this session — save path calls the existing updateCustomExercise plus uploadExerciseMedia if a new photo was chosen.",
+      "HelpSupport.jsx: Row component was missing boxSizing: \"border-box\", so width:100% + padding:14 rendered wider than the container on narrow screens — most visible on the Reddit link row. Added border-box sizing plus text truncation (overflow/ellipsis) on title/subtitle so long content can't force overflow either.",
+      "migration_024_exercise_aliases.sql: added exercises.aliases (text[], default '{}') plus a GIN index. Admin-only mergeCustomExerciseAsAlias(submissionId, submissionName, targetExerciseId) in queries.js appends the submission's name to the target's aliases (via addExerciseAlias, case-insensitive de-duped) and marks the submission admin_reviewed — created_by is deliberately left untouched, so the submitter's own copy is unaffected and nothing gets promoted or deleted. AdminExercises.jsx gained a \"Merge into existing exercise\" link per row, opening a bottom-sheet picker (fetchExercises filtered to !isCustom, i.e. already-shared library items only) to choose the target. normalizeExercise now carries aliases through, and the picker/generator search filters in SetLogger.jsx plus the add-exercise picker in WorkoutHistory.jsx all match against it in addition to name/pattern/equipment, so searching an aliased name (e.g. \"hamstring curl\") surfaces the target exercise (\"Machine Seated Leg Curl\") everywhere. Added a companion trigger (auto_dismiss_known_alias) that auto-marks any future submission reviewed on insert if its name exactly matches an existing alias, so repeat submissions of an already-merged name stop reaching the review queue at all.",
+      "Preferences.jsx: added a collapsible \"Units\" group (showUnitsGroup state) combining the renamed \"Weight Units\" row and Time Format, mirroring the existing Training Preferences pattern. Muscle Names and Default Rest Timer moved from flat top-level/bottom rows into the Training Preferences collapsible (grouped branch only — the in-workout `fields`-restricted usage keeps its original flat rows, now gated with `!grouped` instead of being unconditional). trainingPrefsOpen's search-driven auto-expand list extended to include scientificNames/restSeconds; added matching unitsGroupOpen for the new group.",
+      "AdminExercises.jsx: added archive(id) — calls setExerciseArchived(id, true) then dismissCustomExercise(id), so a junk/inappropriate submission can be fully hidden from its creator too, not just dropped from the review queue (which dismiss alone does without touching the submitter's copy).",
+      "VersionHistory.jsx: the per-item row's text div had no flex/min-width/wrap constraints, so long unbroken tokens (function names, file paths) in the changelog body could overflow the container instead of wrapping. Added flex:1, minWidth:0, overflowWrap:\"anywhere\", and wordBreak:\"break-word\"; bullet marker got flexShrink:0 so it stays fixed width.",
+      "SetLogger.jsx: extended the visibilitychange/pagehide safety-net effect with a 1-second setInterval flush plus beforeunload/blur listeners, and an immediate flush on effect setup — belt-and-suspenders against any possible gap between a state change committing and the reactive persistence effect running, on top of the existing mechanism from the previous two rounds of session-persistence fixes.",
+      "Added deleteLoggedSet(i, setIdx) in SetLogger.jsx, reusing the deleteSet query added for retroactive history edits — the \"N logged\" badge in Edit Workout is now a toggle exposing each logged set with a Remove button, splicing the array locally (set_number is always array position + 1 by existing convention, so no renumbering step needed beyond the array filter itself) and calling deleteSet(workoutId, setNumber) to match server-side.",
+      "Home.jsx: moved the Profile section (gender/age/weight/height) from between Admin and Account to between the Workouts section (Templates/My Custom Exercises) and Preferences.",
+    ],
+  },
+  {
+    version: "1.6.1",
+    date: "2026-07-06",
+    items: [
+      "Added lib/sessionState.js: localStorage-backed persistence for in-progress-workout UI state (view, exIdx, showCalc, restEndsAt), keyed by workout id, rehydrated in SetLogger's boot effect and cleared on finish/cancel.",
+      "Rest timer switched from a plain setInterval decrement to a persisted restEndsAt timestamp, recomputed from wall-clock time on rehydration — survives reload/backgrounding instead of resetting.",
+      "queries.js: added removeWorkoutExercise, reorderWorkoutExercises, updateWorkoutExercisePlanned so mid-workout removal/reorder/planned-set edits persist immediately instead of only existing in local React state (previously only additions were persisted).",
+      "Starting weight (plate calculator bar/machine weight) now persists per exercise via ex.setup._startingWeight (canonical lb), rehydrated on exercise change; default changed from a standard bar preset to 0.",
+      "Preferences.jsx: added optional filterQuery prop, filtering individual rows by keyword match and auto-expanding the Training Preferences group when a match is inside it. Wired to a new search input in Home.jsx's Settings screen via a settingsMatch() gate on every section.",
+      "Removed the app-default ideologyScope option from SetLogger's in-workout training-focus picker — setExerciseIdeology no longer branches on scope, always exercise-scoped now. App-wide default is Preferences-only.",
+      "Seat/Bar/Cable height fields in machine setup now default to numeric inputMode with a per-field `${field}__text` toggle in ex.setup for free-text entry.",
+      "Set logger weight/reps inputs: added onFocus select(), and Enter on weight focuses the reps ref (added repsRef).",
+      "Added outlier detection in SetLogger: detectOutlierSets() compares each set's weight against same-session sibling sets plus ex.lastWeek, flags ±40%+ swings past a 10lb/5kg floor. Finish flow now routes through handleFinishClick → outlierReview state → review UI (editFlaggedSet / dismissFlag) before calling the original handleConfirmFinish.",
+      "WorkoutHistory.jsx: fetchWorkoutHistory query now selects workout_exercises.id (previously omitted) to support editing. DetailView sets are now tap-to-edit (startEdit/saveEdit calling updateSet), propagated back to Home's cached history via a new onSetUpdated callback.",
+      "WorkoutHistory.jsx: replaced per-row delete icon with an Edit-mode multi-select (checkedIds Set) and a bottom action bar; confirmDeleteId (single) generalized to confirmDeleteIds (array), handleDelete → handleDeleteMany.",
+      "Progress photo uploads (SetLogger post-workout summary and WorkoutHistory's ProgressPhotoBlock) now present two file inputs — one with capture=\"environment\" (camera), one without (library) — instead of a single ambiguous picker.",
+      "Admin menu: added \"Simulate new-user experience\" — chains SetupWizard's onComplete into tutorial.start() via a new adminSimulateNewUser flag, for on-demand QA of the first-run flow without needing a fresh account.",
+      "Added lib/versionCheck.js (compareVersions, versionsSince) and lastSeenVersion/lastWhatsNewDate prefs. Home.jsx now checks once per calendar day whether any changelog entries are newer than lastSeenVersion and, if so, shows all of them in one WhatsNew popup (entries prop, newest-first display) rather than just the current version. First run for any user (lastSeenVersion === null) sets tracking silently with no popup, covering both new signups and pre-existing users updating from before this feature shipped.",
+    ],
+  },
+  {
+    version: "1.6.0",
+    date: "2026-07-06",
+    items: [
+      "Consolidated Help & Community into a single \"Tutorials, Guides & Support\" screen off Settings, replacing five separate inline buttons with one entry point, grouped into Get Started / Guides / Community & Support.",
+      "Setup wizard can now be rerun anytime from that screen, pre-filled with current preference values.",
+      "Added this admin-only, searchable Version History screen.",
+    ],
+  },
+  {
+    version: "1.5.0",
+    date: "2026-07-06",
+    items: [
+      "Training Focus (Strength/Hypertrophy/Endurance) is now a real persisted preference (trainingIdeology in lib/prefs.js) — previously it was local component state in SetLogger.jsx that silently reset to Hypertrophy on every mount.",
+      "Preferences panel restructured: when rendered without a `fields` prop (full Settings usage), Strength Score, Training Focus, Default Set Entry, and Big Plates are now grouped behind a collapsible \"Training Preferences\" sub-section. The in-workout menu's constrained `fields` usage is unaffected — same flat layout as before.",
+      "Extracted IDEOLOGIES (rep ranges + descriptions) out of SetLogger.jsx into lib/ideologies.js so Preferences and the workout view share one definition.",
+      "Added a 7-step full-screen SetupWizard.jsx for first-time users: units, training focus, strength score, default set entry, big plates, muscle names, rest timer. Gated in App.jsx via a new setupWizardSeen pref, shown after Terms acceptance and before Home.",
+      "Existing users are auto-skipped past the wizard via a one-time migration in getPrefs(): if tutorialSeen or installPromptSeen is already true and setupWizardSeen was never set, it's treated as already seen.",
+    ],
+  },
+  {
+    version: "1.4.0",
+    date: "2026-07-06",
+    items: [
+      "Removed the placeholder support email from the Privacy Policy — privacy requests now route exclusively through the in-app form.",
+      "Full admin feedback management: migration_023 added status (open/closed/archived), flagged, admin_note, and updated_at columns to the feedback table, plus RLS update/delete policies scoped to profiles.is_admin.",
+      "AdminFeedback.jsx rebuilt with a list + detail view: flag toggle, private admin note (not visible to the submitter), status controls, and delete with confirmation. List view adds a status filter (Open/All/Closed/Archived) alongside the existing type filter, flagged items sort to the top.",
+      "Renamed \"Feature idea\" to \"Feature\" across the submission form and admin list.",
+      "Moved the admin unseen-submissions notification dot from the top-right to the top-left of the Settings icon.",
+    ],
+  },
+  {
+    version: "1.3.0",
+    date: "2026-07-06",
+    items: [
+      "Added Privacy Policy page (lib/privacyContent.jsx + PrivacyPolicy.jsx), reachable from Settings, plus an in-app privacy request submission form (feedback table's type check constraint extended to include 'privacy').",
+      "Full self-service account deletion: migration_022 adds a SECURITY DEFINER Postgres function delete_own_account() that removes workouts, templates, exercise_defaults, and user-created exercises explicitly (their FKs to auth.users don't cascade), then deletes the auth.users row itself, which cascades to profiles/feedback/progress_photos. Storage files (progress photos, custom exercise media) are cleaned up client-side via the Storage API immediately before the RPC call, since DB cascades don't touch Storage.",
+      "Danger Zone in Settings now has two distinct actions: \"Reset All Data\" (wipes data, keeps login) and \"Delete Account\" (wipes everything including the login, requires typing DELETE to confirm).",
+      "Fixed a gap where \"Reset All Data\" didn't clear progress photos, since progress_photos.user_id references auth.users directly rather than profiles.",
+      "Added admin notification badge: profiles.feedback_last_viewed_at tracks when an admin last opened Feedback & Bugs; a count of feedback rows created after that timestamp shows as a badge on the Settings icon and the Feedback & Bugs row.",
+      "Added the customer-facing \"What's New\" viewer (WhatsNew.jsx + lib/changelog.js), opened by tapping the version number in Settings.",
+    ],
+  },
+  {
+    version: "1.2.0",
+    date: "2026-07-06",
+    items: [
+      "Terms & Conditions extracted into a shared lib/termsContent.jsx so the first-run acceptance gate (TermsGate.jsx) and a new anytime viewer (TermsViewer.jsx, reachable from Settings) can't drift out of sync.",
+      "Removed the bodyweight-over-time chart on/off toggle (showWeightChart pref) entirely — the chart is now always rendered on Home. Cleaned up the dead pref from lib/prefs.js, Preferences.jsx, and Home.jsx.",
+    ],
+  },
+  {
+    version: "1.1.1",
+    date: "2026-07-06",
+    items: [
+      "Fixed the sign-in page so it no longer relies on page-level scroll: outer container changed from minHeight:100vh to a fixed height:100vh with overflow:hidden, and the form section scrolls internally (overflowY:auto) if content ever exceeds the viewport.",
+    ],
+  },
+  {
+    version: "1.1.0",
+    date: "2026-07-06",
+    items: [
+      "Added email + password authentication (sign in, sign up, forgot password) alongside the existing Google OAuth and magic-link options in Auth.jsx.",
+      "Apple Sign In was scoped and built in this version, then removed at Cayden's request after learning it requires a paid ($99/yr) Apple Developer account — not worth it for the project at this stage.",
+    ],
+  },
+  {
+    version: "1.0.0",
+    date: "2026-07-06",
+    items: [
+      "Established semantic versioning (MAJOR.MINOR.PATCH) as the baseline going forward, with the version number surfaced at the bottom of Settings.",
+      "Drag-reorder UI (workout exercises, template list, template exercise list) now shows an insertion line at the exact drop point instead of highlighting the hovered row.",
+      "Added a Replace Exercise button to the template editor, opened as a dedicated modal with its own search rather than requiring a scroll to the bottom of the page.",
+      "Custom exercise creation now carries over whatever text was typed into the search field as the starting name.",
+      "Search field clears immediately when an exercise is selected/added, including in the multi-select add-exercise flow.",
+      "Archived templates and archived custom exercises moved from separate full-screen pages into collapsible sections at the bottom of their respective list pages.",
+      "First and last name are now required during setup; existing users missing a name are routed back through onboarding until they provide one (profiles.first_name / last_name columns).",
+      "Added a Terms & Conditions acceptance gate (profiles.terms_accepted_at) required at first sign-in for new users and retroactively for existing ones.",
+      "Added optional, private-per-user progress photos: uploadable from the post-workout summary and from any calendar date with a logged workout. Backed by a private Supabase Storage bucket (progress-photos) with owner-only RLS policies and signed URLs for retrieval.",
+      "Added a Cable Height field to per-exercise machine setup, alongside the existing Seat Height and Bar Height.",
+      "Fixed back-button navigation throughout the app: opening a sub-screen from the Settings menu or the in-workout menu no longer closes the parent menu underneath, so the back button returns one level instead of jumping straight to Home or the main workout view.",
+      "\"Log next set\" now expands to fill all available vertical space (collapsing machine setup, notes, rest timer, and the last-session/today list while the wizard is open) so the plate calculator has room without triggering page scroll.",
+      "Removed \"Report a bug or request a feature\" from the mid-workout menu; it remains in the main Settings menu only.",
+    ],
+  },
+];
