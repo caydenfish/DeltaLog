@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { SPLITS } from "./lib/splits";
+import { muscleLabel } from "./lib/muscleNomenclature";
 
 const T = {
   bg: "#101216",
@@ -71,7 +73,26 @@ const SECTIONS = [
       },
       {
         term: "Split",
-        body: "How your weekly training is divided by muscle group or movement pattern, e.g. Push/Pull/Legs or Upper/Lower.",
+        body: (
+          <div>
+            <div style={{ marginBottom: 12 }}>
+              How your weekly training is divided by muscle group or movement pattern. These are the same splits available as quick filters when picking exercises — tap Filters in any exercise picker to jump straight to one. Push and Pull overlap on Shoulders and Arms, and Legs and Lower are identical, since the exercise library groups muscles at that level rather than separating front/rear delts or biceps/triceps.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {Object.entries(SPLITS).map(([name, muscles]) => (
+                <div key={name} style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10 }}>
+                  <div style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{name}</div>
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                    {muscles.map((m) => (
+                      <span key={m} style={{ fontSize: 11, fontWeight: 600, color: T.text, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 9px" }}>{muscleLabel(m)}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ),
+        searchText: `push pull legs upper lower full body ${Object.values(SPLITS).flat().join(" ")}`,
       },
       {
         term: "Primary / Secondary Muscle",
@@ -119,7 +140,10 @@ export default function FAQ({ onClose }) {
     ...section,
     items: q
       ? section.items.filter(
-          (item) => item.term.toLowerCase().includes(q) || item.body.toLowerCase().includes(q)
+          (item) =>
+            item.term.toLowerCase().includes(q) ||
+            (typeof item.body === "string" && item.body.toLowerCase().includes(q)) ||
+            (item.searchText && item.searchText.toLowerCase().includes(q))
         )
       : section.items,
   })).filter((section) => section.items.length > 0);

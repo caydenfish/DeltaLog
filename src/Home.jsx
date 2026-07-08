@@ -23,7 +23,6 @@ import AdminPermissions from "./AdminPermissions";
 import DangerZone from "./DangerZone";
 import InstallGuide from "./InstallGuide";
 import ProfileEditor from "./ProfileEditor";
-import Splits from "./Splits";
 import WorkoutHistory from "./WorkoutHistory";
 import { useTutorial } from "./TutorialContext";
 import Preferences from "./Preferences";
@@ -245,7 +244,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   // the admin out of flipping back.
   const effectiveIsAdmin = isRealAdmin && adminViewMode === "admin";
   const [showProfileEditor, setShowProfileEditor] = useState(false);
-  const [showSplits, setShowSplits] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -786,7 +784,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
               {settingsMatch("profile gender age date of birth weight height preferences units weight lb kg pounds kilograms time format 12h 24h clock muscle names generic detailed scientific training focus rep range hypertrophy strength endurance dots percentile deltalog default set entry manual plate calculator logging type big plates bumpers squats deadlifts rest timer seconds") && (
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Profile & Preferences</div>
-              <div style={{ marginBottom: 8 }}>
+              <div style={{ marginBottom: 20 }}>
                 {settingsMatch("profile gender age date of birth weight height") && (
                 <button
                   onClick={() => setShowProfileEditor(true)}
@@ -930,7 +928,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
           onClose={() => setShowHelpSupport(false)}
           onOpenFAQ={() => setShowFAQ(true)}
           onOpenInstallGuide={() => setShowInstallGuide(true)}
-          onOpenSplits={() => setShowSplits(true)}
           onOpenFeedback={() => setShowFeedback(true)}
           onReplaySetup={() => setShowSetupReplay(true)}
           onReplayTutorial={() => { setShowHelpSupport(false); setShowMenu(false); tutorial.start(); }}
@@ -991,7 +988,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
           onSaved={setProfile}
         />
       )}
-      {showSplits && <Splits onClose={() => setShowSplits(false)} />}
       {showFeedback && <FeedbackModal user={user} context="settings" onClose={() => setShowFeedback(false)} />}
       {showAnnouncements && (
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>

@@ -5,6 +5,16 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.9.19",
+    date: "2026-07-08",
+    items: [
+      "Splits.jsx: removed. The muscle chips it rendered were already pulling live from the (now-correct) SPLITS constant, but its DESCRIPTIONS object was separate hand-written prose that still referenced pre-overhaul granular muscles (\"Push: Chest, shoulders, and triceps\", \"Legs: Quads, hamstrings, glutes, and calves\") that no longer match what the chips below them actually showed -- the two were telling different stories side by side. Rather than re-sync a second hardcoded description of the same data, folded the content into FAQ.jsx's existing \"Split\" glossary entry, which now renders the same per-split muscle breakdown (pulling live from SPLITS, so it can't drift out of sync again) when expanded, plus a note on the Push/Pull and Legs/Lower overlaps.",
+      "FAQ.jsx: search filtering now handles glossary entries with non-string (JSX) bodies -- needed for the expanded Split entry -- via a searchText field checked alongside term/body.",
+      "Home.jsx, HelpSupport.jsx: removed showSplits state, the onOpenSplits prop, and the standalone \"Push, Pull, Legs & more\" row in Tutorials & Support. FAQ & Glossary's subtitle updated to mention the split breakdown now lives there.",
+      "Home.jsx Settings menu: fixed uneven section spacing. The Profile & Preferences section's wrapping div had marginBottom: 8, but its last child (Preferences' final nav row) carries its own marginBottom: 10 from navRowBtn -- with no padding/border on the wrapper to stop them, those margins collapse per normal CSS block-flow rules, so the effective gap was max(8, 10) = 10px versus the 20px every other section (Workouts, Exercise Library, Tutorials & Support, Admin, Account) leaves before the next header. Changed the wrapper to marginBottom: 20 so it collapses to 20px like everywhere else.",
+    ],
+  },
+  {
     version: "1.9.18",
     date: "2026-07-08",
     items: [

@@ -27,7 +27,7 @@ function Row({ onClick, href, title, subtitle, external }) {
   return <button onClick={onClick} style={style}>{content}</button>;
 }
 
-export default function HelpSupport({ onClose, onOpenFAQ, onOpenInstallGuide, onOpenSplits, onReplayTutorial, onReplaySetup, onOpenFeedback }) {
+export default function HelpSupport({ onClose, onOpenFAQ, onOpenInstallGuide, onReplayTutorial, onReplaySetup, onOpenFeedback }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -44,8 +44,7 @@ export default function HelpSupport({ onClose, onOpenFAQ, onOpenInstallGuide, on
           <Row onClick={onOpenInstallGuide} title="Install as an app" subtitle="Add DeltaLog to your home screen" />
 
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, marginTop: 12 }}>Guides</div>
-          <Row onClick={onOpenFAQ} title="FAQ & Glossary" subtitle="Common training terms explained" />
-          <Row onClick={onOpenSplits} title="Push, Pull, Legs & more" subtitle="Reference for the split filters in exercise pickers" />
+          <Row onClick={onOpenFAQ} title="FAQ & Glossary" subtitle="Training terms, plus the Push/Pull/Legs split breakdown" />
 
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, marginTop: 12 }}>Community & support</div>
           <Row href="https://www.reddit.com/r/DeltaLogApp/" title="r/DeltaLogApp" subtitle="Feedback, requests, and updates" external />

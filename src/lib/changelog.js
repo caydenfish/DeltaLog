@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.19": {
+    title: "Corrected split reference, tidier menu",
+    items: [
+      "The Push/Pull/Legs split breakdown now lists the correct muscles for each split, and lives inside FAQ & Glossary under \"Split\" instead of its own separate screen.",
+      "Fixed uneven spacing in the Settings menu.",
+    ],
+  },
   "1.9.18": {
     title: "Fixed workout resume, and a smarter generator",
     items: [
