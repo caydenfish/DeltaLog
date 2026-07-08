@@ -151,11 +151,6 @@ const newItem = (hydrated, dbId, planned = 3, plannedWarmup = 0) => ({
 });
 
 // ---------- Reusable pieces (module scope so identity stays stable across renders) ----------
-// Plain color dot for muscle-group-only contexts (no specific exercise attached,
-// e.g. the generator's muscle picker). Exercise rows use ExerciseThumb instead.
-function MuscleDot({ muscle }) {
-  return <span style={{ width: 8, height: 8, borderRadius: 4, background: MUSCLE_COLORS[muscle] || T.dim, display: "inline-block", flexShrink: 0 }} />;
-}
 
 function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, selected }) {
   return (
@@ -434,6 +429,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
   const [genMuscles, setGenMuscles] = useState([]);
   const [genPicks, setGenPicks] = useState([]);
   const [genSearch, setGenSearch] = useState("");
+  const [genMuscleSearch, setGenMuscleSearch] = useState("");
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showWorkoutPrefs, setShowWorkoutPrefs] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
@@ -569,9 +565,6 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
         setFavoriteIds(favIds);
 
         if (resumeWorkout) {
-          setWorkoutId(resumeWorkout.id);
-          setGlobalIdeology(resumeWorkout.ideology);
-          if (resumeWorkout.startedAt) startTime.current = new Date(resumeWorkout.startedAt).getTime();
           const items = [];
           const setsArr = [];
           for (const row of resumeWorkout.exerciseRows) {
@@ -582,6 +575,18 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
             items.push(item);
             setsArr.push(row.sets);
           }
+          const saved = loadSessionState(resumeWorkout.id);
+
+          // Everything from here down is applied together, with no
+          // await in between, so there's never a render where workoutId
+          // is set but exIdx/view/etc still sit at their useState
+          // defaults. Splitting these across an await was what let the
+          // persist effect fire mid-restore and overwrite the very
+          // session snapshot being read, which is why resuming always
+          // landed back on the first exercise.
+          setWorkoutId(resumeWorkout.id);
+          setGlobalIdeology(resumeWorkout.ideology);
+          if (resumeWorkout.startedAt) startTime.current = new Date(resumeWorkout.startedAt).getTime();
           setWorkout(items);
           setAllSets(setsArr);
 
@@ -589,7 +594,6 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
           // the app was closed/backgrounded/reloaded — the set logger with
           // its draft set, the plate calculator, the exercise picker and
           // its filters, machine setup, the workout menu, all of it.
-          const saved = loadSessionState(resumeWorkout.id);
           if (saved) {
             if (typeof saved.exIdx === "number" && saved.exIdx < items.length) setExIdx(saved.exIdx);
             if (saved.view) setView(saved.view);
@@ -1361,6 +1365,8 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
   // ---------- Generator view ----------
   if (view === "generator") {
     const genQ = genSearch.toLowerCase();
+    const muscleNameMode = getPrefs().muscleNameMode;
+    const genMuscleQ = genMuscleSearch.toLowerCase();
     const candidates = library.filter((l) => genMuscles.includes(l.muscle) && (
       !genQ || l.name.toLowerCase().includes(genQ) || (l.aliases || []).some((a) => a.toLowerCase().includes(genQ)) || l.equipment.toLowerCase().includes(genQ)
     ));
@@ -1393,17 +1399,26 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 14 }}>
                   {genMuscles.map((m) => (
                     <button key={m} onClick={() => toggleGenMuscle(m)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", borderRadius: 12, fontSize: 12, fontWeight: 600, border: `1px solid ${MUSCLE_COLORS[m]}`, background: `${MUSCLE_COLORS[m]}22`, color: T.text }}>
-                      <MuscleDot muscle={m} /> {muscleLabel(m)}
+                      {muscleLabel(m, muscleNameMode)}
                     </button>
                   ))}
                 </div>
               </>
             )}
             <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{genMuscles.length > 0 ? "Available" : "All muscle groups"}</div>
+            {muscleNameMode === "scientific" && (
+              <input
+                autoComplete="off"
+                value={genMuscleSearch}
+                onChange={(e) => setGenMuscleSearch(e.target.value)}
+                placeholder="Search muscle groups…"
+                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+              />
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 20 }}>
-              {Object.keys(MUSCLE_COLORS).filter((m) => !genMuscles.includes(m)).map((m) => (
+              {Object.keys(MUSCLE_COLORS).filter((m) => !genMuscles.includes(m)).filter((m) => !genMuscleQ || muscleLabel(m, muscleNameMode).toLowerCase().includes(genMuscleQ)).map((m) => (
                 <button key={m} onClick={() => toggleGenMuscle(m)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", borderRadius: 12, fontSize: 12, fontWeight: 600, border: `1px solid ${T.line}`, background: T.surface, color: T.dim }}>
-                  <MuscleDot muscle={m} /> {muscleLabel(m)}
+                  {muscleLabel(m, muscleNameMode)}
                 </button>
               ))}
             </div>
