@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchExercises } from "./lib/queries";
 import { SPLITS } from "./lib/splits";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel, scientificNameOf, getMuscleTaxonomyEntries } from "./lib/muscleNomenclature";
 
 const T = {
   bg: "#101216",
@@ -11,6 +12,70 @@ const T = {
   dim: "#8B919D",
   accent: "#E8442E",
 };
+
+// Builds the per-split muscle breakdown from the actual exercise library
+// rather than the full taxonomy table wholesale. Two reasons: (1) the
+// taxonomy table's generic_group is the only correctly-current mapping
+// (bucket names embedded directly in SPLITS/MUSCLE_COLORS have been the
+// source of drift before), and (2) restricting to primary-muscle tags
+// only keeps the list to what someone would actually call a "primary
+// muscle" for that split -- pulling in secondary/stabilizer tags (e.g.
+// Serratus Anterior, Rotator Cuff) would pad every split with muscles
+// nobody thinks of as the target.
+function SplitBreakdown() {
+  const [perSplit, setPerSplit] = useState(null); // null = still loading
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchExercises()
+      .then((lib) => {
+        if (cancelled) return;
+        const taxonomy = getMuscleTaxonomyEntries();
+        const byScientific = new Map(taxonomy.map((e) => [e.scientific, e]));
+        const primaryOnly = new Map(); // scientific name -> {generic, detailed, scientific}
+        for (const ex of lib) {
+          for (const raw of ex.rawPrimaryMuscles || []) {
+            const sci = scientificNameOf(raw);
+            const entry = byScientific.get(sci);
+            if (entry && !primaryOnly.has(sci)) primaryOnly.set(sci, entry);
+          }
+        }
+        const result = {};
+        for (const [name, buckets] of Object.entries(SPLITS)) {
+          result[name] = [...primaryOnly.values()]
+            .filter((e) => buckets.includes(e.generic))
+            .sort((a, b) => a.detailed.localeCompare(b.detailed));
+        }
+        setPerSplit(result);
+      })
+      .catch(() => { if (!cancelled) setPerSplit({}); });
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12 }}>
+        How your weekly training is divided by muscle group or movement pattern. These are the same splits available as quick filters when picking exercises — tap Filters in any exercise picker to jump straight to one. Only muscles the exercise library tags as a primary target somewhere in that split are listed; a muscle can appear under more than one split (e.g. Shoulders under both Push and Pull) when it's a primary target on both sides.
+      </div>
+      {!perSplit && <div style={{ color: T.dim, fontSize: 12.5 }}>Loading…</div>}
+      {perSplit && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {Object.entries(perSplit).map(([name, entries]) => (
+            <div key={name} style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10 }}>
+              <div style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{name}</div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                {entries.length === 0 && <span style={{ fontSize: 11, color: T.dim }}>No primary-muscle data yet.</span>}
+                {entries.map((e) => (
+                  <span key={e.scientific} style={{ fontSize: 11, fontWeight: 600, color: T.text, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 9px" }}>{muscleLabel(e.scientific)}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Grouped so beginners can scan by category instead of one long list.
 // Keep entries short — this is a quick-reference, not a textbook.
@@ -73,25 +138,7 @@ const SECTIONS = [
       },
       {
         term: "Split",
-        body: (
-          <div>
-            <div style={{ marginBottom: 12 }}>
-              How your weekly training is divided by muscle group or movement pattern. These are the same splits available as quick filters when picking exercises — tap Filters in any exercise picker to jump straight to one. Push and Pull overlap on Shoulders and Arms, and Legs and Lower are identical, since the exercise library groups muscles at that level rather than separating front/rear delts or biceps/triceps.
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {Object.entries(SPLITS).map(([name, muscles]) => (
-                <div key={name} style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10 }}>
-                  <div style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{name}</div>
-                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                    {muscles.map((m) => (
-                      <span key={m} style={{ fontSize: 11, fontWeight: 600, color: T.text, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 9px" }}>{muscleLabel(m)}</span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ),
+        body: <SplitBreakdown />,
         searchText: `push pull legs upper lower full body ${Object.values(SPLITS).flat().join(" ")}`,
       },
       {

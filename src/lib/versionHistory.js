@@ -5,6 +5,24 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.9.21",
+    date: "2026-07-08",
+    items: [
+      "Audited every muscle-selection surface in the app for consistency with the Muscle Names preference (Generic/Detailed/Scientific), which previously only the generator respected.",
+      "SetLogger.jsx ExercisePicker (the exercise picker used for manually adding/editing workout exercises and its 'Filters' panel): the Split quick-select and 'Muscle group' filter chips were hardcoded to the 8 raw generic bucket names (e.g. literally rendering the string \"Chest\") regardless of the Muscle Names preference. Now mode-aware via the same muscleOptions/exerciseMatchesOption pattern as the generator: Generic mode still shows the 8 buckets, Detailed/Scientific show the full granular taxonomy matched against each exercise's raw primary/secondary tags. Unlike the generator's target picker, Full Body and Neck are kept here since someone manually browsing exercises may genuinely want to filter for either. Added a search input above the chips for Detailed/Scientific mode, matching the generator. filteredLibrary()'s muscle-filter matching switched from a plain l.muscle equality check to exerciseMatchesOption() so it actually filters correctly against granular selections instead of silently matching nothing.",
+      "ExerciseLibraryView.jsx: the top-level 'Browse by muscle group' grid and its associated back-button/header labels were hardcoded to muscleLabel(m, \"generic\") regardless of the muscleNameMode prop already being passed in from Home.jsx. Now uses muscleNameMode consistently. The second-tier 'detailed' sub-category screen (browseDetail) intentionally stays at fixed Detailed-level granularity regardless of mode -- it's a narrowing/navigation aid rather than a muscle the person is explicitly selecting, and collapsing it to Generic would make it degenerate (one sub-category repeating the parent bucket's own name).",
+      "CustomExerciseModal.jsx / AdminExercises.jsx were deliberately left untouched -- these tag exercises with actual primary/secondary muscle data (which the app stores as scientific_name values), so they need scientific-level precision regardless of the tagger's own display preference; forcing them to Generic/Detailed would reduce tagging precision, not just relabel it.",
+    ],
+  },
+  {
+    version: "1.9.20",
+    date: "2026-07-08",
+    items: [
+      "FAQ.jsx: the Split entry's muscle breakdown was still wrong even after moving out of Splits.jsx, because it was just rendering the 8 generic bucket names from SPLITS (e.g. \"Legs\" as one chip instead of Quads/Hamstrings/Glutes/Calves) -- correct at the filtering level, useless as a reference. Replaced with a new SplitBreakdown component that fetches the live exercise library and, for each split, lists every muscle actually tagged as a PRIMARY muscle (via rawPrimaryMuscles + scientificNameOf, deliberately excluding secondary/stabilizer tags like Serratus Anterior or Rotator Cuff that would otherwise pad every split) on some exercise whose generic bucket falls in that split. Legs and Lower now correctly show Quads, Hamstrings, Glutes, and Calves individually rather than a single \"Legs\" chip.",
+      "Home.jsx Settings menu: Templates and Exercise Library were two separate-looking rows with no header on the second one, both using the same marginBottom: 20 used for actual section-to-section gaps elsewhere -- reading like two different top-level sections despite covering the same \"Workouts\" concept. Grouped both under one \"Workouts\" header, with Templates now at marginBottom: 10 (matching the tighter intra-section gap used for Profile & Preferences' grouped rows) and Exercise Library keeping marginBottom: 20 as the group's last item.",
+    ],
+  },
+  {
     version: "1.9.19",
     date: "2026-07-08",
     items: [

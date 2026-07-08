@@ -9,6 +9,19 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.21": {
+    title: "Muscle names preference now applies everywhere",
+    items: [
+      "The exercise picker's muscle group filter and split shortcuts, and the Exercise Library's browse-by-muscle screen, now show the same level of detail (Generic, Detailed, or Scientific) you've chosen in Preferences, instead of only the workout generator respecting it.",
+    ],
+  },
+  "1.9.20": {
+    title: "Correct split breakdown, grouped Workouts section",
+    items: [
+      "The Split reference in FAQ & Glossary now lists actual primary muscles for each split (e.g. Quads, Hamstrings, Glutes, and Calves under Legs) instead of a single broad group name.",
+      "Templates and Exercise Library are now grouped together under one Workouts heading in Settings.",
+    ],
+  },
   "1.9.19": {
     title: "Corrected split reference, tidier menu",
     items: [

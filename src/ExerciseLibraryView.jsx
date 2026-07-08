@@ -246,7 +246,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
                     onClick={() => pickGroup(m)}
                     style={{ padding: "22px 10px", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5 }}
                   >
-                    {muscleLabel(m, "generic")}
+                    {muscleLabel(m, muscleNameMode)}
                   </button>
                 ))}
               </div>
@@ -265,8 +265,8 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
             </>
           ) : browseGroup !== "ALL" && browseDetail === null ? (
             <>
-              <button onClick={() => setBrowseGroup(null)} style={{ ...smallBtn, marginBottom: 12 }}>&#8249; {muscleLabel(browseGroup, "generic")}</button>
-              <div style={{ color: T.dim, fontSize: 12, marginBottom: 12 }}>Narrow down further, or view all {muscleLabel(browseGroup, "generic")} exercises.</div>
+              <button onClick={() => setBrowseGroup(null)} style={{ ...smallBtn, marginBottom: 12 }}>&#8249; {muscleLabel(browseGroup, muscleNameMode)}</button>
+              <div style={{ color: T.dim, fontSize: 12, marginBottom: 12 }}>Narrow down further, or view all {muscleLabel(browseGroup, muscleNameMode)} exercises.</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
                 {detailOptions.map((d) => (
                   <button
@@ -282,13 +282,13 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
                 onClick={() => setBrowseDetail("ALL")}
                 style={{ width: "100%", padding: "16px 10px", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, boxSizing: "border-box" }}
               >
-                View All {muscleLabel(browseGroup, "generic")}
+                View All {muscleLabel(browseGroup, muscleNameMode)}
               </button>
             </>
           ) : (
             <>
               <button onClick={backFromList} style={{ ...smallBtn, marginBottom: 12 }}>
-                &#8249; {browseGroup === "ALL" ? "All Exercises" : (browseDetail === "ALL" ? muscleLabel(browseGroup, "generic") : browseDetail)}
+                &#8249; {browseGroup === "ALL" ? "All Exercises" : (browseDetail === "ALL" ? muscleLabel(browseGroup, muscleNameMode) : browseDetail)}
               </button>
               <input
                 autoComplete="off"

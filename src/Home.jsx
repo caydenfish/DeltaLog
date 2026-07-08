@@ -749,14 +749,15 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
             </div>
 
             <div style={{ padding: 16, flex: 1 }}>
-              {/* Templates */}
-              {settingsMatch("templates workouts reusable build manage") && (
+              {/* Workouts */}
+              {(settingsMatch("templates workouts reusable build manage") || settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete")) && (
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Workouts</div>
+              {settingsMatch("templates workouts reusable build manage") && (
               <button
                 onClick={() => setShowTemplates(true)}
                 data-tutorial="templates-row"
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
+                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
               >
                 <div>
                   <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Templates</div>
@@ -764,7 +765,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
                 </div>
                 <div style={{ color: T.dim, fontSize: 16 }}>›</div>
               </button>
-              </>
               )}
 
               {settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") && (
@@ -778,6 +778,8 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
                 </div>
                 <div style={{ color: T.dim, fontSize: 16 }}>›</div>
               </button>
+              )}
+              </>
               )}
 
               {/* Profile & Preferences */}

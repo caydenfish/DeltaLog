@@ -201,6 +201,19 @@ function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMu
   const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" };
   const chip = (active, color) => ({ padding: "5px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? (color || T.accent) : T.line}`, background: active ? `${color || T.accent}22` : T.surface, color: active ? T.text : T.dim });
   const activeCount = muscleFilter.length + equipFilter.length + (performedFilter !== "all" ? 1 : 0) + (sourceFilter !== "all" ? 1 : 0);
+  const muscleNameMode = getPrefs().muscleNameMode;
+  const [muscleQuery, setMuscleQuery] = useState("");
+  const muscleQ = muscleQuery.toLowerCase();
+  // Same options-per-mode approach as the generator: Generic mode offers
+  // the 8 broad buckets, Detailed/Scientific offer the full granular
+  // taxonomy so this filter shows the same level of detail the person
+  // has chosen in Preferences, not a fixed 8 regardless of that setting.
+  // Unlike the generator's target picker, Full Body/Neck stay included --
+  // someone browsing to add exercises manually might genuinely want to
+  // filter for a neck or full-body movement.
+  const muscleOptions = muscleNameMode === "generic"
+    ? Object.keys(MUSCLE_COLORS).map((m) => ({ key: m, label: m, color: MUSCLE_COLORS[m] }))
+    : getMuscleTaxonomyEntries().map((e) => ({ key: e.scientific, label: muscleNameMode === "scientific" ? e.scientific : e.detailed, color: MUSCLE_COLORS[e.generic] }));
   return (
     <div>
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -221,16 +234,27 @@ function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMu
           <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>Split</div>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
             {Object.keys(MOVEMENT_SPLITS).map((splitName) => {
-              const active = muscleFilter.length === MOVEMENT_SPLITS[splitName].length && MOVEMENT_SPLITS[splitName].every((m) => muscleFilter.includes(m));
+              const buckets = MOVEMENT_SPLITS[splitName];
+              const group = muscleNameMode === "generic" ? buckets : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
+              const active = group.length > 0 && group.length === muscleFilter.length && group.every((m) => muscleFilter.includes(m));
               return (
                 <button key={splitName} onClick={() => onApplySplit(splitName)} style={chip(active)}>{splitName}</button>
               );
             })}
           </div>
           <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>Muscle group</div>
+          {muscleNameMode !== "generic" && (
+            <input
+              autoComplete="off"
+              value={muscleQuery}
+              onChange={(e) => setMuscleQuery(e.target.value)}
+              placeholder="Search muscle groups…"
+              style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 12, padding: "6px 9px", outline: "none", boxSizing: "border-box", marginBottom: 6 }}
+            />
+          )}
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
-            {Object.keys(MUSCLE_COLORS).map((m) => (
-              <button key={m} onClick={() => onToggleMuscle(m)} style={chip(muscleFilter.includes(m), MUSCLE_COLORS[m])}>{m}</button>
+            {muscleOptions.filter((o) => !muscleQ || o.label.toLowerCase().includes(muscleQ)).map((o) => (
+              <button key={o.key} onClick={() => onToggleMuscle(o.key)} style={chip(muscleFilter.includes(o.key), o.color)}>{o.label}</button>
             ))}
           </div>
           <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>Equipment</div>
@@ -401,9 +425,13 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
   const [showPickerFilters, setShowPickerFilters] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState([]);
   function applyPickerSplit(splitName) {
-    const group = MOVEMENT_SPLITS[splitName];
-    const isActive = group.length === muscleFilter.length && group.every((m) => muscleFilter.includes(m));
-    setMuscleFilter(isActive ? [] : [...group]);
+    const mode = getPrefs().muscleNameMode;
+    const buckets = MOVEMENT_SPLITS[splitName];
+    const group = mode === "generic"
+      ? buckets
+      : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
+    const isActive = group.length > 0 && group.length === muscleFilter.length && group.every((m) => muscleFilter.includes(m));
+    setMuscleFilter(isActive ? [] : group);
   }
   const [equipFilter, setEquipFilter] = useState([]);
   const [performedFilter, setPerformedFilter] = useState("all");
@@ -1361,7 +1389,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
     return library.filter((l) => {
       if (exclude.has(l.name)) return false;
       if (q && !(l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || (l.equipment || "").toLowerCase().includes(q))) return false;
-      if (muscleFilter.length && !muscleFilter.includes(l.muscle)) return false;
+      if (muscleFilter.length && !muscleFilter.some((m) => exerciseMatchesOption(l, m, getPrefs().muscleNameMode))) return false;
       if (equipFilter.length && !equipFilter.includes(l.equipment)) return false;
       if (performedFilter === "performed" && l.sessions === 0) return false;
       if (performedFilter === "not" && l.sessions > 0) return false;
