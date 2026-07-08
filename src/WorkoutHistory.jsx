@@ -49,10 +49,15 @@ function workoutDurationMin(w) {
 // summary page, but reachable from a workout's detail view (i.e. from
 // tapping that date on the home screen calendar). Uploads immediately
 // on selection since there's no separate "save" step here.
-function ProgressPhotoBlock({ userId, dateStr }) {
-  const [photo, setPhoto] = useState(undefined); // undefined = loading, null = none, { path, url }
+function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
+  const [photo, setPhotoState] = useState(undefined); // undefined = loading, null = none, { path, url }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  function setPhoto(p) {
+    setPhotoState(p);
+    onPhotoChange && onPhotoChange(p);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -139,6 +144,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
   const [sharing, setSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [showExport, setShowExport] = useState(false);
+  const [progressPhoto, setProgressPhoto] = useState(undefined); // mirrors ProgressPhotoBlock's photo, lifted so "Save as image" can use it as a Story background
 
   function startEdit(we, s) {
     setEditing({ weId: we.id, setNumber: s.set_number });
@@ -180,6 +186,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
       durationMin: duration,
       bodyWeight: workout.body_weight != null ? formatWeight(workout.body_weight, units) : null,
       exercises: snapshotExercises,
+      photoUrl: progressPhoto?.url || null,
     };
   }
 
@@ -351,7 +358,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
         </div>
       )}
 
-      <ProgressPhotoBlock userId={userId} dateStr={isoDate} />
+      <ProgressPhotoBlock userId={userId} dateStr={isoDate} onPhotoChange={setProgressPhoto} />
 
       {exercises.map((we, i) => {
         const ex = we.exercises || {};

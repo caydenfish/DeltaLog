@@ -36,7 +36,7 @@ export default function MuscleSetsDetail({ muscle, role, entries, nameMode, unit
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.8)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div style={{ width: "100%", maxWidth: 420, maxHeight: "85vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
         <div style={{ marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{muscleLabel(muscle, nameMode)}</div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{muscleLabel(muscle, role === "primary" ? "generic" : nameMode)}</div>
           <div style={{ fontSize: 12, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{role === "primary" ? "Primary" : "Secondary"} &middot; {totalSets} set{totalSets === 1 ? "" : "s"}</div>
         </div>
 

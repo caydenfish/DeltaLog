@@ -1,4 +1,3 @@
-import { MUSCLE_COLORS } from "./lib/muscleColors";
 import { muscleLabel } from "./lib/muscleNomenclature";
 
 const T = {
@@ -9,13 +8,17 @@ const T = {
 };
 
 function MuscleRow({ muscle, count, nameMode, role, onSelect }) {
-  const color = MUSCLE_COLORS[muscle] || T.dim;
+  // Primary is always one of 8 broad buckets (Legs, Arms, etc.) with no
+  // real per-exercise granularity underneath it — "detailed"/"scientific"
+  // mode would substitute a single representative sub-muscle (e.g. Legs
+  // -> "Quads"), which misleadingly implies the whole row is that one
+  // muscle when it's really every exercise in the broad bucket (calf
+  // raises, adduction, everything). Secondary muscles are genuinely
+  // tagged per-exercise, so they keep the real name mode.
+  const label = role === "primary" ? muscleLabel(muscle, "generic") : muscleLabel(muscle, nameMode);
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-        <span style={{ width: 8, height: 8, borderRadius: 4, background: color, display: "inline-block", flexShrink: 0 }} />
-        <span style={{ fontSize: 13, color: T.text }}>{muscleLabel(muscle, nameMode)}</span>
-      </div>
+      <span style={{ fontSize: 13, color: T.text }}>{label}</span>
       <button
         onClick={() => onSelect && onSelect(muscle, role)}
         style={{ fontSize: 12, color: T.dim, fontWeight: 600, background: "none", border: "none", padding: 0, textDecoration: "underline", textDecorationColor: "transparent", cursor: onSelect ? "pointer" : "default" }}

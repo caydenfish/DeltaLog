@@ -23,7 +23,7 @@ const LAYOUTS = [
 // Reusable "save workout summary as image" modal — used from both the
 // post-workout summary and the workout history detail view, since both
 // have the same shape of data to render. `data` is:
-// { dateLabel, unit, totalSets, totalVolume, durationMin, bodyWeight?, exercises: [{name, sets:[{label, weight, reps, rir, isWarmup}]}] }
+// { dateLabel, unit, totalSets, totalVolume, durationMin, bodyWeight?, photoUrl?, exercises: [{name, sets:[{label, weight, reps, rir, isWarmup}]}] }
 export default function ExportWorkoutModal({ data, onClose }) {
   const [layout, setLayout] = useState("card");
   const [showSets, setShowSets] = useState(true);
@@ -31,6 +31,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
   const [showDuration, setShowDuration] = useState(true);
   const [showBodyweight, setShowBodyweight] = useState(true);
   const [showDate, setShowDate] = useState(true);
+  const [usePhotoBg, setUsePhotoBg] = useState(!!data.photoUrl);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const previewRef = useRef(null);
@@ -41,14 +42,19 @@ export default function ExportWorkoutModal({ data, onClose }) {
     { key: "duration", label: "Duration", value: showDuration, set: setShowDuration },
     { key: "bodyweight", label: "Bodyweight", value: showBodyweight, set: setShowBodyweight, requires: data.bodyWeight != null },
     { key: "date", label: "Date", value: showDate, set: setShowDate },
+    { key: "photoBg", label: "Use photo as background", value: usePhotoBg, set: setUsePhotoBg, requires: !!data.photoUrl, hideOn: ["card", "detailed"] },
   ];
+
+  // Photo background only makes sense for Story — Card/Detailed are
+  // dense with text and a photo behind them would just hurt legibility.
+  const photoBgActive = usePhotoBg && layout === "story" && !!data.photoUrl;
 
   async function handleSaveImage() {
     if (!previewRef.current) return;
     setSaving(true);
     setSaveError(null);
     try {
-      const canvas = await html2canvas(previewRef.current, { backgroundColor: T.bg, scale: 2 });
+      const canvas = await html2canvas(previewRef.current, { backgroundColor: T.bg, scale: 2, useCORS: true });
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
@@ -93,6 +99,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
             {toggles.filter((t) => t.requires !== false).map((t) => {
               const disabled = t.hideOn && t.hideOn.includes(layout);
+              const disabledHint = disabled ? (t.key === "photoBg" ? " (Story only)" : " (n/a for Story)") : "";
               return (
                 <button
                   key={t.key}
@@ -106,7 +113,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
                     opacity: disabled ? 0.5 : 1,
                   }}
                 >
-                  {t.value && !disabled ? <><IconCheck size={11} /> </> : ""}{t.label}{disabled ? " (n/a for Story)" : ""}
+                  {t.value && !disabled ? <><IconCheck size={11} /> </> : ""}{t.label}{disabledHint}
                 </button>
               );
             })}
@@ -129,8 +136,22 @@ export default function ExportWorkoutModal({ data, onClose }) {
                 justifyContent: layout === "story" ? "center" : "flex-start",
                 gap: layout === "story" ? 20 : 12,
                 boxSizing: "border-box",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
+              {photoBgActive && (
+                <>
+                  <img
+                    src={data.photoUrl}
+                    alt=""
+                    crossOrigin="anonymous"
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
+                  />
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,11,13,0.55) 0%, rgba(10,11,13,0.35) 45%, rgba(10,11,13,0.75) 100%)", zIndex: 1 }} />
+                </>
+              )}
+              <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: layout === "story" ? 20 : 12, height: "100%", justifyContent: layout === "story" ? "center" : "flex-start" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginBottom: layout === "story" ? 8 : 4 }}>
                 <Logo size={layout === "story" ? 40 : 28} />
                 <Wordmark size={layout === "story" ? 16 : 12} />
@@ -184,6 +205,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
                   ))}
                 </div>
               )}
+              </div>
             </div>
           </div>
 

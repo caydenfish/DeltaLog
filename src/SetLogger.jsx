@@ -1840,6 +1840,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
               totalVolume,
               durationMin,
               bodyWeight: bodyWeightInput ? parseFloat(bodyWeightInput) : null,
+              photoUrl: progressPhotoPreview || null,
               exercises: exerciseRows.filter(Boolean).map((row) => {
                 const labels = setLabels(row.exSets);
                 return {
