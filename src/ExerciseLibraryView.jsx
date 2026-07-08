@@ -5,6 +5,7 @@ import { MUSCLE_COLORS } from "./lib/muscleColors";
 import ExerciseThumb from "./ExerciseThumb";
 import MuscleTaxonomyManager from "./MuscleTaxonomyManager";
 import CustomExerciseModal from "./CustomExerciseModal";
+import MyCustomExercises from "./MyCustomExercises";
 import { IconX } from "./Icons";
 
 const T = {
@@ -89,6 +90,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
   const [saving, setSaving] = useState(false);
   const [showTaxonomy, setShowTaxonomy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showMyCustom, setShowMyCustom] = useState(false);
 
   function load() {
     fetchExerciseLibrary(isAdmin).then(setExercises).catch((err) => setError(err.message));
@@ -254,6 +256,12 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
               >
                 View All
               </button>
+              <button
+                onClick={() => setShowMyCustom(true)}
+                style={{ width: "100%", padding: "14px 10px", borderRadius: 14, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600, marginTop: 10, boxSizing: "border-box" }}
+              >
+                My Custom Exercises
+              </button>
             </>
           ) : browseGroup !== "ALL" && browseDetail === null ? (
             <>
@@ -388,6 +396,13 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
             </div>
           </div>
         </div>
+      )}
+
+      {showMyCustom && (
+        <MyCustomExercises
+          user={{ id: userId }}
+          onClose={() => { setShowMyCustom(false); load(); }}
+        />
       )}
 
       {isAdmin && showTaxonomy && (

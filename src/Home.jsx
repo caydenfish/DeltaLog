@@ -23,7 +23,6 @@ import AdminPermissions from "./AdminPermissions";
 import DangerZone from "./DangerZone";
 import InstallGuide from "./InstallGuide";
 import ProfileEditor from "./ProfileEditor";
-import MyCustomExercises from "./MyCustomExercises";
 import Splits from "./Splits";
 import WorkoutHistory from "./WorkoutHistory";
 import { useTutorial } from "./TutorialContext";
@@ -246,7 +245,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   // the admin out of flipping back.
   const effectiveIsAdmin = isRealAdmin && adminViewMode === "admin";
   const [showProfileEditor, setShowProfileEditor] = useState(false);
-  const [showMyCustomExercises, setShowMyCustomExercises] = useState(false);
   const [showSplits, setShowSplits] = useState(false);
 
   useEffect(() => {
@@ -771,54 +769,36 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
               </>
               )}
 
-              {settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern") && (
+              {settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") && (
               <button
                 onClick={() => setShowExerciseLibraryView(true)}
                 style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
               >
                 <div>
                   <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Exercise Library</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Browse every exercise and its full details</div>
+                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Browse every exercise, including your own custom ones</div>
                 </div>
                 <div style={{ color: T.dim, fontSize: 16 }}>›</div>
               </button>
               )}
 
-              {settingsMatch("custom exercises edit delete") && (
-              <button
-                onClick={() => setShowMyCustomExercises(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>My Custom Exercises</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Edit or delete exercises you've added</div>
-                </div>
-                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-              </button>
-              )}
-
-              {/* Profile */}
-              {settingsMatch("profile gender age date of birth weight height") && (
+              {/* Profile & Preferences */}
+              {settingsMatch("profile gender age date of birth weight height preferences units weight lb kg pounds kilograms time format 12h 24h clock muscle names generic detailed scientific training focus rep range hypertrophy strength endurance dots percentile deltalog default set entry manual plate calculator logging type big plates bumpers squats deadlifts rest timer seconds") && (
               <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Profile</div>
-              <button
-                onClick={() => setShowProfileEditor(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Gender, age, weight, height</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Used for strength scoring and insights</div>
-                </div>
-                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-              </button>
-              </>
-              )}
-
-              {/* Preferences */}
-              {settingsMatch("preferences units weight lb kg pounds kilograms time format 12h 24h clock muscle names generic detailed scientific training focus rep range hypertrophy strength endurance dots percentile deltalog default set entry manual plate calculator logging type big plates bumpers squats deadlifts rest timer seconds") && (
-              <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Preferences</div>
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Profile & Preferences</div>
               <div style={{ marginBottom: 8 }}>
+                {settingsMatch("profile gender age date of birth weight height") && (
+                <button
+                  onClick={() => setShowProfileEditor(true)}
+                  style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
+                >
+                  <div>
+                    <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Profile</div>
+                    <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Gender, age, weight, height — used for strength scoring and insights</div>
+                  </div>
+                  <div style={{ color: T.dim, fontSize: 16 }}>›</div>
+                </button>
+                )}
                 <Preferences
                   value={{ units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, plate55Scope, trainingIdeology, timeFormat }}
                   filterQuery={settingsQuery}
@@ -1011,7 +991,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
           onSaved={setProfile}
         />
       )}
-      {showMyCustomExercises && <MyCustomExercises user={user} onClose={() => setShowMyCustomExercises(false)} />}
       {showSplits && <Splits onClose={() => setShowSplits(false)} />}
       {showFeedback && <FeedbackModal user={user} context="settings" onClose={() => setShowFeedback(false)} />}
       {showAnnouncements && (

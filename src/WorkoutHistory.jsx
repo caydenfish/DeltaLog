@@ -55,6 +55,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
   const [photo, setPhotoState] = useState(undefined); // undefined = loading, null = none, { path, url }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [showFull, setShowFull] = useState(false);
 
   function setPhoto(p) {
     setPhotoState(p);
@@ -101,7 +102,12 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
         <div style={{ color: T.dim, fontSize: 12 }}>Loading…</div>
       ) : photo ? (
         <div style={{ position: "relative" }}>
-          <img src={photo.url} alt="Progress" style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 12, border: `1px solid ${T.line}` }} />
+          <img
+            src={photo.url}
+            alt="Progress"
+            onClick={() => setShowFull(true)}
+            style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 12, border: `1px solid ${T.line}`, cursor: "pointer" }}
+          />
           <button onClick={handleRemove} disabled={busy} aria-label="Remove photo" style={{ position: "absolute", top: 8, right: 8, background: "rgba(16,18,22,0.8)", border: `1px solid ${T.line}`, color: T.text, borderRadius: 999, width: 28, height: 28, fontSize: 14 }}><IconX size={12} /></button>
         </div>
       ) : (
@@ -117,6 +123,21 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
         </div>
       )}
       {error && <div style={{ color: T.accent, fontSize: 12, marginTop: 6 }}>{error}</div>}
+      {showFull && photo && (
+        <div
+          onClick={() => setShowFull(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.92)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        >
+          <img src={photo.url} alt="Progress full resolution" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 8 }} />
+          <button
+            onClick={() => setShowFull(false)}
+            aria-label="Close"
+            style={{ position: "absolute", top: 16, right: 16, background: "rgba(16,18,22,0.8)", border: `1px solid ${T.line}`, color: T.text, borderRadius: 999, width: 34, height: 34, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <IconX size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

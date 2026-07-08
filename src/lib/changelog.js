@@ -9,6 +9,19 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.15": {
+    title: "Tap to see the full photo, and a tidier Settings",
+    items: [
+      "Progress photos in workout history are now tappable, opening the full-resolution photo instead of the cropped thumbnail.",
+      "Profile moved into a renamed \"Profile & Preferences\" section. Units and Training Preferences are now their own screens, just like every other settings destination, instead of expanding in place.",
+    ],
+  },
+  "1.9.14": {
+    title: "Custom exercises now live in the Exercise Library",
+    items: [
+      "\"My Custom Exercises\" moved into the Exercise Library, right below View All -- one place to browse everything and manage what you've added.",
+    ],
+  },
   "1.9.13": {
     title: "Warmups carry over, streak moves to the calendar",
     items: [

@@ -5,6 +5,23 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.9.15",
+    date: "2026-07-08",
+    items: [
+      "WorkoutHistory.jsx: ProgressPhotoBlock's <img> is now tappable (onClick + cursor:pointer), opening a fixed-inset lightbox (zIndex 80, objectFit: contain, tap backdrop or X to close) showing the photo at full resolution instead of the cover-cropped 260px-tall thumbnail. Scoped to the workout-history photo block only -- SetLogger.jsx's summary-screen photo preview is a separate, simpler <img> and wasn't touched.",
+      "Preferences.jsx: reworked the grouped (Settings-page) rendering of \"Units\" and \"Training Preferences\" from inline accordions (▲/▼ toggle expanding content in place, via showUnitsGroup/showTrainingPrefs state) into real full-screen sub-pages (new local SubScreen shell: fixed inset, back chevron, centered title -- same pattern as ProfileEditor/ExerciseLibraryView), opened by tapping a nav-style row button matching every other settings destination. Replaced the two toggle booleans with a single `screen` state (null | \"units\" | \"training\"). Extracted the actual field content (weight units, time format / training focus, strength score, set entry, big plates, muscle names, rest timer) into renderUnitsFields()/renderTrainingFields() so the same JSX backs both the full-screen view and the inline-during-search view. When filterQuery is active, matching fields still render inline in the settings list (unitsSearchMatch/trainingSearchMatch) rather than requiring navigation into the sub-screen, preserving existing search findability. The ungrouped (fields-scoped, in-workout quick menu) render path is untouched -- still one flat card, no navigation, exact same JSX as before.",
+      "Home.jsx: merged the standalone \"Profile\" section into \"Preferences\", renamed the combined section \"Profile & Preferences\". Profile is now the first row inside that section, styled identically to the new Units/Training Preferences nav rows (same button style, opens the existing ProfileEditor overlay, unchanged). The section's settingsMatch keyword string absorbed Profile's keywords so search still surfaces it; the Profile row itself stays gated by its own narrower settingsMatch check so a search for e.g. \"rest timer\" doesn't surface the Profile row just because the outer section matched.",
+    ],
+  },
+  {
+    version: "1.9.14",
+    date: "2026-07-08",
+    items: [
+      "ExerciseLibraryView.jsx: nested the existing MyCustomExercises component inside the library instead of it living behind its own Settings entry. Added a \"My Custom Exercises\" button directly below the top-level \"View All\" tile that opens it as an overlay (showMyCustom state); MyCustomExercises itself is unchanged, just rendered with user={{ id: userId }} since ExerciseLibraryView only carries userId, not the full user object. On close, calls load() to re-fetch the shared library list in case an edit/archive/delete in the custom-exercise screen changed what should show up in browse.",
+      "Home.jsx: removed the standalone \"My Custom Exercises\" Settings button, its showMyCustomExercises state, and the MyCustomExercises import/render -- consolidated into the Exercise Library entry point. Exercise Library's Settings subtitle updated to mention custom exercises; its settingsMatch search string absorbed the old custom-exercises entry's keywords so search still finds it.",
+    ],
+  },
+  {
     version: "1.9.13",
     date: "2026-07-08",
     items: [
