@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { supabase } from "./lib/supabaseClient";
-import { fetchWorkoutHistory, fetchStreak, fetchProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead } from "./lib/queries";
+import { fetchWorkoutHistory, fetchStreak, fetchProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, fetchPollVotes, castPollVote } from "./lib/queries";
 import { getPrefs, setPref } from "./lib/prefs";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
@@ -12,7 +12,7 @@ import { toLocalDateStr } from "./lib/time";
 import BodyHeatmap from "./BodyHeatmap";
 import MuscleSetsDetail from "./MuscleSetsDetail";
 import Logo from "./Logo";
-import { IconBell, IconMenu } from "./Icons";
+import { IconBell, IconMenu, IconPlus, IconArchive } from "./Icons";
 import Templates from "./Templates";
 import FAQ from "./FAQ";
 import AdminExercises from "./AdminExercises";
@@ -59,6 +59,45 @@ function isoDaysAgo(days) {
   const d = new Date();
   d.setDate(d.getDate() - days);
   return d.toISOString();
+}
+
+// Renders one announcement's poll: a question plus tappable options, each
+// showing a live percentage bar and vote count. `votes` is the raw list of
+// { user_id, option_id } rows for this announcement. Voting is disabled
+// once the announcement is archived, since archived posts are read-only
+// history rather than an active poll.
+function AnnouncementPoll({ poll, votes, userId, disabled, onVote }) {
+  const counts = {};
+  for (const opt of poll.options) counts[opt.id] = 0;
+  for (const v of votes || []) counts[v.option_id] = (counts[v.option_id] || 0) + 1;
+  const total = (votes || []).length;
+  const myVote = (votes || []).find((v) => v.user_id === userId)?.option_id || null;
+
+  return (
+    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{poll.question}</div>
+      {poll.options.map((opt) => {
+        const count = counts[opt.id] || 0;
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        const mine = myVote === opt.id;
+        return (
+          <button
+            key={opt.id}
+            onClick={() => !disabled && onVote(opt.id)}
+            disabled={disabled}
+            style={{ position: "relative", textAlign: "left", padding: "8px 10px", borderRadius: 8, border: `1px solid ${mine ? T.accent : T.line}`, background: T.surface2, color: T.text, fontSize: 12, overflow: "hidden", cursor: disabled ? "default" : "pointer" }}
+          >
+            <div style={{ position: "absolute", inset: 0, width: `${pct}%`, background: "rgba(255,255,255,0.08)" }} />
+            <div style={{ position: "relative", display: "flex", justifyContent: "space-between", gap: 8 }}>
+              <span>{opt.label}{mine ? " · your vote" : ""}</span>
+              <span style={{ color: T.dim, flexShrink: 0 }}>{pct}% ({count})</span>
+            </div>
+          </button>
+        );
+      })}
+      <div style={{ fontSize: 10, color: T.dim }}>{total} vote{total === 1 ? "" : "s"}</div>
+    </div>
+  );
 }
 
 // Builds the "last workout" summary shown at the top of the dashboard:
@@ -116,8 +155,11 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   const [showAnnouncements, setShowAnnouncements] = useState(false);
   const [announcements, setAnnouncements] = useState(null); // null = not loaded yet
   const [unseenAnnouncements, setUnseenAnnouncements] = useState(false);
-  const [newAnnouncement, setNewAnnouncement] = useState("");
-  const [postingAnnouncement, setPostingAnnouncement] = useState(false);
+  const [pollVotes, setPollVotes] = useState({}); // announcementId -> [{ user_id, option_id }]
+  const [composeAnnouncement, setComposeAnnouncement] = useState(null); // null | { id, message, poll: null | { question, options: string[] } }
+  const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [showArchivedAnnouncements, setShowArchivedAnnouncements] = useState(false);
+  const [archivedAnnouncements, setArchivedAnnouncements] = useState(null); // null = not loaded yet
   const [units, setUnitsState] = useState(() => getPrefs().units);
   const [restDefault, setRestDefaultState] = useState(() => getPrefs().restSeconds);
   const [muscleNameMode, setMuscleNameModeState] = useState(() => getPrefs().muscleNameMode);
@@ -259,8 +301,33 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
           ...notifs.map((n) => ({ ...n, kind: "personal" })),
         ].sort((a, b) => b.created_at.localeCompare(a.created_at));
         setAnnouncements(merged);
+        loadPollVotes(rows.filter((r) => r.poll).map((r) => r.id));
       })
       .catch(() => setAnnouncements([]));
+  }
+
+  function loadArchivedAnnouncements() {
+    setArchivedAnnouncements(null);
+    fetchAnnouncements({ includeArchived: true })
+      .then((rows) => {
+        const archived = rows.filter((r) => r.archived);
+        setArchivedAnnouncements(archived);
+        loadPollVotes(archived.filter((r) => r.poll).map((r) => r.id));
+      })
+      .catch(() => setArchivedAnnouncements([]));
+  }
+
+  function loadPollVotes(ids) {
+    if (ids.length === 0) return;
+    fetchPollVotes(ids)
+      .then((votes) => {
+        setPollVotes((prev) => {
+          const next = { ...prev };
+          for (const id of ids) next[id] = votes.filter((v) => v.announcement_id === id);
+          return next;
+        });
+      })
+      .catch(() => {});
   }
 
   function openAnnouncements() {
@@ -271,24 +338,113 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
     markNotificationsRead(user.id).catch(() => {});
   }
 
-  async function submitAnnouncement() {
-    const trimmed = newAnnouncement.trim();
-    if (!trimmed) return;
-    setPostingAnnouncement(true);
+  function toggleArchivedAnnouncementsView() {
+    const next = !showArchivedAnnouncements;
+    setShowArchivedAnnouncements(next);
+    if (next && archivedAnnouncements === null) loadArchivedAnnouncements();
+  }
+
+  // Opens the compose sheet. Pass an existing announcement to edit it in
+  // place, or nothing to start a fresh post.
+  function openComposeAnnouncement(existing = null) {
+    setComposeAnnouncement({
+      id: existing?.id || null,
+      message: existing?.message || "",
+      poll: existing?.poll ? { question: existing.poll.question, options: existing.poll.options.map((o) => o.label) } : null,
+    });
+  }
+
+  function closeComposeAnnouncement() {
+    setComposeAnnouncement(null);
+  }
+
+  function addPollToCompose() {
+    setComposeAnnouncement((c) => (c ? { ...c, poll: { question: "", options: ["", ""] } } : c));
+  }
+
+  function removePollFromCompose() {
+    setComposeAnnouncement((c) => (c ? { ...c, poll: null } : c));
+  }
+
+  function updateComposePollQuestion(question) {
+    setComposeAnnouncement((c) => (c ? { ...c, poll: { ...c.poll, question } } : c));
+  }
+
+  function updateComposePollOption(idx, label) {
+    setComposeAnnouncement((c) => {
+      if (!c) return c;
+      const options = [...c.poll.options];
+      options[idx] = label;
+      return { ...c, poll: { ...c.poll, options } };
+    });
+  }
+
+  function addComposePollOption() {
+    setComposeAnnouncement((c) => (c ? { ...c, poll: { ...c.poll, options: [...c.poll.options, ""] } } : c));
+  }
+
+  function removeComposePollOption(idx) {
+    setComposeAnnouncement((c) => (c ? { ...c, poll: { ...c.poll, options: c.poll.options.filter((_, i) => i !== idx) } } : c));
+  }
+
+  async function submitComposeAnnouncement() {
+    if (!composeAnnouncement) return;
+    const message = composeAnnouncement.message.trim();
+    if (!message) return;
+
+    let poll = null;
+    if (composeAnnouncement.poll) {
+      const question = composeAnnouncement.poll.question.trim();
+      const options = composeAnnouncement.poll.options.map((o) => o.trim()).filter(Boolean);
+      if (!question || options.length < 2) return; // guarded against in the UI too
+      poll = { question, options: options.map((label, i) => ({ id: String(i + 1), label })) };
+    }
+
+    setSavingAnnouncement(true);
     try {
-      await postAnnouncement(user.id, trimmed);
-      setNewAnnouncement("");
+      if (composeAnnouncement.id) {
+        await updateAnnouncement(composeAnnouncement.id, { message, poll });
+      } else {
+        await postAnnouncement(user.id, message, poll);
+      }
+      closeComposeAnnouncement();
       loadAnnouncementsPanel();
+      if (showArchivedAnnouncements) loadArchivedAnnouncements();
     } catch (err) {
       setError(err.message);
     }
-    setPostingAnnouncement(false);
+    setSavingAnnouncement(false);
+  }
+
+  async function archiveAnnouncementRow(a, archived) {
+    try {
+      await setAnnouncementArchived(a.id, archived);
+      loadAnnouncementsPanel();
+      if (showArchivedAnnouncements) loadArchivedAnnouncements();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function castAnnouncementVote(announcementId, optionId) {
+    // Optimistic update so the tap feels instant, then reconciled by the
+    // upsert — re-voting replaces this user's prior pick either way.
+    setPollVotes((prev) => {
+      const existing = (prev[announcementId] || []).filter((v) => v.user_id !== user.id);
+      return { ...prev, [announcementId]: [...existing, { announcement_id: announcementId, user_id: user.id, option_id: optionId }] };
+    });
+    try {
+      await castPollVote(announcementId, user.id, optionId);
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   async function removeAnnouncement(id) {
     try {
       await deleteAnnouncement(id);
       setAnnouncements((prev) => (prev || []).filter((a) => !(a.kind === "global" && a.id === id)));
+      setArchivedAnnouncements((prev) => (prev || []).filter((a) => a.id !== id));
     } catch (err) {
       setError(err.message);
     }
@@ -316,7 +472,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
     () => bucketDailyVolume(dailyVolumeLb.map((d) => ({ ...d, volume: Math.round(toDisplay(d.volume, units)) })), range),
     [dailyVolumeLb, units, range]
   );
-  const { primary, secondary, fullBodySets } = useMemo(() => computeMuscleSetCounts(entries), [entries]);
+  const { primary, secondary, fullBodySets } = useMemo(() => computeMuscleSetCounts(entries, muscleNameMode), [entries, muscleNameMode]);
   // Computed directly from the raw workout data for the selected range,
   // not derived from the muscle-group breakdown above — that path silently
   // drops sets from any exercise it can't categorize (e.g. a deleted
@@ -509,7 +665,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
                 {Object.keys(primary).length === 0 && Object.keys(secondary).length === 0 ? (
                   <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Nothing logged in this range yet.</div>
                 ) : (
-                  <BodyHeatmap primary={primary} secondary={secondary} fullBodySets={fullBodySets} nameMode={muscleNameMode} onSelectMuscle={(muscle, role) => setMuscleDetail({ muscle, role })} />
+                  <BodyHeatmap primary={primary} secondary={secondary} fullBodySets={fullBodySets} onSelectMuscle={(muscle, role) => setMuscleDetail({ muscle, role })} />
                 )}
               </div>
 
@@ -858,41 +1014,134 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
             <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
               <button onClick={() => setShowAnnouncements(false)} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
               <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>ANNOUNCEMENTS</div>
-              <div style={{ width: 26 }} />
+              {effectiveIsAdmin ? (
+                <button onClick={() => openComposeAnnouncement()} aria-label="New announcement" style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <IconPlus size={16} />
+                </button>
+              ) : (
+                <div style={{ width: 32 }} />
+              )}
             </div>
             <div style={{ padding: 16, flex: 1 }}>
               {effectiveIsAdmin && (
-                <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Post an announcement</div>
-                  <textarea
-                    value={newAnnouncement}
-                    onChange={(e) => setNewAnnouncement(e.target.value)}
-                    placeholder="What's new…"
-                    rows={3}
-                    style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", marginBottom: 8 }}
-                  />
-                  <button onClick={submitAnnouncement} disabled={postingAnnouncement || !newAnnouncement.trim()} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 13, fontWeight: 700, opacity: postingAnnouncement || !newAnnouncement.trim() ? 0.6 : 1 }}>
-                    {postingAnnouncement ? "Posting…" : "Post to all users"}
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                  <button onClick={toggleArchivedAnnouncementsView} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: T.dim, fontSize: 12, padding: 0 }}>
+                    <IconArchive size={13} />
+                    {showArchivedAnnouncements ? "Back to active" : "View archived"}
                   </button>
                 </div>
               )}
-              {announcements === null && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading…</div>}
-              {announcements !== null && announcements.length === 0 && (
-                <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>Nothing posted yet.</div>
+
+              {showArchivedAnnouncements ? (
+                <>
+                  {archivedAnnouncements === null && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading…</div>}
+                  {archivedAnnouncements !== null && archivedAnnouncements.length === 0 && (
+                    <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>Nothing archived.</div>
+                  )}
+                  {archivedAnnouncements?.map((a) => (
+                    <div key={a.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 10, opacity: 0.85 }}>
+                      <div style={{ color: T.text, fontSize: 14, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{a.message}</div>
+                      {a.poll && <AnnouncementPoll poll={a.poll} votes={pollVotes[a.id]} userId={user.id} disabled onVote={() => {}} />}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                        <div style={{ fontSize: 11, color: T.dim }}>{new Date(a.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</div>
+                        <div style={{ display: "flex", gap: 12 }}>
+                          <button onClick={() => archiveAnnouncementRow(a, false)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Unarchive</button>
+                          <button onClick={() => removeAnnouncement(a.id)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Delete</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {announcements === null && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading…</div>}
+                  {announcements !== null && announcements.length === 0 && (
+                    <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>Nothing posted yet.</div>
+                  )}
+                  {announcements?.map((a) => (
+                    <div key={`${a.kind}-${a.id}`} style={{ background: T.surface, border: `1px solid ${a.kind === "personal" ? T.accent : T.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
+                      {a.kind === "personal" && <div style={{ fontSize: 10, color: T.accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Just for you</div>}
+                      <div style={{ color: T.text, fontSize: 14, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{a.message}</div>
+                      {a.kind === "global" && a.poll && (
+                        <AnnouncementPoll poll={a.poll} votes={pollVotes[a.id]} userId={user.id} disabled={false} onVote={(optionId) => castAnnouncementVote(a.id, optionId)} />
+                      )}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                        <div style={{ fontSize: 11, color: T.dim }}>{new Date(a.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</div>
+                        {effectiveIsAdmin && a.kind === "global" && (
+                          <div style={{ display: "flex", gap: 12 }}>
+                            <button onClick={() => openComposeAnnouncement(a)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Edit</button>
+                            <button onClick={() => archiveAnnouncementRow(a, true)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Archive</button>
+                            <button onClick={() => removeAnnouncement(a.id)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Delete</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
-              {announcements?.map((a) => (
-                <div key={`${a.kind}-${a.id}`} style={{ background: T.surface, border: `1px solid ${a.kind === "personal" ? T.accent : T.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
-                  {a.kind === "personal" && <div style={{ fontSize: 10, color: T.accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Just for you</div>}
-                  <div style={{ color: T.text, fontSize: 14, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{a.message}</div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                    <div style={{ fontSize: 11, color: T.dim }}>{new Date(a.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</div>
-                    {effectiveIsAdmin && a.kind === "global" && (
-                      <button onClick={() => removeAnnouncement(a.id)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {composeAnnouncement && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.8)", zIndex: 30, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ width: "100%", maxWidth: 420, maxHeight: "88vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, marginBottom: 12 }}>
+              {composeAnnouncement.id ? "Edit announcement" : "New announcement"}
+            </div>
+            <textarea
+              value={composeAnnouncement.message}
+              onChange={(e) => setComposeAnnouncement((c) => ({ ...c, message: e.target.value }))}
+              placeholder="What's new…"
+              rows={4}
+              style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", marginBottom: 12 }}
+            />
+
+            {composeAnnouncement.poll ? (
+              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Poll</div>
+                  <button onClick={removePollFromCompose} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Remove poll</button>
+                </div>
+                <input
+                  value={composeAnnouncement.poll.question}
+                  onChange={(e) => updateComposePollQuestion(e.target.value)}
+                  placeholder="Ask a question…"
+                  style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                />
+                {composeAnnouncement.poll.options.map((opt, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                    <input
+                      value={opt}
+                      onChange={(e) => updateComposePollOption(i, e.target.value)}
+                      placeholder={`Option ${i + 1}`}
+                      style={{ flex: 1, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box" }}
+                    />
+                    {composeAnnouncement.poll.options.length > 2 && (
+                      <button onClick={() => removeComposePollOption(i)} aria-label="Remove option" style={{ width: 34, borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>×</button>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+                <button onClick={addComposePollOption} style={{ background: "none", border: `1px dashed ${T.line}`, borderRadius: 8, color: T.dim, fontSize: 12, padding: "6px 0", width: "100%" }}>+ Add option</button>
+              </div>
+            ) : (
+              <button onClick={addPollToCompose} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "10px 0", borderRadius: 10, border: `1px dashed ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+                <IconPlus size={13} /> Add a poll
+              </button>
+            )}
+
+            <button
+              onClick={submitComposeAnnouncement}
+              disabled={
+                savingAnnouncement ||
+                !composeAnnouncement.message.trim() ||
+                (composeAnnouncement.poll && (!composeAnnouncement.poll.question.trim() || composeAnnouncement.poll.options.filter((o) => o.trim()).length < 2))
+              }
+              style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 13, fontWeight: 700, opacity: savingAnnouncement ? 0.6 : 1, marginBottom: 8 }}
+            >
+              {savingAnnouncement ? "Saving…" : composeAnnouncement.id ? "Save changes" : "Post to all users"}
+            </button>
+            <button onClick={closeComposeAnnouncement} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600 }}>Cancel</button>
           </div>
         </div>
       )}

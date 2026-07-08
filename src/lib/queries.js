@@ -1105,7 +1105,7 @@ export async function fetchWorkoutHistory(userId, sinceISO) {
       id, started_at, completed_at, body_weight, session_notes,
       workout_exercises (
         id, exercise_id, position,
-        exercises ( name, muscle_group, secondary_muscles, media_url ),
+        exercises ( name, muscle_group, primary_muscles, secondary_muscles, media_url ),
         sets ( set_number, weight, reps, rir, is_warmup )
       )
     `)
@@ -1288,25 +1288,68 @@ export async function markNotificationsRead(userId) {
 }
 
 // Newest-first list of admin announcements for the announcements panel.
-// Everyone can read these — the RLS policy only restricts inserts.
-export async function fetchAnnouncements() {
-  const { data, error } = await supabase
+// Non-admins only ever see non-archived rows (also enforced by RLS);
+// pass includeArchived to also pull archived ones for the admin-only
+// archive view.
+export async function fetchAnnouncements({ includeArchived = false } = {}) {
+  let query = supabase
     .from("announcements")
-    .select("id, message, created_at, author_id")
+    .select("id, message, created_at, updated_at, author_id, archived, poll")
     .order("created_at", { ascending: false })
     .limit(50);
+  if (!includeArchived) query = query.eq("archived", false);
+  const { data, error } = await query;
   if (error) throw error;
   return data;
 }
 
-// Admin-only: posts a new announcement, broadcast to every user.
-export async function postAnnouncement(userId, message) {
-  const { error } = await supabase.from("announcements").insert({ author_id: userId, message });
+// Admin-only: posts a new announcement, broadcast to every user. `poll`
+// is optional: { question, options: [{ id, label }] }, or null.
+export async function postAnnouncement(userId, message, poll = null) {
+  const { error } = await supabase.from("announcements").insert({ author_id: userId, message, poll });
+  if (error) throw error;
+}
+
+// Admin-only: edits an existing announcement's message and/or poll.
+export async function updateAnnouncement(id, { message, poll } = {}) {
+  const payload = { updated_at: new Date().toISOString() };
+  if (message !== undefined) payload.message = message;
+  if (poll !== undefined) payload.poll = poll;
+  const { error } = await supabase.from("announcements").update(payload).eq("id", id);
+  if (error) throw error;
+}
+
+// Admin-only: archives or unarchives an announcement instead of deleting
+// it outright, so past posts and their poll results aren't lost.
+export async function setAnnouncementArchived(id, archived) {
+  const { error } = await supabase.from("announcements").update({ archived }).eq("id", id);
   if (error) throw error;
 }
 
 export async function deleteAnnouncement(id) {
   const { error } = await supabase.from("announcements").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Raw poll votes for a set of announcement ids, used to compute per-option
+// tallies and the current user's own vote client-side.
+export async function fetchPollVotes(announcementIds) {
+  if (!announcementIds || announcementIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("announcement_poll_votes")
+    .select("announcement_id, user_id, option_id")
+    .in("announcement_id", announcementIds);
+  if (error) throw error;
+  return data;
+}
+
+// Casts or changes the current user's vote on a poll — upserts on the
+// (announcement_id, user_id) primary key so re-voting moves the vote
+// instead of erroring.
+export async function castPollVote(announcementId, userId, optionId) {
+  const { error } = await supabase
+    .from("announcement_poll_votes")
+    .upsert({ announcement_id: announcementId, user_id: userId, option_id: optionId }, { onConflict: "announcement_id,user_id" });
   if (error) throw error;
 }
 

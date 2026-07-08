@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel, isRealMuscle } from "./lib/muscleNomenclature";
 import { formatWeight } from "./lib/weight";
 
 const T = {
@@ -21,12 +21,21 @@ function formatDate(dateStr) {
 // exercise entry that contributed to that count (role-filtered: primary
 // mover vs. assisting/secondary), each expandable to the individual set's
 // weight and reps. Reuses the same `entries` shape volume.js already
-// builds for the heatmap, so no extra fetch is needed.
+// builds for the heatmap, so no extra fetch is needed. `muscle` is the
+// already-labeled name at the caller's selected naming mode (as produced
+// by computeMuscleSetCounts), so matching re-derives each entry's label
+// at that same mode rather than comparing raw muscle values directly.
 export default function MuscleSetsDetail({ muscle, role, entries, nameMode, units, onClose }) {
   const [openIdx, setOpenIdx] = useState(null);
 
   const rows = (entries || [])
-    .filter((e) => (role === "primary" ? e.muscle === muscle : (e.secondaryMuscles || []).includes(muscle)))
+    .filter((e) => {
+      if (role === "primary") {
+        const rawPrimary = e.primaryMuscles && e.primaryMuscles.length > 0 ? e.primaryMuscles : [e.muscle];
+        return rawPrimary.some((p) => isRealMuscle(p) && muscleLabel(p, nameMode) === muscle);
+      }
+      return (e.secondaryMuscles || []).some((sec) => isRealMuscle(sec) && muscleLabel(sec, nameMode) === muscle);
+    })
     .map((e) => ({ exerciseName: e.exerciseName, date: e.date, sets: e.sets }))
     .sort((a, b) => b.date.localeCompare(a.date));
 
@@ -36,7 +45,7 @@ export default function MuscleSetsDetail({ muscle, role, entries, nameMode, unit
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.8)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div style={{ width: "100%", maxWidth: 420, maxHeight: "85vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
         <div style={{ marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{muscleLabel(muscle, role === "primary" ? "generic" : nameMode)}</div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{muscle}</div>
           <div style={{ fontSize: 12, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{role === "primary" ? "Primary" : "Secondary"} &middot; {totalSets} set{totalSets === 1 ? "" : "s"}</div>
         </div>
 

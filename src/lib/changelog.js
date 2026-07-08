@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.12": {
+    title: "Announcements get polls, and a sharper muscle breakdown",
+    items: [
+      "Home screen's muscle breakdown now follows your muscle name preference (Generic/Detailed/Scientific) for both primary and secondary muscles, instead of only secondary.",
+      "Admins can now edit and archive announcements, and attach a poll for everyone to vote on.",
+    ],
+  },
   "1.9.6": {
     title: "A little more style on startup",
     items: [

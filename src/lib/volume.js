@@ -1,4 +1,4 @@
-import { normalizeMuscleList, genericBucket } from "./muscleNomenclature";
+import { muscleLabel, isRealMuscle } from "./muscleNomenclature";
 import { toLocalDateStr } from "./time";
 
 // Computes total working volume (weight × reps, summed across sets) per
@@ -47,10 +47,17 @@ export function computeMuscleVolumes(entries) {
 }
 
 // Counts working sets per muscle group (not weighted by volume) from the
-// same { muscle, secondaryMuscles, sets } entries used by
+// same { muscle, primaryMuscles, secondaryMuscles, sets } entries used by
 // computeMuscleVolumes. Backs the "Primary Muscles / Secondary Muscles"
 // breakdown, which reports real set counts instead of a heatmap intensity.
-export function computeMuscleSetCounts(entries) {
+// `nameMode` ("generic" | "detailed" | "scientific") controls the
+// granularity of the grouping itself, not just the label shown afterward —
+// e.g. under "detailed" mode, "Front Delts" and "Rear Delts" show up as
+// separate rows instead of both collapsing into "Shoulders". Primary
+// grouping prefers each exercise's tagged `primaryMuscles` (real
+// per-exercise granularity from the muscle taxonomy) and falls back to
+// the broad `muscle` bucket for exercises that predate that tagging.
+export function computeMuscleSetCounts(entries, nameMode = "generic") {
   const primary = {};
   const secondary = {};
   let fullBodySets = 0;
@@ -63,11 +70,21 @@ export function computeMuscleSetCounts(entries) {
       fullBodySets += count;
       continue;
     }
-    primary[entry.muscle] = (primary[entry.muscle] || 0) + count;
-    for (const sec of entry.secondaryMuscles || []) {
-      if (sec === "Full Body") continue;
-      secondary[sec] = (secondary[sec] || 0) + count;
+
+    const rawPrimary = entry.primaryMuscles && entry.primaryMuscles.length > 0 ? entry.primaryMuscles : [entry.muscle];
+    const primaryLabels = new Set();
+    for (const p of rawPrimary) {
+      if (!isRealMuscle(p)) continue;
+      primaryLabels.add(muscleLabel(p, nameMode));
     }
+    for (const label of primaryLabels) primary[label] = (primary[label] || 0) + count;
+
+    const secondaryLabels = new Set();
+    for (const sec of entry.secondaryMuscles || []) {
+      if (!isRealMuscle(sec) || sec === "Full Body") continue;
+      secondaryLabels.add(muscleLabel(sec, nameMode));
+    }
+    for (const label of secondaryLabels) secondary[label] = (secondary[label] || 0) + count;
   }
 
   return { primary, secondary, fullBodySets };
@@ -206,7 +223,7 @@ export function summarizeHistory(history) {
       const workingSets = (we.sets || []).filter((s) => !s.is_warmup);
       const vol = workingSets.reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
       byDate[date] += vol;
-      entries.push({ muscle: genericBucket(ex.muscle_group), secondaryMuscles: normalizeMuscleList(ex.secondary_muscles), sets: workingSets, exerciseName: ex.name, date });
+      entries.push({ muscle: ex.muscle_group, primaryMuscles: ex.primary_muscles || [], secondaryMuscles: ex.secondary_muscles || [], sets: workingSets, exerciseName: ex.name, date });
     }
   }
 
