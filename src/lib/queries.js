@@ -46,6 +46,14 @@ export function normalizeExercise(row) {
     muscle: row.muscle_group,
     primaryMuscles: normalizeMuscleList(row.primary_muscles),
     secondaryMuscles: normalizeMuscleList(row.secondary_muscles),
+    // Un-collapsed versions of the above, kept alongside them rather than
+    // replacing them: primaryMuscles/secondaryMuscles roll everything up
+    // to the 8 generic buckets (needed for volume/set-count aggregation),
+    // which loses the granular scientific_name tags entirely. The
+    // generator's Detailed/Scientific target-muscle picker needs those
+    // raw tags to filter at finer-than-bucket granularity.
+    rawPrimaryMuscles: row.primary_muscles || [],
+    rawSecondaryMuscles: row.secondary_muscles || [],
     equipment: deriveEquipmentBucket(row.equipment),
     equipmentList: row.equipment || [],
     setupFields: row.setup_fields || [],

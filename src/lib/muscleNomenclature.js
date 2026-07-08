@@ -139,6 +139,33 @@ export function muscleLabel(muscle, mode) {
   return muscle;
 }
 
+// Full set of granular muscle entries ({generic, detailed, scientific}),
+// deduped by scientific name — for contexts that need the actual granular
+// vocabulary (e.g. the workout generator's target-muscle picker in
+// Detailed/Scientific mode), not just the 8 canonical buckets relabeled.
+// Falls back to ALIASES (deduped the same way) if the DB taxonomy hasn't
+// loaded yet.
+export function getMuscleTaxonomyEntries() {
+  if (dbTaxonomy && dbTaxonomy.size > 0) return [...dbTaxonomy.values()];
+  const seen = new Map();
+  for (const entry of Object.values(ALIASES)) {
+    if (!seen.has(entry.scientific)) seen.set(entry.scientific, entry);
+  }
+  return [...seen.values()];
+}
+
+// Resolves any raw muscle tag (whichever vocabulary it happens to be in —
+// current DB taxonomy scientific_name, a legacy ALIASES key, or an
+// already-scientific string) to its canonical scientific name. Used for
+// granular matching (e.g. the generator's Detailed/Scientific picker)
+// where a raw primary/secondary muscle tag needs to be compared against
+// a selected taxonomy entry regardless of which vocabulary tagged it.
+export function scientificNameOf(raw) {
+  if (!raw) return raw;
+  const alias = lookupMuscle(raw);
+  return alias ? alias.scientific : raw;
+}
+
 // Reduces any raw muscle value (canonical bucket or granular alias) down
 // to its generic bucket key — used when aggregating volume/set-counts so
 // e.g. "Rear Deltoid" and "Posterior Deltoid" both roll up under the same

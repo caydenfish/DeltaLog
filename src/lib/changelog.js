@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.18": {
+    title: "Fixed workout resume, and a smarter generator",
+    items: [
+      "Backgrounding the app mid-workout and reopening it now correctly drops you back on the exercise you were actually on, instead of the first one.",
+      "The workout generator's split buttons (Push, Pull, Legs, etc.) now work correctly again.",
+      "In Detailed or Scientific muscle name mode, the generator's target muscle picker now shows the full range of specific muscles instead of just the broad groups, with search to find them quickly. \"Full Body\" and \"Neck\" no longer appear as target options.",
+    ],
+  },
   "1.9.15": {
     title: "Tap to see the full photo, and a tidier Settings",
     items: [

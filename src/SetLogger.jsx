@@ -12,7 +12,12 @@ import CustomExerciseModal from "./CustomExerciseModal";
 import ExportWorkoutModal from "./ExportWorkoutModal";
 import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconLink, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell } from "./Icons";
 import { SPLITS as MOVEMENT_SPLITS } from "./lib/splits";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel, getMuscleTaxonomyEntries, scientificNameOf } from "./lib/muscleNomenclature";
+// "Full Body" and "Neck" are real generic buckets (used for coloring/
+// display elsewhere) but aren't meaningful things to target when
+// building a workout via the generator's muscle picker -- nobody picks
+// "Full Body" as a target muscle group. Excluded from that picker only.
+const GENERATOR_EXCLUDED_GENERIC = ["Full Body", "Neck"];
 import { toLocalDateStr } from "./lib/time";
 import { toDisplay, toCanonical, roundDisplay, formatWeight, platesFor, plateByValue, BAR_PRESETS, BIG_PLATE, bigPlateAllowed } from "./lib/weight";
 import {
@@ -1040,21 +1045,41 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
     setShowIdeology(false);
   }
 
+  // Whether exercise `l` belongs to target-muscle option `key`. In generic
+  // mode `key` is one of the 8 buckets, matched against l.muscle directly.
+  // In Detailed/Scientific mode `key` is a canonical scientific name, matched
+  // against l's raw (un-collapsed) primary/secondary muscle tags -- that's
+  // the only place the granular tagging survives, since l.muscle and
+  // l.primaryMuscles/secondaryMuscles are already rolled up to buckets.
+  function exerciseMatchesOption(l, key, mode) {
+    if (mode === "generic") return l.muscle === key;
+    return [...(l.rawPrimaryMuscles || []), ...(l.rawSecondaryMuscles || [])].some((raw) => scientificNameOf(raw) === key);
+  }
   function toggleGenMuscle(m) {
+    const mode = getPrefs().muscleNameMode;
     if (genMuscles.includes(m)) {
       setGenMuscles(genMuscles.filter((x) => x !== m));
-      setGenPicks(genPicks.filter((id) => library.find((l) => l.id === id)?.muscle !== m));
+      setGenPicks(genPicks.filter((id) => !exerciseMatchesOption(library.find((l) => l.id === id) || {}, m, mode)));
     } else setGenMuscles([...genMuscles, m]);
   }
   function applySplit(splitName) {
-    const group = MOVEMENT_SPLITS[splitName];
-    const isActive = group.length === genMuscles.length && group.every((m) => genMuscles.includes(m));
+    const mode = getPrefs().muscleNameMode;
+    const buckets = MOVEMENT_SPLITS[splitName];
+    // Generic mode: the split's bucket names ARE the option keys. Detailed/
+    // Scientific mode: expand each bucket into every granular taxonomy
+    // entry that rolls up to it, so "Push" still means something precise
+    // (Pectoralis Major, Anterior Deltoid, Triceps Brachii, ...) instead of
+    // collapsing back down to just "Chest, Shoulders, Arms".
+    const group = mode === "generic"
+      ? buckets
+      : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
+    const isActive = group.length > 0 && group.length === genMuscles.length && group.every((m) => genMuscles.includes(m));
     if (isActive) {
       setGenMuscles([]);
       setGenPicks([]);
     } else {
       setGenMuscles(group);
-      setGenPicks(genPicks.filter((id) => group.includes(library.find((l) => l.id === id)?.muscle)));
+      setGenPicks(genPicks.filter((id) => group.some((m) => exerciseMatchesOption(library.find((l) => l.id === id) || {}, m, mode))));
     }
   }
   function toggleGenPick(id) { setGenPicks(genPicks.includes(id) ? genPicks.filter((n) => n !== id) : [...genPicks, id]); }
@@ -1367,9 +1392,20 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
     const genQ = genSearch.toLowerCase();
     const muscleNameMode = getPrefs().muscleNameMode;
     const genMuscleQ = genMuscleSearch.toLowerCase();
-    const candidates = library.filter((l) => genMuscles.includes(l.muscle) && (
+    const candidates = library.filter((l) => genMuscles.some((m) => exerciseMatchesOption(l, m, muscleNameMode)) && (
       !genQ || l.name.toLowerCase().includes(genQ) || (l.aliases || []).some((a) => a.toLowerCase().includes(genQ)) || l.equipment.toLowerCase().includes(genQ)
     ));
+    // Generic mode: the 6 real target buckets (Full Body/Neck excluded --
+    // nobody targets those from a generator). Detailed/Scientific: every
+    // granular taxonomy entry that rolls up to one of those 6 buckets,
+    // labeled at whichever precision the mode calls for.
+    const muscleOptions = muscleNameMode === "generic"
+      ? Object.keys(MUSCLE_COLORS).filter((m) => !GENERATOR_EXCLUDED_GENERIC.includes(m)).map((m) => ({ key: m, label: m, color: MUSCLE_COLORS[m] }))
+      : getMuscleTaxonomyEntries().filter((e) => !GENERATOR_EXCLUDED_GENERIC.includes(e.generic)).map((e) => ({ key: e.scientific, label: muscleNameMode === "scientific" ? e.scientific : e.detailed, color: MUSCLE_COLORS[e.generic] }));
+    // Resolves a key from genMuscles to a display label/color even if it
+    // was picked under a different naming mode (e.g. picked a bucket in
+    // Generic, then switched to Scientific) rather than breaking silently.
+    const optionFor = (key) => muscleOptions.find((o) => o.key === key) || { key, label: MUSCLE_COLORS[key] ? key : (getMuscleTaxonomyEntries().find((e) => e.scientific === key)?.[muscleNameMode === "scientific" ? "scientific" : "detailed"] || key), color: MUSCLE_COLORS[key] || MUSCLE_COLORS[getMuscleTaxonomyEntries().find((e) => e.scientific === key)?.generic] || T.dim };
     return (
       <div style={outer}>
         <style>{`${fontImport} button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>
@@ -1383,8 +1419,9 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
             <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Split</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 16 }}>
               {Object.keys(MOVEMENT_SPLITS).map((splitName) => {
-                const group = MOVEMENT_SPLITS[splitName];
-                const active = group.length === genMuscles.length && group.every((m) => genMuscles.includes(m));
+                const buckets = MOVEMENT_SPLITS[splitName];
+                const group = muscleNameMode === "generic" ? buckets : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
+                const active = group.length > 0 && group.length === genMuscles.length && group.every((m) => genMuscles.includes(m));
                 return (
                   <button key={splitName} onClick={() => applySplit(splitName)} style={{ padding: "9px 2px", borderRadius: 10, fontSize: 12, fontWeight: 700, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(232,68,46,0.15)" : T.surface, color: active ? T.text : T.dim }}>
                     {splitName}
@@ -1397,16 +1434,19 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
               <>
                 <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Selected</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 14 }}>
-                  {genMuscles.map((m) => (
-                    <button key={m} onClick={() => toggleGenMuscle(m)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", borderRadius: 12, fontSize: 12, fontWeight: 600, border: `1px solid ${MUSCLE_COLORS[m]}`, background: `${MUSCLE_COLORS[m]}22`, color: T.text }}>
-                      {muscleLabel(m, muscleNameMode)}
-                    </button>
-                  ))}
+                  {genMuscles.map((m) => {
+                    const opt = optionFor(m);
+                    return (
+                      <button key={m} onClick={() => toggleGenMuscle(m)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", borderRadius: 12, fontSize: 12, fontWeight: 600, border: `1px solid ${opt.color}`, background: `${opt.color}22`, color: T.text }}>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </>
             )}
             <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{genMuscles.length > 0 ? "Available" : "All muscle groups"}</div>
-            {muscleNameMode === "scientific" && (
+            {muscleNameMode !== "generic" && (
               <input
                 autoComplete="off"
                 value={genMuscleSearch}
@@ -1416,9 +1456,9 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
               />
             )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 20 }}>
-              {Object.keys(MUSCLE_COLORS).filter((m) => !genMuscles.includes(m)).filter((m) => !genMuscleQ || muscleLabel(m, muscleNameMode).toLowerCase().includes(genMuscleQ)).map((m) => (
-                <button key={m} onClick={() => toggleGenMuscle(m)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", borderRadius: 12, fontSize: 12, fontWeight: 600, border: `1px solid ${T.line}`, background: T.surface, color: T.dim }}>
-                  {muscleLabel(m, muscleNameMode)}
+              {muscleOptions.filter((o) => !genMuscles.includes(o.key)).filter((o) => !genMuscleQ || o.label.toLowerCase().includes(genMuscleQ)).map((o) => (
+                <button key={o.key} onClick={() => toggleGenMuscle(o.key)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", borderRadius: 12, fontSize: 12, fontWeight: 600, border: `1px solid ${T.line}`, background: T.surface, color: T.dim }}>
+                  {o.label}
                 </button>
               ))}
             </div>
