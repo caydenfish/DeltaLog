@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabaseClient";
-import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy } from "./lib/queries";
+import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits } from "./lib/queries";
 import { setMuscleTaxonomyCache } from "./lib/muscleNomenclature";
+import { setSplitsCache } from "./lib/splits";
 import { getPrefs } from "./lib/prefs";
 import Auth from "./Auth";
 import ResetPassword from "./ResetPassword";
@@ -33,9 +34,13 @@ export default function App() {
   // during render all over the app, so the admin-editable taxonomy is
   // loaded once into an in-memory cache here rather than fetched
   // per-component. Public data, no session required — also needed for
-  // the signed-out shared-workout view.
+  // the signed-out shared-workout view. Splits (Push/Pull/Legs/etc) are
+  // the same story — also admin-editable, also read synchronously in
+  // render code (the generator, exercise picker filters, FAQ), so also
+  // cached here rather than fetched per-component.
   useEffect(() => {
     fetchMuscleTaxonomy().then(setMuscleTaxonomyCache).catch(() => {});
+    fetchSplits().then(setSplitsCache).catch(() => {});
   }, []);
 
   useEffect(() => {

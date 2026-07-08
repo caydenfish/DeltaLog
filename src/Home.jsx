@@ -18,6 +18,7 @@ import FAQ from "./FAQ";
 import AdminExercises from "./AdminExercises";
 import AdminFeedback from "./AdminFeedback";
 import AdminHome from "./AdminHome";
+import SplitsManager from "./SplitsManager";
 import ExerciseLibraryView from "./ExerciseLibraryView";
 import AdminPermissions from "./AdminPermissions";
 import DangerZone from "./DangerZone";
@@ -149,6 +150,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   const [showAdminHome, setShowAdminHome] = useState(false);
   const [showExerciseLibraryView, setShowExerciseLibraryView] = useState(false);
   const [showAdminPermissions, setShowAdminPermissions] = useState(false);
+  const [showSplitsManager, setShowSplitsManager] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [historyView, setHistoryView] = useState(null); // null | { initialWorkoutId? }
@@ -952,6 +954,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
           onOpenExercises={() => setShowAdmin(true)}
           onOpenFeedback={() => { setShowAdminFeedback(true); markFeedbackViewed(user.id).then(() => setUnseenFeedbackCount(0)).catch(() => {}); }}
           onOpenPermissions={() => setShowAdminPermissions(true)}
+          onOpenSplits={() => setShowSplitsManager(true)}
           onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setAdminSimulateNewUser(true); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
           adminViewMode={adminViewMode}
@@ -971,6 +974,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
         />
       )}
       {showAdminPermissions && <AdminPermissions currentUserId={user.id} onClose={() => setShowAdminPermissions(false)} />}
+      {showSplitsManager && <SplitsManager onClose={() => setShowSplitsManager(false)} />}
       {showAdminFeedback && <AdminFeedback onClose={() => setShowAdminFeedback(false)} />}
       {showDangerZone && <DangerZone user={user} onClose={() => setShowDangerZone(false)} onDataReset={onDataReset} />}
       {showInstallGuide && (

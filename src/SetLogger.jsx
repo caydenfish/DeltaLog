@@ -11,7 +11,7 @@ import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import ExportWorkoutModal from "./ExportWorkoutModal";
 import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconLink, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell } from "./Icons";
-import { SPLITS as MOVEMENT_SPLITS } from "./lib/splits";
+import { getSplits } from "./lib/splits";
 import { muscleLabel, getMuscleTaxonomyEntries, scientificNameOf } from "./lib/muscleNomenclature";
 // "Full Body" and "Neck" are real generic buckets (used for coloring/
 // display elsewhere) but aren't meaningful things to target when
@@ -233,8 +233,8 @@ function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMu
         <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10, marginBottom: 8 }}>
           <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>Split</div>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
-            {Object.keys(MOVEMENT_SPLITS).map((splitName) => {
-              const buckets = MOVEMENT_SPLITS[splitName];
+            {Object.keys(getSplits()).map((splitName) => {
+              const buckets = getSplits()[splitName];
               const group = muscleNameMode === "generic" ? buckets : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
               const active = group.length > 0 && group.length === muscleFilter.length && group.every((m) => muscleFilter.includes(m));
               return (
@@ -426,7 +426,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
   const [muscleFilter, setMuscleFilter] = useState([]);
   function applyPickerSplit(splitName) {
     const mode = getPrefs().muscleNameMode;
-    const buckets = MOVEMENT_SPLITS[splitName];
+    const buckets = getSplits()[splitName];
     const group = mode === "generic"
       ? buckets
       : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
@@ -1092,7 +1092,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
   }
   function applySplit(splitName) {
     const mode = getPrefs().muscleNameMode;
-    const buckets = MOVEMENT_SPLITS[splitName];
+    const buckets = getSplits()[splitName];
     // Generic mode: the split's bucket names ARE the option keys. Detailed/
     // Scientific mode: expand each bucket into every granular taxonomy
     // entry that rolls up to it, so "Push" still means something precise
@@ -1446,8 +1446,8 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
           <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
             <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Split</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 16 }}>
-              {Object.keys(MOVEMENT_SPLITS).map((splitName) => {
-                const buckets = MOVEMENT_SPLITS[splitName];
+              {Object.keys(getSplits()).map((splitName) => {
+                const buckets = getSplits()[splitName];
                 const group = muscleNameMode === "generic" ? buckets : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
                 const active = group.length > 0 && group.length === genMuscles.length && group.every((m) => genMuscles.includes(m));
                 return (

@@ -51,7 +51,7 @@ function ViewModeToggle({ mode, onChange }) {
 // One entry point for every admin-only tool, reached via a single "Admin"
 // row in Settings instead of a growing list of admin buttons living
 // alongside everyday preferences.
-export default function AdminHome({ onClose, onOpenExercises, onOpenFeedback, onSimulateNewUser, onOpenVersionHistory, onOpenPermissions, unseenFeedbackCount, adminViewMode, onSetAdminViewMode }) {
+export default function AdminHome({ onClose, onOpenExercises, onOpenFeedback, onSimulateNewUser, onOpenVersionHistory, onOpenPermissions, onOpenSplits, unseenFeedbackCount, adminViewMode, onSetAdminViewMode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -74,6 +74,7 @@ export default function AdminHome({ onClose, onOpenExercises, onOpenFeedback, on
           <Row onClick={onOpenExercises} title="Custom Exercises" subtitle="Review and promote user submissions" />
           <Row onClick={onOpenFeedback} title="Feedback & Bugs" subtitle="Bug reports, feature requests, and privacy submissions from users" badge={unseenFeedbackCount} />
           <Row onClick={onOpenPermissions} title="Permissions" subtitle="Grant or remove admin access for other users" />
+          <Row onClick={onOpenSplits} title="Splits" subtitle="Edit which muscle groups belong to Push, Pull, Legs, and more" />
           <Row onClick={onSimulateNewUser} title="Simulate new-user experience" subtitle="Runs the setup wizard, then the tutorial — same flow a brand-new signup sees" />
           <Row onClick={onOpenVersionHistory} title="Version History" subtitle="In-depth, searchable changelog of every release" />
         </div>

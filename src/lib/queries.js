@@ -233,6 +233,53 @@ export async function renameMuscleScientific(oldName, newName) {
   if (error) throw error;
 }
 
+// Admin-editable workout splits (migration_043) -- Push/Pull/Legs/etc,
+// each with a set of muscle_groups keys. Read by everyone (the generator,
+// exercise picker filters, and FAQ & Glossary all need this), writable
+// only by admins. split_muscles is a many-to-many join since a muscle
+// can legitimately belong to more than one split (e.g. Shoulders under
+// both Push and Pull).
+export async function fetchSplits() {
+  const { data, error } = await supabase
+    .from("splits")
+    .select("id, name, sort_order, split_muscles (muscle_group)")
+    .order("sort_order");
+  if (error) throw error;
+  return data.map((row) => ({
+    id: row.id,
+    name: row.name,
+    sortOrder: row.sort_order,
+    muscles: (row.split_muscles || []).map((m) => m.muscle_group),
+  }));
+}
+
+export async function addSplit(name) {
+  const { data, error } = await supabase.from("splits").insert({ name: name.trim(), sort_order: 999 }).select().single();
+  if (error) throw error;
+  return { id: data.id, name: data.name, sortOrder: data.sort_order, muscles: [] };
+}
+
+export async function renameSplit(id, name) {
+  const { error } = await supabase.from("splits").update({ name: name.trim() }).eq("id", id);
+  if (error) throw error;
+}
+
+// Cascades to split_muscles via the FK's on delete cascade.
+export async function deleteSplit(id) {
+  const { error } = await supabase.from("splits").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function addSplitMuscle(splitId, muscleGroup) {
+  const { error } = await supabase.from("split_muscles").insert({ split_id: splitId, muscle_group: muscleGroup });
+  if (error) throw error;
+}
+
+export async function removeSplitMuscle(splitId, muscleGroup) {
+  const { error } = await supabase.from("split_muscles").delete().eq("split_id", splitId).eq("muscle_group", muscleGroup);
+  if (error) throw error;
+}
+
 // Admin-only: creates a brand-new exercise straight into the shared
 // library (created_by stays null), rather than as a personal custom
 // exercise that would need promoting later.

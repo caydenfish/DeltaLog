@@ -9,6 +9,12 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.22": {
+    title: "Admin-editable splits",
+    items: [
+      "Admins can now edit which muscle groups belong to each split (Push, Pull, Legs, and more), plus add or remove splits entirely, from a new Splits screen in Admin. Changes apply immediately across the workout generator, exercise picker, and FAQ & Glossary for everyone.",
+    ],
+  },
   "1.9.21": {
     title: "Muscle names preference now applies everywhere",
     items: [

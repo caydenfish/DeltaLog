@@ -5,6 +5,17 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.9.22",
+    date: "2026-07-08",
+    items: [
+      "supabase/migration_043_splits.sql: new admin-editable splits feature. Two tables: `splits` (id, name, sort_order) and `split_muscles` (split_id, muscle_group -- many-to-many join to muscle_groups, since a muscle can legitimately belong to more than one split, e.g. Shoulders under both Push and Pull). RLS: select open to everyone, insert/update/delete admin-only, mirroring the muscle_groups/muscle_detailed pattern. Seeded from the current hardcoded SPLITS values so behavior is unchanged until an admin edits something.",
+      "lib/queries.js: added fetchSplits, addSplit, renameSplit, deleteSplit, addSplitMuscle, removeSplitMuscle.",
+      "lib/splits.js: rewritten from a static exported SPLITS constant into a module-level cache (cache/setSplitsCache/getSplits), the same pattern muscleNomenclature.js already uses for the muscle taxonomy -- SPLITS is read synchronously in render code all over the app (generator, exercise picker filters, FAQ), so it can't be a per-component fetch. Falls back to the last hand-maintained values (DEFAULT_SPLITS) until the cache loads. App.jsx now calls fetchSplits().then(setSplitsCache) at startup alongside the existing muscle-taxonomy cache load.",
+      "SetLogger.jsx, FAQ.jsx: every call site that referenced the static SPLITS/MOVEMENT_SPLITS constant (the generator's Split buttons and applySplit, the exercise picker's Split filter and applyPickerSplit, FAQ's SplitBreakdown) switched to calling getSplits() instead, so admin edits show up immediately without a rebuild. FAQ's Split searchText also switched from a plain string (baked in at module-eval time, before the cache could possibly have loaded) to a function evaluated at filter-time, so search stays in sync with live edits too.",
+      "New SplitsManager.jsx: admin screen listing every split, expandable to a toggleable chip grid of all muscle_groups (add/remove a muscle from a split with one tap), plus add/rename/delete a split entirely. Every mutation re-fetches from Supabase and re-populates the shared cache via setSplitsCache, so changes apply for every user immediately -- no separate publish step, no app update. Reached via a new \"Splits\" row in AdminHome.jsx.",
+    ],
+  },
+  {
     version: "1.9.21",
     date: "2026-07-08",
     items: [

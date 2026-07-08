@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchExercises } from "./lib/queries";
-import { SPLITS } from "./lib/splits";
+import { getSplits } from "./lib/splits";
 import { muscleLabel, scientificNameOf, getMuscleTaxonomyEntries } from "./lib/muscleNomenclature";
 
 const T = {
@@ -41,7 +41,7 @@ function SplitBreakdown() {
           }
         }
         const result = {};
-        for (const [name, buckets] of Object.entries(SPLITS)) {
+        for (const [name, buckets] of Object.entries(getSplits())) {
           result[name] = [...primaryOnly.values()]
             .filter((e) => buckets.includes(e.generic))
             .sort((a, b) => a.detailed.localeCompare(b.detailed));
@@ -139,7 +139,12 @@ const SECTIONS = [
       {
         term: "Split",
         body: <SplitBreakdown />,
-        searchText: `push pull legs upper lower full body ${Object.values(SPLITS).flat().join(" ")}`,
+        // A function, not a plain string: SECTIONS is a module-level
+        // constant evaluated once at import time, before the splits
+        // cache has necessarily loaded from the DB (and before any admin
+        // edit made later in the session). Computing this lazily at
+        // filter-time instead keeps search in sync with live edits.
+        searchText: () => `push pull legs upper lower full body ${Object.values(getSplits()).flat().join(" ")}`,
       },
       {
         term: "Primary / Secondary Muscle",
@@ -190,7 +195,7 @@ export default function FAQ({ onClose }) {
           (item) =>
             item.term.toLowerCase().includes(q) ||
             (typeof item.body === "string" && item.body.toLowerCase().includes(q)) ||
-            (item.searchText && item.searchText.toLowerCase().includes(q))
+            (item.searchText && (typeof item.searchText === "function" ? item.searchText() : item.searchText).toLowerCase().includes(q))
         )
       : section.items,
   })).filter((section) => section.items.length > 0);
