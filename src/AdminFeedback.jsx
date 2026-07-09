@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchFeedbackForAdmin, setFeedbackFlagged, setFeedbackStatus, setFeedbackNote, deleteFeedback } from "./lib/queries";
 import { IconStar, IconCheck } from "./Icons";
+import { InlineLoading } from "./LoadingSpinner";
 
 const T = {
   bg: "#101216",
@@ -217,7 +218,7 @@ export default function AdminFeedback({ onClose }) {
               ))}
             </div>
 
-            {rows === undefined && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading…</div>}
+            {rows === undefined && <InlineLoading />}
 
             {rows && sorted.length === 0 && (
               <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Nothing here.</div>

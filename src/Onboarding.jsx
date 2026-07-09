@@ -27,6 +27,7 @@ export default function Onboarding({ user, profile, onComplete }) {
   const [heightFt, setHeightFt] = useState(initialFtIn ? String(initialFtIn.ft) : "");
   const [heightIn, setHeightIn] = useState(initialFtIn ? String(initialFtIn.in) : "");
   const [height, setHeight] = useState(profile?.height_unit && profile.height_unit !== "ftin" && profile?.height ? String(profile.height) : "");
+  const [heardAboutUs, setHeardAboutUs] = useState(profile?.heard_about_us || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -42,6 +43,7 @@ export default function Onboarding({ user, profile, onComplete }) {
         gender, dateOfBirth: dob,
         weight: parseFloat(weight) || null, weightUnit,
         height: heightVal, heightUnit,
+        heardAboutUs: heardAboutUs.trim() || null,
       });
       setPref("units", weightUnit);
       onComplete();
@@ -170,6 +172,14 @@ export default function Onboarding({ user, profile, onComplete }) {
         <div style={{ fontSize: 11, color: T.dim, marginBottom: 24, lineHeight: 1.4 }}>
           Not used in your strength score today (DOTS only factors in bodyweight and gender) — captured here for future use.
         </div>
+
+        <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>How did you hear about us? <span style={{ textTransform: "none" }}>(optional)</span></div>
+        <input
+          value={heardAboutUs}
+          onChange={(e) => setHeardAboutUs(e.target.value)}
+          placeholder="e.g. a friend, Instagram, App Store search"
+          style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 15, padding: "11px 12px", outline: "none", boxSizing: "border-box", marginBottom: 24 }}
+        />
 
         <button onClick={handleSave} disabled={!valid || saving} style={{
           width: "100%", padding: "15px 0", borderRadius: 14, border: "none",

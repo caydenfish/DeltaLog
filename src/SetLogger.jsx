@@ -10,6 +10,7 @@ import { MUSCLE_COLORS } from "./lib/muscleColors";
 import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import ExportWorkoutModal from "./ExportWorkoutModal";
+import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconLink, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell } from "./Icons";
 import { getSplits } from "./lib/splits";
 import { muscleLabel, getMuscleTaxonomyEntries, scientificNameOf } from "./lib/muscleNomenclature";
@@ -1176,8 +1177,8 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
 
   function saveSet() {
     const w = parseFloat(weight); const r = parseInt(reps, 10);
-    if (!w || !r || rir === null) {
-      setHighlightMissing({ weight: !w, reps: !r, rir: rir === null });
+    if (isNaN(w) || w < 0 || isNaN(r) || r < 0 || rir === null) {
+      setHighlightMissing({ weight: isNaN(w) || w < 0, reps: isNaN(r) || r < 0, rir: rir === null });
       setTimeout(() => setHighlightMissing({ weight: false, reps: false, rir: false }), 1600);
       return;
     }
@@ -1412,7 +1413,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
     );
   }
   if (booting || !workoutId) {
-    return <div style={{ minHeight: "100vh", background: T.bg }} />;
+    return <LoadingScreen />;
   }
 
   // ---------- Generator view ----------
@@ -2068,7 +2069,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
             <div style={{ width: 26 }} />
           </div>
           <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
-            {templates === null && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading templates…</div>}
+            {templates === null && <InlineLoading />}
             {templates !== null && templates.length === 0 && (
               <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>
                 No templates yet. Build a workout, then use "Save as Template" from the workout menu.
@@ -2114,10 +2115,10 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
 
   // ---------- Workout view ----------
   const setupSummary = ex.setupFields.filter((f) => ex.setup[f]).map((f) => `${f}: ${ex.setup[f]}`).join(" · ");
-  const machineSetupSummary = ["Seat height", "Bar height", "Cable height"].filter((f) => ex.setup[f]).map((f) => `${f}: ${ex.setup[f]}`).join(" · ") || (ex.setup["_machineNotes"] ? "Notes saved" : "");
+  const machineSetupSummary = ["Seat height", "Bar height", "Cable height", "Arm setting"].filter((f) => ex.setup[f]).map((f) => `${f}: ${ex.setup[f]}`).join(" · ") || (ex.setup["_machineNotes"] ? "Notes saved" : "");
   function clearMachineSetup() {
     const nextSetup = { ...ex.setup };
-    delete nextSetup["Seat height"]; delete nextSetup["Bar height"]; delete nextSetup["Cable height"]; delete nextSetup["_machineNotes"];
+    delete nextSetup["Seat height"]; delete nextSetup["Bar height"]; delete nextSetup["Cable height"]; delete nextSetup["Arm setting"]; delete nextSetup["_machineNotes"];
     setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, setup: nextSetup } : w)));
     saveExerciseDefaults(user.id, ex.id, nextSetup, ex.notes).catch((err) => note(`Couldn't clear setup: ${err.message}`));
   }
@@ -2361,6 +2362,10 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
                   <div style={{ fontSize: 13, color: T.text, flex: 1 }}>Cable height</div>
                   {heightField("Cable height")}
                 </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div style={{ fontSize: 13, color: T.text, flex: 1 }}>Arm setting</div>
+                  {heightField("Arm setting")}
+                </div>
                 <textarea
                   value={ex.setup["_machineNotes"] || ""}
                   onChange={(e) => updateSetup("_machineNotes", e.target.value)}
@@ -2424,10 +2429,9 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
         </div>
 
         {restLeft > 0 && (
-          <div data-tutorial="rest-timer-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface2, borderBottom: `1px solid ${T.line}`, padding: "10px 16px" }}>
-            <div style={{ color: T.dim, fontSize: 13 }}>Rest</div>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text }}>{mmss(restLeft)}</div>
-            <button onClick={() => setRestEndsAt(null)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 12px", fontSize: 12 }}>Skip</button>
+          <div data-tutorial="rest-timer-bar" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.surface2, borderBottom: `1px solid ${T.line}`, padding: "5px 16px" }}>
+            <div style={{ color: T.dim, fontSize: 11 }}>Rest</div>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{mmss(restLeft)}</div>
           </div>
         )}
 
@@ -2505,6 +2509,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
                     value={reps}
                     onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, ""))}
                     onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
                     style={{ ...inputStyle, borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
                   />
                 </div>

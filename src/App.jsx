@@ -15,11 +15,12 @@ import { TutorialProvider } from "./TutorialContext";
 import TutorialOverlay from "./TutorialOverlay";
 import AppSplash from "./AppSplash";
 import SharedWorkoutView from "./SharedWorkoutView";
+import LoadingScreen from "./LoadingSpinner";
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading, null = signed out
   const [profile, setProfile] = useState(undefined); // undefined = loading, null = not set up yet
-  const [mode, setMode] = useState("home"); // "home" | "workout"
+  const [mode, setMode] = useState(null); // null = undecided, "home" | "workout"
   const [resumeWorkout, setResumeWorkout] = useState(undefined); // undefined = not checked, null = none, object = found
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [setupSeen, setSetupSeen] = useState(() => getPrefs().setupWizardSeen);
@@ -48,7 +49,7 @@ export default function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
       setSession(newSession);
-      setMode("home");
+      setMode(null);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -75,7 +76,8 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
-    if (resumeWorkout) setMode("workout");
+    if (resumeWorkout === undefined) return;
+    setMode((m) => (m === null ? (resumeWorkout ? "workout" : "home") : m));
   }, [resumeWorkout]);
 
   const profileComplete = profile && profile.gender && profile.date_of_birth && profile.first_name && profile.last_name;
@@ -107,8 +109,8 @@ export default function App() {
     content = <TermsGate user={session.user} onAccepted={() => fetchProfile(session.user.id).then(setProfile)} />;
   } else if (!setupSeen) {
     content = <SetupWizard onComplete={() => setSetupSeen(true)} />;
-  } else if (resumeWorkout === undefined) {
-    content = null;
+  } else if (resumeWorkout === undefined || mode === null) {
+    content = <LoadingScreen />;
   } else {
     content = (
       <TutorialProvider>

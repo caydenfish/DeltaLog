@@ -3,6 +3,7 @@ import { fetchCustomExercisesForReview, promoteExerciseToLibrary, dismissCustomE
 import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import { IconX } from "./Icons";
+import { InlineLoading } from "./LoadingSpinner";
 
 const T = {
   bg: "#101216",
@@ -135,7 +136,7 @@ export default function AdminExercises({ user, onClose }) {
           </div>
           {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
-          {rows === undefined && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading…</div>}
+          {rows === undefined && <InlineLoading />}
 
           {rows && rows.length === 0 && (
             <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No custom exercises waiting for review.</div>
@@ -234,7 +235,7 @@ export default function AdminExercises({ user, onClose }) {
             </div>
             <div style={{ overflowY: "auto", padding: 8, flex: 1 }}>
               {mergeLibrary === null ? (
-                <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: 16 }}>Loading…</div>
+                <InlineLoading padding="16px" />
               ) : filteredMergeLibrary.length === 0 ? (
                 <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: 16 }}>No matches.</div>
               ) : (

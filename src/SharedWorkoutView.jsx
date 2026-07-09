@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Logo, { Wordmark } from "./Logo";
 import { fetchSharedWorkout } from "./lib/queries";
+import { InlineLoading } from "./LoadingSpinner";
 
 const T = {
   bg: "#101216",
@@ -36,7 +37,7 @@ export default function SharedWorkoutView({ code, onDone }) {
           <Wordmark size={20} />
         </div>
 
-        {snapshot === undefined && <div style={{ color: T.dim, fontSize: 14, textAlign: "center", padding: "40px 0" }}>Loading…</div>}
+        {snapshot === undefined && <InlineLoading padding="40px 0" />}
 
         {snapshot === null && (
           <div style={{ color: T.dim, fontSize: 14, textAlign: "center", padding: "40px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>

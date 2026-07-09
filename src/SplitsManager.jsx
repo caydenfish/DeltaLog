@@ -3,6 +3,7 @@ import { fetchMuscleGroups, fetchSplits, addSplit, renameSplit, deleteSplit, add
 import { setSplitsCache } from "./lib/splits";
 import { muscleLabel } from "./lib/muscleNomenclature";
 import { IconX } from "./Icons";
+import { InlineLoading } from "./LoadingSpinner";
 
 const T = {
   bg: "#101216",
@@ -85,7 +86,7 @@ export default function SplitsManager({ onClose }) {
 
           {error && <div style={{ marginBottom: 12, padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.accent}`, color: T.accent, fontSize: 12.5 }}>{error}</div>}
 
-          {splits === null && <div style={{ color: T.dim, fontSize: 13 }}>Loading…</div>}
+          {splits === null && <InlineLoading padding="16px 0" />}
 
           {splits && splits.map((s) => {
             const open = expanded.has(s.id);

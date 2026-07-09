@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import ExerciseThumb from "./ExerciseThumb";
 import ExportWorkoutModal from "./ExportWorkoutModal";
 import { IconX, IconCamera, IconImage, IconTrash, IconCheck } from "./Icons";
+import { InlineLoading } from "./LoadingSpinner";
 import { formatWeight, toDisplay, toCanonical } from "./lib/weight";
 import { formatClockTime, toLocalDateStr } from "./lib/time";
 import {
@@ -99,7 +100,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
     <div style={{ marginBottom: 16 }}>
       <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Progress photo — private to you</div>
       {photo === undefined ? (
-        <div style={{ color: T.dim, fontSize: 12 }}>Loading…</div>
+        <InlineLoading label="Loading…" size={16} padding="2px 0" />
       ) : photo ? (
         <div style={{ position: "relative" }}>
           <img
@@ -231,7 +232,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
     if (!editing) return;
     const w = parseFloat(editWeight);
     const r = parseInt(editReps, 10);
-    if (!w || !r) { setSaveError("Weight and reps are required."); return; }
+    if (isNaN(w) || w < 0 || isNaN(r) || r < 0) { setSaveError("Weight and reps are required."); return; }
     const rir = editRir === "" ? null : parseInt(editRir, 10);
     setSaving(true);
     setSaveError(null);
@@ -256,7 +257,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
   async function saveNewSet(we) {
     const w = parseFloat(editWeight);
     const r = parseInt(editReps, 10);
-    if (!w || !r) { setSaveError("Weight and reps are required."); return; }
+    if (isNaN(w) || w < 0 || isNaN(r) || r < 0) { setSaveError("Weight and reps are required."); return; }
     const rir = editRir === "" ? null : parseInt(editRir, 10);
     const nextSetNumber = (we.sets || []).reduce((max, s) => Math.max(max, s.set_number || 0), 0) + 1;
     setSaving(true);
@@ -511,7 +512,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
           />
           <div style={{ maxHeight: 260, overflowY: "auto" }}>
             {exerciseLibrary === null ? (
-              <div style={{ color: T.dim, fontSize: 12.5, padding: "8px 0" }}>Loading…</div>
+              <InlineLoading size={18} padding="8px 0" />
             ) : filteredLibrary.length === 0 ? (
               <div style={{ color: T.dim, fontSize: 12.5, padding: "8px 0" }}>No matches.</div>
             ) : (

@@ -537,12 +537,13 @@ export async function fetchProfile(userId) {
   return data;
 }
 
-export async function saveProfile(userId, { gender, dateOfBirth, weight, weightUnit, height, heightUnit, firstName, lastName }) {
+export async function saveProfile(userId, { gender, dateOfBirth, weight, weightUnit, height, heightUnit, firstName, lastName, heardAboutUs }) {
   const payload = { id: userId, gender, date_of_birth: dateOfBirth, weight, weight_unit: weightUnit || "lb", updated_at: new Date().toISOString() };
   if (height !== undefined) payload.height = height;
   if (heightUnit !== undefined) payload.height_unit = heightUnit || "in";
   if (firstName !== undefined) payload.first_name = firstName;
   if (lastName !== undefined) payload.last_name = lastName;
+  if (heardAboutUs !== undefined) payload.heard_about_us = heardAboutUs;
   const { error } = await supabase
     .from("profiles")
     .upsert(payload);

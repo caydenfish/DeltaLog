@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { fetchExercises } from "./lib/queries";
 import { getSplits } from "./lib/splits";
 import { muscleLabel, scientificNameOf, getMuscleTaxonomyEntries } from "./lib/muscleNomenclature";
+import { InlineLoading } from "./LoadingSpinner";
 
 const T = {
   bg: "#101216",
@@ -57,7 +58,7 @@ function SplitBreakdown() {
       <div style={{ marginBottom: 12 }}>
         How your weekly training is divided by muscle group or movement pattern. These are the same splits available as quick filters when picking exercises — tap Filters in any exercise picker to jump straight to one. Only muscles the exercise library tags as a primary target somewhere in that split are listed; a muscle can appear under more than one split (e.g. Shoulders under both Push and Pull) when it's a primary target on both sides.
       </div>
-      {!perSplit && <div style={{ color: T.dim, fontSize: 12.5 }}>Loading…</div>}
+      {!perSplit && <InlineLoading size={16} padding="0" />}
       {perSplit && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {Object.entries(perSplit).map(([name, entries]) => (

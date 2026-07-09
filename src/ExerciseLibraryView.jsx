@@ -3,6 +3,7 @@ import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDet
 import { muscleLabel } from "./lib/muscleNomenclature";
 import { MUSCLE_COLORS } from "./lib/muscleColors";
 import ExerciseThumb from "./ExerciseThumb";
+import { InlineLoading } from "./LoadingSpinner";
 import MuscleTaxonomyManager from "./MuscleTaxonomyManager";
 import CustomExerciseModal from "./CustomExerciseModal";
 import MyCustomExercises from "./MyCustomExercises";
@@ -298,7 +299,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
                 style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", marginBottom: 12 }}
               />
 
-              {exercises === undefined && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading...</div>}
+              {exercises === undefined && <InlineLoading />}
               {exercises && filtered.length === 0 && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No matches.</div>}
 
               {filtered.map((ex) => {

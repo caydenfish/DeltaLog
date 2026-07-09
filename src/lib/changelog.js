@@ -9,6 +9,18 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.23": {
+    title: "Smoother reentry, smaller rest timer, and a few fixes",
+    items: [
+      "Reopening the app with a workout in progress now takes you straight back into it, with a new loading animation instead of a blank screen.",
+      "You can now log 0 lb (bodyweight) sets and 0 rep (failed) sets, both live and when editing history.",
+      "Added an \"Arm setting\" field to machine setup, alongside seat, bar, and cable height.",
+      "The rest timer bar is smaller and the Skip button is gone.",
+      "Tapping Enter after typing reps now closes the keyboard.",
+      "Added an optional \"How did you hear about us?\" question to setup.",
+      "New: a \"What's next\" page in Settings, next to What's new, showing what we're building.",
+    ],
+  },
   "1.9.22": {
     title: "Admin-editable splits",
     items: [

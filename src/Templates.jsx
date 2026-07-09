@@ -3,6 +3,7 @@ import { fetchExercises, fetchTemplates, saveWorkoutAsTemplate, deleteTemplate, 
 import { computeMuscleSetCounts } from "./lib/volume";
 import { muscleLabel, genericBucket } from "./lib/muscleNomenclature";
 import BodyHeatmap from "./BodyHeatmap";
+import { InlineLoading } from "./LoadingSpinner";
 import { IconStar, IconX } from "./Icons";
 
 const T = {
@@ -319,7 +320,7 @@ export default function Templates({ user, onClose }) {
             <button onClick={() => { setShowImport(true); setImportCode(""); setImportPreview(null); setImportError(null); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
               Import template
             </button>
-            {templates === null && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading…</div>}
+            {templates === null && <InlineLoading />}
             {templates !== null && templates.length === 0 && (
               <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>
                 No templates yet. Build one above, it'll be ready to use next time you start a workout.
@@ -359,7 +360,7 @@ export default function Templates({ user, onClose }) {
             </button>
             {showArchived && (
               <div>
-                {archivedTemplates === null && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 0" }}>Loading…</div>}
+                {archivedTemplates === null && <InlineLoading padding="16px 0" />}
                 {archivedTemplates && archivedTemplates.length === 0 && (
                   <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 0" }}>Nothing archived.</div>
                 )}
@@ -447,7 +448,7 @@ export default function Templates({ user, onClose }) {
               style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
             />
             <div style={{ flex: 1, overflowY: "auto", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 6, marginBottom: 16 }}>
-              {library === null && <div style={{ fontSize: 13, color: T.dim, padding: "8px 6px" }}>Loading exercises…</div>}
+              {library === null && <InlineLoading label="Loading exercises…" padding="8px 6px" />}
               {library !== null && candidates.length === 0 && <div style={{ fontSize: 13, color: T.dim, padding: "8px 6px" }}>No matches.</div>}
               {(() => {
                 const renderRow = (l) => (
@@ -524,7 +525,7 @@ export default function Templates({ user, onClose }) {
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
               {(() => {
-                if (library === null) return <div style={{ fontSize: 13, color: T.dim, padding: "8px 6px" }}>Loading exercises…</div>;
+                if (library === null) return <InlineLoading label="Loading exercises…" padding="8px 6px" />;
                 const q = replaceSearch.toLowerCase();
                 const replaceCandidates = library.filter((l) => !picks.some((p) => p.id === l.id) && (
                   !q || l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || (l.equipment || "").toLowerCase().includes(q)

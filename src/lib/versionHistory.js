@@ -5,6 +5,20 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.9.23",
+    date: "2026-07-09",
+    items: [
+      "App.jsx: fixed a real race behind the reported \"Home flashes before SetLogger\" bug on reentry. `mode` used to default to \"home\" and only flip to \"workout\" reactively once resumeWorkout resolved, relying on AppSplash's opaque overlay to mask the gap. Changed `mode` to start `null` (undecided) and added a guard (`setMode((m) => m === null ? ... : m)`) so it's set exactly once from resumeWorkout, then content-selection now treats `mode === null` as a loading state rather than falling through to Home, so there's no longer any reliance on splash timing.",
+      "New LoadingSpinner.jsx: reusable triangle-mark loading indicator (LoadingSpinner, InlineLoading, default LoadingScreen). CSS keyframes on rotate (0deg -> 720deg, uneven keyframe spacing for medium/fast/medium/stop) and scale (shrink during spin, grow back after), landing on a multiple of 360deg so the infinite loop never snaps. Replaced SetLogger's old blank `<div style={{background: T.bg}} />` boot placeholder and every bare \"Loading…\" text block app-wide (Home, Templates, WorkoutHistory, MyCustomExercises, ExerciseLibraryView, AdminExercises, AdminFeedback, SplitsManager, FAQ, SharedWorkoutView).",
+      "SetLogger.jsx: saveSet's validation was `if (!w || !r || rir === null)`, which rejected weight=0 and reps=0 as falsy. Changed to explicit `isNaN(w) || w < 0` / `isNaN(r) || r < 0` checks so bodyweight (0 lb) and failed (0 rep) sets save correctly. Same fix applied to WorkoutHistory.jsx's saveEdit and saveNewSet.",
+      "SetLogger.jsx: added \"Arm setting\" as a fourth heightField() row alongside Seat/Bar/Cable height, included in machineSetupSummary and clearMachineSetup.",
+      "SetLogger.jsx: rest timer bar padding reduced (10px 16px -> 5px 16px), time readout 28px -> 18px, label 13px -> 11px, Skip button removed, layout switched from space-between to a centered row.",
+      "SetLogger.jsx: reps input gained `onKeyDown` calling `e.target.blur()` on Enter, matching the existing weight-field Enter-to-advance behavior.",
+      "supabase/migration_044_referral_source.sql: added `heard_about_us text` to profiles. Onboarding.jsx: new optional field placed after height, before the Continue button. lib/queries.js: saveProfile now accepts and persists `heardAboutUs`.",
+      "New WhatsNext.jsx + lib/whatsNext.js: customer-facing roadmap page, same visual pattern as VersionHistory.jsx but no version numbers or search. Wired into Home.jsx next to the existing \"What's new\" button. Seeded with two items: main-menu access from the workout menu, and exercise-specific charts (7d/30d/90d/1y, weight/reps/volume) in the library.",
+    ],
+  },
+  {
     version: "1.9.22",
     date: "2026-07-08",
     items: [

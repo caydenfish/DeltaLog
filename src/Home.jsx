@@ -8,6 +8,7 @@ import { versionsSince } from "./lib/versionCheck";
 import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, bucketWeightHistory, bucketDailyVolume, groupWorkoutsByDate } from "./lib/volume";
 import { muscleLabel } from "./lib/muscleNomenclature";
 import { toDisplay } from "./lib/weight";
+import { InlineLoading } from "./LoadingSpinner";
 import { toLocalDateStr } from "./lib/time";
 import BodyHeatmap from "./BodyHeatmap";
 import MuscleSetsDetail from "./MuscleSetsDetail";
@@ -31,6 +32,7 @@ import FeedbackModal from "./FeedbackModal";
 import TermsViewer from "./TermsViewer";
 import PrivacyPolicy from "./PrivacyPolicy";
 import WhatsNew from "./WhatsNew";
+import WhatsNext from "./WhatsNext";
 import HelpSupport from "./HelpSupport";
 import SetupWizard from "./SetupWizard";
 import VersionHistory from "./VersionHistory";
@@ -139,6 +141,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [showWhatsNext, setShowWhatsNext] = useState(false);
   const [autoWhatsNewEntries, setAutoWhatsNewEntries] = useState(null);
   const [showHelpSupport, setShowHelpSupport] = useState(false);
   const [showSetupReplay, setShowSetupReplay] = useState(false);
@@ -562,7 +565,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
             </div>
           )}
           {history === null ? (
-            <div style={{ color: T.dim, fontSize: 13, padding: "40px 0", textAlign: "center" }}>Loading your history…</div>
+            <InlineLoading label="Loading your history…" padding="40px 0" />
           ) : (
             <>
               {/* Shared training range — controls Volume, Weight, and Muscle breakdown below */}
@@ -911,12 +914,21 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
                 </button>
               </div>
 
-              <button
-                onClick={() => setShowWhatsNew(true)}
-                style={{ display: "block", width: "100%", textAlign: "center", background: "none", border: "none", color: T.dim, fontSize: 11, marginTop: 12, opacity: 0.6, padding: 0 }}
-              >
-                v{APP_VERSION} · What's new
-              </button>
+              <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 12 }}>
+                <button
+                  onClick={() => setShowWhatsNew(true)}
+                  style={{ background: "none", border: "none", color: T.dim, fontSize: 11, opacity: 0.6, padding: 0 }}
+                >
+                  v{APP_VERSION} · What's new
+                </button>
+                <div style={{ color: T.dim, fontSize: 11, opacity: 0.4 }}>·</div>
+                <button
+                  onClick={() => setShowWhatsNext(true)}
+                  style={{ background: "none", border: "none", color: T.dim, fontSize: 11, opacity: 0.6, padding: 0 }}
+                >
+                  What's next
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -926,6 +938,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
       {showTerms && <TermsViewer onClose={() => setShowTerms(false)} />}
       {showPrivacy && <PrivacyPolicy user={user} onClose={() => setShowPrivacy(false)} />}
       {showWhatsNew && <WhatsNew onClose={() => setShowWhatsNew(false)} />}
+      {showWhatsNext && <WhatsNext onClose={() => setShowWhatsNext(false)} />}
       {autoWhatsNewEntries && <WhatsNew entries={autoWhatsNewEntries} onClose={closeAutoWhatsNew} />}
       {showHelpSupport && (
         <HelpSupport
@@ -1021,7 +1034,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
 
               {showArchivedAnnouncements ? (
                 <>
-                  {archivedAnnouncements === null && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading…</div>}
+                  {archivedAnnouncements === null && <InlineLoading />}
                   {archivedAnnouncements !== null && archivedAnnouncements.length === 0 && (
                     <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>Nothing archived.</div>
                   )}
@@ -1041,7 +1054,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
                 </>
               ) : (
                 <>
-                  {announcements === null && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading…</div>}
+                  {announcements === null && <InlineLoading />}
                   {announcements !== null && announcements.length === 0 && (
                     <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>Nothing posted yet.</div>
                   )}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchMyCustomExercises, fetchArchivedCustomExercises, updateCustomExercise, deleteCustomExercise, setExerciseArchived, uploadExerciseMedia } from "./lib/queries";
 import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
+import { InlineLoading } from "./LoadingSpinner";
 
 const T = {
   bg: "#101216",
@@ -169,7 +170,7 @@ export default function MyCustomExercises({ user, onClose }) {
         <div style={{ padding: 16, flex: 1 }}>
           {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
-          {rows === undefined && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading…</div>}
+          {rows === undefined && <InlineLoading />}
 
           {rows && rows.length === 0 && (
             <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>
@@ -190,7 +191,7 @@ export default function MyCustomExercises({ user, onClose }) {
           </button>
           {showArchived && (
             <div>
-              {archivedRows === undefined && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 0" }}>Loading…</div>}
+              {archivedRows === undefined && <InlineLoading padding="16px 0" />}
               {archivedRows && archivedRows.length === 0 && (
                 <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 0" }}>Nothing archived.</div>
               )}
