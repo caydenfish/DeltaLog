@@ -9,6 +9,12 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.27": {
+    title: "Taxonomy safety net",
+    items: [
+      "Admin: the muscle taxonomy screen now blocks accidentally creating a Detailed group that's actually a Scientific name, and flags any existing ones so they can be found and fixed.",
+    ],
+  },
   "1.9.26": {
     title: "Fixed the reentry freeze, exercise library, and cleaner taps",
     items: [

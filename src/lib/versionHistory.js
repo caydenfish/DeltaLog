@@ -5,6 +5,15 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.9.27",
+    date: "2026-07-09",
+    items: [
+      "Root-caused the 'Pectoralis Major (Clavicular) showing up in Detailed mode' report: not a code bug, a taxonomy data mistake. Someone tagging an exercise with a scientific name that wasn't in the list yet typed it into 'Add detailed entry' instead of adding it as a Scientific row under the existing 'Upper Chest' Detailed group -- so muscleLabel(..., \"detailed\") was correctly returning what's actually stored, which happened to be the scientific name itself, since that's what the stray Detailed group was named.",
+      "MuscleTaxonomyManager.jsx: added createDetailed(genericKey, label), which checks the typed label against every existing scientific_name (case-insensitive) before creating a new Detailed row, and routes to a confirmation modal (detailedWarning state) instead of creating it silently if there's a match. 'Add anyway' still works for the rare legitimate case where a detailed label and a scientific name happen to coincide.",
+      "MuscleTaxonomyManager.jsx: added suspectDetailed, the same match check run against all existing muscleDetailed rows, surfaced as a banner at the top of the screen listing every Detailed entry that already has this problem -- turns 'somewhere in the taxonomy' into an actual visible list to work through via the existing move-scientific-entry dropdown and delete-empty-group flow, no SQL required.",
+    ],
+  },
+  {
     version: "1.9.26",
     date: "2026-07-09",
     items: [

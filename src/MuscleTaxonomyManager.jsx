@@ -38,6 +38,7 @@ export default function MuscleTaxonomyManager({ muscleGroups, muscleDetailed, ta
   const [expandedDetailed, setExpandedDetailed] = useState(() => new Set());
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [detailedWarning, setDetailedWarning] = useState(null); // { genericKey, label } pending confirmation
 
   // Add-forms: which tier/parent is currently showing an inline "new" row.
   const [addingGenericOpen, setAddingGenericOpen] = useState(false);
@@ -89,8 +90,37 @@ export default function MuscleTaxonomyManager({ muscleGroups, muscleDetailed, ta
     return (taxonomy || []).filter((s) => s.detailed_key === detailedKey).sort((a, b) => a.scientific_name.localeCompare(b.scientific_name));
   }
 
+  // The single most common way this taxonomy gets corrupted: someone
+  // needs to tag an exercise with a scientific name that isn't in the
+  // list yet, types it into "Add detailed entry" instead of adding it as
+  // a Scientific row under the right existing Detailed group, and ends
+  // up with a stray Detailed entry whose label IS a scientific name --
+  // so muscleLabel(..., "detailed") just returns that scientific string
+  // back, looking exactly like Scientific mode leaking into Detailed
+  // mode. Catch the obvious case (exact match against an existing
+  // scientific_name) before it's created.
+  function createDetailed(genericKey, label) {
+    const trimmed = label.trim();
+    const looksScientific = (taxonomy || []).some((s) => s.scientific_name.toLowerCase() === trimmed.toLowerCase());
+    if (looksScientific) {
+      setDetailedWarning({ genericKey, label: trimmed });
+      return;
+    }
+    run(async () => { await addMuscleDetailed(trimmed, genericKey); setNewDetailedLabel(""); setAddingDetailedUnder(null); });
+  }
+
   const sortedGenerics = [...(muscleGroups || [])].sort((a, b) => a.label.localeCompare(b.label));
   const sortedDetailed = [...(muscleDetailed || [])].sort((a, b) => a.label.localeCompare(b.label));
+
+  // Existing data audit: any Detailed entry whose label exactly matches
+  // a Scientific name already in the table is almost certainly the
+  // mistake createDetailed() now blocks going forward -- surfaced here
+  // so existing bad rows (already live, already mislabeling people's
+  // muscle breakdown) can actually be found and fixed, not just stopped
+  // from recurring.
+  const suspectDetailed = sortedDetailed.filter((d) =>
+    (taxonomy || []).some((s) => s.scientific_name.toLowerCase() === d.label.toLowerCase())
+  );
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.9)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
@@ -103,6 +133,22 @@ export default function MuscleTaxonomyManager({ muscleGroups, muscleDetailed, ta
           Generic &rsaquo; Detailed &rsaquo; Scientific. Deleting a row with children is blocked until you move or remove them first.
         </div>
         {error && <div style={{ margin: "0 0 12px", padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.accent}`, color: T.accent, fontSize: 12.5 }}>{error}</div>}
+
+        {suspectDetailed.length > 0 && (
+          <div style={{ margin: "0 0 16px", padding: 12, borderRadius: 10, background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}` }}>
+            <div style={{ color: T.accent, fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+              {suspectDetailed.length} Detailed {suspectDetailed.length === 1 ? "entry looks" : "entries look"} like mistagged scientific names
+            </div>
+            <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.5, marginBottom: 8 }}>
+              These will show up as a raw scientific name in Detailed mode instead of a real label. Expand the group below, move its scientific entry to the correct Detailed group using the dropdown next to it, then delete this one.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {suspectDetailed.map((d) => (
+                <div key={d.key} style={{ color: T.text, fontSize: 12.5, fontWeight: 600 }}>&bull; {d.label}</div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {sortedGenerics.map((g) => {
           const genOpen = expandedGenerics.has(g.key);
@@ -248,7 +294,7 @@ export default function MuscleTaxonomyManager({ muscleGroups, muscleDetailed, ta
                       />
                       <button
                         disabled={busy || !newDetailedLabel.trim()}
-                        onClick={() => run(async () => { await addMuscleDetailed(newDetailedLabel, g.key); setNewDetailedLabel(""); setAddingDetailedUnder(null); })}
+                        onClick={() => createDetailed(g.key, newDetailedLabel)}
                         style={{ ...smallBtn, color: T.accent, borderColor: T.accent, flexShrink: 0 }}
                       >Add</button>
                       <button onClick={() => { setAddingDetailedUnder(null); setNewDetailedLabel(""); }} style={{ ...smallBtn, flexShrink: 0 }}>Cancel</button>
@@ -282,6 +328,31 @@ export default function MuscleTaxonomyManager({ muscleGroups, muscleDetailed, ta
           <button onClick={() => setAddingGenericOpen(true)} aria-label="Add generic group" style={{ ...pillAddBtn, marginTop: 10 }}>+</button>
         )}
       </div>
+
+      {detailedWarning && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.9)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box" }}>
+          <div style={{ width: "100%", maxWidth: 380, background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 18, boxSizing: "border-box" }}>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 8 }}>That's already a scientific name</div>
+            <div style={{ color: T.dim, fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>
+              "{detailedWarning.label}" is already tagged as a Scientific entry somewhere in this list. Creating a Detailed group with the same name usually means the app will show that scientific name back to people in Detailed mode instead of a real detailed label.
+              <br /><br />
+              If you're trying to tag an exercise with this scientific name, expand the correct Detailed group below (e.g. "Upper Chest") and use its own "+" to add the scientific name there instead.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setDetailedWarning(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600 }}>Cancel</button>
+              <button
+                onClick={() => run(async () => {
+                  await addMuscleDetailed(detailedWarning.label, detailedWarning.genericKey);
+                  setNewDetailedLabel(""); setAddingDetailedUnder(null); setDetailedWarning(null);
+                })}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.12)", color: T.accent, fontSize: 13, fontWeight: 700 }}
+              >
+                Add anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
