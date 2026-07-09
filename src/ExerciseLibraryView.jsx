@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleSpecific, fetchMuscleTaxonomy, createSharedExercise, uploadExerciseMedia } from "./lib/queries";
+import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleTaxonomy, createSharedExercise, uploadExerciseMedia } from "./lib/queries";
 import { muscleLabel } from "./lib/muscleNomenclature";
 import { MUSCLE_COLORS } from "./lib/muscleColors";
 import ExerciseThumb from "./ExerciseThumb";
@@ -85,7 +85,6 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
 
   const [muscleGroups, setMuscleGroups] = useState(undefined);
   const [muscleDetailed, setMuscleDetailed] = useState(undefined);
-  const [muscleSpecific, setMuscleSpecific] = useState(undefined);
   const [taxonomy, setTaxonomy] = useState(undefined);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -105,9 +104,9 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
   }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Level 2 shows whichever granular level is currently selected —
-  // Detailed, Specific, or Scientific. General is fully represented by
-  // the level 1 buckets already, so anyone in General mode still gets
-  // Detailed names one level down rather than a fourth, undefined state.
+  // Region or Anatomy. Category is fully represented by the level 1
+  // buckets already, so anyone in Category mode still gets Region names
+  // one level down rather than an undefined state.
   const level2Mode = muscleNameMode === "generic" ? "detailed" : muscleNameMode;
 
   const q = search.trim().toLowerCase();
@@ -218,7 +217,6 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
   function reloadTaxonomyData() {
     fetchMuscleGroups().then(setMuscleGroups).catch(() => setMuscleGroups([]));
     fetchMuscleDetailed().then(setMuscleDetailed).catch(() => setMuscleDetailed([]));
-    fetchMuscleSpecific().then(setMuscleSpecific).catch(() => setMuscleSpecific([]));
     fetchMuscleTaxonomy().then(setTaxonomy).catch(() => setTaxonomy([]));
   }
 
@@ -419,7 +417,6 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
         <MuscleTaxonomyManager
           muscleGroups={muscleGroups}
           muscleDetailed={muscleDetailed}
-          muscleSpecific={muscleSpecific}
           taxonomy={taxonomy}
           onReload={reloadTaxonomyData}
           onClose={() => setShowTaxonomy(false)}
