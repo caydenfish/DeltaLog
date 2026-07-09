@@ -214,7 +214,7 @@ function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMu
   // filter for a neck or full-body movement.
   const muscleOptions = muscleNameMode === "generic"
     ? Object.keys(MUSCLE_COLORS).map((m) => ({ key: m, label: m, color: MUSCLE_COLORS[m] }))
-    : getMuscleTaxonomyEntries().map((e) => ({ key: e.scientific, label: muscleNameMode === "scientific" ? e.scientific : e.detailed, color: MUSCLE_COLORS[e.generic] }));
+    : getMuscleTaxonomyEntries().map((e) => ({ key: e.scientific, label: e[muscleNameMode] || e.detailed, color: MUSCLE_COLORS[e.generic] }));
   return (
     <div>
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -1435,11 +1435,11 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
     // labeled at whichever precision the mode calls for.
     const muscleOptions = muscleNameMode === "generic"
       ? Object.keys(MUSCLE_COLORS).filter((m) => !GENERATOR_EXCLUDED_GENERIC.includes(m)).map((m) => ({ key: m, label: m, color: MUSCLE_COLORS[m] }))
-      : getMuscleTaxonomyEntries().filter((e) => !GENERATOR_EXCLUDED_GENERIC.includes(e.generic)).map((e) => ({ key: e.scientific, label: muscleNameMode === "scientific" ? e.scientific : e.detailed, color: MUSCLE_COLORS[e.generic] }));
+      : getMuscleTaxonomyEntries().filter((e) => !GENERATOR_EXCLUDED_GENERIC.includes(e.generic)).map((e) => ({ key: e.scientific, label: e[muscleNameMode] || e.detailed, color: MUSCLE_COLORS[e.generic] }));
     // Resolves a key from genMuscles to a display label/color even if it
     // was picked under a different naming mode (e.g. picked a bucket in
     // Generic, then switched to Scientific) rather than breaking silently.
-    const optionFor = (key) => muscleOptions.find((o) => o.key === key) || { key, label: MUSCLE_COLORS[key] ? key : (getMuscleTaxonomyEntries().find((e) => e.scientific === key)?.[muscleNameMode === "scientific" ? "scientific" : "detailed"] || key), color: MUSCLE_COLORS[key] || MUSCLE_COLORS[getMuscleTaxonomyEntries().find((e) => e.scientific === key)?.generic] || T.dim };
+    const optionFor = (key) => muscleOptions.find((o) => o.key === key) || { key, label: MUSCLE_COLORS[key] ? key : (getMuscleTaxonomyEntries().find((e) => e.scientific === key)?.[muscleNameMode] || key), color: MUSCLE_COLORS[key] || MUSCLE_COLORS[getMuscleTaxonomyEntries().find((e) => e.scientific === key)?.generic] || T.dim };
     return (
       <div style={outer}>
         <style>{`${fontImport} button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>

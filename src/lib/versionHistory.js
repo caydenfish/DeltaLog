@@ -5,6 +5,18 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.10.1",
+    date: "2026-07-09",
+    items: [
+      "supabase/migration_046_muscle_specific_tier.sql: fourth taxonomy tier (Specific, e.g. 'Triceps Long Head') inserted between Detailed and Scientific. Full chain: muscle_groups (General) <- muscle_detailed (Detailed) <- muscle_specific (Specific) [NEW] <- muscle_taxonomy (Scientific). Written defensively to detect and upgrade whichever shape is currently live in one pass -- old flat muscle_034/036 shape, the 3-tier migration_040 shape, or already-4-tier -- since which of the earlier migrations actually landed on the live DB was unconfirmed. Seeds one '(General)' Specific placeholder per existing Detailed group so no existing Scientific entry is orphaned; real subdivisions get split out by hand from the admin screen. Also recreates admin_rename_muscle_scientific (supersedes migration_045, safe to run either order) since it was reported missing from PostgREST's schema cache, and ends with `notify pgrst, 'reload schema'`.",
+      "lib/queries.js: added fetchMuscleSpecific/addMuscleSpecific/updateMuscleSpecific/deleteMuscleSpecific mirroring the existing muscle_detailed CRUD. fetchMuscleTaxonomy's select now joins scientific -> specific -> detailed (muscle_taxonomy.specific_key -> muscle_specific -> muscle_detailed) and flattens to {scientific_name, specific_key, specific_name, detailed_key, detailed_name, generic_group} so callers see one flat shape regardless of the extra join. addMuscleTaxonomyEntry/updateMuscleTaxonomyEntry now take specificKey instead of detailedKey.",
+      "lib/muscleNomenclature.js: added SPECIFIC_NAMES (defaults to DETAILED_NAMES until a bucket is actually split) and a `specific` field on every ALIASES entry and the dbTaxonomy cache shape. muscleLabel's mode union is now generic|detailed|specific|scientific.",
+      "New MuscleNameSlider.jsx: 4-position range input (General/Detailed/Specific/Scientific) with tick marks and labels laid over a native <input type=range> for drag/keyboard/tap support, replacing the old button-row toggle. Wired into both Preferences.jsx render paths (grouped Settings screen, and the ungrouped in-workout quick menu) and SetupWizard.jsx.",
+      "MuscleTaxonomyManager.jsx: rebuilt around a single reusable TierRow component (label/rename/move-dropdown/delete, identical behavior at every tier) instead of four hand-copied blocks, now rendering all four tiers as one nested tree. The mistagged-scientific-name detection and warning-before-create flow (introduced for Detailed only) is generalized to both Detailed and Specific via looksLikeScientificName/createDetailed/createSpecific/confirmNameWarning, with the audit banner now listing suspects from both tiers.",
+      "ExerciseLibraryView.jsx: level2Mode (browse level 2 in the customer-facing library) already read whichever mode isn't \"generic\" directly, so Specific mode works there with no additional change -- confirmed via build, not modified.",
+    ],
+  },
+  {
     version: "1.9.27",
     date: "2026-07-09",
     items: [

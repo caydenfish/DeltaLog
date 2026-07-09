@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getPrefs, setPref } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
 import Logo from "./Logo";
+import MuscleNameSlider from "./MuscleNameSlider";
 
 const T = {
   bg: "#101216",
@@ -147,8 +148,8 @@ export default function SetupWizard({ onComplete }) {
       subtitle: "How muscle groups are labeled throughout the app.",
       body: (
         <>
-          <PillRow options={[{ key: "generic", label: "Generic" }, { key: "detailed", label: "Detailed" }, { key: "scientific", label: "Scientific" }]} value={muscleNameMode} onChange={setMuscleNameMode} columns={1} />
-          <InfoBox>e.g. Shoulder vs Front Delts vs Anterior Deltoid</InfoBox>
+          <MuscleNameSlider value={muscleNameMode} onChange={setMuscleNameMode} />
+          <InfoBox>e.g. Chest vs Upper Chest vs Clavicular Head vs Pectoralis Major (Clavicular Head)</InfoBox>
         </>
       ),
     },

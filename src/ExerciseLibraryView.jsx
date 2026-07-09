@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleTaxonomy, createSharedExercise, uploadExerciseMedia } from "./lib/queries";
+import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleSpecific, fetchMuscleTaxonomy, createSharedExercise, uploadExerciseMedia } from "./lib/queries";
 import { muscleLabel } from "./lib/muscleNomenclature";
 import { MUSCLE_COLORS } from "./lib/muscleColors";
 import ExerciseThumb from "./ExerciseThumb";
@@ -85,6 +85,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
 
   const [muscleGroups, setMuscleGroups] = useState(undefined);
   const [muscleDetailed, setMuscleDetailed] = useState(undefined);
+  const [muscleSpecific, setMuscleSpecific] = useState(undefined);
   const [taxonomy, setTaxonomy] = useState(undefined);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -100,16 +101,14 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
 
   useEffect(() => {
     if (!isAdmin) return;
-    fetchMuscleGroups().then(setMuscleGroups).catch(() => setMuscleGroups([]));
-    fetchMuscleDetailed().then(setMuscleDetailed).catch(() => setMuscleDetailed([]));
-    fetchMuscleTaxonomy().then(setTaxonomy).catch(() => setTaxonomy([]));
-  }, [isAdmin]);
+    reloadTaxonomyData();
+  }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Level 2 only ever distinguishes Detailed vs Scientific — Generic is
-  // fully represented by the level 1 buckets already, so anyone in
-  // Generic mode still gets Detailed names one level down rather than a
-  // third, undefined state.
-  const level2Mode = muscleNameMode === "scientific" ? "scientific" : "detailed";
+  // Level 2 shows whichever granular level is currently selected —
+  // Detailed, Specific, or Scientific. General is fully represented by
+  // the level 1 buckets already, so anyone in General mode still gets
+  // Detailed names one level down rather than a fourth, undefined state.
+  const level2Mode = muscleNameMode === "generic" ? "detailed" : muscleNameMode;
 
   const q = search.trim().toLowerCase();
   const filtered = (exercises || []).filter((ex) => {
@@ -151,7 +150,10 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
 
   function taxonomyLabel(scientificName) {
     const entry = (taxonomy || []).find((t) => t.scientific_name === scientificName);
-    return entry ? `${entry.scientific_name} (${entry.detailed_name})` : scientificName;
+    if (!entry) return scientificName;
+    return entry.specific_name && entry.specific_name !== entry.detailed_name
+      ? `${entry.scientific_name} (${entry.specific_name})`
+      : `${entry.scientific_name} (${entry.detailed_name})`;
   }
 
   function startEdit(ex) {
@@ -216,6 +218,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
   function reloadTaxonomyData() {
     fetchMuscleGroups().then(setMuscleGroups).catch(() => setMuscleGroups([]));
     fetchMuscleDetailed().then(setMuscleDetailed).catch(() => setMuscleDetailed([]));
+    fetchMuscleSpecific().then(setMuscleSpecific).catch(() => setMuscleSpecific([]));
     fetchMuscleTaxonomy().then(setTaxonomy).catch(() => setTaxonomy([]));
   }
 
@@ -416,6 +419,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
         <MuscleTaxonomyManager
           muscleGroups={muscleGroups}
           muscleDetailed={muscleDetailed}
+          muscleSpecific={muscleSpecific}
           taxonomy={taxonomy}
           onReload={reloadTaxonomyData}
           onClose={() => setShowTaxonomy(false)}

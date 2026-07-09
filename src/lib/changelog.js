@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.10.1": {
+    title: "A fourth level of muscle detail, and a cleaner way to pick it",
+    items: [
+      "Muscle names now have four levels instead of three: General (Chest), Detailed (Upper Chest), Specific (Clavicular Head), and Scientific (Pectoralis Major, Clavicular Head).",
+      "The muscle name setting is now a slider with all four levels instead of a row of buttons.",
+      "Admin: the muscle taxonomy screen has been rebuilt as a full four-level tree, with the ability to add, rename, move, and delete at every level.",
+    ],
+  },
   "1.9.27": {
     title: "Taxonomy safety net",
     items: [

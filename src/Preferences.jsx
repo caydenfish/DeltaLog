@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getPrefs, setPref } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
+import MuscleNameSlider from "./MuscleNameSlider";
 
 const T = {
   bg: "#101216",
@@ -289,28 +290,13 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
 
         {matches("scientificNames") && (
         <div style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div>
               <div style={{ color: T.text, fontSize: 14 }}>Muscle names</div>
-              <div style={{ color: T.dim, fontSize: 11 }}>e.g. Shoulder vs Front Delts vs Anterior Deltoid</div>
+              <div style={{ color: T.dim, fontSize: 11 }}>e.g. Chest vs Upper Chest vs Clavicular Head vs Pectoralis Major (Clavicular Head)</div>
             </div>
           </div>
-          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
-            {[{ key: "generic", label: "Generic" }, { key: "detailed", label: "Detailed" }, { key: "scientific", label: "Scientific" }].map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => update("muscleNameMode", opt.key)}
-                aria-pressed={muscleNameMode === opt.key}
-                style={{
-                  flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none",
-                  background: muscleNameMode === opt.key ? T.accent : "transparent",
-                  color: muscleNameMode === opt.key ? "#fff" : T.dim,
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <MuscleNameSlider value={muscleNameMode} onChange={(v) => update("muscleNameMode", v)} />
         </div>
         )}
 
@@ -383,28 +369,13 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
 
         {show("scientificNames") && matches("scientificNames") && (
         <div style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div>
               <div style={{ color: T.text, fontSize: 14 }}>Muscle names</div>
-              <div style={{ color: T.dim, fontSize: 11 }}>e.g. Shoulder vs Front Delts vs Anterior Deltoid</div>
+              <div style={{ color: T.dim, fontSize: 11 }}>e.g. Chest vs Upper Chest vs Clavicular Head vs Pectoralis Major (Clavicular Head)</div>
             </div>
           </div>
-          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
-            {[{ key: "generic", label: "Generic" }, { key: "detailed", label: "Detailed" }, { key: "scientific", label: "Scientific" }].map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => update("muscleNameMode", opt.key)}
-                aria-pressed={muscleNameMode === opt.key}
-                style={{
-                  flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none",
-                  background: muscleNameMode === opt.key ? T.accent : "transparent",
-                  color: muscleNameMode === opt.key ? "#fff" : T.dim,
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <MuscleNameSlider value={muscleNameMode} onChange={(v) => update("muscleNameMode", v)} />
         </div>
         )}
 

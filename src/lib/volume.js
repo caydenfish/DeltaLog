@@ -50,7 +50,7 @@ export function computeMuscleVolumes(entries) {
 // same { muscle, primaryMuscles, secondaryMuscles, sets } entries used by
 // computeMuscleVolumes. Backs the "Primary Muscles / Secondary Muscles"
 // breakdown, which reports real set counts instead of a heatmap intensity.
-// `nameMode` ("generic" | "detailed" | "scientific") controls the
+// `nameMode` ("generic" | "detailed" | "specific" | "scientific") controls the
 // granularity of the grouping itself, not just the label shown afterward —
 // e.g. under "detailed" mode, "Front Delts" and "Rear Delts" show up as
 // separate rows instead of both collapsing into "Shoulders". Primary

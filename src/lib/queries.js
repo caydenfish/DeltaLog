@@ -183,39 +183,74 @@ export async function deleteMuscleDetailed(key) {
   if (error) throw error;
 }
 
-// Tier 3 (scientific): what actually gets stored in
+// Tier 3 (specific): a finer split under Detailed for muscles worth
+// separating further (e.g. "Triceps Long Head" / "Triceps Short Head"
+// under "Triceps"). Migration_046. Every Detailed group gets a
+// "(General)" placeholder row seeded automatically so nothing is ever
+// orphaned -- split real subdivisions out of it by hand as needed.
+export async function fetchMuscleSpecific() {
+  const { data, error } = await supabase.from("muscle_specific").select("key, label, detailed_key").order("label");
+  if (error) throw error;
+  return data;
+}
+
+export async function addMuscleSpecific(label, detailedKey) {
+  const key = slugify(label);
+  const { error } = await supabase.from("muscle_specific").insert({ key, label: label.trim(), detailed_key: detailedKey });
+  if (error) throw error;
+}
+
+export async function updateMuscleSpecific(key, { label, detailedKey } = {}) {
+  const payload = {};
+  if (label !== undefined) payload.label = label.trim();
+  if (detailedKey !== undefined) payload.detailed_key = detailedKey;
+  const { error } = await supabase.from("muscle_specific").update(payload).eq("key", key);
+  if (error) throw error;
+}
+
+// Will fail with a foreign-key error if any muscle_taxonomy row still
+// points at this specific entry -- same re-point-or-delete-children-first
+// intent as deleteMuscleGroup/deleteMuscleDetailed.
+export async function deleteMuscleSpecific(key) {
+  const { error } = await supabase.from("muscle_specific").delete().eq("key", key);
+  if (error) throw error;
+}
+
+// Tier 4 (scientific): what actually gets stored in
 // exercises.primary_muscles / secondary_muscles. Each row points at a
-// detailed entry via detailed_key; generic_group is deliberately not
-// stored here anymore (migration_040) -- it's derived through the join
-// below so it can never drift out of sync with its detailed parent.
-// Shape kept flat ({scientific_name, detailed_name, generic_group}) on
+// specific entry via specific_key; detailed_name/generic_group are
+// deliberately not stored here -- derived through the join below so
+// they can never drift out of sync with their parents. Shape kept flat
+// ({scientific_name, specific_name, detailed_name, generic_group}) on
 // purpose: setMuscleTaxonomyCache and everything that reads its output
-// (muscleLabel, genericBucket, the exercise edit picker) were built
-// against that shape and don't need to change.
+// (muscleLabel, genericBucket, the exercise edit picker) read that flat
+// shape rather than a nested one.
 export async function fetchMuscleTaxonomy() {
   const { data, error } = await supabase
     .from("muscle_taxonomy")
-    .select("scientific_name, detailed_key, muscle_detailed(label, generic_group)")
+    .select("scientific_name, specific_key, muscle_specific(label, detailed_key, muscle_detailed(label, generic_group))")
     .order("scientific_name");
   if (error) throw error;
   return data.map((r) => ({
     scientific_name: r.scientific_name,
-    detailed_key: r.detailed_key,
-    detailed_name: r.muscle_detailed?.label,
-    generic_group: r.muscle_detailed?.generic_group,
+    specific_key: r.specific_key,
+    specific_name: r.muscle_specific?.label,
+    detailed_key: r.muscle_specific?.detailed_key,
+    detailed_name: r.muscle_specific?.muscle_detailed?.label,
+    generic_group: r.muscle_specific?.muscle_detailed?.generic_group,
   }));
 }
 
-export async function addMuscleTaxonomyEntry(scientificName, detailedKey) {
-  const { error } = await supabase.from("muscle_taxonomy").insert({ scientific_name: scientificName.trim(), detailed_key: detailedKey });
+export async function addMuscleTaxonomyEntry(scientificName, specificKey) {
+  const { error } = await supabase.from("muscle_taxonomy").insert({ scientific_name: scientificName.trim(), specific_key: specificKey });
   if (error) throw error;
 }
 
-// Re-points which detailed entry a scientific name rolls up under.
+// Re-points which specific entry a scientific name rolls up under.
 // Renaming the scientific name itself goes through renameMuscleScientific
 // instead, since that has to cascade into tagged exercises.
-export async function updateMuscleTaxonomyEntry(scientificName, { detailedKey }) {
-  const { error } = await supabase.from("muscle_taxonomy").update({ detailed_key: detailedKey }).eq("scientific_name", scientificName);
+export async function updateMuscleTaxonomyEntry(scientificName, { specificKey }) {
+  const { error } = await supabase.from("muscle_taxonomy").update({ specific_key: specificKey }).eq("scientific_name", scientificName);
   if (error) throw error;
 }
 
