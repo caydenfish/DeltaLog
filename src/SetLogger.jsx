@@ -13,7 +13,7 @@ import ExportWorkoutModal from "./ExportWorkoutModal";
 import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconLink, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell } from "./Icons";
 import { getSplits } from "./lib/splits";
-import { muscleLabel, getMuscleTaxonomyEntries, scientificNameOf } from "./lib/muscleNomenclature";
+import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf } from "./lib/muscleNomenclature";
 // "Full Body" and "Neck" are real generic buckets (used for coloring/
 // display elsewhere) but aren't meaningful things to target when
 // building a workout via the generator's muscle picker -- nobody picks
@@ -214,7 +214,9 @@ function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMu
   // filter for a neck or full-body movement.
   const muscleOptions = muscleNameMode === "generic"
     ? Object.keys(MUSCLE_COLORS).map((m) => ({ key: m, label: m, color: MUSCLE_COLORS[m] }))
-    : getMuscleTaxonomyEntries().map((e) => ({ key: e.scientific, label: e[muscleNameMode] || e.detailed, color: MUSCLE_COLORS[e.generic] }));
+    : muscleNameMode === "detailed"
+      ? getDetailedTaxonomyEntries().map((e) => ({ key: e.detailed, label: e.detailed, color: MUSCLE_COLORS[e.generic] }))
+      : getMuscleTaxonomyEntries().map((e) => ({ key: e.scientific, label: e.scientific, color: MUSCLE_COLORS[e.generic] }));
   return (
     <div>
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -236,7 +238,9 @@ function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMu
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
             {Object.keys(getSplits()).map((splitName) => {
               const buckets = getSplits()[splitName];
-              const group = muscleNameMode === "generic" ? buckets : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
+              const group = muscleNameMode === "generic" ? buckets : muscleNameMode === "detailed"
+                ? getDetailedTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.detailed)
+                : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
               const active = group.length > 0 && group.length === muscleFilter.length && group.every((m) => muscleFilter.includes(m));
               return (
                 <button key={splitName} onClick={() => onApplySplit(splitName)} style={chip(active)}>{splitName}</button>
@@ -430,7 +434,9 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
     const buckets = getSplits()[splitName];
     const group = mode === "generic"
       ? buckets
-      : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
+      : mode === "detailed"
+        ? getDetailedTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.detailed)
+        : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
     const isActive = group.length > 0 && group.length === muscleFilter.length && group.every((m) => muscleFilter.includes(m));
     setMuscleFilter(isActive ? [] : group);
   }
@@ -1081,13 +1087,20 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
 
   // Whether exercise `l` belongs to target-muscle option `key`. In generic
   // mode `key` is one of the 8 buckets, matched against l.muscle directly.
-  // In Detailed/Scientific mode `key` is a canonical scientific name, matched
-  // against l's raw (un-collapsed) primary/secondary muscle tags -- that's
-  // the only place the granular tagging survives, since l.muscle and
-  // l.primaryMuscles/secondaryMuscles are already rolled up to buckets.
+  // In Detailed mode `key` is a Region label (e.g. "Hamstrings") -- matched
+  // via detailedNameOf so every scientific entry that rolls up to that
+  // label counts as a match, which is what lets "Biceps Femoris (Long
+  // Head)" and "(Short Head)" both count toward one "Hamstrings" button
+  // instead of splitting it into duplicates. In Scientific mode `key` is
+  // the exact anatomical name, matched via scientificNameOf. Both non-
+  // generic modes match against l's raw (un-collapsed) primary/secondary
+  // muscle tags, since l.muscle and l.primaryMuscles/secondaryMuscles are
+  // already rolled up to buckets.
   function exerciseMatchesOption(l, key, mode) {
     if (mode === "generic") return l.muscle === key;
-    return [...(l.rawPrimaryMuscles || []), ...(l.rawSecondaryMuscles || [])].some((raw) => scientificNameOf(raw) === key);
+    const raws = [...(l.rawPrimaryMuscles || []), ...(l.rawSecondaryMuscles || [])];
+    if (mode === "detailed") return raws.some((raw) => detailedNameOf(raw) === key);
+    return raws.some((raw) => scientificNameOf(raw) === key);
   }
   function toggleGenMuscle(m) {
     const mode = getPrefs().muscleNameMode;
@@ -1099,14 +1112,22 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
   function applySplit(splitName) {
     const mode = getPrefs().muscleNameMode;
     const buckets = getSplits()[splitName];
-    // Generic mode: the split's bucket names ARE the option keys. Detailed/
-    // Scientific mode: expand each bucket into every granular taxonomy
-    // entry that rolls up to it, so "Push" still means something precise
-    // (Pectoralis Major, Anterior Deltoid, Triceps Brachii, ...) instead of
-    // collapsing back down to just "Chest, Shoulders, Arms".
+    // Generic mode: the split's bucket names ARE the option keys. Scientific
+    // mode: expand each bucket into every granular taxonomy entry that
+    // rolls up to it, so "Push" still means something precise (Pectoralis
+    // Major, Anterior Deltoid, Triceps Brachii, ...) instead of collapsing
+    // back down to just "Chest, Shoulders, Arms". Detailed mode: same idea,
+    // but expand into deduped Region labels (getDetailedTaxonomyEntries)
+    // rather than raw scientific names, since that's what the option keys
+    // are at that precision -- otherwise a bucket with two scientific
+    // entries sharing one detailed label (e.g. both heads of Biceps
+    // Femoris under "Hamstrings") would count as two keys and the split
+    // would never show as fully active.
     const group = mode === "generic"
       ? buckets
-      : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
+      : mode === "detailed"
+        ? getDetailedTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.detailed)
+        : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
     const isActive = group.length > 0 && group.length === genMuscles.length && group.every((m) => genMuscles.includes(m));
     if (isActive) {
       setGenMuscles([]);
@@ -1430,16 +1451,29 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
       !genQ || l.name.toLowerCase().includes(genQ) || (l.aliases || []).some((a) => a.toLowerCase().includes(genQ)) || l.equipment.toLowerCase().includes(genQ)
     ));
     // Generic mode: the 6 real target buckets (Full Body/Neck excluded --
-    // nobody targets those from a generator). Detailed/Scientific: every
-    // granular taxonomy entry that rolls up to one of those 6 buckets,
-    // labeled at whichever precision the mode calls for.
+    // nobody targets those from a generator). Detailed mode: every unique
+    // Region label that rolls up to one of those 6 buckets, deduped so
+    // e.g. both heads of Biceps Femoris surface as one "Hamstrings" button
+    // instead of two. Scientific mode: every granular taxonomy entry at
+    // full anatomical precision, one button each.
     const muscleOptions = muscleNameMode === "generic"
       ? Object.keys(MUSCLE_COLORS).filter((m) => !GENERATOR_EXCLUDED_GENERIC.includes(m)).map((m) => ({ key: m, label: m, color: MUSCLE_COLORS[m] }))
-      : getMuscleTaxonomyEntries().filter((e) => !GENERATOR_EXCLUDED_GENERIC.includes(e.generic)).map((e) => ({ key: e.scientific, label: e[muscleNameMode] || e.detailed, color: MUSCLE_COLORS[e.generic] }));
+      : muscleNameMode === "detailed"
+        ? getDetailedTaxonomyEntries().filter((e) => !GENERATOR_EXCLUDED_GENERIC.includes(e.generic)).map((e) => ({ key: e.detailed, label: e.detailed, color: MUSCLE_COLORS[e.generic] }))
+        : getMuscleTaxonomyEntries().filter((e) => !GENERATOR_EXCLUDED_GENERIC.includes(e.generic)).map((e) => ({ key: e.scientific, label: e.scientific, color: MUSCLE_COLORS[e.generic] }));
     // Resolves a key from genMuscles to a display label/color even if it
     // was picked under a different naming mode (e.g. picked a bucket in
     // Generic, then switched to Scientific) rather than breaking silently.
-    const optionFor = (key) => muscleOptions.find((o) => o.key === key) || { key, label: MUSCLE_COLORS[key] ? key : (getMuscleTaxonomyEntries().find((e) => e.scientific === key)?.[muscleNameMode] || key), color: MUSCLE_COLORS[key] || MUSCLE_COLORS[getMuscleTaxonomyEntries().find((e) => e.scientific === key)?.generic] || T.dim };
+    const optionFor = (key) => {
+      const found = muscleOptions.find((o) => o.key === key);
+      if (found) return found;
+      if (MUSCLE_COLORS[key]) return { key, label: key, color: MUSCLE_COLORS[key] };
+      const bySci = getMuscleTaxonomyEntries().find((e) => e.scientific === key);
+      if (bySci) return { key, label: bySci[muscleNameMode] || bySci.detailed, color: MUSCLE_COLORS[bySci.generic] || T.dim };
+      const byDetailed = getDetailedTaxonomyEntries().find((e) => e.detailed === key);
+      if (byDetailed) return { key, label: byDetailed.detailed, color: MUSCLE_COLORS[byDetailed.generic] || T.dim };
+      return { key, label: key, color: T.dim };
+    };
     return (
       <div style={outer}>
         <style>{`${fontImport} button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>
@@ -1454,7 +1488,9 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 16 }}>
               {Object.keys(getSplits()).map((splitName) => {
                 const buckets = getSplits()[splitName];
-                const group = muscleNameMode === "generic" ? buckets : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
+                const group = muscleNameMode === "generic" ? buckets : muscleNameMode === "detailed"
+                  ? getDetailedTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.detailed)
+                  : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
                 const active = group.length > 0 && group.length === genMuscles.length && group.every((m) => genMuscles.includes(m));
                 return (
                   <button key={splitName} onClick={() => applySplit(splitName)} style={{ padding: "9px 2px", borderRadius: 10, fontSize: 12, fontWeight: 700, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(232,68,46,0.15)" : T.surface, color: active ? T.text : T.dim }}>

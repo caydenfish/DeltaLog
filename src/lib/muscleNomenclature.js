@@ -180,6 +180,20 @@ export function getMuscleTaxonomyEntries() {
   return [...seen.values()];
 }
 
+// Same source data as getMuscleTaxonomyEntries, but deduped by Detailed
+// ("Region") label instead of Scientific name -- for contexts picking at
+// Region precision (e.g. the workout generator's target-muscle picker in
+// Detailed mode), where multiple scientific entries sharing one detailed
+// label (e.g. both heads of Biceps Femoris under "Hamstrings") should
+// surface as a single option rather than one button per scientific name.
+export function getDetailedTaxonomyEntries() {
+  const seen = new Map();
+  for (const entry of getMuscleTaxonomyEntries()) {
+    if (!seen.has(entry.detailed)) seen.set(entry.detailed, entry);
+  }
+  return [...seen.values()];
+}
+
 // Resolves any raw muscle tag (whichever vocabulary it happens to be in —
 // current DB taxonomy scientific_name, a legacy ALIASES key, or an
 // already-scientific string) to its canonical scientific name. Used for
@@ -190,6 +204,18 @@ export function scientificNameOf(raw) {
   if (!raw) return raw;
   const alias = lookupMuscle(raw);
   return alias ? alias.scientific : raw;
+}
+
+// Same as scientificNameOf but resolves to the Detailed-tier ("Region")
+// label instead. Multiple scientific entries legitimately collapse to
+// the same detailed name (e.g. "Biceps Femoris (Long Head)" and
+// "Biceps Femoris (Short Head)" both roll up to "Hamstrings") -- this
+// is what lets callers group by that shared label instead of treating
+// each underlying scientific name as its own bucket.
+export function detailedNameOf(raw) {
+  if (!raw) return raw;
+  const alias = lookupMuscle(raw);
+  return alias ? alias.detailed : raw;
 }
 
 // Reduces any raw muscle value (canonical bucket or granular alias) down
