@@ -2451,7 +2451,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
           {lastWeek.map((s, i) => <SetCard key={"lw" + i} s={s} label={setLabels(lastWeek)[i]} ghost unit={unit} actions={<button onClick={() => openWizard(s)} style={smallBtn}>Copy</button>} />)}
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 8px" }}>Today</div>
           {sets.length === 0 && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>No sets logged yet.</div>}
-          {sets.map((s, i) => <SetCard key={i} s={s} label={setLabels(sets)[i]} comparison={matchingLastWeekSet(lastWeek, sets, i)} unit={unit} onToggleWarmup={() => toggleSetWarmup(exIdx, i)} actions={<button onClick={() => openWizard(s, i)} style={smallBtn}>Edit</button>} />)}
+          {sets.map((s, i) => <SetCard key={i} s={s} label={setLabels(sets)[i]} comparison={matchingLastWeekSet(lastWeek, sets, i)} unit={unit} onToggleWarmup={() => toggleSetWarmup(exIdx, i)} actions={<div style={{ display: "flex", gap: 6 }}><button onClick={() => openWizard(s, i)} style={smallBtn}>Edit</button><button onClick={() => deleteLoggedSet(exIdx, i)} aria-label="Delete set" style={{ ...smallBtn, color: T.accent, borderColor: T.accent }}>Delete</button></div>} />)}
         </div>
         )}
 

@@ -5,6 +5,15 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.9.24",
+    date: "2026-07-09",
+    items: [
+      "SetLogger.jsx: SetCard's actions slot in the active exercise view (the \"Today\" list) previously only rendered an Edit button. Wrapped it in a flex row and added a Delete button reusing the existing deleteLoggedSet(exIdx, i), the same query-backed removal already used by the Edit Workout summary screen's expanded set list.",
+      "WorkoutHistory.jsx: added editingBodyWeight/bodyWeightDraft/savingBodyWeight state and startEditBodyWeight/saveBodyWeightEdit to DetailView. The bodyweight stat tile is now a button in editMode (showing \"+ Add\" when null), opening an inline input that calls saveWorkoutSummary(workout.id, w, workout.session_notes || null) -- passing through the existing session_notes since that query updates both columns together. New onBodyWeightUpdated(workoutId, bodyWeight) callback threaded through WorkoutHistory -> DetailView and wired in Home.jsx to patch the cached history in place. No unit conversion applied, consistent with how body weight is already captured on the post-workout screen (stored as typed, not canonicalized like exercise weights).",
+      "lib/whatsNext.js: added a body heat map roadmap item.",
+    ],
+  },
+  {
     version: "1.9.23",
     date: "2026-07-09",
     items: [

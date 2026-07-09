@@ -7,7 +7,7 @@ import { formatWeight, toDisplay, toCanonical } from "./lib/weight";
 import { formatClockTime, toLocalDateStr } from "./lib/time";
 import {
   deleteWorkout, updateSet, deleteSet, logSet, addWorkoutExercise, removeWorkoutExercise,
-  fetchExercises, uploadProgressPhoto, fetchProgressPhoto, deleteProgressPhoto, setSetWarmup, shareWorkout,
+  fetchExercises, uploadProgressPhoto, fetchProgressPhoto, deleteProgressPhoto, setSetWarmup, shareWorkout, saveWorkoutSummary,
 } from "./lib/queries";
 
 // Labels a sorted sets array for display: warmup sets count independently
@@ -143,7 +143,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
   );
 }
 
-function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved }) {
+function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
   const dateStr = new Date(workout.completed_at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const startTimeStr = workout.started_at ? formatClockTime(workout.started_at, timeFormat) : null;
   const isoDate = toLocalDateStr(workout.completed_at);
@@ -169,6 +169,34 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
   const [shareUrl, setShareUrl] = useState(null);
   const [showExport, setShowExport] = useState(false);
   const [progressPhoto, setProgressPhoto] = useState(undefined); // mirrors ProgressPhotoBlock's photo, lifted so "Save as image" can use it as a Story background
+  const [editingBodyWeight, setEditingBodyWeight] = useState(false);
+  const [bodyWeightDraft, setBodyWeightDraft] = useState("");
+  const [savingBodyWeight, setSavingBodyWeight] = useState(false);
+  const [bodyWeightError, setBodyWeightError] = useState(null);
+
+  function startEditBodyWeight() {
+    setBodyWeightDraft(workout.body_weight != null ? String(workout.body_weight) : "");
+    setBodyWeightError(null);
+    setEditingBodyWeight(true);
+  }
+
+  // No unit conversion here, matching how body weight is captured in the
+  // post-workout screen — it's stored exactly as typed, in whatever unit
+  // was active at the time, not canonicalized like exercise weights.
+  async function saveBodyWeightEdit() {
+    const w = bodyWeightDraft.trim() === "" ? null : parseFloat(bodyWeightDraft);
+    if (bodyWeightDraft.trim() !== "" && (isNaN(w) || w < 0)) { setBodyWeightError("Enter a valid weight, or leave it blank to clear."); return; }
+    setSavingBodyWeight(true);
+    setBodyWeightError(null);
+    try {
+      await saveWorkoutSummary(workout.id, w, workout.session_notes || null);
+      onBodyWeightUpdated && onBodyWeightUpdated(workout.id, w);
+      setEditingBodyWeight(false);
+    } catch (err) {
+      setBodyWeightError(err.message);
+    }
+    setSavingBodyWeight(false);
+  }
 
   function startEdit(we, s) {
     setEditing({ weId: we.id, setNumber: s.set_number });
@@ -369,13 +397,40 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
             <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Minutes</div>
           </div>
         )}
-        {workout.body_weight != null && (
+        {workout.body_weight != null && !editMode && (
           <div>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{workout.body_weight}</div>
             <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Bodyweight</div>
           </div>
         )}
+        {editMode && (
+          <button onClick={startEditBodyWeight} style={{ background: "none", border: "none", padding: 0, textAlign: "left" }}>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: workout.body_weight != null ? T.text : T.dim }}>
+              {workout.body_weight != null ? workout.body_weight : "+ Add"}
+            </div>
+            <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Bodyweight</div>
+          </button>
+        )}
       </div>
+
+      {editingBodyWeight && (
+        <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10, marginBottom: 16, marginTop: -8 }}>
+          <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Bodyweight ({units})</div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <input
+              inputMode="decimal"
+              autoFocus
+              value={bodyWeightDraft}
+              onChange={(e) => setBodyWeightDraft(e.target.value.replace(/[^0-9.]/g, ""))}
+              placeholder="e.g. 178"
+              style={{ flex: 1, minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 10px", outline: "none", boxSizing: "border-box" }}
+            />
+            <button onClick={() => setEditingBodyWeight(false)} disabled={savingBodyWeight} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "8px 10px", fontSize: 12 }}>Cancel</button>
+            <button onClick={saveBodyWeightEdit} disabled={savingBodyWeight} style={{ background: T.accent, border: "none", color: "#fff", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 700 }}>{savingBodyWeight ? "…" : "Save"}</button>
+          </div>
+          {bodyWeightError && <div style={{ color: T.accent, fontSize: 11, marginTop: 6 }}>{bodyWeightError}</div>}
+        </div>
+      )}
 
       {workout.session_notes && (
         <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 16, fontSize: 13, color: T.text, fontStyle: "italic" }}>
@@ -563,7 +618,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
 // opened straight into a specific workout (e.g. from tapping a calendar
 // day) via `initialWorkoutId`, in which case the back arrow closes
 // directly instead of returning to the list.
-export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved }) {
+export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
   const [selectedId, setSelectedId] = useState(initialWorkoutId || null);
   const [confirmDeleteIds, setConfirmDeleteIds] = useState(null); // null | array of workout ids pending delete confirmation
   const [deleting, setDeleting] = useState(false);
@@ -674,6 +729,7 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
             onSetRemoved={onSetRemoved}
             onExerciseAdded={onExerciseAdded}
             onExerciseRemoved={onExerciseRemoved}
+            onBodyWeightUpdated={onBodyWeightUpdated}
           />
         ) : (
           <div style={{ padding: 16, paddingBottom: selectMode ? 90 : 16, flex: 1 }}>

@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.24": {
+    title: "Delete sets mid-workout, backfill bodyweight in history",
+    items: [
+      "You can now delete a logged set while still in the middle of a workout, not just from the workout summary.",
+      "Forgot to log bodyweight? You can now add or edit it for any past workout from Edit mode in history.",
+    ],
+  },
   "1.9.23": {
     title: "Smoother reentry, smaller rest timer, and a few fixes",
     items: [

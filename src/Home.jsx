@@ -1200,6 +1200,11 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
               w.id !== workoutId ? w : { ...w, workout_exercises: (w.workout_exercises || []).filter((we) => we.id !== weId) }
             )))
           }
+          onBodyWeightUpdated={(workoutId, bodyWeight) =>
+            setHistory((prev) => (prev || []).map((w) => (
+              w.id !== workoutId ? w : { ...w, body_weight: bodyWeight }
+            )))
+          }
         />
       )}
     </div>
