@@ -9,6 +9,15 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.25": {
+    title: "Export image fixes, calmer loading",
+    items: [
+      "Fixed bodyweight not showing on the Story layout of the save-as-image export, even with the toggle on.",
+      "Bigger logo on the save-as-image preview.",
+      "Your layout and Include selections on save-as-image are now remembered after you export, so you don't have to reset them every time.",
+      "Replaced the loading animation with something calmer: the logo now just pulses quietly instead of spinning and shrinking.",
+    ],
+  },
   "1.9.24": {
     title: "Delete sets mid-workout, backfill bodyweight in history",
     items: [

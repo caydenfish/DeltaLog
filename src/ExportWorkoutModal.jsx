@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import html2canvas from "html2canvas";
 import Logo, { Wordmark } from "./Logo";
 import { IconX, IconCheck } from "./Icons";
+import { getPrefs, setPref } from "./lib/prefs";
 
 const T = {
   bg: "#101216",
@@ -25,13 +26,14 @@ const LAYOUTS = [
 // have the same shape of data to render. `data` is:
 // { dateLabel, unit, totalSets, totalVolume, durationMin, bodyWeight?, photoUrl?, exercises: [{name, sets:[{label, weight, reps, rir, isWarmup}]}] }
 export default function ExportWorkoutModal({ data, onClose }) {
-  const [layout, setLayout] = useState("card");
-  const [showSets, setShowSets] = useState(true);
-  const [showVolume, setShowVolume] = useState(true);
-  const [showDuration, setShowDuration] = useState(true);
-  const [showBodyweight, setShowBodyweight] = useState(true);
-  const [showDate, setShowDate] = useState(true);
-  const [usePhotoBg, setUsePhotoBg] = useState(!!data.photoUrl);
+  const remembered = getPrefs().exportImagePrefs;
+  const [layout, setLayout] = useState(remembered?.layout || "card");
+  const [showSets, setShowSets] = useState(remembered ? remembered.showSets : true);
+  const [showVolume, setShowVolume] = useState(remembered ? remembered.showVolume : true);
+  const [showDuration, setShowDuration] = useState(remembered ? remembered.showDuration : true);
+  const [showBodyweight, setShowBodyweight] = useState(remembered ? remembered.showBodyweight : true);
+  const [showDate, setShowDate] = useState(remembered ? remembered.showDate : true);
+  const [usePhotoBg, setUsePhotoBg] = useState(remembered ? remembered.usePhotoBg : !!data.photoUrl);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const previewRef = useRef(null);
@@ -62,6 +64,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
       document.body.appendChild(a);
       a.click();
       a.remove();
+      setPref("exportImagePrefs", { layout, showSets, showVolume, showDuration, showBodyweight, showDate, usePhotoBg });
     } catch (err) {
       setSaveError("Couldn't generate the image. Try again.");
     }
@@ -153,8 +156,8 @@ export default function ExportWorkoutModal({ data, onClose }) {
               )}
               <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: layout === "story" ? 20 : 12, height: "100%", justifyContent: layout === "story" ? "center" : "flex-start" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginBottom: layout === "story" ? 8 : 4 }}>
-                <Logo size={layout === "story" ? 40 : 28} />
-                <Wordmark size={layout === "story" ? 16 : 12} />
+                <Logo size={layout === "story" ? 60 : 44} />
+                <Wordmark size={layout === "story" ? 22 : 17} />
               </div>
 
               {showDate && (
@@ -182,8 +185,8 @@ export default function ExportWorkoutModal({ data, onClose }) {
                 )}
               </div>
 
-              {showBodyweight && data.bodyWeight != null && layout !== "story" && (
-                <div style={{ textAlign: "center", fontSize: 12, color: T.dim }}>Bodyweight: <span style={{ color: T.text, fontWeight: 600 }}>{data.bodyWeight} {data.unit}</span></div>
+              {showBodyweight && data.bodyWeight != null && (
+                <div style={{ textAlign: "center", fontSize: layout === "story" ? 15 : 12, color: T.dim }}>Bodyweight: <span style={{ color: T.text, fontWeight: 600 }}>{data.bodyWeight} {data.unit}</span></div>
               )}
 
               {showSetsEffective && (

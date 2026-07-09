@@ -5,6 +5,16 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.9.25",
+    date: "2026-07-09",
+    items: [
+      "ExportWorkoutModal.jsx: the bodyweight line was gated on `layout !== \"story\"`, unconditionally hiding it on the Story layout regardless of the showBodyweight toggle -- this was the root cause of \"bodyweight not showing even when selected\". Removed the layout gate, sized the text up for Story (12px -> 15px) to match its other stats.",
+      "ExportWorkoutModal.jsx: Logo/Wordmark size bumped (28->44 card/detailed, 40->60 story, wordmark 12/16->17/22).",
+      "lib/prefs.js: added `exportImagePrefs` (default null). ExportWorkoutModal.jsx now seeds layout/showSets/showVolume/showDuration/showBodyweight/showDate/usePhotoBg from getPrefs().exportImagePrefs on mount, and writes the current selections back via setPref right after html2canvas + the download click succeed in handleSaveImage -- deliberately after a confirmed export, not on every toggle change, so an abandoned modal doesn't overwrite the remembered setup.",
+      "LoadingSpinner.jsx: replaced the rotate/scale keyframe animation with a single opacity pulse (1 -> 0.35 -> 1, 1.6s ease-in-out infinite) on the static triangle mark, no rotation or scale transform at all. Same component API (LoadingSpinner/InlineLoading/default LoadingScreen) so no call sites changed.",
+    ],
+  },
+  {
     version: "1.9.24",
     date: "2026-07-09",
     items: [
