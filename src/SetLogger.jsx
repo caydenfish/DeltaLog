@@ -671,8 +671,13 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
       }
     })();
     return () => { cancelled = true; };
+    // Depend on the id, not the user object — Supabase gives back a new
+    // user object on every token refresh (including silent background
+    // ones), and this whole resume sequence re-running on each refresh
+    // was both wasteful and, if any request in it stalled, another way
+    // to get stuck on the boot screen after leaving and reentering.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user.id]);
 
 
   // Auto-scroll the exercise strip so the active chip is always in view.

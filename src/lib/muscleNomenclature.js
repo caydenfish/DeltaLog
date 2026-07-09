@@ -98,6 +98,8 @@ const ALIASES = {
 // — falls back to ALIASES for anything not yet in the DB, or if the
 // fetch hasn't resolved yet.
 let dbTaxonomy = null; // null = not loaded; otherwise Map<lowercased scientific name, {generic, detailed, scientific}>
+let taxonomyVersion = 0;
+const taxonomyListeners = new Set();
 
 export function setMuscleTaxonomyCache(rows) {
   const map = new Map();
@@ -105,6 +107,25 @@ export function setMuscleTaxonomyCache(rows) {
     map.set(r.scientific_name.toLowerCase(), { generic: r.generic_group, detailed: r.detailed_name, scientific: r.scientific_name });
   }
   dbTaxonomy = map;
+  taxonomyVersion++;
+  taxonomyListeners.forEach((fn) => fn());
+}
+
+// The taxonomy cache is plain module state, not React state, so a
+// component that memoizes a muscle-label computation before the cache
+// has loaded (a real race at app boot -- the taxonomy fetch and the
+// session/profile chain both start immediately, and either can win)
+// would otherwise be stuck showing whatever it computed with the
+// ALIASES fallback forever, since nothing tells it to recompute once
+// the real data arrives. Subscribe to this and bump a dependency (e.g.
+// via getTaxonomyVersion()) to fix that.
+export function subscribeTaxonomy(fn) {
+  taxonomyListeners.add(fn);
+  return () => taxonomyListeners.delete(fn);
+}
+
+export function getTaxonomyVersion() {
+  return taxonomyVersion;
 }
 
 function lookupMuscle(muscle) {

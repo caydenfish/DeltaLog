@@ -30,6 +30,10 @@ export default function App() {
   // Cleared once they tap through, so signing in afterward lands on Home
   // as normal instead of bouncing back to the shared view.
   const [sharedCode, setSharedCode] = useState(() => new URLSearchParams(window.location.search).get("shared"));
+  // True once any loading gate below has held for longer than expected —
+  // surfaces a manual reload option instead of leaving someone stuck on
+  // a blank/loading screen with no way out short of force-quitting.
+  const [stuck, setStuck] = useState(false);
 
   // Muscle labels (muscleLabel/genericBucket) are read synchronously
   // during render all over the app, so the admin-editable taxonomy is
@@ -46,10 +50,24 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    let lastUserId;
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
       setSession(newSession);
-      setMode(null);
+      // onAuthStateChange also fires for background token refreshes
+      // (e.g. when the app regains focus after being backgrounded), not
+      // just real sign-in/sign-out. Resetting mode unconditionally here
+      // used to drop an already-settled app back into the loading gate
+      // on every one of those refreshes — harmless if the resulting
+      // refetch completes quickly, but if that request hangs (common on
+      // mobile right as a fetch is in flight when the OS suspends the
+      // app), there was no way back short of killing the app. Only
+      // re-decide mode when the signed-in user actually changes.
+      const newUserId = newSession?.user?.id || null;
+      if (newUserId !== lastUserId) {
+        lastUserId = newUserId;
+        setMode(null);
+      }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -57,7 +75,9 @@ export default function App() {
   useEffect(() => {
     if (!session) { setProfile(undefined); return; }
     let cancelled = false;
-    fetchProfile(session.user.id).then((p) => { if (!cancelled) setProfile(p); });
+    fetchProfile(session.user.id)
+      .then((p) => { if (!cancelled) setProfile(p); })
+      .catch(() => { if (!cancelled) setProfile(null); });
     return () => { cancelled = true; };
   }, [session]);
 
@@ -81,7 +101,6 @@ export default function App() {
   }, [resumeWorkout]);
 
   const profileComplete = profile && profile.gender && profile.date_of_birth && profile.first_name && profile.last_name;
-
   // True once we know exactly what to show — every async gate below has
   // resolved. The splash overlay stays up (covering whatever partial
   // content renders underneath) until this flips, then plays its
@@ -95,14 +114,15 @@ export default function App() {
   );
 
   let content = null;
+  let loadingGate = false;
   if (session === undefined) {
-    content = null;
+    content = null; loadingGate = true;
   } else if (!session) {
     content = <Auth />;
   } else if (passwordRecovery) {
     content = <ResetPassword onDone={() => setPasswordRecovery(false)} />;
   } else if (profile === undefined) {
-    content = null;
+    content = null; loadingGate = true;
   } else if (!profileComplete) {
     content = <Onboarding user={session.user} profile={profile} onComplete={() => fetchProfile(session.user.id).then(setProfile)} />;
   } else if (!profile.terms_accepted_at) {
@@ -132,6 +152,12 @@ export default function App() {
     );
   }
 
+  useEffect(() => {
+    if (!loadingGate) { setStuck(false); return; }
+    const t = setTimeout(() => setStuck(true), 9000);
+    return () => clearTimeout(t);
+  }, [loadingGate]);
+
   return (
     <>
       {sharedCode ? (
@@ -146,6 +172,16 @@ export default function App() {
         <>
           {content}
           <AppSplash ready={ready} />
+          {stuck && (
+            <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "0 24px 32px", display: "flex", justifyContent: "center", zIndex: 10000 }}>
+              <button
+                onClick={() => window.location.reload()}
+                style={{ background: "#1A1D23", border: "1px solid #2C313B", color: "#8B919D", borderRadius: 999, padding: "10px 18px", fontSize: 13 }}
+              >
+                Taking longer than usual — tap to reload
+              </button>
+            </div>
+          )}
         </>
       )}
     </>

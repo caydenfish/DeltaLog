@@ -9,6 +9,16 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.9.26": {
+    title: "Fixed the reentry freeze, exercise library, and cleaner taps",
+    items: [
+      "Fixed the bug causing the app to sometimes get stuck on a blank gray screen indefinitely after leaving and reentering, requiring a restart. If anything still ever hangs on load, a \"tap to reload\" option now appears after a few seconds instead of leaving you stuck.",
+      "Removed the blue tap highlight/focus box that flashed on buttons before a screen change.",
+      "Fixed the Exercise Library: the top level is always the general muscle groups, and the level below now correctly follows your Detailed or Scientific naming preference instead of always showing Detailed.",
+      "Fixed a timing issue that could leave the muscle breakdown on Home showing the wrong naming style until something else forced it to refresh.",
+      "The loading icon now has an orange wave rippling and filling inside the outline.",
+    ],
+  },
   "1.9.25": {
     title: "Export image fixes, calmer loading",
     items: [

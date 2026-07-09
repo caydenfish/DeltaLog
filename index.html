@@ -17,6 +17,15 @@
       button, input, select, textarea, optgroup, option {
         font-family: inherit;
       }
+      /* Kills the blue/gray tap-highlight box mobile browsers flash on
+         any tap, and the focus ring browsers leave on a button after
+         it's clicked — taps should just act, with no visual residue. */
+      * {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button:focus, a:focus, button:focus-visible, a:focus-visible {
+        outline: none;
+      }
     </style>
     <title>DeltaLog</title>
   </head>

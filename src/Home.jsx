@@ -6,7 +6,7 @@ import { getPrefs, setPref } from "./lib/prefs";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
 import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, bucketWeightHistory, bucketDailyVolume, groupWorkoutsByDate } from "./lib/volume";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
 import { toDisplay } from "./lib/weight";
 import { InlineLoading } from "./LoadingSpinner";
 import { toLocalDateStr } from "./lib/time";
@@ -170,6 +170,13 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   const [units, setUnitsState] = useState(() => getPrefs().units);
   const [restDefault, setRestDefaultState] = useState(() => getPrefs().restSeconds);
   const [muscleNameMode, setMuscleNameModeState] = useState(() => getPrefs().muscleNameMode);
+  // The taxonomy fetch (App.jsx) and the session/profile chain that
+  // gates Home mounting both start at boot with no ordering guarantee.
+  // If Home computes the muscle breakdown before taxonomy finishes
+  // loading, this forces a recompute once it does, instead of being
+  // stuck showing labels derived from the small hardcoded fallback.
+  const [taxonomyVersion, setTaxonomyVersion] = useState(getTaxonomyVersion);
+  useEffect(() => subscribeTaxonomy(() => setTaxonomyVersion(getTaxonomyVersion())), []);
   const [muscleDetail, setMuscleDetail] = useState(null); // { muscle, role } when the sets drill-down sheet is open
   const [scoreDisplay, setScoreDisplayState] = useState(() => getPrefs().scoreDisplay);
   const [weightEntryMode, setWeightEntryModeState] = useState(() => getPrefs().weightEntryMode);
@@ -477,7 +484,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
     () => bucketDailyVolume(dailyVolumeLb.map((d) => ({ ...d, volume: Math.round(toDisplay(d.volume, units)) })), range),
     [dailyVolumeLb, units, range]
   );
-  const { primary, secondary, fullBodySets } = useMemo(() => computeMuscleSetCounts(entries, muscleNameMode), [entries, muscleNameMode]);
+  const { primary, secondary, fullBodySets } = useMemo(() => computeMuscleSetCounts(entries, muscleNameMode), [entries, muscleNameMode, taxonomyVersion]);
   // Computed directly from the raw workout data for the selected range,
   // not derived from the muscle-group breakdown above — that path silently
   // drops sets from any exercise it can't categorize (e.g. a deleted
