@@ -106,6 +106,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
           <img
             src={photo.url}
             alt="Progress"
+            data-html2canvas-ignore="true"
             onClick={() => setShowFull(true)}
             style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 12, border: `1px solid ${T.line}`, cursor: "pointer" }}
           />
@@ -129,7 +130,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
           onClick={() => setShowFull(false)}
           style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.92)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
         >
-          <img src={photo.url} alt="Progress full resolution" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 8 }} />
+          <img src={photo.url} alt="Progress full resolution" data-html2canvas-ignore="true" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 8 }} />
           <button
             onClick={() => setShowFull(false)}
             aria-label="Close"
