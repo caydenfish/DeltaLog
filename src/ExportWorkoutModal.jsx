@@ -37,6 +37,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const previewRef = useRef(null);
+  const containerRef = useRef(null);
 
   const toggles = [
     { key: "sets", label: "Set-by-set detail", value: showSets, set: setShowSets, hideOn: ["story"] },
@@ -56,7 +57,17 @@ export default function ExportWorkoutModal({ data, onClose }) {
     setSaving(true);
     setSaveError(null);
     try {
-      const canvas = await html2canvas(previewRef.current, { backgroundColor: T.bg, scale: 2, useCORS: true });
+      // html2canvas clones the DOM to render off-screen, but a clone
+      // doesn't carry over live scroll position -- any scrollable
+      // ancestor comes back scrollTop 0, which no longer lines up with
+      // where the live page measured the preview to be. That mismatch is
+      // what shows up as a visible flicker/jump while it generates.
+      // Scrolling the sheet to the top first, then telling html2canvas
+      // not to apply its own window-scroll offset on top of that,
+      // keeps the live and cloned layouts in sync so there's nothing
+      // to visibly snap into place.
+      if (containerRef.current) containerRef.current.scrollTop = 0;
+      const canvas = await html2canvas(previewRef.current, { backgroundColor: T.bg, scale: 2, useCORS: true, scrollX: 0, scrollY: 0 });
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
@@ -81,7 +92,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}><IconX size={12} /></button>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
+        <div ref={containerRef} style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
           {/* Layout picker */}
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Layout</div>
           <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
