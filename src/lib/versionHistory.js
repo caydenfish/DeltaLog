@@ -5,6 +5,18 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.10.2",
+    date: "2026-07-10",
+    items: [
+      "Admin-only release, nothing customer-facing -- no changelog.js entry.",
+      "New user-activity dashboard (AdminUserActivity.jsx), reachable from AdminHome. Shows two independent signals per user rather than one: last_opened_at (app load, any visit -- App.jsx fires logAppOpen() once per session/user-id change) vs last_set_at (derived live from the sets table, the strongest real-usage signal). Status bucketed off last_set_at only: active (<=7d), at risk (<=30d), churned (>30d), never used (no sets ever). Filter chips at top narrow to one bucket.",
+      "supabase/migration_048_user_activity.sql: new user_activity_log table (user_id pk, last_opened_at), RLS lets any authenticated user upsert only their own row (no select policy -- reading is admin-only through the function below). admin_get_user_activity() is security definer, joins auth.users -> user_activity_log/workouts/workout_exercises/sets, returns display_name (coalesced from raw_user_meta_data full_name/name, falling back to split_part(email,'@',1) for email-only signups with neither key), both timestamps, total_sets/total_workouts, days_since_last_used, status. log_app_open() is security invoker, just upserts now() for auth.uid() -- relies on the RLS policy above rather than its own admin check.",
+      "New Creator role tier, added because admin_set_is_admin previously only checked 'is the caller already an admin' -- any admin could grant admin to anyone, no single source of truth. supabase/migration_049_creator_role.sql adds profiles.is_creator (bool, default false). admin_set_is_admin and the new admin_get_user_activity both now require the caller be a Creator (not just admin) -- migration_048's version of admin_get_user_activity is superseded, migration_049 redefines it in place. admin_search_users still only requires admin (unchanged) and now also returns is_creator. New admin_set_is_creator(target, make_creator) is Creator-only and blocks removing the last remaining Creator (raises rather than allowing a lockout). No migration can grant the first Creator -- bootstrap is a manual `update profiles set is_creator = true where id = '<uid>'` after running 049, same pattern as migration_010's original is_admin bootstrap comment.",
+      "AdminPermissions.jsx deleted, replaced by AdminRoles.jsx -- same search-by-email/name flow, now shows a three-tier badge (User/Admin/Creator) per row with separate Make/Remove admin and Make/Remove creator buttons. Removing your own admin (when not also Creator) or removing anyone's Creator status routes through the existing confirm-modal pattern first. Granting Creator locally also flips is_admin true in the results list (Creator implies Admin) without requiring a re-search.",
+      "Home.jsx/AdminHome.jsx: added isRealCreator (= !!profile?.is_creator) alongside isRealAdmin. AdminHome's Roles and User Activity rows are now conditionally rendered on a new isCreator prop -- regular admins open AdminHome and don't see either row at all, not just a disabled version. onOpenPermissions renamed onOpenRoles throughout. showAdminUserActivity render is additionally gated on isRealCreator client-side as defense in depth (server-side enforcement is the real boundary, via admin_get_user_activity's is_creator check).",
+    ],
+  },
+  {
     version: "1.10.1",
     date: "2026-07-09",
     items: [

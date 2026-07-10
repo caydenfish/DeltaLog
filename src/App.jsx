@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabaseClient";
-import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits } from "./lib/queries";
+import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits, logAppOpen } from "./lib/queries";
 import { setMuscleTaxonomyCache } from "./lib/muscleNomenclature";
 import { setSplitsCache } from "./lib/splits";
 import { getPrefs } from "./lib/prefs";
@@ -71,6 +71,11 @@ export default function App() {
     });
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    logAppOpen().catch(() => {});
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!session) { setProfile(undefined); return; }

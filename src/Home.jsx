@@ -21,7 +21,8 @@ import AdminFeedback from "./AdminFeedback";
 import AdminHome from "./AdminHome";
 import SplitsManager from "./SplitsManager";
 import ExerciseLibraryView from "./ExerciseLibraryView";
-import AdminPermissions from "./AdminPermissions";
+import AdminRoles from "./AdminRoles";
+import AdminUserActivity from "./AdminUserActivity";
 import DangerZone from "./DangerZone";
 import InstallGuide from "./InstallGuide";
 import ProfileEditor from "./ProfileEditor";
@@ -152,7 +153,8 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   const [showAdminFeedback, setShowAdminFeedback] = useState(false);
   const [showAdminHome, setShowAdminHome] = useState(false);
   const [showExerciseLibraryView, setShowExerciseLibraryView] = useState(false);
-  const [showAdminPermissions, setShowAdminPermissions] = useState(false);
+  const [showAdminRoles, setShowAdminRoles] = useState(false);
+  const [showAdminUserActivity, setShowAdminUserActivity] = useState(false);
   const [showSplitsManager, setShowSplitsManager] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -249,6 +251,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   });
   const [profile, setProfile] = useState(null);
   const isRealAdmin = !!profile?.is_admin;
+  const isRealCreator = !!profile?.is_creator;
   // Lets an admin preview the app as a regular user without a second
   // account. Toggled from the Admin menu; persisted so it survives a
   // refresh. The Admin menu entry itself always stays reachable off
@@ -847,7 +850,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
               )}
 
               {/* Admin */}
-              {isRealAdmin && settingsMatch("admin custom exercises feedback bugs simulate new user version history changelog exercise library muscle groups permissions admin view normal") && (
+              {isRealAdmin && settingsMatch("admin custom exercises feedback bugs simulate new user version history changelog exercise library muscle groups roles permissions creator admin view normal user activity usage last opened last logged churn") && (
                 <>
                   <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Admin</div>
                   <button
@@ -971,9 +974,11 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
         <AdminHome
           onClose={() => setShowAdminHome(false)}
           unseenFeedbackCount={unseenFeedbackCount}
+          isCreator={isRealCreator}
           onOpenExercises={() => setShowAdmin(true)}
           onOpenFeedback={() => { setShowAdminFeedback(true); markFeedbackViewed(user.id).then(() => setUnseenFeedbackCount(0)).catch(() => {}); }}
-          onOpenPermissions={() => setShowAdminPermissions(true)}
+          onOpenRoles={() => setShowAdminRoles(true)}
+          onOpenUserActivity={() => setShowAdminUserActivity(true)}
           onOpenSplits={() => setShowSplitsManager(true)}
           onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setAdminSimulateNewUser(true); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
@@ -993,7 +998,8 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
           onClose={() => setMuscleDetail(null)}
         />
       )}
-      {showAdminPermissions && <AdminPermissions currentUserId={user.id} onClose={() => setShowAdminPermissions(false)} />}
+      {showAdminRoles && <AdminRoles currentUserId={user.id} onClose={() => setShowAdminRoles(false)} />}
+      {showAdminUserActivity && isRealCreator && <AdminUserActivity onClose={() => setShowAdminUserActivity(false)} />}
       {showSplitsManager && <SplitsManager onClose={() => setShowSplitsManager(false)} />}
       {showAdminFeedback && <AdminFeedback onClose={() => setShowAdminFeedback(false)} />}
       {showDangerZone && <DangerZone user={user} onClose={() => setShowDangerZone(false)} onDataReset={onDataReset} />}

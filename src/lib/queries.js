@@ -313,9 +313,35 @@ export async function adminSearchUsers(query) {
   return data;
 }
 
-// Admin-only: grants or revokes admin access for another user.
+// Admin-only: grants or revokes admin access for another user. Server
+// enforces this actually requires Creator, not just admin (migration_049)
+// — the check here is just for a clean error message before the round trip.
 export async function adminSetIsAdmin(targetUserId, makeAdmin) {
   const { error } = await supabase.rpc("admin_set_is_admin", { target_user_id: targetUserId, make_admin: makeAdmin });
+  if (error) throw error;
+}
+
+// Creator-only: grants or revokes Creator access for another user.
+export async function adminSetIsCreator(targetUserId, makeCreator) {
+  const { error } = await supabase.rpc("admin_set_is_creator", { target_user_id: targetUserId, make_creator: makeCreator });
+  if (error) throw error;
+}
+
+// Admin-only: usage snapshot for every user — last opened (app load),
+// last set logged (actual workout activity), and a derived status
+// bucket. Calls a security-definer function (migration_048) since
+// auth.users isn't reachable from the client directly.
+export async function adminGetUserActivity() {
+  const { data, error } = await supabase.rpc("admin_get_user_activity");
+  if (error) throw error;
+  return data;
+}
+
+// Stamps "last opened" for the current user. Fire-and-forget on app
+// load — failures here shouldn't block or surface to the user, it's
+// just a usage signal, not something the app depends on functionally.
+export async function logAppOpen() {
+  const { error } = await supabase.rpc("log_app_open");
   if (error) throw error;
 }
 
