@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import html2canvas from "html2canvas";
 import Logo, { Wordmark } from "./Logo";
 import { IconX, IconCheck } from "./Icons";
@@ -111,7 +112,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
 
   const showSetsEffective = showSets && layout !== "story";
 
-  return (
+  return createPortal(
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.85)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div style={{ width: "100%", maxWidth: 420, maxHeight: "92vh", display: "flex", flexDirection: "column", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0" }}>
         <div style={{ padding: "16px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
@@ -256,6 +257,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
