@@ -1,13 +1,18 @@
-import { useEffect, useState } from "react";
-import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleTaxonomy, createSharedExercise, uploadExerciseMedia } from "./lib/queries";
+import { useEffect, useMemo, useState } from "react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleTaxonomy, createSharedExercise, uploadExerciseMedia, fetchExerciseDefaults, saveExerciseDefaults, fetchExerciseHistory } from "./lib/queries";
 import { muscleLabel } from "./lib/muscleNomenclature";
 import { MUSCLE_COLORS } from "./lib/muscleColors";
+import { summarizeExerciseHistory, bucketSeries } from "./lib/volume";
+import { getPrefs } from "./lib/prefs";
+import { toDisplay } from "./lib/weight";
+import { toLocalDateStr } from "./lib/time";
 import ExerciseThumb from "./ExerciseThumb";
 import { InlineLoading } from "./LoadingSpinner";
 import MuscleTaxonomyManager from "./MuscleTaxonomyManager";
 import CustomExerciseModal from "./CustomExerciseModal";
 import MyCustomExercises from "./MyCustomExercises";
-import { IconX } from "./Icons";
+import { IconX, IconGear, IconPencil, IconCheck } from "./Icons";
 
 const T = {
   bg: "#101216",
@@ -23,6 +28,293 @@ const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.d
 const pillAddBtn = { width: 26, height: 26, borderRadius: "50%", border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, cursor: "pointer", flexShrink: 0 };
 const filledPill = { display: "flex", alignItems: "center", gap: 6, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 999, padding: "5px 6px 5px 12px" };
 const candidatePill = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 999, padding: "5px 12px", fontSize: 12, cursor: "pointer" };
+
+const MACHINE_SETUP_FIELDS = ["Seat height", "Bar height", "Cable height", "Arm setting"];
+
+// Personal, per-user notes + machine setup for one exercise -- the same
+// exercise_defaults row SetLogger reads/writes mid-workout, edited here
+// standalone so it doesn't require an active workout. Fetched fresh per
+// exercise since exercise_defaults isn't preloaded into the library list.
+function ExerciseDefaultsEditor({ userId, exercise }) {
+  const [loaded, setLoaded] = useState(false);
+  const [setup, setSetupState] = useState({});
+  const [notes, setNotesState] = useState("");
+  const [showMachineSetup, setShowMachineSetup] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
+  const [editingNote, setEditingNote] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoaded(false);
+    fetchExerciseDefaults(userId, exercise.id)
+      .then((d) => { if (!cancelled) { setSetupState(d.setup || {}); setNotesState(d.notes || ""); setLoaded(true); } })
+      .catch(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
+  }, [userId, exercise.id]);
+
+  function persist(nextSetup, nextNotes) {
+    saveExerciseDefaults(userId, exercise.id, nextSetup, nextNotes).catch((e) => setErr(e.message));
+  }
+  function updateSetup(field, val) {
+    const next = { ...setup, [field]: val };
+    setSetupState(next);
+    persist(next, notes);
+  }
+  function clearMachineSetup() {
+    const next = { ...setup };
+    for (const f of MACHINE_SETUP_FIELDS) delete next[f];
+    delete next["_machineNotes"];
+    setSetupState(next);
+    persist(next, notes);
+  }
+  function clearCustomSetup() {
+    setSetupState({});
+    persist({}, notes);
+  }
+  function saveNote() {
+    const trimmed = noteDraft.trim();
+    setNotesState(trimmed);
+    setEditingNote(false);
+    persist(setup, trimmed);
+  }
+  function deleteNote() {
+    setNotesState("");
+    setEditingNote(false);
+    persist(setup, "");
+  }
+  function heightField(field) {
+    const isText = !!setup[`${field}__text`];
+    const val = setup[field] || "";
+    return (
+      <>
+        <input
+          inputMode={isText ? "text" : "decimal"}
+          value={val}
+          onChange={(e) => updateSetup(field, isText ? e.target.value : e.target.value.replace(/[^0-9.]/g, ""))}
+          placeholder="—"
+          style={{ width: 90, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "5px 8px", outline: "none", textAlign: "center", boxSizing: "border-box" }}
+        />
+        <button
+          onClick={() => updateSetup(`${field}__text`, isText ? "" : "1")}
+          title={isText ? "Switch to numeric" : 'Switch to text, e.g. "top notch"'}
+          style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: isText ? "rgba(232,68,46,0.12)" : "none", color: isText ? T.text : T.dim, fontSize: 10, fontWeight: 700, padding: 0, flexShrink: 0 }}
+        >{isText ? "Abc" : "#"}</button>
+      </>
+    );
+  }
+
+  if (!loaded) return <InlineLoading label="Loading your setup…" padding="16px 0" />;
+
+  const setupFields = exercise.setup_fields || [];
+  const setupSummary = setupFields.filter((f) => setup[f]).map((f) => `${f}: ${setup[f]}`).join(" · ");
+  const machineSetupSummary = MACHINE_SETUP_FIELDS.filter((f) => setup[f]).map((f) => `${f}: ${setup[f]}`).join(" · ") || (setup["_machineNotes"] ? "Notes saved" : "");
+
+  return (
+    <div style={{ marginTop: 4, paddingTop: 16, borderTop: `1px solid ${T.line}` }}>
+      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Your notes & setup</div>
+      {err && <div style={{ color: T.accent, fontSize: 12, marginBottom: 8 }}>{err}</div>}
+
+      <div style={{ marginBottom: 8 }}>
+        {!showMachineSetup ? (
+          <div style={{ textAlign: "center" }}>
+            <button onClick={() => setShowMachineSetup(true)} style={{ background: "none", border: "none", color: T.dim, fontSize: 12, padding: 0 }}>
+              {machineSetupSummary ? <><IconGear size={11} /> {machineSetupSummary}</> : <><IconGear size={11} /> Machine setup</>}
+            </button>
+          </div>
+        ) : (
+          <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Machine setup</div>
+              {machineSetupSummary && <button onClick={clearMachineSetup} style={{ background: "none", border: "none", color: T.accent, fontSize: 11 }}>Clear</button>}
+            </div>
+            {MACHINE_SETUP_FIELDS.map((f) => (
+              <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <div style={{ fontSize: 13, color: T.text, flex: 1 }}>{f}</div>
+                {heightField(f)}
+              </div>
+            ))}
+            <textarea
+              value={setup["_machineNotes"] || ""}
+              onChange={(e) => updateSetup("_machineNotes", e.target.value)}
+              placeholder="Other setup details (pin position, attachment, etc.)"
+              rows={2}
+              style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: 8, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", marginTop: 2 }}
+            />
+            <div style={{ fontSize: 10, color: T.dim, marginTop: 4 }}>Saved per exercise, carries over session to session.</div>
+            <div style={{ textAlign: "right", marginTop: 4 }}><button onClick={() => setShowMachineSetup(false)} aria-label="Done" style={smallBtn}><IconCheck size={12} /></button></div>
+          </div>
+        )}
+      </div>
+
+      {setupFields.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          {!showSetup ? (
+            <div style={{ textAlign: "center" }}>
+              <button onClick={() => setShowSetup(true)} style={{ background: "none", border: "none", color: T.dim, fontSize: 12, padding: 0 }}>
+                {setupSummary ? <><IconGear size={11} /> {setupSummary}</> : <><IconGear size={11} /> Set up ({setupFields.map((f) => f.toLowerCase()).join(", ")})</>}
+              </button>
+            </div>
+          ) : (
+            <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Equipment setup</div>
+                {setupSummary && <button onClick={clearCustomSetup} style={{ background: "none", border: "none", color: T.accent, fontSize: 11 }}>Clear</button>}
+              </div>
+              {setupFields.map((f) => (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div style={{ fontSize: 13, color: T.text, flex: 1 }}>{f}</div>
+                  <input value={setup[f] || ""} onChange={(e) => updateSetup(f, e.target.value)} placeholder="—" style={{ width: 90, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "5px 8px", outline: "none", textAlign: "center", boxSizing: "border-box" }} />
+                </div>
+              ))}
+              <div style={{ fontSize: 10, color: T.dim, marginTop: 4 }}>Saved per exercise until you clear it.</div>
+              <div style={{ textAlign: "right", marginTop: 4 }}><button onClick={() => setShowSetup(false)} aria-label="Done" style={smallBtn}><IconCheck size={12} /></button></div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!editingNote ? (
+        <div style={{ textAlign: "center", display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
+          <button onClick={() => { setNoteDraft(notes); setEditingNote(true); }} style={{ background: "none", border: "none", color: T.dim, fontSize: 12, fontStyle: notes ? "italic" : "normal", padding: 0 }}>
+            {notes ? <>"{notes}" <IconPencil size={11} /></> : "+ Add note"}
+          </button>
+          {notes && <button onClick={deleteNote} style={{ background: "none", border: "none", color: T.accent, fontSize: 11, padding: 0 }}>Delete</button>}
+        </div>
+      ) : (
+        <div>
+          <textarea value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Cues, tempo, anything worth remembering..." rows={2} style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 13, padding: 8, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+          <div style={{ fontSize: 10, color: T.dim, marginTop: 3 }}>Saved per exercise, persists across sessions until deleted.</div>
+          <div style={{ display: "flex", gap: 6, marginTop: 6, justifyContent: "flex-end" }}>
+            <button onClick={() => setEditingNote(false)} style={smallBtn}>Cancel</button>
+            <button onClick={saveNote} style={{ ...smallBtn, color: T.text, borderColor: T.accent }}>Save note</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const CHART_RANGES = [
+  { key: "7d", label: "7 Days", days: 7 },
+  { key: "30d", label: "30 Days", days: 30 },
+  { key: "90d", label: "90 Days", days: 90 },
+  { key: "365d", label: "1 Year", days: 365 },
+];
+
+function chartCutoffDate(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return toLocalDateStr(d);
+}
+
+function miniChartXTick(d, rangeKey) {
+  return rangeKey === "365d" ? new Date(`${d}-01T00:00:00`).toLocaleString(undefined, { month: "short" }) : d.slice(5);
+}
+function miniChartLabel(d, rangeKey) {
+  if (rangeKey === "365d") return new Date(`${d}-01T00:00:00`).toLocaleString(undefined, { month: "long", year: "numeric" });
+  if (rangeKey === "30d") return `Week of ${new Date(`${d}T00:00:00`).toLocaleString(undefined, { month: "short", day: "numeric" })}`;
+  return new Date(`${d}T00:00:00`).toLocaleString(undefined, { month: "short", day: "numeric" });
+}
+
+// One mini line chart, reused for weight/reps/volume below -- same visual
+// language as the Home screen's Volume/Bodyweight charts.
+function MiniChart({ title, data, dataKey, color, unitLabel, rangeKey, emptyLabel }) {
+  return (
+    <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: "14px 8px 8px", marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, padding: "0 8px" }}>{title}</div>
+      {data.length === 0 ? (
+        <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>{emptyLabel}</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={140}>
+          <LineChart data={data} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
+            <CartesianGrid stroke={T.line} strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="date" tick={{ fill: T.dim, fontSize: 10 }} tickFormatter={(d) => miniChartXTick(d, rangeKey)} />
+            <YAxis tick={{ fill: T.dim, fontSize: 10 }} domain={["auto", "auto"]} />
+            <Tooltip
+              contentStyle={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, fontSize: 12 }}
+              labelStyle={{ color: T.text }}
+              labelFormatter={(d) => miniChartLabel(d, rangeKey)}
+              formatter={(v) => [unitLabel ? `${v.toLocaleString()} ${unitLabel}` : v.toLocaleString(), title]}
+            />
+            <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={{ r: 3, fill: color }} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
+// Per-exercise weight/reps/volume history, fetched once per exercise and
+// re-bucketed client-side as the range toggle changes (no refetch needed
+// switching between 7/30/90/365 day views).
+function ExerciseCharts({ userId, exercise }) {
+  const [loaded, setLoaded] = useState(false);
+  const [raw, setRaw] = useState({ weight: [], reps: [], volume: [] });
+  const [rangeIdx, setRangeIdx] = useState(1);
+  const units = getPrefs().units;
+  const rangeDef = CHART_RANGES[rangeIdx];
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoaded(false);
+    fetchExerciseHistory(userId, exercise.id)
+      .then((rows) => { if (!cancelled) { setRaw(summarizeExerciseHistory(rows)); setLoaded(true); } })
+      .catch(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
+  }, [userId, exercise.id]);
+
+  const cutoff = chartCutoffDate(rangeDef.days);
+
+  const weightSeries = useMemo(() => {
+    const points = raw.weight.filter((p) => p.date >= cutoff && p.weight > 0).map((p) => ({ date: p.date, weight: Math.round(toDisplay(p.weight, units) * 10) / 10 }));
+    return bucketSeries(points, rangeDef.key, "weight", "avg");
+  }, [raw.weight, rangeDef.key, cutoff, units]);
+
+  const repsSeries = useMemo(() => {
+    const points = raw.reps.filter((p) => p.date >= cutoff && p.reps > 0);
+    return bucketSeries(points, rangeDef.key, "reps", "avg");
+  }, [raw.reps, rangeDef.key, cutoff]);
+
+  const volumeSeries = useMemo(() => {
+    const points = raw.volume.filter((p) => p.date >= cutoff && p.volume > 0).map((p) => ({ date: p.date, volume: Math.round(toDisplay(p.volume, units)) }));
+    return bucketSeries(points, rangeDef.key, "volume", "sum");
+  }, [raw.volume, rangeDef.key, cutoff, units]);
+
+  return (
+    <div style={{ marginTop: 4, paddingTop: 16, borderTop: `1px solid ${T.line}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px", marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Your history</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            onClick={() => setRangeIdx((i) => Math.max(0, i - 1))}
+            disabled={rangeIdx === 0}
+            aria-label="Shorter range"
+            style={{ background: "none", border: "none", color: rangeIdx === 0 ? T.line : T.dim, fontSize: 16, padding: "0 4px" }}
+          >‹</button>
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.text, minWidth: 62, textAlign: "center" }}>{rangeDef.label}</div>
+          <button
+            onClick={() => setRangeIdx((i) => Math.min(CHART_RANGES.length - 1, i + 1))}
+            disabled={rangeIdx === CHART_RANGES.length - 1}
+            aria-label="Longer range"
+            style={{ background: "none", border: "none", color: rangeIdx === CHART_RANGES.length - 1 ? T.line : T.dim, fontSize: 16, padding: "0 4px" }}
+          >›</button>
+        </div>
+      </div>
+
+      {!loaded ? (
+        <InlineLoading label="Loading your history…" padding="24px 0" />
+      ) : (
+        <>
+          <MiniChart title="Top set weight" data={weightSeries} dataKey="weight" color={T.accent} unitLabel={units} rangeKey={rangeDef.key} emptyLabel="No sets logged for this exercise in this range." />
+          <MiniChart title="Reps" data={repsSeries} dataKey="reps" color="#3BA55D" unitLabel={null} rangeKey={rangeDef.key} emptyLabel="No sets logged for this exercise in this range." />
+          <MiniChart title="Volume" data={volumeSeries} dataKey="volume" color="#5B8DEF" unitLabel={units} rangeKey={rangeDef.key} emptyLabel="No sets logged for this exercise in this range." />
+        </>
+      )}
+    </div>
+  );
+}
 
 function DetailRow({ label, value }) {
   if (!value) return null;
@@ -347,6 +639,9 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
             <DetailRow label="Muscle group" value={muscleLabel(selected.muscle_group, "generic")} />
             <DetailRow label="Primary muscles" value={(selected.primary_muscles || []).map((m) => muscleLabel(m, "detailed")).join(", ")} />
             <DetailRow label="Secondary muscles" value={(selected.secondary_muscles || []).map((m) => muscleLabel(m, "detailed")).join(", ")} />
+
+            {userId && <ExerciseDefaultsEditor userId={userId} exercise={selected} />}
+            {userId && <ExerciseCharts userId={userId} exercise={selected} />}
 
             <button onClick={() => setSelected(null)} style={{ width: "100%", marginTop: 8, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>Close</button>
           </div>

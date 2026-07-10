@@ -27,7 +27,6 @@ import DangerZone from "./DangerZone";
 import InstallGuide from "./InstallGuide";
 import ProfileEditor from "./ProfileEditor";
 import WorkoutHistory from "./WorkoutHistory";
-import { useTutorial } from "./TutorialContext";
 import Preferences from "./Preferences";
 import FeedbackModal from "./FeedbackModal";
 import TermsViewer from "./TermsViewer";
@@ -127,7 +126,7 @@ function buildLastWorkoutInsight(history) {
   return { daysSince, muscles, tip };
 }
 
-export default function Home({ user, onStartWorkout, onDataReset }) {
+export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset }) {
   const [range, setRangeState] = useState(() => getPrefs().homeRange);
   function setRange(key) {
     setRangeState(key);
@@ -146,7 +145,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   const [autoWhatsNewEntries, setAutoWhatsNewEntries] = useState(null);
   const [showHelpSupport, setShowHelpSupport] = useState(false);
   const [showSetupReplay, setShowSetupReplay] = useState(false);
-  const [adminSimulateNewUser, setAdminSimulateNewUser] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -190,7 +188,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
     setAdminViewModeState(mode);
     setPref("adminViewMode", mode);
   }
-  const tutorial = useTutorial();
   // Settings search: a section stays visible if the query is empty or
   // found in its keyword string. Deliberately simple substring matching —
   // this is a short static page, not a search index.
@@ -198,7 +195,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
     const q = settingsQuery.trim().toLowerCase();
     return !q || keywords.toLowerCase().includes(q);
   }
-  useEffect(() => { tutorial.startIfUnseen(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Greets the person once per calendar day, on whichever login happens
   // first that day, with everything shipped since their last visit — not
@@ -231,7 +227,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   }
 
   useEffect(() => {
-    if (getPrefs().installPromptSeen || !getPrefs().tutorialSeen) return;
+    if (getPrefs().installPromptSeen || !getPrefs().setupWizardSeen) return;
     const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
     if (standalone) { setPref("installPromptSeen", true); return; }
     const t = setTimeout(() => setShowInstallGuide(true), 500);
@@ -542,13 +538,13 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
             <div />
             <Logo size={64} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button onClick={openAnnouncements} data-tutorial="announcements-btn" aria-label="Announcements" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
+              <button onClick={openAnnouncements} aria-label="Announcements" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
                 <IconBell size={15} />
                 {unseenAnnouncements && (
                   <span style={{ position: "absolute", top: -3, left: -3, width: 10, height: 10, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
                 )}
               </button>
-              <button onClick={() => setShowMenu(true)} data-tutorial="settings-btn" aria-label="Settings" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
+              <button onClick={() => setShowMenu(true)} aria-label="Settings" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
                 <IconMenu size={16} />
                 {unseenFeedbackCount > 0 && (
                   <span style={{ position: "absolute", top: -3, left: -3, width: 10, height: 10, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
@@ -737,9 +733,15 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
 
         {/* Start workout */}
         <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
-          <button onClick={onStartWorkout} data-tutorial="start-workout" style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
-            Start Workout
-          </button>
+          {activeWorkout ? (
+            <button onClick={onResumeWorkout} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
+              Resume Workout
+            </button>
+          ) : (
+            <button onClick={onStartWorkout} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
+              Start Workout
+            </button>
+          )}
         </div>
       </div>
 
@@ -770,7 +772,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
               {settingsMatch("templates workouts reusable build manage") && (
               <button
                 onClick={() => setShowTemplates(true)}
-                data-tutorial="templates-row"
+               
                 style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
               >
                 <div>
@@ -831,17 +833,17 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
               </>
               )}
 
-              {/* Tutorials & Support */}
-              {settingsMatch("tutorials guides support walkthroughs faq community feedback replay splits push pull legs") && (
+              {/* Guides & Support */}
+              {settingsMatch("guides support faq community feedback splits push pull legs") && (
               <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Tutorials & Support</div>
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Guides & Support</div>
               <button
                 onClick={() => setShowHelpSupport(true)}
                 style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
               >
                 <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Tutorials, Guides & Support</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Walkthroughs, FAQ, community, and feedback</div>
+                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Guides & Support</div>
+                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>FAQ, community, and feedback</div>
                 </div>
                 <div style={{ color: T.dim, fontSize: 16 }}>›</div>
               </button>
@@ -956,16 +958,10 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
           onOpenInstallGuide={() => setShowInstallGuide(true)}
           onOpenFeedback={() => setShowFeedback(true)}
           onReplaySetup={() => setShowSetupReplay(true)}
-          onReplayTutorial={() => { setShowHelpSupport(false); setShowMenu(false); tutorial.start(); }}
         />
       )}
       {showSetupReplay && (
-        <SetupWizard
-          onComplete={() => {
-            setShowSetupReplay(false);
-            if (adminSimulateNewUser) { setAdminSimulateNewUser(false); tutorial.start(); }
-          }}
-        />
+        <SetupWizard onComplete={() => setShowSetupReplay(false)} />
       )}
       {showVersionHistory && <VersionHistory onClose={() => setShowVersionHistory(false)} />}
       {showFAQ && <FAQ onClose={() => setShowFAQ(false)} />}
@@ -979,7 +975,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
           onOpenRoles={() => setShowAdminRoles(true)}
           onOpenUserActivity={() => setShowAdminUserActivity(true)}
           onOpenSplits={() => setShowSplitsManager(true)}
-          onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setAdminSimulateNewUser(true); setShowSetupReplay(true); }}
+          onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
           adminViewMode={adminViewMode}
           onSetAdminViewMode={setAdminViewMode}

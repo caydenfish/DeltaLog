@@ -301,7 +301,7 @@ export default function Templates({ user, onClose }) {
       <style>{`button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
-          <button onClick={mode === "list" ? onClose : () => { setMode("list"); setEditingId(null); }} data-tutorial="templates-close-btn" aria-label={mode === "list" ? "Close" : "Cancel"} style={smallBtn}>
+          <button onClick={mode === "list" ? onClose : () => { setMode("list"); setEditingId(null); }} aria-label={mode === "list" ? "Close" : "Cancel"} style={smallBtn}>
             ‹
           </button>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>
@@ -314,7 +314,7 @@ export default function Templates({ user, onClose }) {
 
         {mode === "list" ? (
           <div style={{ padding: 16, flex: 1 }}>
-            <button onClick={startBuild} data-tutorial="new-template-btn" style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, marginBottom: 10 }}>
+            <button onClick={startBuild} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, marginBottom: 10 }}>
               + New Template
             </button>
             <button onClick={() => { setShowImport(true); setImportCode(""); setImportPreview(null); setImportError(null); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, fontWeight: 600, marginBottom: 10 }}>

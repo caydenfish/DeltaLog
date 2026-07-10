@@ -76,7 +76,7 @@ export default function AdminHome({ onClose, onOpenExercises, onOpenFeedback, on
           <Row onClick={onOpenSplits} title="Splits" subtitle="Edit which muscle groups belong to Push, Pull, Legs, and more" />
           {isCreator && <Row onClick={onOpenRoles} title="Roles" subtitle="Grant or remove Admin and Creator access" />}
           {isCreator && <Row onClick={onOpenUserActivity} title="User Activity" subtitle="Who's opening the app vs. actually logging sets" />}
-          <Row onClick={onSimulateNewUser} title="Simulate new-user experience" subtitle="Runs the setup wizard, then the tutorial — same flow a brand-new signup sees" />
+          <Row onClick={onSimulateNewUser} title="Simulate new-user experience" subtitle="Runs the setup wizard — same flow a brand-new signup sees" />
           <Row onClick={onOpenVersionHistory} title="Version History" subtitle="In-depth, searchable changelog of every release" />
         </div>
       </div>

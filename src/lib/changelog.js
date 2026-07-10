@@ -9,10 +9,19 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.10.4": {
+    title: "Exercise history, editable setup, and quicker navigation",
+    items: [
+      "Exercise Library: tap any exercise to see your own weight, reps, and volume charts for it, with 7 day, 30 day, 90 day, and 1 year views.",
+      "Exercise Library: edit an exercise's notes and machine setup (seat height, arm setting, etc.) right from its detail screen — no need to start a workout first.",
+      "Workout menu: a menu icon in the top right now takes you straight to the main menu. Your workout keeps going in the background, so you can pick it back up with a Resume Workout button on Home.",
+    ],
+  },
   "1.10.3": {
-    title: "Calendar fix",
+    title: "Calendar fix, streamlined first-run",
     items: [
       "Days you worked out on the calendar are now all the same shade of orange, instead of varying by how much volume you logged that day.",
+      "Removed the guided tutorial walkthrough. The setup wizard on first launch still walks you through units, training focus, and your other defaults.",
     ],
   },
   "1.10.1": {

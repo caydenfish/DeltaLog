@@ -397,7 +397,7 @@ function SetCard({ s, label, ghost, actions, comparison, unit, onToggleWarmup })
   );
 }
 
-export default function SetLogger({ user, onFinished, resumeWorkout }) {
+export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout }) {
   const [view, setView] = useState("workout");
   const [library, setLibrary] = useState([]);
   const [workoutId, setWorkoutId] = useState(null);
@@ -1620,7 +1620,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
           <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text }}>EDIT WORKOUT</div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={finishEditing} data-tutorial="manage-done-btn" aria-label="Done" style={{ ...smallBtn, color: T.text, borderColor: T.accent, fontSize: 13 }}><IconCheck size={12} /></button>
+              <button onClick={finishEditing} aria-label="Done" style={{ ...smallBtn, color: T.text, borderColor: T.accent, fontSize: 13 }}><IconCheck size={12} /></button>
             </div>
           </div>
           <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
@@ -1639,7 +1639,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
               <div
                 key={i}
                 ref={(el) => (rowRefs.current[i] = el)}
-                data-tutorial="manage-exercise-row"
+               
                 style={{ position: "relative", background: T.surface, border: `1px solid ${w.supersetGroup != null ? T.accent : T.line}`, borderRadius: 12, padding: 12, marginBottom: w.supersetGroup != null && workout[i + 1]?.supersetGroup === w.supersetGroup ? 4 : 10, opacity: dragIndex === i ? 0.5 : 1 }}
               >
                 {dragIndex !== null && dragOverIndex === i && dragIndex > i && (
@@ -1752,7 +1752,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
               </div>
             ))}
             {pickerFor === "add" ? (
-              <div data-tutorial="add-exercise-panel" style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10 }}>
+              <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Add exercises{pickerMultiSelected.length > 0 ? ` (${pickerMultiSelected.length} selected)` : ""}</div>
                   <button onClick={closePicker} aria-label="Close" style={smallBtn}>‹</button>
@@ -1788,7 +1788,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
                 />
               </div>
             ) : (
-              <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} data-tutorial="manage-add-btn" style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px dashed ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>+ Add exercise</button>
+              <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px dashed ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>+ Add exercise</button>
             )}
           </div>
         </div>
@@ -2138,7 +2138,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
     return (
       <div style={outer}>
         <style>{`${fontImport} button { cursor: pointer; }`}</style>
-        <div style={frame} data-tutorial="empty-workout-screen">
+        <div style={frame}>
           <div style={{ padding: "16px 16px 0" }}>
             <button onClick={() => { deleteWorkout(workoutId).catch(() => {}); clearSessionState(workoutId); onFinished(); }} aria-label="Back to home" style={smallBtn}>‹</button>
           </div>
@@ -2147,7 +2147,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
             <div style={{ color: T.dim, fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>Build it yourself or let the generator put one together from your preferences.</div>
             <button onClick={() => setView("generator")} style={{ width: "100%", maxWidth: 280, marginTop: 24, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}><IconBolt size={14} /> Generate workout</button>
             <button onClick={openTemplates} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 15 }}>Use a Template</button>
-            <button onClick={() => setView("manage")} data-tutorial="add-manual-btn" style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Add exercises manually</button>
+            <button onClick={() => setView("manage")} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Add exercises manually</button>
           </div>
         </div>
       </div>
@@ -2179,7 +2179,9 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
             <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
               <button onClick={() => { setShowMenu(false); setFinishConfirm(false); }} aria-label="Close" style={smallBtn}>‹</button>
               <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>WORKOUT MENU</div>
-              <div style={{ width: 26 }} />
+              <button onClick={onGoHome} aria-label="Main menu" title="Back to main menu — your workout stays active" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0, justifySelf: "end" }}>
+                <IconMenu size={16} />
+              </button>
             </div>
             <div style={{ padding: 16, flex: 1 }}>
               <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 16, textAlign: "center", marginBottom: 16 }}>
@@ -2255,7 +2257,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
               {!showSaveTemplate ? (
                 <button
                   onClick={() => { setShowSaveTemplate(true); setTemplateSaved(false); }}
-                  data-tutorial="save-template-btn"
+                 
                   style={{
                     width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14,
                     border: `1px solid ${templateSaved ? T.green : T.line}`,
@@ -2324,7 +2326,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
               );
             })}
           </div>
-          <button onClick={() => setShowMenu(true)} data-tutorial="workout-menu-btn" aria-label="Workout menu" title="Timer, muscle map, finish workout" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}><IconMenu size={16} /></button>
+          <button onClick={() => setShowMenu(true)} aria-label="Workout menu" title="Timer, muscle map, finish workout" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}><IconMenu size={16} /></button>
         </div>
 
         {/* Header */}
@@ -2470,7 +2472,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
         </div>
 
         {restLeft > 0 && (
-          <div data-tutorial="rest-timer-bar" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.surface2, borderBottom: `1px solid ${T.line}`, padding: "5px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.surface2, borderBottom: `1px solid ${T.line}`, padding: "5px 16px" }}>
             <div style={{ color: T.dim, fontSize: 11 }}>Rest</div>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{mmss(restLeft)}</div>
           </div>
@@ -2500,7 +2502,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
           {!wizardOpen ? (
             <>
               {!exDone ? (
-                <button onClick={() => openWizard()} data-tutorial="log-next-set" style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Log next set</button>
+                <button onClick={() => openWizard()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Log next set</button>
               ) : (
                 <>
                   {workoutDone ? (
@@ -2555,7 +2557,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
                   />
                 </div>
               </div>
-              <button onClick={() => setShowCalc(!showCalc)} data-tutorial="plate-calc-toggle" style={{ marginTop: 12, width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${showCalc ? T.accent : T.line}`, background: showCalc ? "rgba(232,68,46,0.1)" : T.surface2, color: T.text, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button onClick={() => setShowCalc(!showCalc)} style={{ marginTop: 12, width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${showCalc ? T.accent : T.line}`, background: showCalc ? "rgba(232,68,46,0.1)" : T.surface2, color: T.text, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <IconBarbell size={15} /> {showCalc ? "Hide plate calculator" : "Plate calculator"}
               </button>
               {showCalc && (
@@ -2589,7 +2591,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
                   )}
                   <button
                     onClick={autoLoad}
-                    data-tutorial="optimize-loading-btn"
+                   
                     style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
                   >
                     <IconBolt size={14} /> Optimize loading
@@ -2633,7 +2635,7 @@ export default function SetLogger({ user, onFinished, resumeWorkout }) {
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                 <button onClick={() => { setWizardOpen(false); setShowCalc(false); setEditIndex(null); }} style={{ flex: 1, padding: "14px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
-                <button onClick={saveSet} data-tutorial="log-set-submit" style={{ flex: 2, padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>
+                <button onClick={saveSet} style={{ flex: 2, padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>
                   {editIndex !== null ? "Save changes" : "Log set"}
                 </button>
               </div>

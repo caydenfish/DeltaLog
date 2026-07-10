@@ -11,8 +11,6 @@ import TermsGate from "./TermsGate";
 import SetupWizard from "./SetupWizard";
 import Home from "./Home";
 import SetLogger from "./SetLogger";
-import { TutorialProvider } from "./TutorialContext";
-import TutorialOverlay from "./TutorialOverlay";
 import AppSplash from "./AppSplash";
 import SharedWorkoutView from "./SharedWorkoutView";
 import LoadingScreen from "./LoadingSpinner";
@@ -138,22 +136,30 @@ export default function App() {
     content = <LoadingScreen />;
   } else {
     content = (
-      <TutorialProvider>
+      <>
         {mode === "workout" ? (
           <SetLogger
             user={session.user}
             resumeWorkout={resumeWorkout}
             onFinished={() => { setResumeWorkout(null); setMode("home"); }}
+            onGoHome={() => {
+              // Unlike onFinished, the workout itself isn't touched — it's
+              // still active on the server. Re-fetch it so Home knows to
+              // offer "Resume workout" instead of losing track of it.
+              setMode("home");
+              fetchActiveWorkout(session.user.id).then(setResumeWorkout).catch(() => {});
+            }}
           />
         ) : (
           <Home
             user={session.user}
+            activeWorkout={resumeWorkout}
             onStartWorkout={() => { setResumeWorkout(null); setMode("workout"); }}
+            onResumeWorkout={() => setMode("workout")}
             onDataReset={() => setProfile(null)}
           />
         )}
-        <TutorialOverlay />
-      </TutorialProvider>
+      </>
     );
   }
 

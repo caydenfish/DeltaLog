@@ -196,7 +196,62 @@ export function bucketDailyVolume(points, rangeKey) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// Raw {date, weight} points, one per workout with a captured weight, for
+// Turns fetchExerciseHistory's rows into three raw (unbucketed) daily
+// series for one exercise: top set weight that day, total working reps,
+// and total volume (weight × reps, summed across working sets). Multiple
+// workouts hitting the same exercise on the same calendar day are merged
+// into that day's point rather than shown as separate entries. Warmup
+// sets are excluded from all three, same as the rest of the app's volume
+// math.
+export function summarizeExerciseHistory(rows) {
+  const byDate = {};
+  for (const row of rows || []) {
+    const date = toLocalDateStr(row.workouts.completed_at);
+    const day = byDate[date] || (byDate[date] = { maxWeight: 0, totalReps: 0, volume: 0 });
+    for (const s of row.sets || []) {
+      if (s.is_warmup) continue;
+      const weight = s.weight || 0;
+      const reps = s.reps || 0;
+      if (weight > day.maxWeight) day.maxWeight = weight;
+      day.totalReps += reps;
+      day.volume += weight * reps;
+    }
+  }
+  const dates = Object.keys(byDate).sort();
+  return {
+    weight: dates.map((date) => ({ date, weight: byDate[date].maxWeight })),
+    reps: dates.map((date) => ({ date, reps: byDate[date].totalReps })),
+    volume: dates.map((date) => ({ date, volume: Math.round(byDate[date].volume) })),
+  };
+}
+
+// Generic bucketing for a single-field {date, [field]: value} series,
+// following the exact same widen-as-range-grows rule as
+// bucketWeightHistory/bucketDailyVolume. `mode` is "avg" (weight, reps —
+// e.g. top set that week, averaged) or "sum" (volume — total moved that
+// week). Exported as one function rather than duplicating
+// bucketWeightHistory/bucketDailyVolume a third time for the per-exercise
+// charts.
+export function bucketSeries(points, rangeKey, field, mode) {
+  if (!points || points.length === 0) return [];
+  const buckets = new Map();
+  for (const p of points) {
+    const key = dateBucketKeyFor(p.date, rangeKey);
+    const b = buckets.get(key) || { sum: 0, count: 0, lastDate: p.date };
+    b.sum += p[field];
+    b.count += 1;
+    if (p.date > b.lastDate) b.lastDate = p.date;
+    buckets.set(key, b);
+  }
+  return [...buckets.entries()]
+    .map(([key, b]) => ({
+      date: rangeKey === "30d" || rangeKey === "365d" ? key : b.lastDate,
+      [field]: mode === "sum" ? Math.round(b.sum) : Math.round((b.sum / b.count) * 10) / 10,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+
 // the body-weight-over-time chart. Only workouts where a weight was
 // actually captured are included — no interpolation or carry-forward here,
 // the chart just shows the real data points.

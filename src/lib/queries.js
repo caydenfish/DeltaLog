@@ -1445,7 +1445,23 @@ export async function markAnnouncementsViewed(userId) {
   if (error) throw error;
 }
 
-// Computes each exercise's all-time personal-best weight, reps, and
+// One exercise's full set history across completed workouts, for the
+// per-exercise weight/reps/volume charts in the Exercise Library. Mirrors
+// fetchExercisePRBaselines' workouts!inner join pattern, but keeps
+// completed_at per row (for date bucketing) instead of collapsing to a
+// single baseline.
+export async function fetchExerciseHistory(userId, exerciseId) {
+  const { data, error } = await supabase
+    .from("workout_exercises")
+    .select("sets(weight, reps, is_warmup), workouts!inner(user_id, completed_at)")
+    .eq("exercise_id", exerciseId)
+    .eq("workouts.user_id", userId)
+    .not("workouts.completed_at", "is", null);
+  if (error) throw error;
+  return data;
+}
+
+
 // single-set volume from completed workouts only — the workout currently
 // being finished is excluded explicitly (belt-and-suspenders alongside the
 // completed_at filter, since the caller fetches this before marking the

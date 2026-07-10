@@ -27,19 +27,18 @@ function Row({ onClick, href, title, subtitle, external }) {
   return <button onClick={onClick} style={style}>{content}</button>;
 }
 
-export default function HelpSupport({ onClose, onOpenFAQ, onOpenInstallGuide, onReplayTutorial, onReplaySetup, onOpenFeedback }) {
+export default function HelpSupport({ onClose, onOpenFAQ, onOpenInstallGuide, onReplaySetup, onOpenFeedback }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
           <button onClick={onClose} aria-label="Close" style={smallBtn}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>TUTORIALS & SUPPORT</div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>GUIDES & SUPPORT</div>
           <div style={{ width: 26 }} />
         </div>
 
         <div style={{ padding: 16, flex: 1 }}>
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Get started</div>
-          <Row onClick={onReplayTutorial} title="Replay tutorial" subtitle="Quick walkthrough of logging, plate calculator, and templates" />
           <Row onClick={onReplaySetup} title="Rerun setup wizard" subtitle="Go back through units, training focus, and your other defaults" />
           <Row onClick={onOpenInstallGuide} title="Install as an app" subtitle="Add DeltaLog to your home screen" />
 

@@ -120,7 +120,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
             <div style={{ color: T.text, fontSize: 14 }}>Weight Units</div>
             <div style={{ color: T.dim, fontSize: 11 }}>Weight display and input across the app</div>
           </div>
-          <div style={{ display: "flex", gap: 4 }} data-tutorial="units-toggle">
+          <div style={{ display: "flex", gap: 4 }}>
             {["lb", "kg"].map((u) => (
               <button key={u} onClick={() => update("units", u)} style={{
                 padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
@@ -243,7 +243,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
               <div style={{ color: T.dim, fontSize: 11 }}>How weight opens when logging a set. RIR stays at the bottom either way.</div>
             </div>
           </div>
-          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }} data-tutorial="default-entry-toggle">
+          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
             {[{ key: "manual", label: "Manual entry" }, { key: "plate", label: "Plate calculator" }].map((opt) => (
               <button
                 key={opt.key}
@@ -345,7 +345,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
             <div style={{ color: T.text, fontSize: 14 }}>Units</div>
             <div style={{ color: T.dim, fontSize: 11 }}>Weight display and input across the app</div>
           </div>
-          <div style={{ display: "flex", gap: 4 }} data-tutorial="units-toggle">
+          <div style={{ display: "flex", gap: 4 }}>
             {["lb", "kg"].map((u) => (
               <button key={u} onClick={() => update("units", u)} style={{
                 padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
@@ -484,7 +484,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
               <div style={{ color: T.dim, fontSize: 11 }}>How weight opens when logging a set. RIR stays at the bottom either way.</div>
             </div>
           </div>
-          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }} data-tutorial="default-entry-toggle">
+          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
             {[{ key: "manual", label: "Manual entry" }, { key: "plate", label: "Plate calculator" }].map((opt) => (
               <button
                 key={opt.key}
