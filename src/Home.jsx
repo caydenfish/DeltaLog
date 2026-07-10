@@ -508,7 +508,6 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
   // whatever range the volume chart above happens to be showing.
   const { byDate: calendarByDate, workoutsByDate } = useMemo(() => groupWorkoutsByDate(history || []), [history]);
   const monthGrid = useMemo(() => buildMonthGrid(calendarMonth, calendarByDate), [calendarMonth, calendarByDate]);
-  const maxDayVolume = Math.max(1, ...Object.values(calendarByDate || {}));
   const insight = useMemo(() => buildLastWorkoutInsight(history), [history]);
 
   function handleDayClick(dateStr) {
@@ -703,7 +702,7 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
                   {monthGrid.map((cell, i) => {
                     if (!cell) return <div key={i} />;
-                    const intensity = cell.volume > 0 ? Math.min(1, cell.volume / maxDayVolume) : 0;
+                    const hasWorkout = cell.volume > 0;
                     const clickable = cell.volume > 0;
                     return (
                       <button
@@ -713,9 +712,9 @@ export default function Home({ user, onStartWorkout, onDataReset }) {
                         title={cell.volume > 0 ? `${Math.round(toDisplay(cell.volume, units)).toLocaleString()} ${units} — tap for details` : undefined}
                         style={{
                           aspectRatio: "1", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 10, color: intensity > 0.4 ? "#fff" : T.dim,
-                          background: intensity > 0 ? T.accent : T.surface2,
-                          opacity: intensity > 0 ? 0.35 + intensity * 0.65 : 1,
+                          fontSize: 10, color: hasWorkout ? "#fff" : T.dim,
+                          background: hasWorkout ? T.accent : T.surface2,
+                          opacity: 1,
                           border: cell.isToday ? `1px solid ${T.text}` : "none",
                           padding: 0, cursor: clickable ? "pointer" : "default",
                         }}

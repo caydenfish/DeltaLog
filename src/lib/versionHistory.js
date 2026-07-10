@@ -5,6 +5,14 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.10.3",
+    date: "2026-07-10",
+    items: [
+      "Fixed 'structure of query does not match function result type' on both the User Activity page and Roles search. Root cause: auth.users.email is character varying, not text, and both admin_search_users() and admin_get_user_activity() declared their return column as `email text` while selecting u.email through with no cast. supabase/migration_050_fix_email_type_mismatch.sql recreates both functions with u.email::text -- only change, everything else identical to migration_049's versions.",
+      "Home.jsx: calendar heatmap cell styling no longer scales opacity by cell.volume/maxDayVolume. Any day with volume > 0 now renders at flat opacity 1 with T.accent background and white text -- previously ranged from opacity 0.35 (low volume) to 1.0 (highest-volume day in the visible month), which read as inconsistent coloring across days that all had a completed workout. Removed the now-unused maxDayVolume calc.",
+    ],
+  },
+  {
     version: "1.10.2",
     date: "2026-07-10",
     items: [

@@ -9,6 +9,12 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.10.3": {
+    title: "Calendar fix",
+    items: [
+      "Days you worked out on the calendar are now all the same shade of orange, instead of varying by how much volume you logged that day.",
+    ],
+  },
   "1.10.1": {
     title: "A third level of muscle detail: Category, Region, Anatomy",
     items: [
