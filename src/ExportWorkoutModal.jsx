@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import html2canvas from "html2canvas";
 import Logo, { Wordmark } from "./Logo";
 import { IconX, IconCheck } from "./Icons";
@@ -36,8 +36,35 @@ export default function ExportWorkoutModal({ data, onClose }) {
   const [usePhotoBg, setUsePhotoBg] = useState(remembered ? remembered.usePhotoBg : !!data.photoUrl);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [photoDataUrl, setPhotoDataUrl] = useState(null);
   const previewRef = useRef(null);
   const containerRef = useRef(null);
+
+  // The progress photo is a Supabase signed URL, fetched cross-origin.
+  // html2canvas has to load it with crossOrigin="anonymous" so the
+  // capture doesn't taint the canvas, and when that cross-origin request
+  // hangs or stalls -- flaky network, CORS quirk on the signed URL,
+  // whatever -- html2canvas sits there waiting up to its imageTimeout
+  // before giving up, which is exactly the ~10 second stall reported
+  // ("only on Save Image, then it fixes itself"). Converting it to a
+  // same-origin data URL up front, well before Save Image is tapped,
+  // means the capture never needs a live network fetch at all -- nothing
+  // left to hang on.
+  useEffect(() => {
+    if (!data.photoUrl) { setPhotoDataUrl(null); return; }
+    let cancelled = false;
+    fetch(data.photoUrl)
+      .then((r) => r.blob())
+      .then((blob) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }))
+      .then((dataUrl) => { if (!cancelled) setPhotoDataUrl(dataUrl); })
+      .catch(() => { if (!cancelled) setPhotoDataUrl(null); }); // falls back to the remote URL below
+    return () => { cancelled = true; };
+  }, [data.photoUrl]);
 
   const toggles = [
     { key: "sets", label: "Set-by-set detail", value: showSets, set: setShowSets, hideOn: ["story"] },
@@ -67,7 +94,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
       // keeps the live and cloned layouts in sync so there's nothing
       // to visibly snap into place.
       if (containerRef.current) containerRef.current.scrollTop = 0;
-      const canvas = await html2canvas(previewRef.current, { backgroundColor: T.bg, scale: 2, useCORS: true, scrollX: 0, scrollY: 0 });
+      const canvas = await html2canvas(previewRef.current, { backgroundColor: T.bg, scale: 2, useCORS: true, scrollX: 0, scrollY: 0, imageTimeout: 3000 });
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;
@@ -157,9 +184,9 @@ export default function ExportWorkoutModal({ data, onClose }) {
               {photoBgActive && (
                 <>
                   <img
-                    src={data.photoUrl}
+                    src={photoDataUrl || data.photoUrl}
                     alt=""
-                    crossOrigin="anonymous"
+                    crossOrigin={photoDataUrl ? undefined : "anonymous"}
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
                   />
                   <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,11,13,0.55) 0%, rgba(10,11,13,0.35) 45%, rgba(10,11,13,0.75) 100%)", zIndex: 1 }} />
