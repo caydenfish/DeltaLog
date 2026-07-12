@@ -15,6 +15,7 @@ export const CHANGELOG = {
       "Set a different rest timer for warmup sets than your working sets. Only shows up for exercises where you've planned warmup sets.",
       "Adding exercises: creating a custom exercise while building your workout no longer loses the other exercises you'd already picked — it now takes you back to that same screen with your picks intact.",
       "Added a back button to the Edit Workout screen and the setup wizard when it's replayed from Help & Support.",
+      "Fixed: backing out of \"Add exercises manually\" on a brand-new workout no longer drops you into the workout screen as if you'd started it. It now asks if you want to discard the exercises you'd added and takes you back to Home.",
     ],
   },
   "1.10.4": {

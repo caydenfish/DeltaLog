@@ -413,6 +413,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const [outlierReview, setOutlierReview] = useState(null); // null | array of flagged sets pending review
   const [showExportImage, setShowExportImage] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  // True only when "manage" was entered via the empty-workout "Add exercises
+  // manually" path -- i.e. nothing has been committed to yet, so the back
+  // button there should offer to discard the whole workout instead of
+  // dropping the user into the live logging screen (see manageFromScratch
+  // usage below and handleManageBack).
+  const [manageFromScratch, setManageFromScratch] = useState(false);
+  const [discardNewWorkoutConfirm, setDiscardNewWorkoutConfirm] = useState(false);
+  const [discardingNewWorkout, setDiscardingNewWorkout] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [bodyWeightInput, setBodyWeightInput] = useState("");
@@ -815,7 +823,39 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     } else {
       closePicker();
     }
+    setManageFromScratch(false);
     setView("workout");
+  }
+
+  // Back button on the manage screen. Editing an already-active workout
+  // (reached via the "Edit Workout" button) should just return to the
+  // workout view, same as Done -- but reached via "Add exercises manually"
+  // from a brand-new, empty workout, there's nothing "active" to return
+  // to yet, so back should offer to leave and discard instead of quietly
+  // dropping the user into the live logging screen.
+  function handleManageBack() {
+    if (!manageFromScratch) {
+      finishEditing();
+      return;
+    }
+    if (workout.length === 0 && pickerMultiSelected.length === 0) {
+      handleDiscardNewWorkout();
+    } else {
+      setDiscardNewWorkoutConfirm(true);
+    }
+  }
+
+  async function handleDiscardNewWorkout() {
+    setDiscardingNewWorkout(true);
+    try {
+      await deleteWorkout(workoutId);
+    } catch (err) {
+      note(`Couldn't fully delete on the server, but leaving anyway: ${err.message}`);
+    }
+    clearSessionState(workoutId);
+    setDiscardingNewWorkout(false);
+    setDiscardNewWorkoutConfirm(false);
+    onFinished();
   }
 
   async function addSelectedExercises() {
@@ -1627,7 +1667,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
         <style>{`${fontImport} button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>
         <div style={frame}>
           <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
-            <button onClick={finishEditing} aria-label="Back" style={smallBtn}>‹</button>
+            <button onClick={handleManageBack} aria-label="Back" style={smallBtn}>‹</button>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>EDIT WORKOUT</div>
             <div style={{ display: "flex", gap: 6 }}>
               <button onClick={finishEditing} aria-label="Done" style={{ ...smallBtn, color: T.text, borderColor: T.accent, fontSize: 13 }}><IconCheck size={12} /></button>
@@ -1821,6 +1861,25 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             onCreate={handleCreateCustomExercise}
             initialName={pickerSearch}
           />
+        )}
+        {discardNewWorkoutConfirm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 55, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div style={{ width: "100%", maxWidth: 340, background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 16 }}>
+              <div style={{ color: T.accent, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Discard this workout?</div>
+              <div style={{ color: T.dim, fontSize: 13, marginBottom: 14, lineHeight: 1.4 }}>
+                {(() => {
+                  const n = workout.length + pickerMultiSelected.length;
+                  return `${n} exercise${n === 1 ? "" : "s"} added so far will be permanently deleted. This can't be undone.`;
+                })()}
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setDiscardNewWorkoutConfirm(false)} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Keep going</button>
+                <button onClick={handleDiscardNewWorkout} disabled={discardingNewWorkout} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>
+                  {discardingNewWorkout ? "Deleting…" : "Yes, discard it"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -2170,7 +2229,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             <div style={{ color: T.dim, fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>Build it yourself or let the generator put one together from your preferences.</div>
             <button onClick={() => setView("generator")} style={{ width: "100%", maxWidth: 280, marginTop: 24, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}><IconBolt size={14} /> Generate workout</button>
             <button onClick={openTemplates} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 15 }}>Use a Template</button>
-            <button onClick={() => setView("manage")} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Add exercises manually</button>
+            <button onClick={() => { setManageFromScratch(true); setView("manage"); }} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Add exercises manually</button>
           </div>
         </div>
       </div>
@@ -2263,7 +2322,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                 </div>
               )}
 
-              <button onClick={() => setView("manage")} style={{ width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Edit Workout</button>
+              <button onClick={() => { setManageFromScratch(false); setView("manage"); }} style={{ width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Edit Workout</button>
 
               <button
                 onClick={() => setShowWorkoutPrefs(!showWorkoutPrefs)}
