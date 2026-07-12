@@ -170,6 +170,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [units, setUnitsState] = useState(() => getPrefs().units);
   const [restDefault, setRestDefaultState] = useState(() => getPrefs().restSeconds);
   const [warmupRestDefault, setWarmupRestDefaultState] = useState(() => getPrefs().warmupRestSeconds);
+  const [warmupRestEnabled, setWarmupRestEnabledState] = useState(() => getPrefs().warmupRestEnabled);
   const [muscleNameMode, setMuscleNameModeState] = useState(() => getPrefs().muscleNameMode);
   // The taxonomy fetch (App.jsx) and the session/profile chain that
   // gates Home mounting both start at boot with no ordering guarantee.
@@ -238,6 +239,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   function setUnits(u) { setUnitsState(u); setPref("units", u); }
   function setRestDefault(s) { setRestDefaultState(s); setPref("restSeconds", s); }
   function setWarmupRestDefault(s) { setWarmupRestDefaultState(s); setPref("warmupRestSeconds", s); }
+  function setWarmupRestEnabled(v) { setWarmupRestEnabledState(v); setPref("warmupRestEnabled", v); }
   function setMuscleNameMode(v) { setMuscleNameModeState(v); setPref("muscleNameMode", v); }
   function setScoreDisplay(v) { setScoreDisplayState(v); setPref("scoreDisplay", v); }
   function setWeightEntryMode(v) { setWeightEntryModeState(v); setPref("weightEntryMode", v); }
@@ -818,7 +820,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 </button>
                 )}
                 <Preferences
-                  value={{ units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, plate55Scope, trainingIdeology, timeFormat }}
+                  value={{ units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, plate55Scope, trainingIdeology, timeFormat }}
                   filterQuery={settingsQuery}
                   onChange={(key, val) => {
                     if (key === "units") setUnits(val);
@@ -827,6 +829,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                     else if (key === "weightEntryMode") setWeightEntryMode(val);
                     else if (key === "restSeconds") setRestDefault(val);
                     else if (key === "warmupRestSeconds") setWarmupRestDefault(val);
+                    else if (key === "warmupRestEnabled") setWarmupRestEnabled(val);
                     else if (key === "plate55Scope") setPlate55Scope(val);
                     else if (key === "trainingIdeology") setTrainingIdeology(val);
                     else if (key === "timeFormat") setTimeFormat(val);

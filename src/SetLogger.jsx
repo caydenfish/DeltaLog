@@ -1282,7 +1282,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
       setRestEndsAt(null);
       goTo(partnerIdx);
     } else {
-      setRestEndsAt(Date.now() + (isWarmup ? (ex.warmupRestSeconds || getPrefs().warmupRestSeconds) : (ex.restSeconds || getPrefs().restSeconds)) * 1000);
+      setRestEndsAt(Date.now() + (getPrefs().warmupRestEnabled && isWarmup ? (ex.warmupRestSeconds || getPrefs().warmupRestSeconds) : (ex.restSeconds || getPrefs().restSeconds)) * 1000);
     }
     if (nextSets.length === planned && lastWeek.length >= planned && r >= lastWeek[planned - 1].reps + 2) {
       note(`Final set beat last session by ${r - lastWeek[planned - 1].reps} reps. Do it again next workout and the target moves up.`, "progress", 5000);
@@ -1744,7 +1744,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                       <button onClick={() => adjustRest(i, Math.min(600, (w.restSeconds || getPrefs().restSeconds) + 15))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
                       {w.restSeconds != null && <span style={{ fontSize: 10, color: T.dim, marginLeft: 4 }}>custom</span>}
                     </div>
-                    {(w.plannedWarmup || 0) > 0 && (
+                    {getPrefs().warmupRestEnabled && (w.plannedWarmup || 0) > 0 && (
                       <>
                         <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>Warmup rest timer</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>

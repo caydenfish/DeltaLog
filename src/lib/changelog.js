@@ -12,7 +12,8 @@ export const CHANGELOG = {
   "1.10.5": {
     title: "Warmup rest timer, easier navigation back",
     items: [
-      "Set a different rest timer for warmup sets than your working sets. Only shows up for exercises where you've planned warmup sets.",
+      "New \"Rest Timers\" section under Training Preferences: a toggle to turn on a separate warmup rest timer, with its own default duration alongside your regular working-set default. Turn it off and there's just one rest timer for every set, like before.",
+      "Set a different rest timer for warmup sets than your working sets, per exercise, right from the Edit Workout screen. Only shows up for exercises where you've planned warmup sets, and only when the new Rest Timers toggle is on. Carries over workout to workout, same as your regular per-exercise rest times.",
       "Adding exercises: creating a custom exercise while building your workout no longer loses the other exercises you'd already picked — it now takes you back to that same screen with your picks intact.",
       "Added a back button to the Edit Workout screen and the setup wizard when it's replayed from Help & Support.",
       "Fixed: backing out of \"Add exercises manually\" on a brand-new workout no longer drops you into the workout screen as if you'd started it. It now asks if you want to discard the exercises you'd added and takes you back to Home.",
