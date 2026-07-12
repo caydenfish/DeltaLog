@@ -1098,8 +1098,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   // once a machine is selected; with no machine selected ("Default"), they
   // read/write the flat top-level fields exactly as before, so existing
   // saved setups keep working untouched.
-  const activeMachine = ex.setup["_activeMachine"] || "";
-  const savedMachines = Object.keys(ex.setup["_machines"] || {});
+  const activeMachine = ex ? (ex.setup["_activeMachine"] || "") : "";
+  const savedMachines = ex ? Object.keys(ex.setup["_machines"] || {}) : [];
   function machineFieldValue(field) {
     if (activeMachine) return (ex.setup["_machines"]?.[activeMachine]?.[field]) || "";
     return ex.setup[field] || "";
