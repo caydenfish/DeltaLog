@@ -103,7 +103,7 @@ function weightForReps(oneRM, reps) {
 function diffBadge(diff, unit) {
   if (!diff) return null;
   const sign = diff > 0 ? "+" : "";
-  return { text: `${sign}${diff} ${unit}`, color: diff > 0 ? T.green : T.accent };
+  return { text: `${sign}${diff} ${unit}` };
 }
 
 // Always produces an ideology-adjusted target, with or without history.
@@ -369,7 +369,8 @@ function matchingLastWeekSet(lastWeek, sets, i) {
 function SetCard({ s, label, ghost, actions, comparison, unit, onToggleWarmup }) {
   const repsBadge = comparison ? diffBadge(s.reps - comparison.reps, Math.abs(s.reps - comparison.reps) === 1 ? "Rep" : "Reps") : null;
   const weightBadge = comparison ? diffBadge(s.weight - comparison.weight, unit === "kg" ? "Kg" : "Lbs") : null;
-  const matched = comparison && !repsBadge && !weightBadge;
+  const volumeBadge = comparison ? diffBadge(Math.round(s.weight * s.reps - comparison.weight * comparison.reps), "Vol") : null;
+  const matched = comparison && !repsBadge && !weightBadge && !volumeBadge;
   const badgeStyle = { width: 26, height: 26, borderRadius: 8, background: s.isWarmup ? "rgba(232,168,46,0.18)" : T.surface2, color: s.isWarmup ? "#E8A82E" : T.dim, fontSize: 12, fontWeight: s.isWarmup ? 700 : 400, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: ghost ? "transparent" : T.surface, border: `1px ${ghost ? "dashed" : "solid"} ${T.line}`, borderRadius: 12, marginBottom: 8, opacity: ghost ? 0.75 : 1 }}>
@@ -386,8 +387,9 @@ function SetCard({ s, label, ghost, actions, comparison, unit, onToggleWarmup })
           <div style={{ fontSize: 12, color: T.dim }}>RIR {s.rir} · e1RM {Math.round(e1RM(s.weight, s.reps, s.rir))}</div>
           {comparison && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, marginTop: 2 }}>
-              {repsBadge && <span style={{ fontSize: 11, fontWeight: 700, color: repsBadge.color }}>{repsBadge.text}</span>}
-              {weightBadge && <span style={{ fontSize: 11, fontWeight: 700, color: weightBadge.color }}>{weightBadge.text}</span>}
+              {repsBadge && <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{repsBadge.text}</span>}
+              {weightBadge && <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{weightBadge.text}</span>}
+              {volumeBadge && <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{volumeBadge.text}</span>}
               {matched && <span style={{ fontSize: 11, color: T.dim }}>Matched last session</span>}
             </div>
           )}
@@ -473,6 +475,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const [customBar, setCustomBar] = useState("");
   const [showBarInfo, setShowBarInfo] = useState(false);
   const [restLeft, setRestLeft] = useState(0);
+  const [restOverSec, setRestOverSec] = useState(0);
   const [restEndsAt, setRestEndsAt] = useState(null); // timestamp (ms); source of truth for restLeft, persisted so a reload doesn't wipe the timer
   const [flash, setFlash] = useState(null);
   const [genMuscles, setGenMuscles] = useState([]);
@@ -504,11 +507,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const chipRefs = useRef([]);
 
   useEffect(() => {
-    if (!restEndsAt) { setRestLeft(0); return; }
+    if (!restEndsAt) { setRestLeft(0); setRestOverSec(0); return; }
     const tick = () => {
-      const left = Math.max(0, Math.round((restEndsAt - Date.now()) / 1000));
-      setRestLeft(left);
-      if (left <= 0) setRestEndsAt(null);
+      const diff = Math.round((restEndsAt - Date.now()) / 1000);
+      if (diff > 0) { setRestLeft(diff); setRestOverSec(0); }
+      else { setRestLeft(0); setRestOverSec(-diff); }
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -647,7 +650,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             if (typeof saved.exIdx === "number" && saved.exIdx < items.length) setExIdx(saved.exIdx);
             if (saved.view) setView(saved.view);
             if (saved.showCalc) setShowCalc(true);
-            if (saved.showMenu) setShowMenu(true);
+            // Deliberately NOT restoring saved.showMenu: the workout menu is a
+            // transient overlay, not workout progress. Someone who checked the
+            // menu right before backgrounding the app (a very common last
+            // action) should still land back on their current exercise when
+            // they resume, not on the overlay they happened to leave open.
             if (saved.wizardOpen) {
               setWizardOpen(true);
               setEditIndex(typeof saved.editIndex === "number" ? saved.editIndex : null);
@@ -710,11 +717,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const ideo = IDEOLOGIES[effIdeology];
   const target = ex ? targetFor(ex, effIdeology, unit) : null;
   const barWeight = barMode === "custom" ? parseFloat(customBar) || 0 : barMode;
-  const setNum = sets.length + 1;
+  const setNum = sets.filter((s) => !s.isWarmup).length + 1;
   const lastLogged = sets[sets.length - 1];
   const stackSum = loaded.reduce((a, b) => a + b, 0);
-  const exDone = ex ? sets.length >= planned : false;
-  const workoutDone = workout.length > 0 && allSets.every((s, i) => s.length >= workout[i].planned);
+  const exDone = ex ? sets.filter((s) => !s.isWarmup).length >= planned : false;
+  const workoutDone = workout.length > 0 && allSets.every((s, i) => s.filter((x) => !x.isWarmup).length >= workout[i].planned);
 
   const note = (msg, type = "e1rm", ms = 4000) => { setFlash({ type, msg }); setTimeout(() => setFlash(null), ms); };
 
@@ -1084,6 +1091,47 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     saveExerciseDefaults(user.id, ex.id, {}, ex.notes).catch((err) => note(`Couldn't clear setup: ${err.message}`));
   }
 
+  // Machine variants: a single exercise (e.g. "Chest Press") can exist on
+  // several distinct machines at a gym — Hammer Strength, Free Motion, a
+  // cable stack, etc. — each with its own seat/bar/cable/arm settings. The
+  // four fixed machine fields plus notes live under ex.setup._machines[name]
+  // once a machine is selected; with no machine selected ("Default"), they
+  // read/write the flat top-level fields exactly as before, so existing
+  // saved setups keep working untouched.
+  const activeMachine = ex.setup["_activeMachine"] || "";
+  const savedMachines = Object.keys(ex.setup["_machines"] || {});
+  function machineFieldValue(field) {
+    if (activeMachine) return (ex.setup["_machines"]?.[activeMachine]?.[field]) || "";
+    return ex.setup[field] || "";
+  }
+  function updateMachineField(field, val) {
+    if (!activeMachine) { updateSetup(field, val); return; }
+    const machines = { ...(ex.setup["_machines"] || {}) };
+    machines[activeMachine] = { ...(machines[activeMachine] || {}), [field]: val };
+    const nextSetup = { ...ex.setup, _machines: machines };
+    setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, setup: nextSetup } : w)));
+    saveExerciseDefaults(user.id, ex.id, nextSetup, ex.notes).catch((err) => note(`Couldn't save setup: ${err.message}`));
+  }
+  function setActiveMachine(name) {
+    updateSetup("_activeMachine", name);
+  }
+  function addMachine(rawName) {
+    const name = rawName.trim();
+    if (!name) return;
+    const machines = { ...(ex.setup["_machines"] || {}) };
+    if (!machines[name]) machines[name] = {};
+    const nextSetup = { ...ex.setup, _machines: machines, _activeMachine: name };
+    setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, setup: nextSetup } : w)));
+    saveExerciseDefaults(user.id, ex.id, nextSetup, ex.notes).catch((err) => note(`Couldn't save setup: ${err.message}`));
+  }
+  function removeMachine(name) {
+    const machines = { ...(ex.setup["_machines"] || {}) };
+    delete machines[name];
+    const nextSetup = { ...ex.setup, _machines: machines, _activeMachine: activeMachine === name ? "" : activeMachine };
+    setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, setup: nextSetup } : w)));
+    saveExerciseDefaults(user.id, ex.id, nextSetup, ex.notes).catch((err) => note(`Couldn't remove machine: ${err.message}`));
+  }
+
   // Starting weight carries over per exercise (set-to-set, workout-to-
   // workout) — it's the same machine/bar every time, so re-typing it each
   // session is pure friction. Rehydrate whenever the active exercise
@@ -1108,19 +1156,19 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   // entry is the default; the toggle covers the minority of machines
   // labeled with words/notches instead of numbers (e.g. "top pin").
   function heightField(field) {
-    const isText = !!(ex.setup && ex.setup[`${field}__text`]);
-    const val = (ex.setup && ex.setup[field]) || "";
+    const isText = !!machineFieldValue(`${field}__text`);
+    const val = machineFieldValue(field);
     return (
       <>
         <input
           inputMode={isText ? "text" : "decimal"}
           value={val}
-          onChange={(e) => updateSetup(field, isText ? e.target.value : e.target.value.replace(/[^0-9.]/g, ""))}
+          onChange={(e) => updateMachineField(field, isText ? e.target.value : e.target.value.replace(/[^0-9.]/g, ""))}
           placeholder="—"
           style={{ width: 90, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "5px 8px", outline: "none", textAlign: "center", boxSizing: "border-box" }}
         />
         <button
-          onClick={() => updateSetup(`${field}__text`, isText ? "" : "1")}
+          onClick={() => updateMachineField(`${field}__text`, isText ? "" : "1")}
           title={isText ? "Switch to numeric" : "Switch to text, e.g. \"top notch\""}
           style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: isText ? "rgba(232,68,46,0.12)" : "none", color: isText ? T.text : T.dim, fontSize: 10, fontWeight: 700, padding: 0, flexShrink: 0 }}
         >{isText ? "Abc" : "#"}</button>
@@ -1457,8 +1505,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" };
   const arrowBtn = (disabled) => ({ width: 34, height: 34, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: disabled ? "#3A404B" : T.dim, fontSize: 16, flexShrink: 0, cursor: disabled ? "default" : "pointer" });
   const fontImport = `@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap');`;
-  const frame = { width: "100%", maxWidth: 400, background: T.bg, minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative" };
-  const outer = { minHeight: "100vh", background: "#0A0B0D", display: "flex", justifyContent: "center" };
+  const frame = { width: "100%", maxWidth: 400, background: T.bg, height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" };
+  const outer = { height: "100dvh", background: "#0A0B0D", display: "flex", justifyContent: "center", overflow: "hidden" };
 
   function filteredLibrary(exclude) {
     const q = pickerSearch.toLowerCase();
@@ -1670,13 +1718,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             <button onClick={handleManageBack} aria-label="Back" style={smallBtn}>‹</button>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>EDIT WORKOUT</div>
             <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} aria-label="Add exercise" title="Add exercise" style={{ ...smallBtn, color: T.text, fontSize: 15, padding: "3px 9px", fontWeight: 700 }}>+</button>
               <button onClick={finishEditing} aria-label="Done" style={{ ...smallBtn, color: T.text, borderColor: T.accent, fontSize: 13 }}><IconCheck size={12} /></button>
             </div>
           </div>
           <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
             {workout.length === 0 && (
               <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "20px", border: `1px dashed ${T.line}`, borderRadius: 12, marginBottom: 10 }}>
-                Empty workout. Add exercises below or use the generator.
+                Empty workout. Tap + above to add exercises, or use the generator.
               </div>
             )}
             {linkingFrom !== null && (
@@ -1814,47 +1863,50 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                 )}
               </div>
             ))}
-            {pickerFor === "add" ? (
-              <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Add exercises{pickerMultiSelected.length > 0 ? ` (${pickerMultiSelected.length} selected)` : ""}</div>
-                  <button onClick={closePicker} aria-label="Close" style={smallBtn}>‹</button>
-                </div>
-                <ExercisePicker
-                  list={list}
-                  search={pickerSearch} onSearchChange={setPickerSearch}
-                  muscleFilter={muscleFilter} onToggleMuscle={(m) => setMuscleFilter(muscleFilter.includes(m) ? muscleFilter.filter((x) => x !== m) : [...muscleFilter, m])} onApplySplit={applyPickerSplit}
-                  equipFilter={equipFilter} onToggleEquip={(eq) => setEquipFilter(equipFilter.includes(eq) ? equipFilter.filter((x) => x !== eq) : [...equipFilter, eq])}
-                  performedFilter={performedFilter} onSetPerformed={setPerformedFilter}
-                      sourceFilter={sourceFilter} onSetSource={setSourceFilter}
-                  showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
-                  onPick={addExercise}
-                  multiSelect
-                  selectedIds={new Set(pickerMultiSelected.map((p) => p.id))}
-                  onToggleSelect={togglePickerSelect}
-                  onToggleFavorite={toggleFavorite}
-                  footer={<>
-                    {createCustomFooter((l) => togglePickerSelect(l))}
-                    <button
-                      onClick={addSelectedExercises}
-                      disabled={pickerMultiSelected.length === 0}
-                      style={{
-                        width: "100%", padding: "12px 0", marginTop: 8, borderRadius: 10, border: "none",
-                        background: pickerMultiSelected.length === 0 ? T.surface2 : T.accent,
-                        color: pickerMultiSelected.length === 0 ? T.dim : "#fff",
-                        fontSize: 14, fontWeight: 700,
-                      }}
-                    >
-                      {pickerMultiSelected.length === 0 ? "Select exercises to add" : `Add ${pickerMultiSelected.length} exercise${pickerMultiSelected.length > 1 ? "s" : ""}`}
-                    </button>
-                  </>}
-                />
-              </div>
-            ) : (
-              <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px dashed ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>+ Add exercise</button>
-            )}
           </div>
         </div>
+        {pickerFor === "add" && (
+          <div style={{ position: "absolute", inset: 0, background: T.bg, zIndex: 20, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
+              <button onClick={closePicker} aria-label="Close" style={smallBtn}>‹</button>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>
+                ADD EXERCISES{pickerMultiSelected.length > 0 ? ` (${pickerMultiSelected.length})` : ""}
+              </div>
+              <div />
+            </div>
+            <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
+              <ExercisePicker
+                list={list}
+                search={pickerSearch} onSearchChange={setPickerSearch}
+                muscleFilter={muscleFilter} onToggleMuscle={(m) => setMuscleFilter(muscleFilter.includes(m) ? muscleFilter.filter((x) => x !== m) : [...muscleFilter, m])} onApplySplit={applyPickerSplit}
+                equipFilter={equipFilter} onToggleEquip={(eq) => setEquipFilter(equipFilter.includes(eq) ? equipFilter.filter((x) => x !== eq) : [...equipFilter, eq])}
+                performedFilter={performedFilter} onSetPerformed={setPerformedFilter}
+                sourceFilter={sourceFilter} onSetSource={setSourceFilter}
+                showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
+                onPick={addExercise}
+                multiSelect
+                selectedIds={new Set(pickerMultiSelected.map((p) => p.id))}
+                onToggleSelect={togglePickerSelect}
+                onToggleFavorite={toggleFavorite}
+                footer={<>{createCustomFooter((l) => togglePickerSelect(l))}</>}
+              />
+            </div>
+            <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface }}>
+              <button
+                onClick={addSelectedExercises}
+                disabled={pickerMultiSelected.length === 0}
+                style={{
+                  width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+                  background: pickerMultiSelected.length === 0 ? T.surface2 : T.accent,
+                  color: pickerMultiSelected.length === 0 ? T.dim : "#fff",
+                  fontSize: 15, fontWeight: 700,
+                }}
+              >
+                {pickerMultiSelected.length === 0 ? "Select exercises to add" : `Add ${pickerMultiSelected.length} exercise${pickerMultiSelected.length > 1 ? "s" : ""}`}
+              </button>
+            </div>
+          </div>
+        )}
         {showCreateCustom && (
           <CustomExerciseModal
             onClose={() => setShowCreateCustom(false)}
@@ -2238,8 +2290,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
 
   // ---------- Workout view ----------
   const setupSummary = ex.setupFields.filter((f) => ex.setup[f]).map((f) => `${f}: ${ex.setup[f]}`).join(" · ");
-  const machineSetupSummary = ["Seat height", "Bar height", "Cable height", "Arm setting"].filter((f) => ex.setup[f]).map((f) => `${f}: ${ex.setup[f]}`).join(" · ") || (ex.setup["_machineNotes"] ? "Notes saved" : "");
+  const machineFields = ["Seat height", "Bar height", "Cable height", "Arm setting"];
+  const machineSetupSummary = machineFields.filter((f) => machineFieldValue(f)).map((f) => `${f}: ${machineFieldValue(f)}`).join(" · ") || (machineFieldValue("_machineNotes") ? "Notes saved" : "");
   function clearMachineSetup() {
+    if (activeMachine) {
+      const machines = { ...(ex.setup["_machines"] || {}) };
+      machines[activeMachine] = {};
+      const nextSetup = { ...ex.setup, _machines: machines };
+      setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, setup: nextSetup } : w)));
+      saveExerciseDefaults(user.id, ex.id, nextSetup, ex.notes).catch((err) => note(`Couldn't clear setup: ${err.message}`));
+      return;
+    }
     const nextSetup = { ...ex.setup };
     delete nextSetup["Seat height"]; delete nextSetup["Bar height"]; delete nextSetup["Cable height"]; delete nextSetup["Arm setting"]; delete nextSetup["_machineNotes"];
     setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, setup: nextSetup } : w)));
@@ -2255,7 +2316,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
         @keyframes slideIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
         .chipstrip::-webkit-scrollbar { display: none; }
       `}</style>
-      <div style={wizardOpen ? { ...frame, height: "100vh", minHeight: "100vh", overflow: "hidden" } : frame}>
+      <div style={frame}>
         {showMenu && (
           <div style={{ position: "absolute", inset: 0, background: T.bg, zIndex: 10, display: "flex", flexDirection: "column", overflowY: "auto" }}>
             <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
@@ -2397,13 +2458,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px 0" }}>
           <div ref={stripRef} className="chipstrip" style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", flex: 1 }}>
             {workout.map((w, i) => {
-              const done = allSets[i].length >= w.planned;
+              const done = allSets[i].filter((s) => !s.isWarmup).length >= w.planned;
               const active = i === exIdx;
               return (
                 <button key={i} ref={(el) => (chipRefs.current[i] = el)} onClick={() => goTo(i)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, fontSize: 12, whiteSpace: "nowrap", border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(232,68,46,0.12)" : T.surface, color: active ? T.text : T.dim, flexShrink: 0 }}>
                   {done && <span style={{ color: T.green, fontWeight: 700 }}><IconCheck size={12} /></span>}
                   {w.short}
-                  {!done && <span style={{ opacity: 0.7 }}>{allSets[i].length}/{w.planned}</span>}
+                  {!done && <span style={{ opacity: 0.7 }}>{allSets[i].filter((s) => !s.isWarmup).length}/{w.planned}</span>}
                 </button>
               );
             })}
@@ -2417,7 +2478,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             <button onClick={() => goTo(exIdx - 1)} style={arrowBtn(exIdx === 0)} aria-label="Previous exercise">‹</button>
             <div style={{ flex: 1, textAlign: "center" }}>
               <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: 0.3, color: T.text, lineHeight: 1.1 }}>{ex.name}</div>
-              <div style={{ color: T.dim, fontSize: 12, marginTop: 2 }}>Exercise {exIdx + 1} of {workout.length} · {exDone ? `${sets.length}/${planned} sets done` : `Set ${setNum} of ${planned}`}{ex.supersetGroup != null && <span style={{ color: T.accent, fontWeight: 700 }}> · Superset</span>}</div>
+              <div style={{ color: T.dim, fontSize: 12, marginTop: 2 }}>Exercise {exIdx + 1} of {workout.length} · {exDone ? `${sets.filter((s) => !s.isWarmup).length}/${planned} sets done` : `Set ${setNum} of ${planned}`}{ex.supersetGroup != null && <span style={{ color: T.accent, fontWeight: 700 }}> · Superset</span>}</div>
             </div>
             <button onClick={() => goTo(exIdx + 1)} style={arrowBtn(exIdx === workout.length - 1)} aria-label="Next exercise">›</button>
           </div>
@@ -2466,14 +2527,24 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             {!showMachineSetup ? (
               <div style={{ textAlign: "center" }}>
                 <button onClick={() => setShowMachineSetup(true)} style={{ background: "none", border: "none", color: T.dim, fontSize: 12, padding: 0 }}>
-                  {machineSetupSummary ? <><IconGear size={11} /> {machineSetupSummary}</> : <><IconGear size={11} /> Machine setup</>}
+                  <IconGear size={11} /> {activeMachine ? `${activeMachine}${machineSetupSummary ? " · " + machineSetupSummary : ""}` : (machineSetupSummary || "Machine setup")}
                 </button>
               </div>
             ) : (
               <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Machine setup</div>
                   {machineSetupSummary && <button onClick={clearMachineSetup} style={{ background: "none", border: "none", color: T.accent, fontSize: 11 }}>Clear</button>}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                  <button onClick={() => setActiveMachine("")} style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${!activeMachine ? T.accent : T.line}`, background: !activeMachine ? "rgba(232,68,46,0.12)" : T.surface, color: !activeMachine ? T.text : T.dim }}>Default</button>
+                  {savedMachines.map((m) => (
+                    <button key={m} onClick={() => setActiveMachine(m)} onDoubleClick={() => removeMachine(m)} title="Double-tap to remove" style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${activeMachine === m ? T.accent : T.line}`, background: activeMachine === m ? "rgba(232,68,46,0.12)" : T.surface, color: activeMachine === m ? T.text : T.dim }}>{m}</button>
+                  ))}
+                  <button
+                    onClick={() => { const name = window.prompt("Machine name, e.g. \"Hammer Strength\" or \"Free Motion\""); if (name) addMachine(name); }}
+                    style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, border: `1px dashed ${T.line}`, background: "none", color: T.dim }}
+                  >+ Machine</button>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <div style={{ fontSize: 13, color: T.text, flex: 1 }}>Seat height</div>
@@ -2492,13 +2563,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                   {heightField("Arm setting")}
                 </div>
                 <textarea
-                  value={ex.setup["_machineNotes"] || ""}
-                  onChange={(e) => updateSetup("_machineNotes", e.target.value)}
+                  value={machineFieldValue("_machineNotes")}
+                  onChange={(e) => updateMachineField("_machineNotes", e.target.value)}
                   placeholder="Other setup details (pin position, attachment, etc.)"
                   rows={2}
                   style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: 8, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", marginTop: 2 }}
                 />
-                <div style={{ fontSize: 10, color: T.dim, marginTop: 4 }}>Saved per exercise, carries over session to session.</div>
+                <div style={{ fontSize: 10, color: T.dim, marginTop: 4 }}>{savedMachines.length > 0 ? "Saved per machine, carries over session to session." : "Saved per exercise, carries over session to session. Add a machine above if this exercise is done on more than one."}</div>
                 <div style={{ textAlign: "right", marginTop: 4 }}><button onClick={() => setShowMachineSetup(false)} aria-label="Done" style={smallBtn}><IconCheck size={12} /></button></div>
               </div>
             )}
@@ -2553,10 +2624,16 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
           )}
         </div>
 
-        {restLeft > 0 && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.surface2, borderBottom: `1px solid ${T.line}`, padding: "5px 16px" }}>
-            <div style={{ color: T.dim, fontSize: 11 }}>Rest</div>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{mmss(restLeft)}</div>
+        {(restLeft > 0 || restOverSec > 0) && (
+          <div
+            onClick={() => setRestEndsAt(null)}
+            title={restOverSec > 0 ? "Tap to dismiss" : undefined}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.surface2, borderBottom: `1px solid ${T.line}`, padding: "5px 16px", cursor: restOverSec > 0 ? "pointer" : "default" }}
+          >
+            <div style={{ color: T.dim, fontSize: 11 }}>{restOverSec > 0 ? "Rest timer over" : "Rest"}</div>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>
+              {restOverSec > 0 ? `+${mmss(restOverSec)}` : mmss(restLeft)}
+            </div>
           </div>
         )}
 
@@ -2590,8 +2667,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                   {workoutDone ? (
                     <button onClick={() => setShowMenu(true)} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Finish workout</button>
                   ) : (
-                    <button onClick={() => goTo(workout.findIndex((w, i) => allSets[i].length < w.planned))} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
-                      Next exercise: {workout[workout.findIndex((w, i) => allSets[i].length < w.planned)].short} →
+                    <button onClick={() => goTo(workout.findIndex((w, i) => allSets[i].filter((s) => !s.isWarmup).length < w.planned))} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
+                      Next exercise: {workout[workout.findIndex((w, i) => allSets[i].filter((s) => !s.isWarmup).length < w.planned)].short} →
                     </button>
                   )}
                   <button onClick={() => openWizard()} style={{ width: "100%", marginTop: 8, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>Add another set</button>
