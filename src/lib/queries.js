@@ -403,6 +403,7 @@ export async function hydrateExercise(userId, normalizedExercise) {
     savedNotes: defaults.notes,
     savedSetup: defaults.setup,
     savedRestSeconds: defaults.rest_seconds,
+    savedWarmupRestSeconds: defaults.warmup_rest_seconds,
   };
 }
 
@@ -875,17 +876,18 @@ export async function deleteFeedback(id) {
 export async function fetchExerciseDefaults(userId, exerciseId) {
   const { data, error } = await supabase
     .from("exercise_defaults")
-    .select("setup, notes, rest_seconds")
+    .select("setup, notes, rest_seconds, warmup_rest_seconds")
     .eq("user_id", userId)
     .eq("exercise_id", exerciseId)
     .maybeSingle();
   if (error) throw error;
-  return data || { setup: {}, notes: "", rest_seconds: null };
+  return data || { setup: {}, notes: "", rest_seconds: null, warmup_rest_seconds: null };
 }
 
-export async function saveExerciseDefaults(userId, exerciseId, setup, notes, restSeconds) {
+export async function saveExerciseDefaults(userId, exerciseId, setup, notes, restSeconds, warmupRestSeconds) {
   const payload = { user_id: userId, exercise_id: exerciseId, setup, notes };
   if (restSeconds !== undefined) payload.rest_seconds = restSeconds; // omit to leave existing value untouched
+  if (warmupRestSeconds !== undefined) payload.warmup_rest_seconds = warmupRestSeconds; // omit to leave existing value untouched
   const { error } = await supabase.from("exercise_defaults").upsert(payload);
   if (error) throw error;
 }

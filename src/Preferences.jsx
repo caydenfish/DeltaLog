@@ -55,6 +55,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     scoreDisplay: getPrefs().scoreDisplay,
     weightEntryMode: getPrefs().weightEntryMode,
     restSeconds: getPrefs().restSeconds,
+    warmupRestSeconds: getPrefs().warmupRestSeconds,
     plate55Scope: getPrefs().plate55Scope,
     trainingIdeology: getPrefs().trainingIdeology,
     timeFormat: getPrefs().timeFormat,
@@ -81,6 +82,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     weightEntryMode: "default set entry manual plate calculator logging type",
     plateSizes: "big plates 55 lb 25 kg bumpers squats deadlifts",
     restSeconds: "rest timer default seconds",
+    warmupRestSeconds: "warmup rest timer default seconds",
   };
   const matches = (key) => !filterQuery || KEYWORDS[key].includes(filterQuery.trim().toLowerCase());
   const searchActive = !!filterQuery;
@@ -88,7 +90,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // findable by search without requiring a tap into that sub-screen —
   // shown inline, right in the settings list, while a search is active.
   const unitsSearchMatch = searchActive && ["units", "timeFormat"].some(matches);
-  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds"].some(matches);
+  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds"].some(matches);
 
   function update(key, val) {
     if (controlled) {
@@ -99,7 +101,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     }
   }
 
-  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, trainingIdeology } = state;
+  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, trainingIdeology } = state;
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -330,6 +332,27 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
           </div>
         </div>
         )}
+
+        {matches("warmupRestSeconds") && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ color: T.text, fontSize: 14 }}>Default warmup rest timer</div>
+              <div style={{ color: T.dim, fontSize: 11 }}>Used after a set marked as warmup</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => update("warmupRestSeconds", Math.max(15, warmupRestSeconds - 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
+                {Math.floor(warmupRestSeconds / 60)}:{String(warmupRestSeconds % 60).padStart(2, "0")}
+              </div>
+              <button onClick={() => update("warmupRestSeconds", Math.min(600, warmupRestSeconds + 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+            </div>
+          </div>
+          <div style={{ color: T.dim, fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+            Only shown for exercises with planned warmup sets. Exercises with their own custom warmup rest time keep it.
+          </div>
+        </div>
+        )}
       </>
     );
   }
@@ -556,7 +579,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
           {onApplyRestToAll && confirmApplyAll && (
             <div style={{ marginTop: 10, background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10 }}>
               <div style={{ color: T.text, fontSize: 12.5, fontWeight: 600, marginBottom: 4 }}>Apply {Math.floor(restSeconds / 60)}:{String(restSeconds % 60).padStart(2, "0")} to every exercise?</div>
-              <div style={{ color: T.dim, fontSize: 11.5, marginBottom: 10, lineHeight: 1.4 }}>This overwrites any exercise-specific rest times you've set in this workout. Can't be undone.</div>
+              <div style={{ color: T.dim, fontSize: 11.5, marginBottom: 10, lineHeight: 1.4 }}>This overwrites any exercise-specific rest times you've set in this workout, including warmup rest. Can't be undone.</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setConfirmApplyAll(false)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Cancel</button>
                 <button
@@ -567,6 +590,29 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
                   {applyingAll ? "Applying…" : "Apply to all"}
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+        )}
+
+        {show("warmupRestSeconds") && matches("warmupRestSeconds") && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ color: T.text, fontSize: 14 }}>Default warmup rest timer</div>
+              <div style={{ color: T.dim, fontSize: 11 }}>Used after a set marked as warmup</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => update("warmupRestSeconds", Math.max(15, warmupRestSeconds - 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
+                {Math.floor(warmupRestSeconds / 60)}:{String(warmupRestSeconds % 60).padStart(2, "0")}
+              </div>
+              <button onClick={() => update("warmupRestSeconds", Math.min(600, warmupRestSeconds + 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+            </div>
+          </div>
+          {!controlled && (
+            <div style={{ color: T.dim, fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+              Only shown for exercises with planned warmup sets. Exercises with their own custom warmup rest time keep it.
             </div>
           )}
         </div>

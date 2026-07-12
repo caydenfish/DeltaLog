@@ -152,6 +152,7 @@ const newItem = (hydrated, dbId, planned = 3, plannedWarmup = 0) => ({
   notes: hydrated.savedNotes || "",
   setup: hydrated.savedSetup ? { ...hydrated.savedSetup } : {},
   restSeconds: hydrated.savedRestSeconds || null, // null = use the global default
+  warmupRestSeconds: hydrated.savedWarmupRestSeconds || null, // null = use the global warmup default
   ideology: null,
   supersetGroup: null,
 });
@@ -995,8 +996,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   // customized exercises alone.
   async function applyRestToAll(seconds) {
     try {
-      await Promise.all(workout.map((w) => saveExerciseDefaults(user.id, w.id, w.setup, w.notes, null)));
-      setWorkout(workout.map((w) => ({ ...w, restSeconds: null })));
+      await Promise.all(workout.map((w) => saveExerciseDefaults(user.id, w.id, w.setup, w.notes, null, null)));
+      setWorkout(workout.map((w) => ({ ...w, restSeconds: null, warmupRestSeconds: null })));
     } catch (err) {
       note(`Couldn't apply to all: ${err.message}`);
     }
@@ -1011,7 +1012,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     const stored = isDefault ? null : seconds;
     setWorkout(workout.map((w, k) => (k === i ? { ...w, restSeconds: stored } : w)));
     const w = workout[i];
-    saveExerciseDefaults(user.id, w.id, w.setup, w.notes, stored).catch((err) => note(`Couldn't save rest timer: ${err.message}`));
+    saveExerciseDefaults(user.id, w.id, w.setup, w.notes, stored, undefined).catch((err) => note(`Couldn't save rest timer: ${err.message}`));
+  }
+
+  function adjustWarmupRest(i, seconds) {
+    const isDefault = seconds === getPrefs().warmupRestSeconds;
+    const stored = isDefault ? null : seconds;
+    setWorkout(workout.map((w, k) => (k === i ? { ...w, warmupRestSeconds: stored } : w)));
+    const w = workout[i];
+    saveExerciseDefaults(user.id, w.id, w.setup, w.notes, undefined, stored).catch((err) => note(`Couldn't save warmup rest timer: ${err.message}`));
   }
 
   function saveNote() {
@@ -1233,7 +1242,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
       setRestEndsAt(null);
       goTo(partnerIdx);
     } else {
-      setRestEndsAt(Date.now() + (ex.restSeconds || getPrefs().restSeconds) * 1000);
+      setRestEndsAt(Date.now() + (isWarmup ? (ex.warmupRestSeconds || getPrefs().warmupRestSeconds) : (ex.restSeconds || getPrefs().restSeconds)) * 1000);
     }
     if (nextSets.length === planned && lastWeek.length >= planned && r >= lastWeek[planned - 1].reps + 2) {
       note(`Final set beat last session by ${r - lastWeek[planned - 1].reps} reps. Do it again next workout and the target moves up.`, "progress", 5000);
@@ -1617,8 +1626,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
       <div style={outer}>
         <style>{`${fontImport} button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>
         <div style={frame}>
-          <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text }}>EDIT WORKOUT</div>
+          <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
+            <button onClick={finishEditing} aria-label="Back" style={smallBtn}>‹</button>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>EDIT WORKOUT</div>
             <div style={{ display: "flex", gap: 6 }}>
               <button onClick={finishEditing} aria-label="Done" style={{ ...smallBtn, color: T.text, borderColor: T.accent, fontSize: 13 }}><IconCheck size={12} /></button>
             </div>
@@ -1694,6 +1704,19 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                       <button onClick={() => adjustRest(i, Math.min(600, (w.restSeconds || getPrefs().restSeconds) + 15))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
                       {w.restSeconds != null && <span style={{ fontSize: 10, color: T.dim, marginLeft: 4 }}>custom</span>}
                     </div>
+                    {(w.plannedWarmup || 0) > 0 && (
+                      <>
+                        <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>Warmup rest timer</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                          <button onClick={() => adjustWarmupRest(i, Math.max(15, (w.warmupRestSeconds || getPrefs().warmupRestSeconds) - 15))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>−</button>
+                          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, fontWeight: 700, color: T.text, minWidth: 40, textAlign: "center" }}>
+                            {mmss(w.warmupRestSeconds || getPrefs().warmupRestSeconds)}
+                          </div>
+                          <button onClick={() => adjustWarmupRest(i, Math.min(600, (w.warmupRestSeconds || getPrefs().warmupRestSeconds) + 15))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
+                          {w.warmupRestSeconds != null && <span style={{ fontSize: 10, color: T.dim, marginLeft: 4 }}>custom</span>}
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     <button
@@ -1771,7 +1794,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                   onToggleSelect={togglePickerSelect}
                   onToggleFavorite={toggleFavorite}
                   footer={<>
-                    {createCustomFooter(addExercise)}
+                    {createCustomFooter((l) => togglePickerSelect(l))}
                     <button
                       onClick={addSelectedExercises}
                       disabled={pickerMultiSelected.length === 0}

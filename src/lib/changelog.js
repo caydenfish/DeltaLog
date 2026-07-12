@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.10.5": {
+    title: "Warmup rest timer, easier navigation back",
+    items: [
+      "Set a different rest timer for warmup sets than your working sets. Only shows up for exercises where you've planned warmup sets.",
+      "Adding exercises: creating a custom exercise while building your workout no longer loses the other exercises you'd already picked — it now takes you back to that same screen with your picks intact.",
+      "Added a back button to the Edit Workout screen and the setup wizard when it's replayed from Help & Support.",
+    ],
+  },
   "1.10.4": {
     title: "Exercise history, editable setup, and quicker navigation",
     items: [

@@ -73,7 +73,7 @@ function PlateCalcVisual() {
   );
 }
 
-export default function SetupWizard({ onComplete }) {
+export default function SetupWizard({ onComplete, onClose }) {
   const prefs = getPrefs();
   const [step, setStep] = useState(0);
   const [units, setUnits] = useState(prefs.units);
@@ -191,9 +191,10 @@ export default function SetupWizard({ onComplete }) {
     <div style={{ position: "fixed", inset: 0, zIndex: 45, overflowY: "auto", background: T.bg, display: "flex", flexDirection: "column", padding: 24, boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <button
-          onClick={() => (step === 0 ? null : setStep(step - 1))}
-          style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: step === 0 ? "transparent" : T.dim, fontSize: 14 }}
-          disabled={step === 0}
+          onClick={() => (step === 0 ? (onClose ? onClose() : null) : setStep(step - 1))}
+          aria-label={step === 0 ? "Close" : "Back"}
+          style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: step === 0 && !onClose ? "transparent" : T.dim, fontSize: 14 }}
+          disabled={step === 0 && !onClose}
         >
           ‹
         </button>
