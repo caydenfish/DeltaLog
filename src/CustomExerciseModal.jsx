@@ -54,9 +54,19 @@ const inputStyle = {
 };
 
 // Multi-select chip picker shared by the primary and secondary muscle
-// fields — add from a dropdown of the known taxonomy, remove with a tap.
-function MusclePicker({ label, values, onAdd, onRemove, options, pick, setPick, renderLabel }) {
+// fields. Adding/removing happens through an in-app picker sheet (grouped
+// by region, searchable, tap to toggle) instead of a native OS <select> —
+// the native picker renders wildly differently across iOS/Android and,
+// for the long scientific taxonomy list especially, is painful to scan.
+function MusclePicker({ label, values, onAdd, onRemove, options, renderLabel, groupFn }) {
+  const [showSheet, setShowSheet] = useState(false);
   const display = renderLabel || ((m) => muscleLabel(m));
+
+  function toggle(m) {
+    if (values.includes(m)) onRemove(m);
+    else onAdd(m);
+  }
+
   return (
     <>
       <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{label}</div>
@@ -69,26 +79,91 @@ function MusclePicker({ label, values, onAdd, onRemove, options, pick, setPick, 
           </div>
         ))}
       </div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-        <select
-          value={pick}
-          onChange={(e) => setPick(e.target.value)}
-          style={{ flex: 1, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none" }}
-        >
-          <option value="">Add…</option>
-          {options.filter((m) => !values.includes(m)).map((m) => (
-            <option key={m} value={m}>{display(m)}</option>
-          ))}
-        </select>
-        <button
-          onClick={() => { if (pick) { onAdd(pick); setPick(""); } }}
-          disabled={!pick}
-          style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "8px 14px", fontSize: 12 }}
-        >
-          Add
-        </button>
-      </div>
+      <button
+        onClick={() => setShowSheet(true)}
+        style={{ width: "100%", textAlign: "left", background: T.surface2, border: `1px dashed ${T.line}`, borderRadius: 8, color: T.dim, fontSize: 13, padding: "9px 12px", marginBottom: 18 }}
+      >
+        + Add muscle
+      </button>
+
+      {showSheet && (
+        <MusclePickerSheet
+          title={label}
+          options={options}
+          values={values}
+          onToggle={toggle}
+          onClose={() => setShowSheet(false)}
+          renderLabel={display}
+          groupFn={groupFn}
+        />
+      )}
     </>
+  );
+}
+
+// Full in-app picker: search box + grouped, tappable rows with a checkmark
+// for anything already selected. Replaces the browser/OS native <select>,
+// which renders as a clunky native wheel/list on mobile and can't be
+// searched or multi-selected in place.
+function MusclePickerSheet({ title, options, values, onToggle, onClose, renderLabel, groupFn }) {
+  const [search, setSearch] = useState("");
+  const q = search.trim().toLowerCase();
+  const filtered = (options || []).filter((m) => !q || renderLabel(m).toLowerCase().includes(q));
+
+  const groups = {};
+  const order = [];
+  for (const m of filtered) {
+    const g = (groupFn ? groupFn(m) : null) || "All muscles";
+    if (!groups[g]) { groups[g] = []; order.push(g); }
+    groups[g].push(m);
+  }
+  for (const g of order) groups[g].sort((a, b) => renderLabel(a).localeCompare(renderLabel(b)));
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 420, height: "80dvh", background: T.bg, borderTop: `1px solid ${T.line}`, borderTopLeftRadius: 20, borderTopRightRadius: 20, display: "flex", flexDirection: "column" }}
+      >
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: T.line, margin: "10px auto 6px", flexShrink: 0 }} />
+        <div style={{ padding: "6px 16px 10px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{title}</div>
+          <button onClick={onClose} aria-label="Done" style={{ background: "none", border: `1px solid ${T.accent}`, color: T.text, borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 700 }}><IconCheck size={12} /> Done</button>
+        </div>
+        <div style={{ padding: "10px 16px", flexShrink: 0 }}>
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search muscles…"
+            style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box" }}
+          />
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
+          {order.length === 0 && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No muscles match "{search}".</div>}
+          {order.map((g) => (
+            <div key={g} style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, padding: "10px 4px 4px" }}>{g}</div>
+              {groups[g].map((m) => {
+                const active = values.includes(m);
+                return (
+                  <button
+                    key={m}
+                    onClick={() => onToggle(m)}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: active ? "rgba(232,68,46,0.1)" : "none", border: "none", borderBottom: `1px solid ${T.line}`, color: T.text, fontSize: 15, padding: "12px 4px", textAlign: "left" }}
+                  >
+                    <span>{renderLabel(m)}</span>
+                    <span style={{ width: 20, height: 20, borderRadius: 999, border: `1px solid ${active ? T.accent : T.line}`, background: active ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {active && <IconCheck size={11} />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -98,8 +173,6 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
   const [muscle, setMuscle] = useState(initialExercise?.muscle_group || "Chest");
   const [primaryMuscles, setPrimaryMuscles] = useState([...(initialExercise?.primary_muscles || [])]);
   const [secondaryMuscles, setSecondaryMuscles] = useState([...(initialExercise?.secondary_muscles || [])]);
-  const [primaryPick, setPrimaryPick] = useState("");
-  const [secondaryPick, setSecondaryPick] = useState("");
   const [equipment, setEquipment] = useState(initialExercise?.equipment ? deriveEquipmentBucket(initialExercise.equipment) : "Barbell");
   const [photoFile, setPhotoFile] = useState(null);
   const [existingMediaUrl, setExistingMediaUrl] = useState(initialExercise?.media_url || null);
@@ -138,11 +211,20 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
     return entry ? `${entry.scientific_name} (${entry.detailed_name})` : scientificName;
   }
 
+  function taxonomyGroup(scientificName) {
+    const entry = (taxonomy || []).find((t) => t.scientific_name === scientificName);
+    return entry ? entry.generic_group : "Other";
+  }
+
   // The general "Muscle group" dropdown stays organized by region; any
   // group not in the known regions (something an admin only just added)
   // shows up under "Other" so it's still selectable.
   const knownFlat = new Set(KNOWN_CATEGORIES.flatMap((c) => c.muscles));
   const otherMuscles = (allMuscles || []).filter((m) => !knownFlat.has(m));
+  function simpleGroup(m) {
+    const cat = KNOWN_CATEGORIES.find((c) => c.muscles.includes(m));
+    return cat ? cat.label : "Other";
+  }
 
   async function handleSubmit() {
     const trimmed = name.trim();
@@ -188,9 +270,8 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
                 onAdd={(m) => setPrimaryMuscles([...primaryMuscles, m])}
                 onRemove={(m) => setPrimaryMuscles(primaryMuscles.filter((x) => x !== m))}
                 options={allMuscles || []}
-                pick={primaryPick}
-                setPick={setPrimaryPick}
                 renderLabel={taxonomyLabel}
+                groupFn={taxonomyGroup}
               />
 
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Muscle group (auto)</div>
@@ -204,9 +285,8 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
                 onAdd={(m) => setSecondaryMuscles([...secondaryMuscles, m])}
                 onRemove={(m) => setSecondaryMuscles(secondaryMuscles.filter((x) => x !== m))}
                 options={allMuscles || []}
-                pick={secondaryPick}
-                setPick={setSecondaryPick}
                 renderLabel={taxonomyLabel}
+                groupFn={taxonomyGroup}
               />
             </>
           ) : (
@@ -235,8 +315,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
                 onAdd={(m) => setPrimaryMuscles([...primaryMuscles, m])}
                 onRemove={(m) => setPrimaryMuscles(primaryMuscles.filter((x) => x !== m))}
                 options={allMuscles || []}
-                pick={primaryPick}
-                setPick={setPrimaryPick}
+                groupFn={simpleGroup}
               />
 
               <MusclePicker
@@ -245,8 +324,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
                 onAdd={(m) => setSecondaryMuscles([...secondaryMuscles, m])}
                 onRemove={(m) => setSecondaryMuscles(secondaryMuscles.filter((x) => x !== m))}
                 options={allMuscles || []}
-                pick={secondaryPick}
-                setPick={setSecondaryPick}
+                groupFn={simpleGroup}
               />
             </>
           )}

@@ -168,7 +168,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
               ref={previewRef}
               style={{
                 width: layout === "story" ? 260 : 320,
-                aspectRatio: layout === "story" ? "9/16" : "auto",
+                height: layout === "story" ? Math.round(260 * 16 / 9) : undefined,
                 background: T.bg,
                 border: `1px solid ${T.line}`,
                 borderRadius: 16,

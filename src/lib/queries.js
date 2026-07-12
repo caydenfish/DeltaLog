@@ -337,6 +337,17 @@ export async function adminGetUserActivity() {
   return data;
 }
 
+// Admin-only: aggregate counts of "How did you hear about us?" responses
+// from the setup wizard's referral-source field, for judging which
+// marketing channel is actually bringing people in. Calls a
+// security-definer function (migration_052) since profiles has no select
+// policy for other users' rows.
+export async function adminGetReferralSources() {
+  const { data, error } = await supabase.rpc("admin_get_referral_sources");
+  if (error) throw error;
+  return data;
+}
+
 // Stamps "last opened" for the current user. Fire-and-forget on app
 // load — failures here shouldn't block or surface to the user, it's
 // just a usage signal, not something the app depends on functionally.

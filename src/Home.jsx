@@ -23,6 +23,7 @@ import SplitsManager from "./SplitsManager";
 import ExerciseLibraryView from "./ExerciseLibraryView";
 import AdminRoles from "./AdminRoles";
 import AdminUserActivity from "./AdminUserActivity";
+import AdminReferralSources from "./AdminReferralSources";
 import DangerZone from "./DangerZone";
 import InstallGuide from "./InstallGuide";
 import ProfileEditor from "./ProfileEditor";
@@ -153,6 +154,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [showExerciseLibraryView, setShowExerciseLibraryView] = useState(false);
   const [showAdminRoles, setShowAdminRoles] = useState(false);
   const [showAdminUserActivity, setShowAdminUserActivity] = useState(false);
+  const [showAdminReferralSources, setShowAdminReferralSources] = useState(false);
   const [showSplitsManager, setShowSplitsManager] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -980,6 +982,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           onOpenFeedback={() => { setShowAdminFeedback(true); markFeedbackViewed(user.id).then(() => setUnseenFeedbackCount(0)).catch(() => {}); }}
           onOpenRoles={() => setShowAdminRoles(true)}
           onOpenUserActivity={() => setShowAdminUserActivity(true)}
+          onOpenReferralSources={() => setShowAdminReferralSources(true)}
           onOpenSplits={() => setShowSplitsManager(true)}
           onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
@@ -1001,6 +1004,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       )}
       {showAdminRoles && <AdminRoles currentUserId={user.id} onClose={() => setShowAdminRoles(false)} />}
       {showAdminUserActivity && isRealCreator && <AdminUserActivity onClose={() => setShowAdminUserActivity(false)} />}
+      {showAdminReferralSources && <AdminReferralSources onClose={() => setShowAdminReferralSources(false)} />}
       {showSplitsManager && <SplitsManager onClose={() => setShowSplitsManager(false)} />}
       {showAdminFeedback && <AdminFeedback onClose={() => setShowAdminFeedback(false)} />}
       {showDangerZone && <DangerZone user={user} onClose={() => setShowDangerZone(false)} onDataReset={onDataReset} />}

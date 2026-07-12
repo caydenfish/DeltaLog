@@ -22,6 +22,7 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [errorMsg, setErrorMsg] = useState("");
+  const [showWhatIs, setShowWhatIs] = useState(false);
 
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -107,13 +108,19 @@ export default function Auth() {
   }
 
   return (
-    <div style={{ height: "100vh", background: T.bg, display: "flex", flexDirection: "column", padding: 24, boxSizing: "border-box", overflow: "hidden" }}>
+    <div style={{ height: "100dvh", background: T.bg, display: "flex", flexDirection: "column", padding: 24, boxSizing: "border-box", overflow: "hidden" }}>
       <div style={{ flex: 1.3, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
         <Logo size={120} />
         <Wordmark size={40} />
         <div style={{ color: T.dim, fontSize: 13, fontWeight: 600, letterSpacing: 0.3, textAlign: "center", marginTop: -4 }}>
           No macros. No streak badges. Just weight going up.
         </div>
+        <button
+          onClick={() => setShowWhatIs(true)}
+          style={{ background: "none", border: `1px solid ${T.line}`, borderRadius: 999, color: T.dim, fontSize: 12, fontWeight: 600, padding: "5px 14px", marginTop: 2 }}
+        >
+          What is DeltaLog? <span style={{ color: T.accent }}>›</span>
+        </button>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", width: "100%", maxWidth: 360, margin: "0 auto", overflowY: "auto" }}>
@@ -263,6 +270,43 @@ export default function Auth() {
           </>
         )}
       </div>
+
+      {showWhatIs && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowWhatIs(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 420, maxHeight: "85dvh", background: T.bg, borderTop: `1px solid ${T.line}`, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "20px 24px 24px", boxSizing: "border-box", overflowY: "auto" }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: T.line, margin: "0 auto 18px" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <Logo size={36} />
+              <Wordmark size={22} />
+            </div>
+            <div style={{ color: T.text, fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
+              DeltaLog is a workout log built for people who actually want to get stronger, not collect streak badges. No feed, no ads, just your training.
+            </div>
+            {[
+              ["Plate math, handled", "Type your target weight and DeltaLog shows exactly which plates go on the bar. No mental math between sets."],
+              ["Every set, in context", "Weight, reps, and volume compared to your last session, set by set, not just a workout total at the end."],
+              ["PRs, caught automatically", "New weight, rep, and volume PRs get flagged the moment you log them, no spreadsheet required."],
+            ].map(([title, desc]) => (
+              <div key={title} style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 4, borderRadius: 2, background: T.accent, flexShrink: 0 }} />
+                <div>
+                  <div style={{ color: T.text, fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{title}</div>
+                  <div style={{ color: T.dim, fontSize: 13, lineHeight: 1.45 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={() => setShowWhatIs(false)}
+              style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, marginTop: 8 }}
+            >
+              Let's go
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

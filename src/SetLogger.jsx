@@ -1350,8 +1350,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   // Live muscle volumes for the in-workout heatmap, computed from whatever
   // has actually been logged so far this session. Warmup sets are excluded
   // — they're not working volume.
-  const liveVolumeEntries = workout.map((w, i) => ({ muscle: w.muscle, secondaryMuscles: w.secondaryMuscles, sets: (allSets[i] || []).filter((s) => !s.isWarmup) }));
-  const { primary: livePrimary, secondary: liveSecondary, fullBodySets: liveFullBodySets } = computeMuscleSetCounts(liveVolumeEntries);
+  const liveVolumeEntries = workout.map((w, i) => ({ muscle: w.muscle, primaryMuscles: w.primaryMuscles, secondaryMuscles: w.secondaryMuscles, sets: (allSets[i] || []).filter((s) => !s.isWarmup) }));
+  const { primary: livePrimary, secondary: liveSecondary, fullBodySets: liveFullBodySets } = computeMuscleSetCounts(liveVolumeEntries, muscleNameMode);
 
   // Flags sets that look like a typo or wrong-plate mistake rather than a
   // real effort: way outside both what else got logged this session for
