@@ -283,11 +283,13 @@ export default function Auth() {
               <Wordmark size={22} />
             </div>
             <div style={{ color: T.text, fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
-              DeltaLog is a workout log built for people who actually want to get stronger, not collect streak badges. No feed, no ads, just your training.
+              DeltaLog is a workout log built for people who actually want to get stronger. No feed, no ads, just your training.
             </div>
             {[
               ["Plate math, handled", "Type your target weight and DeltaLog shows exactly which plates go on the bar. No mental math between sets."],
               ["Every set, in context", "Weight, reps, and volume compared to your last session, set by set, not just a workout total at the end."],
+              ["Train your way", "Strength, Hypertrophy, or Endurance mode auto-adjusts your target reps and weight for every exercise."],
+              ["Workout generator", "Pick a muscle focus and let DeltaLog build a balanced session for you in one tap."],
               ["PRs, caught automatically", "New weight, rep, and volume PRs get flagged the moment you log them, no spreadsheet required."],
             ].map(([title, desc]) => (
               <div key={title} style={{ display: "flex", gap: 10, marginBottom: 14 }}>
