@@ -27,6 +27,7 @@ export const CHANGELOG = {
       "Rest timer settings moved to their own \"Rest Timer\" screen in Settings, and you can now choose a sound and/or vibration for when a rest timer ends — 4 options each, and each can be turned off independently.",
       "All Submissions (admin) now flags anything marked reviewed/dismissed that was never actually added to the shared library, with a one-tap fix — catches cases like accidentally dismissing instead of promoting.",
       "Fixed: the \"Muscle group\" options when creating a custom exercise were pulling from a stale, separately-maintained list instead of what's actually used across real exercises. Muscle group is now also auto-derived from your primary muscle picks instead of being a separate choice, so it can't drift out of sync with them.",
+      "Fixed: Primary/Secondary muscle options when creating a custom exercise now match your Training Preferences muscle-name setting (Category/Region/Anatomy) — previously they stayed at Category precision no matter what that setting was.",
     ],
   },
   "1.10.5": {

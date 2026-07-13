@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, genericBucket } from "./lib/muscleNomenclature";
+import { getPrefs } from "./lib/prefs";
 import { fetchMuscleGroups, fetchMuscleTaxonomy, deriveEquipmentBucket } from "./lib/queries";
 import { IconX, IconCheck } from "./Icons";
 
@@ -232,9 +233,23 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
         })
         .catch(() => { setTaxonomy([]); setAllMuscles([]); });
     } else {
-      fetchMuscleGroups()
-        .then((rows) => setAllMuscles(rows.map((r) => r.key)))
-        .catch(() => setAllMuscles(KNOWN_CATEGORIES.flatMap((c) => c.muscles)));
+      // Regular users tag primary/secondary muscles at whatever
+      // precision they've chosen in Training Preferences (Category /
+      // Region / Anatomy) — Region and Anatomy come straight from the
+      // same client-cached taxonomy the rest of the app already uses
+      // (no fetch needed, it's loaded once near app startup), so this
+      // can never drift out of sync with what that setting actually
+      // means elsewhere.
+      const mode = getPrefs().muscleNameMode;
+      if (mode === "detailed") {
+        setAllMuscles(getDetailedTaxonomyEntries().map((e) => e.detailed));
+      } else if (mode === "scientific") {
+        setAllMuscles(getMuscleTaxonomyEntries().map((e) => e.scientific));
+      } else {
+        fetchMuscleGroups()
+          .then((rows) => setAllMuscles(rows.map((r) => r.key)))
+          .catch(() => setAllMuscles(KNOWN_CATEGORIES.flatMap((c) => c.muscles)));
+      }
     }
   }, [scientificMode]);
 
@@ -248,14 +263,16 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
     if (entry) setMuscle(entry.generic_group);
   }, [scientificMode, taxonomy, primaryMuscles]);
 
-  // Non-scientific mode: primary muscles are already tagged at the same
-  // broad-category level muscle_group itself lives at (both drawn from
-  // the same options list), so the derivation is even simpler — just
-  // take whichever one was picked first, same reasoning as above.
+  // Non-scientific mode: primary muscles can now be tagged at any of the
+  // three precisions (Category/Region/Anatomy, matching Training
+  // Preferences), so deriving muscle_group needs the same genericBucket
+  // resolution used everywhere else in the app that reduces a raw tag
+  // back to its broad bucket — a plain "take it as-is" only worked back
+  // when primary muscles were always Category-tier to begin with.
   useEffect(() => {
     if (scientificMode) return;
     const first = primaryMuscles[0];
-    if (first) setMuscle(first);
+    if (first) setMuscle(genericBucket(first));
   }, [scientificMode, primaryMuscles]);
 
   function taxonomyLabel(scientificName) {
@@ -268,12 +285,15 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
     return entry ? entry.generic_group : "Other";
   }
 
-  // Primary/secondary muscle pickers group by broad region; anything an
-  // admin has added that isn't in one of these buckets yet falls under
-  // "Other" so it's still selectable.
-  function simpleGroup(m) {
-    const cat = KNOWN_CATEGORIES.find((c) => c.muscles.includes(m));
-    return cat ? cat.label : "Other";
+  // Groups Primary/Secondary muscle options by broad bucket regardless
+  // of which precision they're actually at (Category/Region/Anatomy) —
+  // genericBucket resolves any tier back to its bucket, so this works
+  // the same whether options are "Legs" or "Quads" or "Quadriceps
+  // Femoris". Replaces the old KNOWN_CATEGORIES-based simpleGroup, which
+  // only grouped correctly when options were themselves Category-tier
+  // strings.
+  function groupByGeneric(m) {
+    return genericBucket(m) || "Other";
   }
 
   async function handleSubmit() {
@@ -352,7 +372,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
                 onAdd={(m) => setPrimaryMuscles([...primaryMuscles, m])}
                 onRemove={(m) => setPrimaryMuscles(primaryMuscles.filter((x) => x !== m))}
                 options={allMuscles || []}
-                groupFn={simpleGroup}
+                groupFn={groupByGeneric}
               />
 
               <MusclePicker
@@ -361,7 +381,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
                 onAdd={(m) => setSecondaryMuscles([...secondaryMuscles, m])}
                 onRemove={(m) => setSecondaryMuscles(secondaryMuscles.filter((x) => x !== m))}
                 options={allMuscles || []}
-                groupFn={simpleGroup}
+                groupFn={groupByGeneric}
               />
             </>
           )}
