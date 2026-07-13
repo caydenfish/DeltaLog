@@ -22,6 +22,7 @@ export const CHANGELOG = {
       "Fixed: searching for a merge target in admin's Custom Exercises now also matches an exercise's alternate names (aliases), not just its current name — a promoted exercise whose original submitted name only survives as an alias was previously unfindable there.",
       "Fixed a rare bug where tapping \"Add\" on the exercise picker more than once in quick succession (most likely to happen right as the app loses or regains focus) could add the same exercise two or three times.",
       "Fixed: the keyboard didn't always pop up right away when adding a new set — it should now show up reliably every time.",
+      "Fixed a crash on the workout screen: \"muscleNameMode is not defined.\"",
     ],
   },
   "1.10.5": {

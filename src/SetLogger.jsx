@@ -722,6 +722,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
 
   const ex = workout[exIdx] || null;
   const unit = getPrefs().units;
+  // Component-level, so every top-level usage below (the live-heatmap
+  // volume calc in particular) has something to read. This was missing
+  // entirely — the only two `muscleNameMode` declarations in this file
+  // live inside the sibling ExercisePicker component and inside the
+  // generator view's own if-block, neither of which is in scope here,
+  // which is what threw "muscleNameMode is not defined" on every render.
+  const muscleNameMode = getPrefs().muscleNameMode;
   const sets = allSets[exIdx] || [];
   const lastWeek = ex ? ex.lastWeek : [];
   const planned = ex ? ex.planned : 0;
