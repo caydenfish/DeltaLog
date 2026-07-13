@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { supabase } from "./lib/supabaseClient";
-import { fetchWorkoutHistory, fetchStreak, fetchProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, fetchPollVotes, castPollVote } from "./lib/queries";
+import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
 import { getPrefs, setPref } from "./lib/prefs";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
@@ -298,11 +298,13 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // rather than being a one-way broadcast everyone sees the same way).
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchAnnouncements(), fetchMyNotifications(user.id)])
-      .then(([rows, notifs]) => {
+    Promise.all([fetchAnnouncements(), fetchMyNotifications(user.id), fetchDismissedAnnouncementIds(user.id)])
+      .then(([rows, notifs, dismissedIds]) => {
         if (cancelled) return;
+        const dismissed = new Set(dismissedIds);
+        const visibleRows = rows.filter((r) => !dismissed.has(r.id));
         const lastViewed = profile?.announcements_last_viewed_at;
-        const hasUnseenGlobal = rows.length > 0 && (!lastViewed || new Date(rows[0].created_at) > new Date(lastViewed));
+        const hasUnseenGlobal = visibleRows.length > 0 && (!lastViewed || new Date(visibleRows[0].created_at) > new Date(lastViewed));
         const hasUnreadPersonal = notifs.some((n) => !n.read_at);
         setUnseenAnnouncements(hasUnseenGlobal || hasUnreadPersonal);
       })
@@ -311,10 +313,11 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   }, [profile?.announcements_last_viewed_at, user.id]);
 
   function loadAnnouncementsPanel() {
-    Promise.all([fetchAnnouncements(), fetchMyNotifications(user.id)])
-      .then(([rows, notifs]) => {
+    Promise.all([fetchAnnouncements(), fetchMyNotifications(user.id), fetchDismissedAnnouncementIds(user.id)])
+      .then(([rows, notifs, dismissedIds]) => {
+        const dismissed = new Set(dismissedIds);
         const merged = [
-          ...rows.map((r) => ({ ...r, kind: "global" })),
+          ...rows.filter((r) => !dismissed.has(r.id)).map((r) => ({ ...r, kind: "global" })),
           ...notifs.map((n) => ({ ...n, kind: "personal" })),
         ].sort((a, b) => b.created_at.localeCompare(a.created_at));
         setAnnouncements(merged);
@@ -467,6 +470,23 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     }
   }
 
+  // Dismiss just hides the item from this person's own view -- for a
+  // personal notification that's a straight delete (they're the only
+  // one who could ever see it); for a global announcement it can't
+  // touch the shared row, so it records a per-user dismissal instead.
+  async function dismissAnnouncementItem(a) {
+    try {
+      if (a.kind === "personal") {
+        await dismissNotification(a.id);
+      } else {
+        await dismissAnnouncementForUser(a.id, user.id);
+      }
+      setAnnouncements((prev) => (prev || []).filter((x) => !(x.kind === a.kind && x.id === a.id)));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   const rangeIdx = RANGES.findIndex((r) => r.key === range);
   const rangeDef = RANGES[rangeIdx];
   function shiftRange(delta) {
@@ -601,24 +621,27 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                     <LineChart data={dailyVolume} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
                       <CartesianGrid stroke={T.line} strokeDasharray="3 3" vertical={false} />
                       <XAxis
-                        dataKey="date"
+                        dataKey="ts"
+                        type="number"
+                        scale="time"
+                        domain={["dataMin", "dataMax"]}
                         tick={{ fill: T.dim, fontSize: 10 }}
-                        tickFormatter={(d) =>
+                        tickFormatter={(ts) =>
                           range === "365d"
-                            ? new Date(`${d}-01T00:00:00`).toLocaleString(undefined, { month: "short" })
-                            : d.slice(5)
+                            ? new Date(ts).toLocaleString(undefined, { month: "short" })
+                            : new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })
                         }
                       />
                       <YAxis tick={{ fill: T.dim, fontSize: 10 }} />
                       <Tooltip
                         contentStyle={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, fontSize: 12 }}
                         labelStyle={{ color: T.text }}
-                        labelFormatter={(d) =>
+                        labelFormatter={(ts) =>
                           range === "365d"
-                            ? new Date(`${d}-01T00:00:00`).toLocaleString(undefined, { month: "long", year: "numeric" })
+                            ? new Date(ts).toLocaleString(undefined, { month: "long", year: "numeric" })
                             : range === "30d"
-                            ? `Week of ${new Date(`${d}T00:00:00`).toLocaleString(undefined, { month: "short", day: "numeric" })}`
-                            : new Date(`${d}T00:00:00`).toLocaleString(undefined, { month: "short", day: "numeric" })
+                            ? `Week of ${new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })}`
+                            : new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })
                         }
                         formatter={(v) => [`${v.toLocaleString()} ${units}`, "Volume"]}
                       />
@@ -640,24 +663,27 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                       <LineChart data={weightHistory} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
                         <CartesianGrid stroke={T.line} strokeDasharray="3 3" vertical={false} />
                         <XAxis
-                          dataKey="date"
+                          dataKey="ts"
+                          type="number"
+                          scale="time"
+                          domain={["dataMin", "dataMax"]}
                           tick={{ fill: T.dim, fontSize: 10 }}
-                          tickFormatter={(d) =>
+                          tickFormatter={(ts) =>
                             range === "365d"
-                              ? new Date(`${d}-01T00:00:00`).toLocaleString(undefined, { month: "short" })
-                              : d.slice(5)
+                              ? new Date(ts).toLocaleString(undefined, { month: "short" })
+                              : new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })
                           }
                         />
                         <YAxis tick={{ fill: T.dim, fontSize: 10 }} domain={["auto", "auto"]} />
                         <Tooltip
                           contentStyle={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, fontSize: 12 }}
                           labelStyle={{ color: T.text }}
-                          labelFormatter={(d) =>
+                          labelFormatter={(ts) =>
                             range === "365d"
-                              ? new Date(`${d}-01T00:00:00`).toLocaleString(undefined, { month: "long", year: "numeric" })
+                              ? new Date(ts).toLocaleString(undefined, { month: "long", year: "numeric" })
                               : range === "30d"
-                              ? `Week of ${new Date(`${d}T00:00:00`).toLocaleString(undefined, { month: "short", day: "numeric" })}`
-                              : new Date(`${d}T00:00:00`).toLocaleString(undefined, { month: "short", day: "numeric" })
+                              ? `Week of ${new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })}`
+                              : new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })
                           }
                           formatter={(v) => [`${v.toLocaleString()} ${units}`, "Bodyweight"]}
                         />
@@ -1085,13 +1111,16 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                         <div style={{ fontSize: 11, color: T.dim }}>{new Date(a.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</div>
-                        {effectiveIsAdmin && a.kind === "global" && (
-                          <div style={{ display: "flex", gap: 12 }}>
-                            <button onClick={() => openComposeAnnouncement(a)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Edit</button>
-                            <button onClick={() => archiveAnnouncementRow(a, true)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Archive</button>
-                            <button onClick={() => removeAnnouncement(a.id)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Delete</button>
-                          </div>
-                        )}
+                        <div style={{ display: "flex", gap: 12 }}>
+                          {effectiveIsAdmin && a.kind === "global" && (
+                            <>
+                              <button onClick={() => openComposeAnnouncement(a)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Edit</button>
+                              <button onClick={() => archiveAnnouncementRow(a, true)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Archive</button>
+                              <button onClick={() => removeAnnouncement(a.id)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Delete</button>
+                            </>
+                          )}
+                          <button onClick={() => dismissAnnouncementItem(a)} style={{ background: "none", border: "none", color: T.dim, fontSize: 11, textDecoration: "underline", padding: 0 }}>Dismiss</button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1219,9 +1248,30 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
             )))
           }
           onBodyWeightUpdated={(workoutId, bodyWeight) =>
-            setHistory((prev) => (prev || []).map((w) => (
-              w.id !== workoutId ? w : { ...w, body_weight: bodyWeight }
-            )))
+            setHistory((prev) => {
+              const updated = (prev || []).map((w) => (
+                w.id !== workoutId ? w : { ...w, body_weight: bodyWeight }
+              ));
+              // Keep the profile's stored weight in sync with whichever
+              // completed workout has the most recent body weight entry —
+              // not just whichever one was just edited. Editing an older
+              // entry shouldn't override a newer one, and clearing the
+              // most recent entry should fall back to the next most
+              // recent instead of leaving the profile stuck on a stale
+              // value.
+              const withWeight = updated.filter((w) => w.body_weight != null && w.completed_at);
+              withWeight.sort((a, b) => b.completed_at.localeCompare(a.completed_at));
+              const nextWeight = withWeight.length > 0 ? withWeight[0].body_weight : null;
+              if (profile && nextWeight !== profile.weight) {
+                saveProfile(user.id, {
+                  gender: profile.gender,
+                  dateOfBirth: profile.date_of_birth,
+                  weight: nextWeight,
+                  weightUnit: profile.weight_unit || getPrefs().units,
+                }).then(() => setProfile((p) => (p ? { ...p, weight: nextWeight } : p))).catch(() => {});
+              }
+              return updated;
+            })
           }
         />
       )}

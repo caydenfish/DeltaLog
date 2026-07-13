@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchMyCustomExercises, fetchArchivedCustomExercises, updateCustomExercise, deleteCustomExercise, setExerciseArchived, uploadExerciseMedia } from "./lib/queries";
+import { fetchMyCustomExercises, fetchArchivedCustomExercises, fetchMyPromotedExercises, updateCustomExercise, deleteCustomExercise, setExerciseArchived, uploadExerciseMedia } from "./lib/queries";
 import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import { InlineLoading } from "./LoadingSpinner";
@@ -18,7 +18,9 @@ const T = {
 export default function MyCustomExercises({ user, onClose }) {
   const [rows, setRows] = useState(undefined); // undefined = loading
   const [archivedRows, setArchivedRows] = useState(undefined);
+  const [promotedRows, setPromotedRows] = useState(undefined);
   const [showArchived, setShowArchived] = useState(false);
+  const [showPromoted, setShowPromoted] = useState(false);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null); // exercise row being edited
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -28,6 +30,7 @@ export default function MyCustomExercises({ user, onClose }) {
   useEffect(() => {
     fetchMyCustomExercises(user.id).then(setRows).catch((err) => setError(err.message));
     fetchArchivedCustomExercises(user.id).then(setArchivedRows).catch((err) => setError(err.message));
+    fetchMyPromotedExercises(user.id).then(setPromotedRows).catch((err) => setError(err.message));
   }, []);
 
   async function handleSaveEdit({ name, muscle, primaryMuscles, secondaryMuscles, equipment, photoFile, existingMediaUrl }) {
@@ -196,6 +199,40 @@ export default function MyCustomExercises({ user, onClose }) {
                 <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 0" }}>Nothing archived.</div>
               )}
               {archivedRows && archivedRows.length > 0 && <div>{archivedRows.map((r) => renderRow(r, true))}</div>}
+            </div>
+          )}
+
+          <button
+            onClick={() => setShowPromoted(!showPromoted)}
+            style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginTop: 10, marginBottom: showPromoted ? 10 : 0, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
+          >
+            <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Promoted Exercises{promotedRows && promotedRows.length > 0 ? ` (${promotedRows.length})` : ""}</div>
+            <div style={{ color: T.dim, fontSize: 16 }}>{showPromoted ? "▲" : "▼"}</div>
+          </button>
+          {showPromoted && (
+            <div>
+              {promotedRows === undefined && <InlineLoading padding="16px 0" />}
+              {promotedRows && promotedRows.length === 0 && (
+                <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 0" }}>Nothing here yet — exercises you submit that get added to the shared library will show up here.</div>
+              )}
+              {promotedRows && promotedRows.length > 0 && (
+                <div>
+                  {promotedRows.map((p) => (
+                    <div key={p.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 10, display: "flex", alignItems: "center", gap: 10 }}>
+                      <ExerciseThumb muscle={p.exercise.muscle_group} mediaUrl={p.exercise.media_url} size={32} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>
+                          {p.submitted_name !== p.exercise.name ? `${p.submitted_name} → ${p.exercise.name}` : p.exercise.name}
+                        </div>
+                        <div style={{ color: T.dim, fontSize: 11 }}>
+                          Now in the shared library{p.resolved_at ? ` · ${new Date(p.resolved_at).toLocaleDateString()}` : ""}
+                        </div>
+                      </div>
+                      <div style={{ color: T.green, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>Shared</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

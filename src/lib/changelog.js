@@ -9,6 +9,18 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.10.7": {
+    title: "Better custom exercise picker, promoted exercises",
+    items: [
+      "Choosing a muscle group or equipment when creating a custom exercise now opens a searchable in-app picker instead of the clunky native menu.",
+      "When a custom exercise you submitted gets added to the shared library, or combined with an existing one, it now shows up in a new \"Promoted Exercises\" section in My Custom Exercises, and you'll get a notification either way.",
+      "Volume and Bodyweight charts on Home now space points by actual time elapsed — a 4-day gap between workouts looks like a gap, not the same spacing as two back-to-back days.",
+      "Updating your weight from a past workout in Workout History now updates your profile's current weight too, matching whichever entry is most recent.",
+      "Announcements and notifications can now be dismissed individually from the Announcements panel.",
+      "Added \"Split scheduling\" to What's Next: setting your split's order and seeing it forecasted on your calendar.",
+      "Fixed: primary/secondary muscles on an exercise's detail screen now match your Training Preferences muscle-name setting instead of always showing Detailed names, and no longer repeat the same muscle multiple times.",
+    ],
+  },
   "1.10.5": {
     title: "Warmup rest timer, easier navigation back",
     items: [

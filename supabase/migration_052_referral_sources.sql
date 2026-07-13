@@ -25,7 +25,7 @@ begin
 
   return query
     select
-      (array_agg(p.heard_about_us order by p.created_at))[1] as source,
+      (array_agg(p.heard_about_us order by p.updated_at))[1] as source,
       count(*) as count
     from profiles p
     where p.heard_about_us is not null and trim(p.heard_about_us) <> ''

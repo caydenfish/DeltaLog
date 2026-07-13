@@ -367,6 +367,19 @@ function MusclePillPicker({ title, selected, taxonomy, onAdd, onRemove, taxonomy
 // Scientific muscle for primary/secondary; Detailed and Generic are
 // derived through the taxonomy, and every display mode reads that
 // derivation via muscleLabel -- there's nothing else to set by hand.
+// Formats a raw primary/secondary muscle tag list at whatever precision
+// the person has chosen in Training Preferences, collapsing duplicates
+// that only arise because multiple raw tags collapse to the same label
+// at that precision (e.g. three scientific-tier tags for different
+// heads of the triceps, all displayed as "Triceps" in Detailed mode) --
+// otherwise a case like Cable Overhead Tricep Extension would show
+// "Triceps, Triceps, Triceps" instead of just "Triceps".
+function formatMuscleList(muscles, mode) {
+  const labels = (muscles || []).map((m) => muscleLabel(m, mode));
+  return [...new Set(labels)].join(", ");
+}
+
+
 export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, userId }) {
   const [exercises, setExercises] = useState(undefined); // undefined = loading
   const [search, setSearch] = useState("");
@@ -637,8 +650,8 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
             <DetailRow label="Nicknames" value={(selected.aliases || []).join(", ")} />
             <DetailRow label="Equipment" value={(selected.equipment || []).join(", ")} />
             <DetailRow label="Muscle group" value={muscleLabel(selected.muscle_group, "generic")} />
-            <DetailRow label="Primary muscles" value={(selected.primary_muscles || []).map((m) => muscleLabel(m, "detailed")).join(", ")} />
-            <DetailRow label="Secondary muscles" value={(selected.secondary_muscles || []).map((m) => muscleLabel(m, "detailed")).join(", ")} />
+            <DetailRow label="Primary muscles" value={formatMuscleList(selected.primary_muscles, muscleNameMode)} />
+            <DetailRow label="Secondary muscles" value={formatMuscleList(selected.secondary_muscles, muscleNameMode)} />
 
             {userId && <ExerciseDefaultsEditor userId={userId} exercise={selected} />}
             {userId && <ExerciseCharts userId={userId} exercise={selected} />}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchCustomExercisesForReview, promoteExerciseToLibrary, dismissCustomExercise, updateCustomExercise, uploadExerciseMedia, fetchExercises, mergeCustomExerciseAsAlias, setExerciseArchived } from "./lib/queries";
+import { fetchCustomExercisesForReview, promoteExerciseToLibrary, dismissCustomExercise, updateCustomExercise, uploadExerciseMedia, fetchExercises, mergeCustomExerciseAsAlias, fetchAllExerciseSubmissions, addExerciseAlias } from "./lib/queries";
 import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import { IconX } from "./Icons";
@@ -22,6 +22,7 @@ function creatorName(r) {
 }
 
 export default function AdminExercises({ user, onClose }) {
+  const [tab, setTab] = useState("queue"); // "queue" | "history"
   const [rows, setRows] = useState(undefined); // undefined = loading
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
@@ -31,6 +32,9 @@ export default function AdminExercises({ user, onClose }) {
   const [mergeLibrary, setMergeLibrary] = useState(null); // null = not loaded yet
   const [mergeSearch, setMergeSearch] = useState("");
   const [mergingTargetId, setMergingTargetId] = useState(null);
+  const [history, setHistory] = useState(undefined); // undefined = not loaded yet
+  const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "pending" | "dismissed" | "promoted" | "merged"
+  const [historySearch, setHistorySearch] = useState("");
 
   const load = () => {
     fetchCustomExercisesForReview()
@@ -39,6 +43,14 @@ export default function AdminExercises({ user, onClose }) {
   };
 
   useEffect(load, []);
+
+  useEffect(() => {
+    if (tab === "history" && history === undefined) {
+      fetchAllExerciseSubmissions()
+        .then(setHistory)
+        .catch((err) => setError(err.message));
+    }
+  }, [tab]);
 
   const promote = async (id) => {
     setBusyId(id);
@@ -62,18 +74,6 @@ export default function AdminExercises({ user, onClose }) {
     setBusyId(null);
   };
 
-  const archive = async (id) => {
-    setBusyId(id);
-    try {
-      await setExerciseArchived(id, true);
-      await dismissCustomExercise(id); // also drop it out of the review queue
-      setRows((prev) => prev.filter((r) => r.id !== id));
-    } catch (err) {
-      setError(err.message);
-    }
-    setBusyId(null);
-  };
-
   function openReview(row) {
     setReviewedIds((prev) => new Set(prev).add(row.id));
     setEditingRow(row);
@@ -82,24 +82,33 @@ export default function AdminExercises({ user, onClose }) {
   async function handleSaveEdit({ name, muscle, primaryMuscles, secondaryMuscles, equipment, photoFile, existingMediaUrl }) {
     let mediaUrl = existingMediaUrl;
     if (photoFile) mediaUrl = await uploadExerciseMedia(user.id, photoFile);
+    const originalName = editingRow.name;
     const updated = await updateCustomExercise(editingRow.id, { name, muscle, primaryMuscles, secondaryMuscles, equipment, mediaUrl });
+    // Renamed before promoting? Keep what the submitter originally
+    // called it as a search alias, so anyone else who searches under
+    // their term still finds this exercise instead of creating another
+    // duplicate.
+    if (name.trim() && name.trim() !== originalName) {
+      await addExerciseAlias(editingRow.id, originalName);
+    }
     setRows((prev) => prev.map((r) => (r.id === editingRow.id ? { ...r, ...updated } : r)));
   }
 
   async function openMerge(row) {
     setMergingRow(row);
     setMergeSearch("");
-    if (mergeLibrary === null) {
-      try {
-        const lib = await fetchExercises();
-        // Only existing shared library exercises make sense as a merge
-        // target — merging into another user's still-pending submission
-        // would just chain one unreviewed item into another.
-        setMergeLibrary(lib.filter((l) => !l.isCustom));
-      } catch (err) {
-        setError(err.message);
-        setMergeLibrary([]);
-      }
+    setMergeLibrary(null);
+    try {
+      const lib = await fetchExercises();
+      // Only existing shared library exercises make sense as a merge
+      // target — merging into another user's still-pending submission
+      // would just chain one unreviewed item into another. Refetched
+      // fresh every time (not cached) so an exercise promoted earlier
+      // in this same session is always found.
+      setMergeLibrary(lib.filter((l) => !l.isCustom));
+    } catch (err) {
+      setError(err.message);
+      setMergeLibrary([]);
     }
   }
 
@@ -130,9 +139,25 @@ export default function AdminExercises({ user, onClose }) {
           <div style={{ width: 26 }} />
         </div>
 
+        <div style={{ display: "flex", gap: 8, padding: "12px 16px 0" }}>
+          <button
+            onClick={() => setTab("queue")}
+            style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${tab === "queue" ? T.accent : T.line}`, background: tab === "queue" ? "rgba(232,68,46,0.1)" : "none", color: tab === "queue" ? T.accent : T.dim, fontSize: 12.5, fontWeight: 700 }}
+          >
+            Needs Review{rows && rows.length > 0 ? ` (${rows.length})` : ""}
+          </button>
+          <button
+            onClick={() => setTab("history")}
+            style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${tab === "history" ? T.accent : T.line}`, background: tab === "history" ? "rgba(232,68,46,0.1)" : "none", color: tab === "history" ? T.accent : T.dim, fontSize: 12.5, fontWeight: 700 }}
+          >
+            All Submissions
+          </button>
+        </div>
+
+        {tab === "queue" && (
         <div style={{ padding: 16, flex: 1 }}>
           <div style={{ color: T.dim, fontSize: 11, marginBottom: 16, lineHeight: 1.5 }}>
-            Exercises that 3 or more different users create independently are promoted to the library automatically — you'll only see the ones below that so far. Review a submission's details before promoting it.
+            Every custom exercise a user creates lands here for review — nothing gets promoted to the shared library automatically. You'll also get a notification (in Announcements) the moment a new one comes in.
           </div>
           {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
@@ -190,19 +215,80 @@ export default function AdminExercises({ user, onClose }) {
                     >
                       Same as an exercise already in the library? Merge it in →
                     </button>
-                    <button
-                      onClick={() => archive(r.id)}
-                      disabled={busyId === r.id}
-                      style={{ width: "100%", background: "none", border: "none", color: T.accent, fontSize: 11.5, textDecoration: "underline", padding: "2px 0" }}
-                    >
-                      Archive this submission (hides it from the creator too)
-                    </button>
                   </div>
                 );
               })}
             </div>
           )}
         </div>
+        )}
+
+        {tab === "history" && (
+        <div style={{ padding: 16, flex: 1 }}>
+          <div style={{ color: T.dim, fontSize: 11, marginBottom: 12, lineHeight: 1.5 }}>
+            Every custom exercise ever submitted, whatever happened to it since — use this to check whether something's already in the library before merging a new duplicate into it.
+          </div>
+          <input
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+            placeholder="Search by name…"
+            style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box", marginBottom: 10 }}
+          />
+          <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+            {["all", "pending", "promoted", "merged", "dismissed"].map((f) => (
+              <button
+                key={f}
+                onClick={() => setHistoryFilter(f)}
+                style={{ padding: "5px 10px", borderRadius: 999, border: `1px solid ${historyFilter === f ? T.accent : T.line}`, background: historyFilter === f ? "rgba(232,68,46,0.1)" : "none", color: historyFilter === f ? T.accent : T.dim, fontSize: 11.5, fontWeight: 600, textTransform: "capitalize" }}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
+          {history === undefined && <InlineLoading />}
+          {history && history.length === 0 && (
+            <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No submissions logged yet.</div>
+          )}
+          {history && history.length > 0 && (() => {
+            const q = historySearch.trim().toLowerCase();
+            const filtered = history.filter((h) => {
+              if (historyFilter !== "all" && h.status !== historyFilter) return false;
+              if (!q) return true;
+              return h.submitted_name.toLowerCase().includes(q) || (h.exercise?.name || "").toLowerCase().includes(q);
+            });
+            if (filtered.length === 0) {
+              return <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No matches.</div>;
+            }
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {filtered.map((h) => {
+                  const submitter = [h.submitter_first_name, h.submitter_last_name].filter(Boolean).join(" ") || "a user";
+                  const statusColor = h.status === "pending" ? T.accent : h.status === "dismissed" ? T.dim : T.green;
+                  const renamed = h.exercise && h.exercise.name !== h.submitted_name;
+                  return (
+                    <div key={h.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10, display: "flex", alignItems: "center", gap: 10 }}>
+                      <ExerciseThumb muscle={h.exercise?.muscle_group || h.muscle_group} mediaUrl={h.exercise?.media_url} size={28} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: T.text, fontSize: 13.5, fontWeight: 600 }}>
+                          {h.submitted_name}{renamed ? ` → now "${h.exercise.name}"` : ""}
+                        </div>
+                        <div style={{ color: T.dim, fontSize: 10.5 }}>
+                          Submitted by {submitter} on {new Date(h.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div style={{ color: statusColor, fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
+                        {h.status}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+        )}
       </div>
 
       {editingRow && (

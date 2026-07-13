@@ -798,6 +798,11 @@ export async function dismissCustomExercise(exerciseId) {
     .update({ admin_reviewed: true })
     .eq("id", exerciseId);
   if (error) throw error;
+  await supabase
+    .from("exercise_submissions")
+    .update({ status: "dismissed", resolved_at: new Date().toISOString() })
+    .eq("current_exercise_id", exerciseId)
+    .eq("status", "pending");
 }
 
 // Appends a search alias to an exercise, case-insensitive de-duped —
@@ -828,13 +833,56 @@ export async function addExerciseAlias(exerciseId, alias) {
 // created_by or delete anything — the submitter keeps their own copy
 // exactly as it was; this only stops it from being treated as a
 // separate exercise going forward (auto-promotion, future searches).
+// Routed through admin_merge_exercise_alias (migration_055) so the
+// alias write, the reviewed flag, the submission-log update, and the
+// submitter's notification all happen atomically.
 export async function mergeCustomExerciseAsAlias(submissionId, submissionName, targetExerciseId) {
-  await addExerciseAlias(targetExerciseId, submissionName);
-  const { error } = await supabase
-    .from("exercises")
-    .update({ admin_reviewed: true })
-    .eq("id", submissionId);
+  const { error } = await supabase.rpc("admin_merge_exercise_alias", { submission_id: submissionId, target_id: targetExerciseId });
   if (error) throw error;
+}
+
+// The signed-in user's own custom exercises that have since been
+// resolved into the shared library, either by direct promotion or by
+// being merged as an alias into an existing entry -- shown as a
+// separate "Promoted Exercises" section in "My Custom Exercises" since
+// fetchMyCustomExercises stops seeing them the moment created_by is
+// cleared. Skips anything whose resolved exercise was later archived.
+export async function fetchMyPromotedExercises(userId) {
+  const { data, error } = await supabase
+    .from("exercise_submissions")
+    .select("id, submitted_name, status, resolved_at, exercise:current_exercise_id(id, name, muscle_group, equipment, media_url, archived)")
+    .eq("user_id", userId)
+    .in("status", ["promoted", "merged"])
+    .not("current_exercise_id", "is", null)
+    .order("resolved_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).filter((r) => r.exercise && !r.exercise.archived);
+}
+
+// Admin-only: every custom exercise submission ever made, across every
+// status (pending/dismissed/promoted/merged), for a browsable history --
+// e.g. confirming an exercise was already promoted before merging a new
+// duplicate into it, without relying on the merge-search picker alone.
+export async function fetchAllExerciseSubmissions() {
+  const { data, error } = await supabase
+    .from("exercise_submissions")
+    .select("id, submitted_name, muscle_group, equipment, status, created_at, resolved_at, user_id, exercise:current_exercise_id(id, name, muscle_group, equipment, media_url, archived)")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const userIds = [...new Set(data.map((r) => r.user_id).filter(Boolean))];
+  const { data: profilesData, error: profErr } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name")
+    .in("id", userIds);
+  if (profErr) throw profErr;
+  const byId = new Map((profilesData || []).map((p) => [p.id, p]));
+  return data.map((r) => {
+    const p = byId.get(r.user_id);
+    return { ...r, submitter_first_name: p?.first_name || null, submitter_last_name: p?.last_name || null };
+  });
 }
 
 // Admin-only: sets or replaces the demo photo/gif URL on any exercise
@@ -1379,6 +1427,38 @@ export async function markNotificationsRead(userId) {
     .update({ read_at: new Date().toISOString() })
     .eq("user_id", userId)
     .is("read_at", null);
+  if (error) throw error;
+}
+
+// Dismisses a single personal notification for good -- unlike read_at
+// (which just clears the unread dot), this removes it from the list
+// entirely. Safe as an outright delete since these rows are owned by
+// exactly one person to begin with.
+export async function dismissNotification(id) {
+  const { error } = await supabase.from("user_notifications").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// The current user's set of dismissed announcement ids, so the panel
+// (and the unseen-dot check) can filter them out. Announcements are a
+// single shared row per broadcast, so dismissal can't touch the row
+// itself -- it's tracked per (announcement, user) instead.
+export async function fetchDismissedAnnouncementIds(userId) {
+  const { data, error } = await supabase
+    .from("announcement_dismissals")
+    .select("announcement_id")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data || []).map((r) => r.announcement_id);
+}
+
+// Dismisses a global announcement for just this user. Upserted (not a
+// plain insert) so dismissing something already dismissed is a no-op
+// instead of a duplicate-key error.
+export async function dismissAnnouncementForUser(announcementId, userId) {
+  const { error } = await supabase
+    .from("announcement_dismissals")
+    .upsert({ announcement_id: announcementId, user_id: userId }, { onConflict: "announcement_id,user_id" });
   if (error) throw error;
 }
 

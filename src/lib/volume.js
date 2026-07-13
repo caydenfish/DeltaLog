@@ -140,6 +140,17 @@ export function dateBucketKeyFor(dateStr, rangeKey) {
   return dateStr; // 7d (and anything unrecognized): one bucket per day
 }
 
+// Converts a bucket's date string into a real epoch-ms timestamp, so
+// charts can plot points on an actual time scale instead of evenly
+// spaced categories -- July 6/7/8 sit close together and July 8 to
+// July 12 sits visibly further apart, rather than every point being
+// the same distance from its neighbor regardless of the real gap.
+// 365d buckets are "YYYY-MM" (no day), so they're anchored to the 1st.
+function bucketDateToTs(dateStr, rangeKey) {
+  const iso = rangeKey === "365d" ? `${dateStr}-01` : dateStr;
+  return new Date(`${iso}T00:00:00`).getTime();
+}
+
 // Buckets bodyweight points to match how far back the chart is zoomed.
 // Multiple entries landing in the same bucket (including two workouts
 // logged the same day) are averaged together — this is also what fixes a
@@ -164,11 +175,15 @@ export function bucketWeightHistory(points, rangeKey) {
   // instead of an arbitrary day. Daily and biweekly buckets don't have a
   // clean key to show, so they use the latest real date in the bucket.
   return [...buckets.entries()]
-    .map(([key, b]) => ({
-      date: rangeKey === "30d" || rangeKey === "365d" ? key : b.lastDate,
-      weight: Math.round((b.sum / b.count) * 10) / 10,
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .map(([key, b]) => {
+      const date = rangeKey === "30d" || rangeKey === "365d" ? key : b.lastDate;
+      return {
+        date,
+        ts: bucketDateToTs(date, rangeKey),
+        weight: Math.round((b.sum / b.count) * 10) / 10,
+      };
+    })
+    .sort((a, b) => a.ts - b.ts);
 }
 
 // Buckets a { date, volume } series (the volume-over-time chart) the same
@@ -189,11 +204,15 @@ export function bucketDailyVolume(points, rangeKey) {
   }
 
   return [...buckets.entries()]
-    .map(([key, b]) => ({
-      date: rangeKey === "30d" || rangeKey === "365d" ? key : b.lastDate,
-      volume: Math.round(b.sum),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .map(([key, b]) => {
+      const date = rangeKey === "30d" || rangeKey === "365d" ? key : b.lastDate;
+      return {
+        date,
+        ts: bucketDateToTs(date, rangeKey),
+        volume: Math.round(b.sum),
+      };
+    })
+    .sort((a, b) => a.ts - b.ts);
 }
 
 // Turns fetchExerciseHistory's rows into three raw (unbucketed) daily
@@ -244,11 +263,15 @@ export function bucketSeries(points, rangeKey, field, mode) {
     buckets.set(key, b);
   }
   return [...buckets.entries()]
-    .map(([key, b]) => ({
-      date: rangeKey === "30d" || rangeKey === "365d" ? key : b.lastDate,
-      [field]: mode === "sum" ? Math.round(b.sum) : Math.round((b.sum / b.count) * 10) / 10,
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .map(([key, b]) => {
+      const date = rangeKey === "30d" || rangeKey === "365d" ? key : b.lastDate;
+      return {
+        date,
+        ts: bucketDateToTs(date, rangeKey),
+        [field]: mode === "sum" ? Math.round(b.sum) : Math.round((b.sum / b.count) * 10) / 10,
+      };
+    })
+    .sort((a, b) => a.ts - b.ts);
 }
 
 

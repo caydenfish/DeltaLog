@@ -105,7 +105,7 @@ function MusclePicker({ label, values, onAdd, onRemove, options, renderLabel, gr
 // for anything already selected. Replaces the browser/OS native <select>,
 // which renders as a clunky native wheel/list on mobile and can't be
 // searched or multi-selected in place.
-function MusclePickerSheet({ title, options, values, onToggle, onClose, renderLabel, groupFn }) {
+function MusclePickerSheet({ title, options, values, onToggle, onClose, renderLabel, groupFn, single }) {
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
   const filtered = (options || []).filter((m) => !q || renderLabel(m).toLowerCase().includes(q));
@@ -118,6 +118,11 @@ function MusclePickerSheet({ title, options, values, onToggle, onClose, renderLa
     groups[g].push(m);
   }
   for (const g of order) groups[g].sort((a, b) => renderLabel(a).localeCompare(renderLabel(b)));
+
+  function handleRowClick(m) {
+    onToggle(m);
+    if (single) onClose();
+  }
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
@@ -149,7 +154,7 @@ function MusclePickerSheet({ title, options, values, onToggle, onClose, renderLa
                 return (
                   <button
                     key={m}
-                    onClick={() => onToggle(m)}
+                    onClick={() => handleRowClick(m)}
                     style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: active ? "rgba(232,68,46,0.1)" : "none", border: "none", borderBottom: `1px solid ${T.line}`, color: T.text, fontSize: 15, padding: "12px 4px", textAlign: "left" }}
                   >
                     <span>{renderLabel(m)}</span>
@@ -166,6 +171,43 @@ function MusclePickerSheet({ title, options, values, onToggle, onClose, renderLa
     </div>
   );
 }
+
+// Single-select version of the same in-app sheet. Originally built for
+// "Muscle group" but generic enough to reuse for Equipment too -- same
+// reasoning as MusclePicker above (native select renders as a clunky
+// wheel on Android with no search), just closing itself the instant a
+// row is tapped instead of needing a separate "Done" action.
+function SingleSelectPicker({ label, value, onChange, options, renderLabel, groupFn }) {
+  const [showSheet, setShowSheet] = useState(false);
+  const display = renderLabel || ((m) => muscleLabel(m));
+
+  return (
+    <>
+      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{label}</div>
+      <button
+        onClick={() => setShowSheet(true)}
+        style={{ ...selectStyle, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+      >
+        <span>{value ? display(value) : "Select…"}</span>
+        <span style={{ color: T.dim, fontSize: 12 }}>▼</span>
+      </button>
+
+      {showSheet && (
+        <MusclePickerSheet
+          title={label}
+          options={options}
+          values={value ? [value] : []}
+          onToggle={(m) => onChange(m)}
+          onClose={() => setShowSheet(false)}
+          renderLabel={display}
+          groupFn={groupFn}
+          single
+        />
+      )}
+    </>
+  );
+}
+
 
 export default function CustomExerciseModal({ onClose, onCreate, onSave, initialExercise, initialName, scientificMode = false }) {
   const isEdit = Boolean(initialExercise);
@@ -216,11 +258,9 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
     return entry ? entry.generic_group : "Other";
   }
 
-  // The general "Muscle group" dropdown stays organized by region; any
-  // group not in the known regions (something an admin only just added)
-  // shows up under "Other" so it's still selectable.
-  const knownFlat = new Set(KNOWN_CATEGORIES.flatMap((c) => c.muscles));
-  const otherMuscles = (allMuscles || []).filter((m) => !knownFlat.has(m));
+  // Primary/secondary muscle pickers group by broad region; anything an
+  // admin has added that isn't in one of these buckets yet falls under
+  // "Other" so it's still selectable.
   function simpleGroup(m) {
     const cat = KNOWN_CATEGORIES.find((c) => c.muscles.includes(m));
     return cat ? cat.label : "Other";
@@ -291,23 +331,13 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
             </>
           ) : (
             <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Muscle group</div>
-              <select value={muscle} onChange={(e) => setMuscle(e.target.value)} style={selectStyle}>
-                {KNOWN_CATEGORIES.map((cat) => (
-                  <optgroup key={cat.label} label={cat.label}>
-                    {[...cat.muscles].sort().map((m) => (
-                      <option key={m} value={m}>{muscleLabel(m)}</option>
-                    ))}
-                  </optgroup>
-                ))}
-                {otherMuscles.length > 0 && (
-                  <optgroup label="Other">
-                    {[...otherMuscles].sort().map((m) => (
-                      <option key={m} value={m}>{muscleLabel(m)}</option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
+              <SingleSelectPicker
+                label="Muscle group"
+                value={muscle}
+                onChange={setMuscle}
+                options={allMuscles || []}
+                renderLabel={muscleLabel}
+              />
 
               <MusclePicker
                 label="Primary muscles"
@@ -329,12 +359,13 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
             </>
           )}
 
-          <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Equipment</div>
-          <select value={equipment} onChange={(e) => setEquipment(e.target.value)} style={selectStyle}>
-            {[...EQUIPMENT_LIST].sort().map((eq) => (
-              <option key={eq} value={eq}>{eq}</option>
-            ))}
-          </select>
+          <SingleSelectPicker
+            label="Equipment"
+            value={equipment}
+            onChange={setEquipment}
+            options={EQUIPMENT_LIST}
+            renderLabel={(e) => e}
+          />
 
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: T.dim, marginBottom: 18, cursor: "pointer" }}>
             <span style={{ padding: "10px 14px", borderRadius: 10, border: `1px dashed ${T.line}`, flexShrink: 0, flex: 1, textAlign: "center" }}>
