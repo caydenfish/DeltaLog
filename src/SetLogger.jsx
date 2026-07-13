@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
-import { playRestTimerSound, triggerRestTimerVibration } from "./lib/restTimerCues";
+import { playRestTimerSound, triggerRestTimerVibration, showRestTimerNotification } from "./lib/restTimerCues";
 import BodyHeatmap from "./BodyHeatmap";
 import Preferences from "./Preferences";
 import { computeMuscleSetCounts } from "./lib/volume";
@@ -538,6 +538,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             const prefs = getPrefs();
             if (prefs.restTimerSoundEnabled) playRestTimerSound(prefs.restTimerSound);
             if (prefs.restTimerVibrationEnabled) triggerRestTimerVibration(prefs.restTimerVibration);
+            if (prefs.restTimerNotificationEnabled && document.visibilityState !== "visible") showRestTimerNotification();
           }
         }
       }
@@ -2689,13 +2690,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
           )}
         </div>
 
-        {(restLeft > 0 || restOverSec > 0) && (
+        {restEndsAt !== null && (
           <div
             onClick={() => setRestEndsAt(null)}
             title={restOverSec > 0 ? "Tap to dismiss" : undefined}
             style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.surface2, borderBottom: `1px solid ${T.line}`, padding: "5px 16px", cursor: restOverSec > 0 ? "pointer" : "default" }}
           >
-            <div style={{ color: T.dim, fontSize: 11 }}>{restOverSec > 0 ? "Rest timer over" : "Rest"}</div>
+            <div style={{ color: T.dim, fontSize: 11 }}>{restOverSec > 0 ? "Rest timer complete" : "Rest"}</div>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>
               {restOverSec > 0 ? `+${mmss(restOverSec)}` : mmss(restLeft)}
             </div>

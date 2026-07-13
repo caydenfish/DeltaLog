@@ -177,6 +177,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [restTimerSound, setRestTimerSoundState] = useState(() => getPrefs().restTimerSound);
   const [restTimerVibrationEnabled, setRestTimerVibrationEnabledState] = useState(() => getPrefs().restTimerVibrationEnabled);
   const [restTimerVibration, setRestTimerVibrationState] = useState(() => getPrefs().restTimerVibration);
+  const [restTimerNotificationEnabled, setRestTimerNotificationEnabledState] = useState(() => getPrefs().restTimerNotificationEnabled);
   const [muscleNameMode, setMuscleNameModeState] = useState(() => getPrefs().muscleNameMode);
   // The taxonomy fetch (App.jsx) and the session/profile chain that
   // gates Home mounting both start at boot with no ordering guarantee.
@@ -250,6 +251,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   function setRestTimerSound(v) { setRestTimerSoundState(v); setPref("restTimerSound", v); }
   function setRestTimerVibrationEnabled(v) { setRestTimerVibrationEnabledState(v); setPref("restTimerVibrationEnabled", v); }
   function setRestTimerVibration(v) { setRestTimerVibrationState(v); setPref("restTimerVibration", v); }
+  function setRestTimerNotificationEnabled(v) { setRestTimerNotificationEnabledState(v); setPref("restTimerNotificationEnabled", v); }
   function setMuscleNameMode(v) { setMuscleNameModeState(v); setPref("muscleNameMode", v); }
   function setScoreDisplay(v) { setScoreDisplayState(v); setPref("scoreDisplay", v); }
   function setWeightEntryMode(v) { setWeightEntryModeState(v); setPref("weightEntryMode", v); }
@@ -856,7 +858,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 </button>
                 )}
                 <Preferences
-                  value={{ units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, plate55Scope, trainingIdeology, timeFormat }}
+                  value={{ units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, timeFormat }}
                   filterQuery={settingsQuery}
                   onChange={(key, val) => {
                     if (key === "units") setUnits(val);
@@ -870,6 +872,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                     else if (key === "restTimerSound") setRestTimerSound(val);
                     else if (key === "restTimerVibrationEnabled") setRestTimerVibrationEnabled(val);
                     else if (key === "restTimerVibration") setRestTimerVibration(val);
+                    else if (key === "restTimerNotificationEnabled") setRestTimerNotificationEnabled(val);
                     else if (key === "plate55Scope") setPlate55Scope(val);
                     else if (key === "trainingIdeology") setTrainingIdeology(val);
                     else if (key === "timeFormat") setTimeFormat(val);

@@ -95,3 +95,62 @@ export function triggerRestTimerVibration(key) {
     // ignore
   }
 }
+
+// Whether this browser/device can show notifications at all -- used to
+// hide the toggle entirely rather than show a control that can never
+// work (e.g. Notification isn't defined in some in-app browser webviews).
+export function notificationsSupported() {
+  return typeof Notification !== "undefined";
+}
+
+// Current permission state: "granted" | "denied" | "default" | "unsupported".
+export function getNotificationPermission() {
+  if (!notificationsSupported()) return "unsupported";
+  return Notification.permission;
+}
+
+// Prompts for permission if it hasn't been decided yet. Must be called
+// from a user gesture (the Settings toggle's onClick) -- browsers ignore
+// or reject a request made outside one. Returns the resulting permission
+// string so the toggle can reflect it immediately.
+export async function requestNotificationPermission() {
+  if (!notificationsSupported()) return "unsupported";
+  if (Notification.permission !== "default") return Notification.permission;
+  try {
+    return await Notification.requestPermission();
+  } catch {
+    return Notification.permission;
+  }
+}
+
+// Shows the actual "Rest Timer Complete" notification. Routed through
+// the service worker registration when one's active (registration.
+// showNotification) rather than `new Notification(...)` directly --
+// that constructor throws on some mobile browsers once a page is
+// installed as a PWA, where notifications are only allowed via a
+// service worker. Falls back to the plain constructor if no
+// registration is available (e.g. running in a plain browser tab
+// during development).
+export async function showRestTimerNotification() {
+  if (getNotificationPermission() !== "granted") return;
+  const options = {
+    body: "Time to get back to it.",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    tag: "rest-timer-complete",
+    renotify: true,
+  };
+  try {
+    if (navigator.serviceWorker) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.showNotification("Rest Timer Complete", options);
+        return;
+      }
+    }
+    new Notification("Rest Timer Complete", options);
+  } catch {
+    // A notification is a nice-to-have here, never worth surfacing an
+    // error for -- the in-app sound/vibration already covered it.
+  }
+}

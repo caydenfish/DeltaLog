@@ -28,6 +28,9 @@ export const CHANGELOG = {
       "All Submissions (admin) now flags anything marked reviewed/dismissed that was never actually added to the shared library, with a one-tap fix — catches cases like accidentally dismissing instead of promoting.",
       "Fixed: the \"Muscle group\" options when creating a custom exercise were pulling from a stale, separately-maintained list instead of what's actually used across real exercises. Muscle group is now also auto-derived from your primary muscle picks instead of being a separate choice, so it can't drift out of sync with them.",
       "Fixed: Primary/Secondary muscle options when creating a custom exercise now match your Training Preferences muscle-name setting (Category/Region/Anatomy) — previously they stayed at Category precision no matter what that setting was.",
+      "Fixed the rest timer bar briefly disappearing and reappearing right as it hit 0:00 — it now stays put and counts through smoothly.",
+      "Added a \"Rest Timer Complete\" notification option (Settings > Rest Timer), alongside sound and vibration, for when the app's in the background.",
+      "Renamed the rest bar's \"Rest timer over\" label to \"Rest timer complete\" for consistency with the new notification.",
     ],
   },
   "1.10.5": {

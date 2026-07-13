@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { getPrefs, setPref } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
-import { REST_TIMER_SOUNDS, REST_TIMER_VIBRATIONS, playRestTimerSound, triggerRestTimerVibration } from "./lib/restTimerCues";
+import { REST_TIMER_SOUNDS, REST_TIMER_VIBRATIONS, playRestTimerSound, triggerRestTimerVibration, notificationsSupported, getNotificationPermission, requestNotificationPermission, showRestTimerNotification } from "./lib/restTimerCues";
 
 const T = {
   bg: "#101216",
@@ -87,6 +87,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     restTimerSound: getPrefs().restTimerSound,
     restTimerVibrationEnabled: getPrefs().restTimerVibrationEnabled,
     restTimerVibration: getPrefs().restTimerVibration,
+    restTimerNotificationEnabled: getPrefs().restTimerNotificationEnabled,
     plate55Scope: getPrefs().plate55Scope,
     trainingIdeology: getPrefs().trainingIdeology,
     timeFormat: getPrefs().timeFormat,
@@ -98,6 +99,18 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // "Units" and "Training Preferences" are real full-screen destinations
   // (SubScreen) rather than inline-expanding sections.
   const [screen, setScreen] = useState(null); // null | "units" | "training" | "restTimer"
+  const [notifPermission, setNotifPermission] = useState(() => getNotificationPermission());
+
+  async function handleToggleRestTimerNotification(v) {
+    if (v) {
+      const result = await requestNotificationPermission();
+      setNotifPermission(result);
+      if (result === "granted") update("restTimerNotificationEnabled", true);
+      // Denied or unsupported: leave it off, nothing to actually enable.
+    } else {
+      update("restTimerNotificationEnabled", false);
+    }
+  }
   const state = controlled ? value : local;
 
   // Search keywords per row, used only when `filterQuery` is passed in
@@ -117,6 +130,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     warmupRestEnabled: "rest timers separate warmup working sets toggle enable disable",
     restTimerSoundEnabled: "rest timer sound audio chime bell beep digital end alert cue",
     restTimerVibrationEnabled: "rest timer vibration vibrate haptic pulse buzz end alert cue",
+    restTimerNotificationEnabled: "rest timer notification push alert end cue",
   };
   const matches = (key) => !filterQuery || KEYWORDS[key].includes(filterQuery.trim().toLowerCase());
   const searchActive = !!filterQuery;
@@ -125,7 +139,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // shown inline, right in the settings list, while a search is active.
   const unitsSearchMatch = searchActive && ["units", "timeFormat"].some(matches);
   const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "weightEntryMode", "plateSizes", "scientificNames"].some(matches);
-  const restTimerSearchMatch = searchActive && ["restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled"].some(matches);
+  const restTimerSearchMatch = searchActive && ["restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled"].some(matches);
 
   function update(key, val) {
     if (controlled) {
@@ -136,7 +150,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     }
   }
 
-  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, trainingIdeology } = state;
+  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology } = state;
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -406,7 +420,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
         </>
         )}
 
-        {(matches("restTimerSoundEnabled") || matches("restTimerVibrationEnabled")) && (
+        {(matches("restTimerSoundEnabled") || matches("restTimerVibrationEnabled") || matches("restTimerNotificationEnabled")) && (
         <>
         <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>When a rest timer ends</div>
 
@@ -432,7 +446,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
         </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: restTimerVibrationEnabled ? 10 : 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: restTimerVibrationEnabled ? 10 : 20 }}>
           <div>
             <div style={{ color: T.text, fontSize: 14 }}>Vibration</div>
             <div style={{ color: T.dim, fontSize: 11 }}>Not available on every device/browser</div>
@@ -440,7 +454,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
           <ToggleSwitch checked={restTimerVibrationEnabled} onChange={(v) => update("restTimerVibrationEnabled", v)} ariaLabel="Rest timer vibration" />
         </div>
         {restTimerVibrationEnabled && (
-        <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
+        <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 20 }}>
           {REST_TIMER_VIBRATIONS.map((opt) => (
             <button
               key={opt.key}
@@ -452,6 +466,34 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
             </button>
           ))}
         </div>
+        )}
+
+        {notificationsSupported() && (
+        <>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ paddingRight: 12 }}>
+            <div style={{ color: T.text, fontSize: 14 }}>Notification</div>
+            <div style={{ color: T.dim, fontSize: 11 }}>
+              {notifPermission === "denied"
+                ? "Blocked in your browser's site settings — re-enable there to use this"
+                : "\"Rest Timer Complete\" while the app's in the background"}
+            </div>
+          </div>
+          <ToggleSwitch
+            checked={restTimerNotificationEnabled && notifPermission === "granted"}
+            onChange={handleToggleRestTimerNotification}
+            ariaLabel="Rest timer notification"
+          />
+        </div>
+        {restTimerNotificationEnabled && notifPermission === "granted" && (
+          <button
+            onClick={() => showRestTimerNotification()}
+            style={{ marginTop: 10, padding: "8px 0", width: "100%", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12, fontWeight: 600 }}
+          >
+            Send a test notification
+          </button>
+        )}
+        </>
         )}
         </>
         )}
