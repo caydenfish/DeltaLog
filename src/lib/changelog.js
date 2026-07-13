@@ -19,6 +19,7 @@ export const CHANGELOG = {
       "Announcements and notifications can now be dismissed individually from the Announcements panel.",
       "Added \"Split scheduling\" to What's Next: setting your split's order and seeing it forecasted on your calendar.",
       "Fixed: primary/secondary muscles on an exercise's detail screen now match your Training Preferences muscle-name setting instead of always showing Detailed names, and no longer repeat the same muscle multiple times.",
+      "Fixed: searching for a merge target in admin's Custom Exercises now also matches an exercise's alternate names (aliases), not just its current name — a promoted exercise whose original submitted name only survives as an alias was previously unfindable there.",
     ],
   },
   "1.10.5": {

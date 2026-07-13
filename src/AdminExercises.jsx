@@ -127,7 +127,9 @@ export default function AdminExercises({ user, onClose }) {
 
   const filteredMergeLibrary = (mergeLibrary || []).filter((l) => {
     const q = mergeSearch.trim().toLowerCase();
-    return !q || l.name.toLowerCase().includes(q);
+    if (!q) return true;
+    if (l.name.toLowerCase().includes(q)) return true;
+    return (l.aliases || []).some((a) => a.toLowerCase().includes(q));
   });
 
   return (
