@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import BodyHeatmap from "./BodyHeatmap";
 import Preferences from "./Preferences";
 import { computeMuscleSetCounts } from "./lib/volume";
@@ -438,6 +439,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const [pickerFor, setPickerFor] = useState(null);
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerMultiSelected, setPickerMultiSelected] = useState([]); // array of library items selected for batch-add
+  // Guards addSelectedExercises/addExercise/replaceExercise against firing
+  // more than once concurrently — each is a loop of real DB inserts, so a
+  // double-fire (e.g. a tap landing right as the app loses/regains focus,
+  // which some mobile browsers replay as a second click) previously ran
+  // the whole insert loop twice more, tripling the exercises actually
+  // added instead of just visually glitching. A ref (checked/set
+  // synchronously before any await) rather than state alone, so a
+  // same-tick re-entrant call can't slip through before a re-render
+  // reflecting the state update has happened.
+  const addingExercisesRef = useRef(false);
+  const [addingExercises, setAddingExercises] = useState(false);
   const [showPickerFilters, setShowPickerFilters] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState([]);
   function applyPickerSplit(splitName) {
@@ -794,6 +806,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   }
 
   async function replaceExercise(i, libItem) {
+    if (addingExercisesRef.current) return;
+    addingExercisesRef.current = true;
+    setAddingExercises(true);
     const planned = workout[i].planned;
     const plannedWarmup = workout[i].plannedWarmup || 0;
     try {
@@ -805,9 +820,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     } catch (err) {
       note(`Couldn't add ${libItem.name}: ${err.message}`);
     }
+    addingExercisesRef.current = false;
+    setAddingExercises(false);
     closePicker();
   }
   async function addExercise(libItem) {
+    if (addingExercisesRef.current) return;
+    addingExercisesRef.current = true;
+    setAddingExercises(true);
     try {
       const dbId = await addWorkoutExercise(workoutId, libItem.id, workout.length, 3);
       const hydrated = await hydrateExercise(user.id, libItem);
@@ -817,6 +837,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     } catch (err) {
       note(`Couldn't add ${libItem.name}: ${err.message}`);
     }
+    addingExercisesRef.current = false;
+    setAddingExercises(false);
     closePicker();
   }
   function closePicker() { setPickerFor(null); setPickerSearch(""); setShowPickerFilters(false); setMuscleFilter([]); setEquipFilter([]); setPerformedFilter("all"); setShowCreateCustom(false); setPickerMultiSelected([]); }
@@ -866,8 +888,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   }
 
   async function addSelectedExercises() {
+    if (addingExercisesRef.current) return;
     const picks = pickerMultiSelected;
     if (picks.length === 0) return;
+    addingExercisesRef.current = true;
+    setAddingExercises(true);
     try {
       let nextWorkout = workout;
       let nextAllSets = allSets;
@@ -883,6 +908,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     } catch (err) {
       note(`Couldn't add exercises: ${err.message}`);
     }
+    addingExercisesRef.current = false;
+    setAddingExercises(false);
     closePicker();
   }
 
@@ -1268,12 +1295,21 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
       const lw = lastWeek[Math.min(sets.length, lastWeek.length - 1)];
       setWeight(String(lastLogged.weight)); setReps(String(lw ? lw.reps : target.reps)); setRir(null);
     } else { setWeight(String(target.weight)); setReps(String(target.reps)); setRir(null); }
-    setEditIndex(editIdx); setLoaded([]); setWizardOpen(true);
-    setShowCalc(getPrefs().weightEntryMode === "plate");
-    setTimeout(() => {
-      weightRef.current && weightRef.current.focus();
-      noteAnchorRef.current && noteAnchorRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
-    }, 60);
+    // flushSync forces the wizard's DOM (including the weight input) to
+    // commit before we call .focus() — still inside this same tap
+    // handler, with no setTimeout/macrotask boundary in between. Mobile
+    // Safari in particular only auto-shows the keyboard for a focus()
+    // call it can trace back to the original trusted user gesture; a
+    // focus() fired from a setTimeout callback (even a few ms later) is
+    // "recent enough" for some devices/OS versions but not others, which
+    // is exactly the "sometimes" in this bug — it wasn't broken, it was
+    // a race against a cutoff that varies by device.
+    flushSync(() => {
+      setEditIndex(editIdx); setLoaded([]); setWizardOpen(true);
+      setShowCalc(getPrefs().weightEntryMode === "plate");
+    });
+    weightRef.current && weightRef.current.focus();
+    noteAnchorRef.current && noteAnchorRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
   }
   function fillFrom(s) { setWeight(String(s.weight)); setReps(String(s.reps)); setRir(s.rir); setLoaded([]); }
   function copyAll() {
@@ -1894,15 +1930,19 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface }}>
               <button
                 onClick={addSelectedExercises}
-                disabled={pickerMultiSelected.length === 0}
+                disabled={pickerMultiSelected.length === 0 || addingExercises}
                 style={{
                   width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-                  background: pickerMultiSelected.length === 0 ? T.surface2 : T.accent,
-                  color: pickerMultiSelected.length === 0 ? T.dim : "#fff",
+                  background: pickerMultiSelected.length === 0 || addingExercises ? T.surface2 : T.accent,
+                  color: pickerMultiSelected.length === 0 || addingExercises ? T.dim : "#fff",
                   fontSize: 15, fontWeight: 700,
                 }}
               >
-                {pickerMultiSelected.length === 0 ? "Select exercises to add" : `Add ${pickerMultiSelected.length} exercise${pickerMultiSelected.length > 1 ? "s" : ""}`}
+                {addingExercises
+                  ? "Adding…"
+                  : pickerMultiSelected.length === 0
+                  ? "Select exercises to add"
+                  : `Add ${pickerMultiSelected.length} exercise${pickerMultiSelected.length > 1 ? "s" : ""}`}
               </button>
             </div>
           </div>
