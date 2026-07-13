@@ -23,6 +23,9 @@ export const CHANGELOG = {
       "Fixed a rare bug where tapping \"Add\" on the exercise picker more than once in quick succession (most likely to happen right as the app loses or regains focus) could add the same exercise two or three times.",
       "Fixed: the keyboard didn't always pop up right away when adding a new set — it should now show up reliably every time.",
       "Fixed a crash on the workout screen: \"muscleNameMode is not defined.\"",
+      "Fixed the \"Add exercises\" screen (manual add) only using about half the available height, with the create-custom-exercise button floating in an inconsistent spot — the exercise list now fills the screen and that button sits pinned just above \"Add exercises.\"",
+      "Rest timer settings moved to their own \"Rest Timer\" screen in Settings, and you can now choose a sound and/or vibration for when a rest timer ends — 4 options each, and each can be turned off independently.",
+      "All Submissions (admin) now flags anything marked reviewed/dismissed that was never actually added to the shared library, with a one-tap fix — catches cases like accidentally dismissing instead of promoting.",
     ],
   },
   "1.10.5": {

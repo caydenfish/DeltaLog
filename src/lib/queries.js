@@ -866,7 +866,7 @@ export async function fetchMyPromotedExercises(userId) {
 export async function fetchAllExerciseSubmissions() {
   const { data, error } = await supabase
     .from("exercise_submissions")
-    .select("id, submitted_name, muscle_group, equipment, status, created_at, resolved_at, user_id, exercise:current_exercise_id(id, name, muscle_group, equipment, media_url, archived)")
+    .select("id, submitted_name, muscle_group, equipment, status, created_at, resolved_at, user_id, exercise:current_exercise_id(id, name, muscle_group, equipment, media_url, archived, created_by)")
     .order("created_at", { ascending: false })
     .limit(500);
   if (error) throw error;

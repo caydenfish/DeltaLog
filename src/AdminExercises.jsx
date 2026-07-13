@@ -74,6 +74,27 @@ export default function AdminExercises({ user, onClose }) {
     setBusyId(null);
   };
 
+  // Promotes directly from the All Submissions history view. Exists
+  // because status here can lag reality -- e.g. a submission dismissed
+  // by mistake (or genuinely dismissed, then reconsidered later) has no
+  // other path back to the shared library once it's out of the Needs
+  // Review queue. Checked against the exercise's actual created_by
+  // (still set = genuinely not yet promoted) rather than trusting
+  // status, since status is exactly what can drift from the truth.
+  const promoteFromHistory = async (h) => {
+    if (!h.exercise) return;
+    setBusyId(h.id);
+    try {
+      await promoteExerciseToLibrary(h.exercise.id);
+      setHistory((prev) => prev.map((r) => (
+        r.id === h.id ? { ...r, status: "promoted", resolved_at: new Date().toISOString(), exercise: { ...r.exercise, created_by: null } } : r
+      )));
+    } catch (err) {
+      setError(err.message);
+    }
+    setBusyId(null);
+  };
+
   function openReview(row) {
     setReviewedIds((prev) => new Set(prev).add(row.id));
     setEditingRow(row);
@@ -269,20 +290,43 @@ export default function AdminExercises({ user, onClose }) {
                   const submitter = [h.submitter_first_name, h.submitter_last_name].filter(Boolean).join(" ") || "a user";
                   const statusColor = h.status === "pending" ? T.accent : h.status === "dismissed" ? T.dim : T.green;
                   const renamed = h.exercise && h.exercise.name !== h.submitted_name;
+                  // Trust the exercise's actual created_by over `status` --
+                  // status can drift from reality (e.g. dismissed by
+                  // mistake, or genuinely dismissed and later
+                  // reconsidered), and created_by still being set is the
+                  // one ground truth for "not actually in the shared
+                  // library yet."
+                  const stillPrivate = h.exercise && !!h.exercise.created_by && h.status !== "pending";
                   return (
-                    <div key={h.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10, display: "flex", alignItems: "center", gap: 10 }}>
-                      <ExerciseThumb muscle={h.exercise?.muscle_group || h.muscle_group} mediaUrl={h.exercise?.media_url} size={28} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: T.text, fontSize: 13.5, fontWeight: 600 }}>
-                          {h.submitted_name}{renamed ? ` → now "${h.exercise.name}"` : ""}
+                    <div key={h.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <ExerciseThumb muscle={h.exercise?.muscle_group || h.muscle_group} mediaUrl={h.exercise?.media_url} size={28} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: T.text, fontSize: 13.5, fontWeight: 600 }}>
+                            {h.submitted_name}{renamed ? ` → now "${h.exercise.name}"` : ""}
+                          </div>
+                          <div style={{ color: T.dim, fontSize: 10.5 }}>
+                            Submitted by {submitter} on {new Date(h.created_at).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div style={{ color: T.dim, fontSize: 10.5 }}>
-                          Submitted by {submitter} on {new Date(h.created_at).toLocaleDateString()}
+                        <div style={{ color: statusColor, fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
+                          {h.status}
                         </div>
                       </div>
-                      <div style={{ color: statusColor, fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, flexShrink: 0 }}>
-                        {h.status}
-                      </div>
+                      {stillPrivate && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(232,68,46,0.08)", border: `1px solid ${T.accent}`, borderRadius: 8, padding: "6px 8px" }}>
+                          <div style={{ color: T.accent, fontSize: 10.5, fontWeight: 600 }}>
+                            Marked {h.status}, but never actually promoted — still a private exercise.
+                          </div>
+                          <button
+                            onClick={() => promoteFromHistory(h)}
+                            disabled={busyId === h.id}
+                            style={{ flexShrink: 0, marginLeft: 8, padding: "5px 10px", borderRadius: 7, border: "none", background: T.green, color: "#fff", fontSize: 11, fontWeight: 700 }}
+                          >
+                            {busyId === h.id ? "Working…" : "Promote now"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

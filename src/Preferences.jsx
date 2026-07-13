@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getPrefs, setPref } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
+import { REST_TIMER_SOUNDS, REST_TIMER_VIBRATIONS, playRestTimerSound, triggerRestTimerVibration } from "./lib/restTimerCues";
 
 const T = {
   bg: "#101216",
@@ -82,6 +83,10 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     restSeconds: getPrefs().restSeconds,
     warmupRestSeconds: getPrefs().warmupRestSeconds,
     warmupRestEnabled: getPrefs().warmupRestEnabled,
+    restTimerSoundEnabled: getPrefs().restTimerSoundEnabled,
+    restTimerSound: getPrefs().restTimerSound,
+    restTimerVibrationEnabled: getPrefs().restTimerVibrationEnabled,
+    restTimerVibration: getPrefs().restTimerVibration,
     plate55Scope: getPrefs().plate55Scope,
     trainingIdeology: getPrefs().trainingIdeology,
     timeFormat: getPrefs().timeFormat,
@@ -92,7 +97,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // showTrainingPrefs/showUnitsGroup accordion-toggle booleans now that
   // "Units" and "Training Preferences" are real full-screen destinations
   // (SubScreen) rather than inline-expanding sections.
-  const [screen, setScreen] = useState(null); // null | "units" | "training"
+  const [screen, setScreen] = useState(null); // null | "units" | "training" | "restTimer"
   const state = controlled ? value : local;
 
   // Search keywords per row, used only when `filterQuery` is passed in
@@ -110,6 +115,8 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     restSeconds: "rest timer default seconds",
     warmupRestSeconds: "warmup rest timer default seconds",
     warmupRestEnabled: "rest timers separate warmup working sets toggle enable disable",
+    restTimerSoundEnabled: "rest timer sound audio chime bell beep digital end alert cue",
+    restTimerVibrationEnabled: "rest timer vibration vibrate haptic pulse buzz end alert cue",
   };
   const matches = (key) => !filterQuery || KEYWORDS[key].includes(filterQuery.trim().toLowerCase());
   const searchActive = !!filterQuery;
@@ -117,7 +124,8 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // findable by search without requiring a tap into that sub-screen —
   // shown inline, right in the settings list, while a search is active.
   const unitsSearchMatch = searchActive && ["units", "timeFormat"].some(matches);
-  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled"].some(matches);
+  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "weightEntryMode", "plateSizes", "scientificNames"].some(matches);
+  const restTimerSearchMatch = searchActive && ["restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled"].some(matches);
 
   function update(key, val) {
     if (controlled) {
@@ -128,7 +136,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     }
   }
 
-  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, trainingIdeology } = state;
+  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, trainingIdeology } = state;
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -339,60 +347,113 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
         </div>
         )}
 
+      </>
+    );
+  }
+
+  function renderRestTimerFields() {
+    return (
+      <>
         {(matches("restSeconds") || matches("warmupRestSeconds") || matches("warmupRestEnabled")) && (
-        <div>
-          <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Rest Timers</div>
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div style={{ paddingRight: 12 }}>
-              <div style={{ color: T.text, fontSize: 14 }}>Separate warmup rest timer</div>
-              <div style={{ color: T.dim, fontSize: 11 }}>Use a shorter rest after warmup sets than working sets</div>
-            </div>
-            <ToggleSwitch checked={warmupRestEnabled} onChange={(v) => update("warmupRestEnabled", v)} ariaLabel="Separate warmup rest timer" />
+        <>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ paddingRight: 12 }}>
+            <div style={{ color: T.text, fontSize: 14 }}>Separate warmup rest timer</div>
+            <div style={{ color: T.dim, fontSize: 11 }}>Use a shorter rest after warmup sets than working sets</div>
           </div>
-
-          {matches("restSeconds") && (
-          <div style={{ marginBottom: warmupRestEnabled ? 14 : 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ color: T.text, fontSize: 14 }}>{warmupRestEnabled ? "Default working set rest timer" : "Default rest timer"}</div>
-                <div style={{ color: T.dim, fontSize: 11 }}>{warmupRestEnabled ? "Starts a new workout's rest countdown for working sets" : "Starts a new workout's rest countdown for every set"}</div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={() => update("restSeconds", Math.max(15, restSeconds - 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
-                  {Math.floor(restSeconds / 60)}:{String(restSeconds % 60).padStart(2, "0")}
-                </div>
-                <button onClick={() => update("restSeconds", Math.min(600, restSeconds + 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
-              </div>
-            </div>
-            <div style={{ color: T.dim, fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-              Applies to any exercise using the default. Exercises with their own custom rest time keep it.
-            </div>
-          </div>
-          )}
-
-          {warmupRestEnabled && matches("warmupRestSeconds") && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ color: T.text, fontSize: 14 }}>Default warmup rest timer</div>
-                <div style={{ color: T.dim, fontSize: 11 }}>Used after a set marked as warmup</div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={() => update("warmupRestSeconds", Math.max(15, warmupRestSeconds - 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
-                  {Math.floor(warmupRestSeconds / 60)}:{String(warmupRestSeconds % 60).padStart(2, "0")}
-                </div>
-                <button onClick={() => update("warmupRestSeconds", Math.min(600, warmupRestSeconds + 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
-              </div>
-            </div>
-            <div style={{ color: T.dim, fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-              Only shown for exercises with planned warmup sets. Exercises with their own custom warmup rest time keep it.
-            </div>
-          </div>
-          )}
+          <ToggleSwitch checked={warmupRestEnabled} onChange={(v) => update("warmupRestEnabled", v)} ariaLabel="Separate warmup rest timer" />
         </div>
+
+        <div style={{ marginBottom: warmupRestEnabled ? 14 : 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ color: T.text, fontSize: 14 }}>{warmupRestEnabled ? "Default working set rest timer" : "Default rest timer"}</div>
+              <div style={{ color: T.dim, fontSize: 11 }}>{warmupRestEnabled ? "Starts a new workout's rest countdown for working sets" : "Starts a new workout's rest countdown for every set"}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => update("restSeconds", Math.max(15, restSeconds - 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
+                {Math.floor(restSeconds / 60)}:{String(restSeconds % 60).padStart(2, "0")}
+              </div>
+              <button onClick={() => update("restSeconds", Math.min(600, restSeconds + 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+            </div>
+          </div>
+          <div style={{ color: T.dim, fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+            Applies to any exercise using the default. Exercises with their own custom rest time keep it.
+          </div>
+        </div>
+
+        {warmupRestEnabled && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ color: T.text, fontSize: 14 }}>Default warmup rest timer</div>
+              <div style={{ color: T.dim, fontSize: 11 }}>Used after a set marked as warmup</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => update("warmupRestSeconds", Math.max(15, warmupRestSeconds - 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
+                {Math.floor(warmupRestSeconds / 60)}:{String(warmupRestSeconds % 60).padStart(2, "0")}
+              </div>
+              <button onClick={() => update("warmupRestSeconds", Math.min(600, warmupRestSeconds + 15))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+            </div>
+          </div>
+          <div style={{ color: T.dim, fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+            Only shown for exercises with planned warmup sets. Exercises with their own custom warmup rest time keep it.
+          </div>
+        </div>
+        )}
+        </>
+        )}
+
+        {(matches("restTimerSoundEnabled") || matches("restTimerVibrationEnabled")) && (
+        <>
+        <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>When a rest timer ends</div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: restTimerSoundEnabled ? 10 : 14 }}>
+          <div>
+            <div style={{ color: T.text, fontSize: 14 }}>Sound</div>
+            <div style={{ color: T.dim, fontSize: 11 }}>Plays once the countdown reaches zero</div>
+          </div>
+          <ToggleSwitch checked={restTimerSoundEnabled} onChange={(v) => update("restTimerSoundEnabled", v)} ariaLabel="Rest timer sound" />
+        </div>
+        {restTimerSoundEnabled && (
+        <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 14 }}>
+          {REST_TIMER_SOUNDS.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => { update("restTimerSound", opt.key); playRestTimerSound(opt.key); }}
+              aria-pressed={restTimerSound === opt.key}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: restTimerSound === opt.key ? T.accent : "transparent", color: restTimerSound === opt.key ? "#fff" : T.dim }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: restTimerVibrationEnabled ? 10 : 0 }}>
+          <div>
+            <div style={{ color: T.text, fontSize: 14 }}>Vibration</div>
+            <div style={{ color: T.dim, fontSize: 11 }}>Not available on every device/browser</div>
+          </div>
+          <ToggleSwitch checked={restTimerVibrationEnabled} onChange={(v) => update("restTimerVibrationEnabled", v)} ariaLabel="Rest timer vibration" />
+        </div>
+        {restTimerVibrationEnabled && (
+        <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
+          {REST_TIMER_VIBRATIONS.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => { update("restTimerVibration", opt.key); triggerRestTimerVibration(opt.key); }}
+              aria-pressed={restTimerVibration === opt.key}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: restTimerVibration === opt.key ? T.accent : "transparent", color: restTimerVibration === opt.key ? "#fff" : T.dim }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        )}
+        </>
         )}
       </>
     );
@@ -707,7 +768,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
             <button onClick={() => setScreen("training")} style={navRowBtn}>
               <div>
                 <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Training Preferences</div>
-                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Training focus, strength score, set entry, big plates, muscle names, rest timer</div>
+                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Training focus, strength score, set entry, big plates, muscle names</div>
               </div>
               <div style={{ color: T.dim, fontSize: 16 }}>›</div>
             </button>
@@ -715,6 +776,21 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
           {searchActive && trainingSearchMatch && (
             <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
               {renderTrainingFields()}
+            </div>
+          )}
+
+          {!searchActive && (
+            <button onClick={() => setScreen("restTimer")} style={navRowBtn}>
+              <div>
+                <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Rest Timer</div>
+                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Duration, plus sound and vibration when it ends</div>
+              </div>
+              <div style={{ color: T.dim, fontSize: 16 }}>›</div>
+            </button>
+          )}
+          {searchActive && restTimerSearchMatch && (
+            <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
+              {renderRestTimerFields()}
             </div>
           )}
         </>
@@ -729,6 +805,12 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
       {screen === "training" && (
         <SubScreen title="Training Preferences" onBack={() => setScreen(null)}>
           {renderTrainingFields()}
+        </SubScreen>
+      )}
+
+      {screen === "restTimer" && (
+        <SubScreen title="Rest Timer" onBack={() => setScreen(null)}>
+          {renderRestTimerFields()}
         </SubScreen>
       )}
     </>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
+import { playRestTimerSound, triggerRestTimerVibration } from "./lib/restTimerCues";
 import BodyHeatmap from "./BodyHeatmap";
 import Preferences from "./Preferences";
 import { computeMuscleSetCounts } from "./lib/volume";
@@ -199,7 +200,7 @@ function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, selected
   );
 }
 
-function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMuscle, onApplySplit, equipFilter, onToggleEquip, performedFilter, onSetPerformed, sourceFilter, onSetSource, showFilters, onToggleFilters, onPick, onToggleFavorite, footer, multiSelect, selectedIds, onToggleSelect }) {
+function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMuscle, onApplySplit, equipFilter, onToggleEquip, performedFilter, onSetPerformed, sourceFilter, onSetSource, showFilters, onToggleFilters, onPick, onToggleFavorite, footer, multiSelect, selectedIds, onToggleSelect, fillHeight }) {
   const rowClick = (l) => (multiSelect ? onToggleSelect(l) : onPick(l));
   const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" };
   const chip = (active, color) => ({ padding: "5px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? (color || T.accent) : T.line}`, background: active ? `${color || T.accent}22` : T.surface, color: active ? T.text : T.dim });
@@ -220,7 +221,7 @@ function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMu
       ? getDetailedTaxonomyEntries().map((e) => ({ key: e.detailed, label: e.detailed, color: MUSCLE_COLORS[e.generic] }))
       : getMuscleTaxonomyEntries().map((e) => ({ key: e.scientific, label: e.scientific, color: MUSCLE_COLORS[e.generic] }));
   return (
-    <div>
+    <div style={fillHeight ? { display: "flex", flexDirection: "column", height: "100%", minHeight: 0 } : undefined}>
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
         <input
           autoComplete="off"
@@ -285,7 +286,7 @@ function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMu
         </div>
       )}
 
-      <div style={{ maxHeight: "42vh", overflowY: "auto", marginBottom: 4 }}>
+      <div style={fillHeight ? { flex: 1, minHeight: 0, overflowY: "auto", marginBottom: 4 } : { maxHeight: "42vh", overflowY: "auto", marginBottom: 4 }}>
         {list.length === 0 && <div style={{ fontSize: 13, color: T.dim, padding: "8px 6px" }}>No matches.</div>}
         {(() => {
           const selected = multiSelect && selectedIds ? list.filter((l) => selectedIds.has(l.id)) : [];
@@ -518,12 +519,28 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const stripRef = useRef(null);
   const chipRefs = useRef([]);
 
+  const restCompletedForRef = useRef(null); // which restEndsAt value has already fired its completion cue, so it only fires once per timer
+
   useEffect(() => {
     if (!restEndsAt) { setRestLeft(0); setRestOverSec(0); return; }
     const tick = () => {
       const diff = Math.round((restEndsAt - Date.now()) / 1000);
       if (diff > 0) { setRestLeft(diff); setRestOverSec(0); }
-      else { setRestLeft(0); setRestOverSec(-diff); }
+      else {
+        setRestLeft(0); setRestOverSec(-diff);
+        if (restCompletedForRef.current !== restEndsAt) {
+          restCompletedForRef.current = restEndsAt;
+          // Only cue for a timer that just finished, not one restored
+          // from a session snapshot that ended minutes ago while the
+          // app was backgrounded or reloaded -- nobody wants a buzz for
+          // a rest period that's long since over.
+          if (-diff < 5) {
+            const prefs = getPrefs();
+            if (prefs.restTimerSoundEnabled) playRestTimerSound(prefs.restTimerSound);
+            if (prefs.restTimerVibrationEnabled) triggerRestTimerVibration(prefs.restTimerVibration);
+          }
+        }
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -1917,7 +1934,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
               </div>
               <div />
             </div>
-            <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
+            <div style={{ flex: 1, padding: 16, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
               <ExercisePicker
                 list={list}
                 search={pickerSearch} onSearchChange={setPickerSearch}
@@ -1928,6 +1945,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                 showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
                 onPick={addExercise}
                 multiSelect
+                fillHeight
                 selectedIds={new Set(pickerMultiSelected.map((p) => p.id))}
                 onToggleSelect={togglePickerSelect}
                 onToggleFavorite={toggleFavorite}
