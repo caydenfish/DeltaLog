@@ -121,10 +121,21 @@ export async function updateExercise(exerciseId, {
 // Tier 1 (Category): the broad buckets that drive the heatmap and
 // coloring — readable by everyone, but only admins can add/rename/delete
 // (see migration_029 and migration_040).
+// Options for the "Muscle group" picker come from whatever muscle_group
+// values are actually in use across real exercises right now, not a
+// separately-maintained lookup table -- the lookup table (muscle_groups)
+// can drift out of sync with reality (e.g. an admin edit years ago left
+// it with a handful of oddly-specific entries instead of the broad
+// categories actually used), while this can't drift since it's reading
+// the same column every exercise's muscle_group actually lives in.
 export async function fetchMuscleGroups() {
-  const { data, error } = await supabase.from("muscle_groups").select("key, label").order("label");
+  const { data, error } = await supabase
+    .from("exercise_muscle_groups")
+    .select("muscle_group")
+    .not("muscle_group", "is", null);
   if (error) throw error;
-  return data;
+  const distinct = [...new Set(data.map((r) => r.muscle_group))].sort();
+  return distinct.map((m) => ({ key: m, label: m }));
 }
 
 export async function addMuscleGroup(label) {

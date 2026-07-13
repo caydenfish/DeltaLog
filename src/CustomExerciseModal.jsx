@@ -248,6 +248,16 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
     if (entry) setMuscle(entry.generic_group);
   }, [scientificMode, taxonomy, primaryMuscles]);
 
+  // Non-scientific mode: primary muscles are already tagged at the same
+  // broad-category level muscle_group itself lives at (both drawn from
+  // the same options list), so the derivation is even simpler — just
+  // take whichever one was picked first, same reasoning as above.
+  useEffect(() => {
+    if (scientificMode) return;
+    const first = primaryMuscles[0];
+    if (first) setMuscle(first);
+  }, [scientificMode, primaryMuscles]);
+
   function taxonomyLabel(scientificName) {
     const entry = (taxonomy || []).find((t) => t.scientific_name === scientificName);
     return entry ? `${entry.scientific_name} (${entry.detailed_name})` : scientificName;
@@ -269,7 +279,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
   async function handleSubmit() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    if (scientificMode && primaryMuscles.length === 0) {
+    if (primaryMuscles.length === 0) {
       setError("Add at least one primary muscle so the muscle group can be derived.");
       return;
     }
@@ -331,13 +341,10 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
             </>
           ) : (
             <>
-              <SingleSelectPicker
-                label="Muscle group"
-                value={muscle}
-                onChange={setMuscle}
-                options={allMuscles || []}
-                renderLabel={muscleLabel}
-              />
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Muscle group (auto)</div>
+              <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: primaryMuscles.length ? T.text : T.dim, fontSize: 14, padding: "12px 14px", marginBottom: 18 }}>
+                {primaryMuscles.length ? muscleLabel(muscle) : "Add a primary muscle to derive this"}
+              </div>
 
               <MusclePicker
                 label="Primary muscles"

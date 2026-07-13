@@ -26,6 +26,7 @@ export const CHANGELOG = {
       "Fixed the \"Add exercises\" screen (manual add) only using about half the available height, with the create-custom-exercise button floating in an inconsistent spot — the exercise list now fills the screen and that button sits pinned just above \"Add exercises.\"",
       "Rest timer settings moved to their own \"Rest Timer\" screen in Settings, and you can now choose a sound and/or vibration for when a rest timer ends — 4 options each, and each can be turned off independently.",
       "All Submissions (admin) now flags anything marked reviewed/dismissed that was never actually added to the shared library, with a one-tap fix — catches cases like accidentally dismissing instead of promoting.",
+      "Fixed: the \"Muscle group\" options when creating a custom exercise were pulling from a stale, separately-maintained list instead of what's actually used across real exercises. Muscle group is now also auto-derived from your primary muscle picks instead of being a separate choice, so it can't drift out of sync with them.",
     ],
   },
   "1.10.5": {
