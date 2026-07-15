@@ -68,6 +68,20 @@ export function IconLink({ size = 14, style }) {
   );
 }
 
+// Dedicated superset icon: two exercise "blocks" bracketed together with
+// a joining bar, read at a glance as "these two are paired" rather than
+// the generic chain-link glyph (which people mistook for a URL/hyperlink
+// icon at small sizes).
+export function IconSuperset({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <rect x="3" y="4" width="7" height="7" rx="1.5" />
+      <rect x="14" y="13" width="7" height="7" rx="1.5" />
+      <path d="M10 7.5h3a2 2 0 0 1 2 2V13" />
+    </svg>
+  );
+}
+
 export function IconPencil({ size = 14, style }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>

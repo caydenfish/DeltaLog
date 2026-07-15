@@ -9,6 +9,20 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.10.8": {
+    title: "Template builder, matched to the workout logger",
+    items: [
+      "Muscle breakdown (on Home, in a workout, and in the template builder's Coverage panel) is now a bar chart by default, showing Primary vs Secondary sets per muscle at a glance. The old plain-language list is still there — tap \"Full breakdown\" to expand it.",
+      "Exercises that train more than one muscle group (like an incline press hitting Chest, Shoulders, and Triceps) now show up when browsing or filtering by any of those muscle groups — not just whichever one the exercise happened to be filed under.",
+      "Building a template now uses the same exercise picker as adding exercises to a workout — search, muscle group/equipment filters, split quick-picks, favorites, and \"Previously performed\", all in one panel.",
+      "You can create a custom exercise right from the template builder, no need to back out to a workout first.",
+      "\"My Custom Exercises\" now has a \"Create a template from these exercises\" option — select a few and jump straight into building a template with them already added.",
+      "The template builder's Coverage heatmap now respects your Muscle Names setting (Generic/Detailed/Scientific) instead of always showing generic buckets.",
+      "\"Import template\" is now a small icon button next to \"+ New Template\" instead of its own full-width button.",
+      "Replaced the superset icon with a clearer paired-exercises icon.",
+      "Exercise thumbnails without a photo now show a plain image placeholder instead of a barbell icon.",
+    ],
+  },
   "1.10.7": {
     title: "Better custom exercise picker, promoted exercises",
     items: [

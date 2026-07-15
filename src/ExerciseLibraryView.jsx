@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleTaxonomy, createSharedExercise, uploadExerciseMedia, fetchExerciseDefaults, saveExerciseDefaults, fetchExerciseHistory } from "./lib/queries";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel, genericBucket } from "./lib/muscleNomenclature";
 import { MUSCLE_COLORS } from "./lib/muscleColors";
 import { summarizeExerciseHistory, bucketSeries } from "./lib/volume";
 import { getPrefs } from "./lib/prefs";
@@ -417,7 +417,8 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
   const q = search.trim().toLowerCase();
   const filtered = (exercises || []).filter((ex) => {
     if (browseGroup && browseGroup !== "ALL") {
-      if (ex.muscle_group !== browseGroup) return false;
+      const inGroup = ex.muscle_group === browseGroup || (ex.primary_muscles || []).some((m) => genericBucket(m) === browseGroup);
+      if (!inGroup) return false;
       if (browseDetail && browseDetail !== "ALL") {
         const detailedNames = (ex.primary_muscles || []).map((m) => muscleLabel(m, level2Mode));
         if (!detailedNames.includes(browseDetail)) return false;
@@ -434,7 +435,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
   const detailOptions = browseGroup && browseGroup !== "ALL"
     ? [...new Set(
         (exercises || [])
-          .filter((ex) => ex.muscle_group === browseGroup)
+          .filter((ex) => ex.muscle_group === browseGroup || (ex.primary_muscles || []).some((m) => genericBucket(m) === browseGroup))
           .flatMap((ex) => (ex.primary_muscles || []).map((m) => muscleLabel(m, level2Mode)))
       )].sort()
     : [];

@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { fetchExercises, fetchTemplates, saveWorkoutAsTemplate, deleteTemplate, fetchPerformedExerciseIds, fetchFavoriteExerciseIds, setFavoriteExercise, fetchTemplateForEdit, updateTemplate, reorderTemplates, setTemplateArchived, fetchArchivedTemplates, exportTemplate, fetchSharedTemplate, importSharedTemplate } from "./lib/queries";
+import { fetchExercises, fetchTemplates, saveWorkoutAsTemplate, deleteTemplate, fetchPerformedExerciseIds, fetchFavoriteExerciseIds, setFavoriteExercise, fetchTemplateForEdit, updateTemplate, reorderTemplates, setTemplateArchived, fetchArchivedTemplates, exportTemplate, fetchSharedTemplate, importSharedTemplate, createCustomExercise, uploadExerciseMedia, normalizeExercise } from "./lib/queries";
 import { computeMuscleSetCounts } from "./lib/volume";
-import { muscleLabel, genericBucket } from "./lib/muscleNomenclature";
+import { muscleLabel } from "./lib/muscleNomenclature";
+import { getPrefs } from "./lib/prefs";
 import BodyHeatmap from "./BodyHeatmap";
 import { InlineLoading } from "./LoadingSpinner";
-import { IconStar, IconX } from "./Icons";
+import { IconX, IconDownload } from "./Icons";
+import ExercisePicker, { filterLibrary, splitGroupFor } from "./ExercisePicker";
+import CustomExerciseModal from "./CustomExerciseModal";
 
 const T = {
   bg: "#101216",
@@ -77,7 +80,7 @@ function useDragReorder(setItems) {
   return { rowRefs, dragIndex, dragOverIndex, startRowDrag };
 }
 
-export default function Templates({ user, onClose }) {
+export default function Templates({ user, onClose, initialPicks }) {
   const [library, setLibrary] = useState(null);
   const [templates, setTemplates] = useState(null);
   const [mode, setMode] = useState("list"); // "list" | "build"
@@ -104,6 +107,45 @@ export default function Templates({ user, onClose }) {
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState(null);
 
+  // ---- Exercise picker state, shared between "Add exercises" and the
+  // "Replace with" sheet, same pattern as SetLogger's manual add/replace flow.
+  const [muscleFilter, setMuscleFilter] = useState([]);
+  const [equipFilter, setEquipFilter] = useState([]);
+  const [performedFilter, setPerformedFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [showPickerFilters, setShowPickerFilters] = useState(false);
+  const [showCreateCustom, setShowCreateCustom] = useState(false);
+  const pendingCustomPick = useRef(null);
+
+  function applyPickerSplit(splitName) {
+    const mode = getPrefs().muscleNameMode;
+    const group = splitGroupFor(splitName, mode);
+    const isActive = group.length > 0 && group.length === muscleFilter.length && group.every((m) => muscleFilter.includes(m));
+    setMuscleFilter(isActive ? [] : group);
+  }
+
+  // Returns JSX for the "create custom exercise" footer inside an
+  // ExercisePicker, matching SetLogger's manual add/replace flow.
+  function createCustomFooter(onPick) {
+    return (
+      <button onClick={() => { pendingCustomPick.current = onPick; setShowCreateCustom(true); }} style={{ width: "100%", padding: "10px 0", marginTop: 6, borderRadius: 10, border: `1px dashed ${T.line}`, background: "none", color: T.dim, fontSize: 13 }}>
+        + Create custom exercise
+      </button>
+    );
+  }
+
+  async function handleCreateCustomExercise({ name, muscle, primaryMuscles, secondaryMuscles, equipment, photoFile }) {
+    let mediaUrl = null;
+    if (photoFile) {
+      mediaUrl = await uploadExerciseMedia(user.id, photoFile);
+    }
+    const row = await createCustomExercise(user.id, { name, muscle, primaryMuscles, secondaryMuscles, equipment, mediaUrl });
+    const normalized = normalizeExercise(row);
+    setLibrary((prev) => [...(prev || []), { ...normalized, sessions: 0, isFavorite: false }]);
+    if (pendingCustomPick.current) pendingCustomPick.current(normalized);
+    setShowCreateCustom(false);
+  }
+
   const templateDrag = useDragReorder((updater) => {
     setTemplates((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
@@ -129,6 +171,18 @@ export default function Templates({ user, onClose }) {
     return () => { cancelled = true; };
   }, [user.id]);
 
+  // If opened with a pre-selected set of exercises (e.g. from "Create a
+  // template from these exercises" on My Custom Exercises), seed picks and
+  // jump straight into the builder instead of the template list. Runs once
+  // on mount only — initialPicks is a one-time seed, not a controlled prop.
+  useEffect(() => {
+    if (initialPicks && initialPicks.length > 0) {
+      setPicks(initialPicks.map((ex) => ({ id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: 3, plannedWarmup: 0 })));
+      setMode("build");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function toggleFavorite(id) {
     setLibrary((prev) => prev.map((l) => (l.id === id ? { ...l, isFavorite: !l.isFavorite } : l)));
     const target = library.find((l) => l.id === id);
@@ -141,6 +195,11 @@ export default function Templates({ user, onClose }) {
     setSearch("");
     setPicks([]);
     setReplacingId(null);
+    setMuscleFilter([]);
+    setEquipFilter([]);
+    setPerformedFilter("all");
+    setSourceFilter("all");
+    setShowPickerFilters(false);
     setMode("build");
   }
 
@@ -153,6 +212,11 @@ export default function Templates({ user, onClose }) {
       setPicks(full.picks);
       setSearch("");
       setReplacingId(null);
+      setMuscleFilter([]);
+      setEquipFilter([]);
+      setPerformedFilter("all");
+      setSourceFilter("all");
+      setShowPickerFilters(false);
       setMode("build");
     } catch (err) {
       setError(err.message);
@@ -162,13 +226,13 @@ export default function Templates({ user, onClose }) {
 
   function addPick(ex) {
     if (picks.some((p) => p.id === ex.id)) return;
-    setPicks([...picks, { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, secondaryMuscles: ex.secondaryMuscles, planned: 3, plannedWarmup: 0 }]);
+    setPicks([...picks, { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: 3, plannedWarmup: 0 }]);
     setSearch("");
   }
   function removePick(id) { setPicks(picks.filter((p) => p.id !== id)); }
   function replacePick(id, ex) {
     if (picks.some((p) => p.id === ex.id)) return; // already in the template
-    setPicks(picks.map((p) => (p.id === id ? { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, secondaryMuscles: ex.secondaryMuscles, planned: p.planned, plannedWarmup: p.plannedWarmup || 0 } : p)));
+    setPicks(picks.map((p) => (p.id === id ? { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: p.planned, plannedWarmup: p.plannedWarmup || 0 } : p)));
     setReplacingId(null);
     setReplaceSearch("");
   }
@@ -287,13 +351,15 @@ export default function Templates({ user, onClose }) {
     setArchivedBusyId(null);
   }
 
-  const q = search.toLowerCase();
-  const heatmapEntries = picks.map((p) => ({ muscle: genericBucket(p.muscle), secondaryMuscles: p.secondaryMuscles, sets: Array(p.planned).fill({ weight: 1, reps: 1 }) }));
-  const { primary: heatPrimary, secondary: heatSecondary, fullBodySets: heatFullBodySets } = computeMuscleSetCounts(heatmapEntries);
+  const muscleNameMode = getPrefs().muscleNameMode;
+  const heatmapEntries = picks.map((p) => ({ muscle: p.muscle, primaryMuscles: p.primaryMuscles, secondaryMuscles: p.secondaryMuscles, sets: Array(p.planned).fill({ weight: 1, reps: 1 }) }));
+  const { primary: heatPrimary, secondary: heatSecondary, fullBodySets: heatFullBodySets } = computeMuscleSetCounts(heatmapEntries, muscleNameMode);
+  const pickedNames = new Set(picks.map((p) => p.name));
   const candidates = library
-    ? library.filter((l) => !picks.some((p) => p.id === l.id) && (
-        !q || l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || (l.equipment || "").toLowerCase().includes(q)
-      ))
+    ? filterLibrary(library, { search, muscleFilter, equipFilter, performedFilter, sourceFilter, exclude: pickedNames })
+    : [];
+  const replaceCandidates = library
+    ? filterLibrary(library, { search: replaceSearch, muscleFilter, equipFilter, performedFilter, sourceFilter, exclude: pickedNames })
     : [];
 
   return (
@@ -314,12 +380,19 @@ export default function Templates({ user, onClose }) {
 
         {mode === "list" ? (
           <div style={{ padding: 16, flex: 1 }}>
-            <button onClick={startBuild} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, marginBottom: 10 }}>
-              + New Template
-            </button>
-            <button onClick={() => { setShowImport(true); setImportCode(""); setImportPreview(null); setImportError(null); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
-              Import template
-            </button>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <button
+                onClick={() => { setShowImport(true); setImportCode(""); setImportPreview(null); setImportError(null); }}
+                aria-label="Import template"
+                title="Import template"
+                style={{ flexShrink: 0, width: 46, padding: "0 10px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <IconDownload size={18} />
+              </button>
+              <button onClick={startBuild} style={{ flex: 1, padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>
+                + New Template
+              </button>
+            </div>
             {templates === null && <InlineLoading />}
             {templates !== null && templates.length === 0 && (
               <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>
@@ -440,59 +513,25 @@ export default function Templates({ user, onClose }) {
             )}
 
             <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Add exercises</div>
-            <input
-              autoComplete="off"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search exercises…"
-              style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
-            />
-            <div style={{ flex: 1, overflowY: "auto", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 6, marginBottom: 16 }}>
-              {library === null && <InlineLoading label="Loading exercises…" padding="8px 6px" />}
-              {library !== null && candidates.length === 0 && <div style={{ fontSize: 13, color: T.dim, padding: "8px 6px" }}>No matches.</div>}
-              {(() => {
-                const renderRow = (l) => (
-                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <button onClick={() => addPick(l)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, textAlign: "left", background: "none", border: "none", padding: "8px 6px", borderRadius: 8 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: T.text, fontSize: 14 }}>{l.name}</div>
-                        <div style={{ color: T.dim, fontSize: 11 }}>{muscleLabel(l.muscle)} · {l.equipment}</div>
-                      </div>
-                      <div style={{ color: T.accent, fontSize: 18, fontWeight: 700 }}>+</div>
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); toggleFavorite(l.id); }} aria-label={l.isFavorite ? "Unfavorite" : "Favorite"} title={l.isFavorite ? "Unfavorite" : "Favorite"} style={{ background: "none", border: "none", color: l.isFavorite ? "#F2C94C" : T.dim, fontSize: 16, padding: "4px 6px", flexShrink: 0 }}>
-                      <IconStar size={15} filled={l.isFavorite} />
-                    </button>
-                  </div>
-                );
-                const shown = candidates.slice(0, 40);
-                const favorites = shown.filter((l) => l.isFavorite);
-                const performed = shown.filter((l) => !l.isFavorite && l.sessions > 0);
-                const unperformed = shown.filter((l) => !l.isFavorite && !(l.sessions > 0));
-                return (
-                  <>
-                    {favorites.length > 0 && (
-                      <>
-                        <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, padding: "6px 4px 4px" }}>Favorites</div>
-                        {favorites.map(renderRow)}
-                      </>
-                    )}
-                    {performed.length > 0 && (
-                      <>
-                        <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, padding: "10px 4px 4px" }}>Previously performed</div>
-                        {performed.map(renderRow)}
-                      </>
-                    )}
-                    {unperformed.length > 0 && (
-                      <>
-                        <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, padding: "10px 4px 4px" }}>Unperformed</div>
-                        {unperformed.map(renderRow)}
-                      </>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
+            {library === null ? (
+              <InlineLoading label="Loading exercises…" padding="8px 6px" />
+            ) : (
+              <div style={{ flex: 1, minHeight: 0, overflow: "hidden", marginBottom: 16, display: "flex", flexDirection: "column" }}>
+                <ExercisePicker
+                  list={candidates}
+                  search={search} onSearchChange={setSearch}
+                  muscleFilter={muscleFilter} onToggleMuscle={(m) => setMuscleFilter(muscleFilter.includes(m) ? muscleFilter.filter((x) => x !== m) : [...muscleFilter, m])} onApplySplit={applyPickerSplit}
+                  equipFilter={equipFilter} onToggleEquip={(eq) => setEquipFilter(equipFilter.includes(eq) ? equipFilter.filter((x) => x !== eq) : [...equipFilter, eq])}
+                  performedFilter={performedFilter} onSetPerformed={setPerformedFilter}
+                  sourceFilter={sourceFilter} onSetSource={setSourceFilter}
+                  showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
+                  onPick={addPick}
+                  onToggleFavorite={toggleFavorite}
+                  footer={createCustomFooter(addPick)}
+                  fillHeight
+                />
+              </div>
+            )}
 
             <button onClick={handleSave} disabled={!name.trim() || picks.length === 0 || saving} style={{
               width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
@@ -513,65 +552,24 @@ export default function Templates({ user, onClose }) {
               <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>Replace with</div>
               <button onClick={() => { setReplacingId(null); setReplaceSearch(""); }} aria-label="Close" style={smallBtn}><IconX size={12} /></button>
             </div>
-            <div style={{ padding: "0 16px" }}>
-              <input
-                autoFocus
-                autoComplete="off"
-                value={replaceSearch}
-                onChange={(e) => setReplaceSearch(e.target.value)}
-                placeholder="Search exercises…"
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", marginBottom: 10 }}
-              />
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
-              {(() => {
-                if (library === null) return <InlineLoading label="Loading exercises…" padding="8px 6px" />;
-                const q = replaceSearch.toLowerCase();
-                const replaceCandidates = library.filter((l) => !picks.some((p) => p.id === l.id) && (
-                  !q || l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || (l.equipment || "").toLowerCase().includes(q)
-                ));
-                if (replaceCandidates.length === 0) return <div style={{ fontSize: 13, color: T.dim, padding: "8px 6px" }}>No matches.</div>;
-                const shown = replaceCandidates.slice(0, 40);
-                const favorites = shown.filter((l) => l.isFavorite);
-                const performed = shown.filter((l) => !l.isFavorite && l.sessions > 0);
-                const unperformed = shown.filter((l) => !l.isFavorite && !(l.sessions > 0));
-                const renderRow = (l) => (
-                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <button onClick={() => replacePick(replacingId, l)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, textAlign: "left", background: "none", border: "none", padding: "8px 6px", borderRadius: 8 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: T.text, fontSize: 14 }}>{l.name}</div>
-                        <div style={{ color: T.dim, fontSize: 11 }}>{muscleLabel(l.muscle)} · {l.equipment}</div>
-                      </div>
-                      <div style={{ color: T.accent, fontSize: 18, fontWeight: 700 }}>⇄</div>
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); toggleFavorite(l.id); }} aria-label={l.isFavorite ? "Unfavorite" : "Favorite"} title={l.isFavorite ? "Unfavorite" : "Favorite"} style={{ background: "none", border: "none", color: l.isFavorite ? "#F2C94C" : T.dim, fontSize: 16, padding: "4px 6px", flexShrink: 0 }}>
-                      <IconStar size={15} filled={l.isFavorite} />
-                    </button>
-                  </div>
-                );
-                return (
-                  <>
-                    {favorites.length > 0 && (
-                      <>
-                        <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, padding: "6px 4px 4px" }}>Favorites</div>
-                        {favorites.map(renderRow)}
-                      </>
-                    )}
-                    {performed.length > 0 && (
-                      <>
-                        <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, padding: "10px 4px 4px" }}>Previously performed</div>
-                        {performed.map(renderRow)}
-                      </>
-                    )}
-                    {unperformed.length > 0 && (
-                      <>
-                        <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, padding: "10px 4px 4px" }}>Unperformed</div>
-                        {unperformed.map(renderRow)}
-                      </>
-                    )}
-                  </>
-                );
-              })()}
+            <div style={{ flex: 1, minHeight: 0, overflow: "hidden", padding: "0 16px 16px", display: "flex", flexDirection: "column" }}>
+              {library === null ? (
+                <InlineLoading label="Loading exercises…" padding="8px 6px" />
+              ) : (
+                <ExercisePicker
+                  list={replaceCandidates}
+                  search={replaceSearch} onSearchChange={setReplaceSearch}
+                  muscleFilter={muscleFilter} onToggleMuscle={(m) => setMuscleFilter(muscleFilter.includes(m) ? muscleFilter.filter((x) => x !== m) : [...muscleFilter, m])} onApplySplit={applyPickerSplit}
+                  equipFilter={equipFilter} onToggleEquip={(eq) => setEquipFilter(equipFilter.includes(eq) ? equipFilter.filter((x) => x !== eq) : [...equipFilter, eq])}
+                  performedFilter={performedFilter} onSetPerformed={setPerformedFilter}
+                  sourceFilter={sourceFilter} onSetSource={setSourceFilter}
+                  showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
+                  onPick={(l) => replacePick(replacingId, l)}
+                  onToggleFavorite={toggleFavorite}
+                  footer={createCustomFooter((l) => replacePick(replacingId, l))}
+                  fillHeight
+                />
+              )}
             </div>
           </div>
         </div>
@@ -647,6 +645,13 @@ export default function Templates({ user, onClose }) {
             )}
           </div>
         </div>
+      )}
+      {showCreateCustom && (
+        <CustomExerciseModal
+          onClose={() => setShowCreateCustom(false)}
+          onCreate={handleCreateCustomExercise}
+          initialName={search || replaceSearch}
+        />
       )}
     </div>
   );

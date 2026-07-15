@@ -1079,7 +1079,7 @@ export async function fetchTemplateForEdit(templateId) {
     name: template.name,
     picks: rows.map((row) => {
       const ex = normalizeExercise(row.exercises);
-      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, secondaryMuscles: ex.secondaryMuscles, planned: row.planned_sets, plannedWarmup: row.planned_warmup_sets || 0, supersetGroup: row.superset_group };
+      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: row.planned_sets, plannedWarmup: row.planned_warmup_sets || 0, supersetGroup: row.superset_group };
     }),
   };
 }
@@ -1165,7 +1165,7 @@ export async function fetchSharedTemplate(code) {
     .filter((e) => byId.has(e.exercise_id))
     .map((e) => {
       const ex = normalizeExercise(byId.get(e.exercise_id));
-      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, secondaryMuscles: ex.secondaryMuscles, planned: e.planned_sets, plannedWarmup: e.planned_warmup_sets || 0 };
+      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: e.planned_sets, plannedWarmup: e.planned_warmup_sets || 0 };
     });
 
   return { name: shared.name, picks, skippedCount: shared.exercises.length - picks.length };

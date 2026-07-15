@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { fetchMyCustomExercises, fetchArchivedCustomExercises, fetchMyPromotedExercises, updateCustomExercise, deleteCustomExercise, setExerciseArchived, uploadExerciseMedia } from "./lib/queries";
+import { fetchMyCustomExercises, fetchArchivedCustomExercises, fetchMyPromotedExercises, updateCustomExercise, deleteCustomExercise, setExerciseArchived, uploadExerciseMedia, normalizeExercise } from "./lib/queries";
 import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
+import Templates from "./Templates";
+import { IconCheck } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
 
 const T = {
@@ -26,6 +28,9 @@ export default function MyCustomExercises({ user, onClose }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
 
   useEffect(() => {
     fetchMyCustomExercises(user.id).then(setRows).catch((err) => setError(err.message));
@@ -89,16 +94,41 @@ export default function MyCustomExercises({ user, onClose }) {
     setBusyId(null);
   }
 
+  function toggleSelect(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   function renderRow(r, archived) {
+    const selectable = selectMode && !archived;
+    const selected = selectedIds.has(r.id);
     return (
-      <div key={r.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 10, opacity: archived ? 0.75 : 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: confirmDeleteId === r.id ? 10 : 0 }}>
+      <div key={r.id} style={{ background: T.surface, border: `1px solid ${selectable && selected ? T.accent : T.line}`, borderRadius: 12, padding: 12, marginBottom: 10, opacity: archived ? 0.75 : 1 }}>
+        <div
+          onClick={selectable ? () => toggleSelect(r.id) : undefined}
+          style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: confirmDeleteId === r.id ? 10 : 0, cursor: selectable ? "pointer" : "default" }}
+        >
+          {selectable && (
+            <div aria-hidden="true" style={{
+              width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+              border: `1.5px solid ${selected ? T.accent : T.line}`,
+              background: selected ? T.accent : "transparent",
+              display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+            }}>
+              {selected ? <IconCheck size={11} /> : ""}
+            </div>
+          )}
           <ExerciseThumb muscle={r.muscle_group} mediaUrl={r.media_url} size={32} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>{r.name}</div>
             <div style={{ color: T.dim, fontSize: 11 }}>{r.muscle_group} · {(r.equipment || []).join(", ")}</div>
           </div>
         </div>
+        {!selectMode && (
+        <>
         <div style={{ display: "flex", gap: 6, marginBottom: confirmDeleteId === r.id ? 10 : 0 }}>
           <button
             onClick={() => { setEditing(r); setConfirmDeleteId(null); setDeleteError(null); }}
@@ -156,6 +186,8 @@ export default function MyCustomExercises({ user, onClose }) {
             )}
           </div>
         )}
+        </>
+        )}
       </div>
     );
   }
@@ -165,10 +197,29 @@ export default function MyCustomExercises({ user, onClose }) {
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
-          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>MY CUSTOM EXERCISES</div>
+          <button
+            onClick={selectMode ? () => { setSelectMode(false); setSelectedIds(new Set()); } : onClose}
+            aria-label={selectMode ? "Cancel" : "Close"}
+            style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}
+          >
+            {selectMode ? "Cancel" : "‹"}
+          </button>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>
+            {selectMode ? `${selectedIds.size} SELECTED` : "MY CUSTOM EXERCISES"}
+          </div>
           <div style={{ width: 26 }} />
         </div>
+
+        {!selectMode && rows && rows.length > 0 && (
+          <div style={{ padding: "10px 16px 0" }}>
+            <button
+              onClick={() => setSelectMode(true)}
+              style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: `1px dashed ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600 }}
+            >
+              + Create a template from these exercises
+            </button>
+          </div>
+        )}
 
         <div style={{ padding: 16, flex: 1 }}>
           {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
@@ -185,6 +236,8 @@ export default function MyCustomExercises({ user, onClose }) {
             <div>{rows.map((r) => renderRow(r, false))}</div>
           )}
 
+          {!selectMode && (
+          <>
           <button
             onClick={() => setShowArchived(!showArchived)}
             style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginTop: 6, marginBottom: showArchived ? 10 : 0, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
@@ -201,7 +254,11 @@ export default function MyCustomExercises({ user, onClose }) {
               {archivedRows && archivedRows.length > 0 && <div>{archivedRows.map((r) => renderRow(r, true))}</div>}
             </div>
           )}
+          </>
+          )}
 
+          {!selectMode && (
+          <>
           <button
             onClick={() => setShowPromoted(!showPromoted)}
             style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginTop: 10, marginBottom: showPromoted ? 10 : 0, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
@@ -235,7 +292,26 @@ export default function MyCustomExercises({ user, onClose }) {
               )}
             </div>
           )}
+          </>
+          )}
         </div>
+
+        {selectMode && (
+          <div style={{ position: "sticky", bottom: 0, padding: 16, background: T.bg, borderTop: `1px solid ${T.line}` }}>
+            <button
+              onClick={() => setShowTemplateBuilder(true)}
+              disabled={selectedIds.size === 0}
+              style={{
+                width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+                background: selectedIds.size === 0 ? T.surface2 : T.accent,
+                color: selectedIds.size === 0 ? T.dim : "#fff",
+                fontSize: 15, fontWeight: 700,
+              }}
+            >
+              Create Template{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+            </button>
+          </div>
+        )}
       </div>
     </div>
 
@@ -244,6 +320,14 @@ export default function MyCustomExercises({ user, onClose }) {
           initialExercise={editing}
           onSave={handleSaveEdit}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {showTemplateBuilder && (
+        <Templates
+          user={user}
+          onClose={() => { setShowTemplateBuilder(false); setSelectMode(false); setSelectedIds(new Set()); }}
+          initialPicks={rows.filter((r) => selectedIds.has(r.id)).map((r) => normalizeExercise(r))}
         />
       )}
     </>
