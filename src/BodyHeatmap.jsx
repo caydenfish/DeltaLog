@@ -19,7 +19,7 @@ const T = {
 const BASE_CHART_TYPES = [
   { key: "bodymap", label: "Body map" },
   { key: "radar", label: "Radar" },
-  { key: "myplan", label: "My Plan" },
+  { key: "myplan", label: "Weekly Set Goals" },
 ];
 
 const DEFAULT_TARGET = 10;
@@ -45,11 +45,29 @@ function truncateLabel(v) {
   return v.length > 13 ? `${v.slice(0, 12)}…` : v;
 }
 
+// Picks a clean, consistent tick interval (always a multiple of 5) so the
+// radar's scale reads 5/10/15... rather than recharts' default even-split
+// of whatever the raw max happens to be (e.g. 0/5.67/11.33/17). Steps up
+// to 10/15/20... as the max grows, so someone with much higher volume
+// still gets ~4-6 gridlines instead of a cluttered dozen-plus at a fixed
+// step of 5.
+const RADAR_STEP_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
+function niceRadarTicks(maxTotal) {
+  const targetTickCount = 4;
+  const rawStep = maxTotal / targetTickCount;
+  const step = RADAR_STEP_OPTIONS.find((s) => s >= rawStep) || Math.ceil(rawStep / 5) * 5;
+  const niceMax = Math.ceil(maxTotal / step) * step || step;
+  const ticks = [];
+  for (let t = 0; t <= niceMax; t += step) ticks.push(t);
+  return { niceMax, ticks };
+}
+
 function RadarView({ data }) {
   const radarData = data
     .slice(0, RADAR_MAX_SPOKES)
     .map((d) => ({ muscle: truncateLabel(d.muscle), total: d.total }));
   const maxTotal = Math.max(1, ...radarData.map((d) => d.total));
+  const { niceMax, ticks } = niceRadarTicks(maxTotal);
   return (
     <div style={{ position: "relative" }}>
       <ResponsiveContainer width="100%" height={250}>
@@ -59,8 +77,10 @@ function RadarView({ data }) {
           {/* One subtle number per grid ring, at the 12-o'clock position,
               instead of a value stamped at every muscle's spoke — a
               scale to read the shape against rather than a label at
-              every point. */}
-          <PolarRadiusAxis angle={90} domain={[0, maxTotal]} tickCount={4} axisLine={false} tickLine={false} tick={{ fill: T.dim, fontSize: 9 }} />
+              every point. Explicit `ticks` (always a clean multiple of
+              5/10/15...) instead of tickCount, which just even-splits
+              whatever the raw max happens to be into fractional values. */}
+          <PolarRadiusAxis angle={90} domain={[0, niceMax]} ticks={ticks} axisLine={false} tickLine={false} tick={{ fill: T.dim, fontSize: 9 }} />
           <Radar dataKey="total" stroke={T.accent} fill={T.accent} fillOpacity={0.3} />
           <Tooltip
             contentStyle={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8 }}

@@ -1,5 +1,5 @@
 const KEY = "deltalog_prefs";
-const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, muscleBreakdownChartType: "bodymap", homeModules: null };
+const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, muscleBreakdownChartType: "bodymap", homeModules: null, weeklySetGoalsMode: "individual" };
 
 // The home dashboard's modules, in their default order — every user
 // effectively starts with this until they customize it via the pencil
@@ -8,7 +8,7 @@ export const DEFAULT_HOME_MODULE_IDS = ["insight", "myPlan", "volume", "weight",
 
 export const HOME_MODULE_LABELS = {
   insight: "Last workout",
-  myPlan: "My Plan",
+  myPlan: "Weekly Set Goals",
   volume: "Volume over time",
   weight: "Bodyweight over time",
   workoutTime: "Workout time",

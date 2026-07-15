@@ -13,7 +13,7 @@ import { toLocalDateStr } from "./lib/time";
 import BodyHeatmap from "./BodyHeatmap";
 import MuscleSetsDetail from "./MuscleSetsDetail";
 import HomeChartCard, { RangeSwitcher } from "./HomeChartCard";
-import MyPlan from "./MyPlan";
+import WeeklySetGoals, { WeeklySetGoalsEditor } from "./WeeklySetGoals";
 import ProgramView from "./ProgramView";
 import HomeModulesEditor from "./HomeModulesEditor";
 import Logo from "./Logo";
@@ -186,6 +186,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [settingsQuery, setSettingsQuery] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
   const [showProgramView, setShowProgramView] = useState(false);
+  const [showWeeklySetGoals, setShowWeeklySetGoals] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
@@ -713,7 +714,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 {homeModules.filter((m) => m.enabled).map((m) => {
                   switch (m.id) {
                     case "myPlan":
-                      return <MyPlan key={m.id} userId={user.id} history={history} />;
+                      return <WeeklySetGoals key={m.id} userId={user.id} history={history} />;
                     case "volume":
                       return (
                         <HomeChartCard
@@ -880,9 +881,21 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
             <div style={{ padding: 16, flex: 1 }}>
               {/* Workouts */}
-              {(settingsMatch("templates workouts reusable build manage") || settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") || settingsMatch("program generator training block multi-week progression deload science coach")) && (
+              {(settingsMatch("templates workouts reusable build manage") || settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") || settingsMatch("program generator training block multi-week progression deload science coach") || settingsMatch("weekly set goals my plan targets muscle group individual uniform one for all")) && (
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Workouts</div>
+              {settingsMatch("weekly set goals my plan targets muscle group individual uniform one for all") && (
+              <button
+                onClick={() => setShowWeeklySetGoals(true)}
+                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
+              >
+                <div>
+                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Weekly Set Goals</div>
+                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Set a weekly target per muscle group, or one number for all of them</div>
+                </div>
+                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
+              </button>
+              )}
               {settingsMatch("program generator training block multi-week progression deload science coach") && (
               <button
                 onClick={() => setShowProgramView(true)}
@@ -1079,6 +1092,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       )}
 
       {showTemplates && <Templates user={user} onClose={() => setShowTemplates(false)} />}
+      {showWeeklySetGoals && <WeeklySetGoalsEditor userId={user.id} onClose={() => setShowWeeklySetGoals(false)} />}
       {showProgramView && (
         <ProgramView
           user={user}

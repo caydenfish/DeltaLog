@@ -9,6 +9,15 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.11.5": {
+    title: "Weekly Set Goals (formerly My Plan), and a cleaner Radar scale",
+    items: [
+      "My Plan is now Weekly Set Goals, and it has one home: a new Weekly Set Goals entry in Settings opens the exact same editor as the Home card's Edit Goals button, so it's always reachable even if you've removed the Home widget via Customize Home.",
+      "Editing is no longer sliders on Home — targets now live behind a dedicated Edit Goals screen with a +/- stepper and typeable number for each muscle group, so nothing gets bumped by accident while scrolling.",
+      "New: One for all mode. Set a single weekly set number and apply it to every muscle group at once, instead of adjusting each one individually — switch back to Individual anytime, your last-used mode is remembered.",
+      "The Radar view (Muscle breakdown) now uses clean, consistent scale intervals (5/10/15... or a larger clean step for higher volume) instead of whatever fractional split the previous max happened to produce.",
+    ],
+  },
   "1.11.4": {
     title: "Program: a science-backed multi-week training program generator",
     items: [
