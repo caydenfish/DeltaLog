@@ -15,7 +15,8 @@ import MuscleSetsDetail from "./MuscleSetsDetail";
 import HomeChartCard, { RangeSwitcher } from "./HomeChartCard";
 import WeeklySetGoals, { WeeklySetGoalsEditor } from "./WeeklySetGoals";
 import ProgramView from "./ProgramView";
-import { fetchActiveProgram } from "./lib/programQueries";
+import { fetchActiveProgram, fetchProgramSessionCount } from "./lib/programQueries";
+import { computeTodaysProgramDay } from "./lib/programEngine";
 import HomeModulesEditor from "./HomeModulesEditor";
 import Logo from "./Logo";
 import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX } from "./Icons";
@@ -104,9 +105,19 @@ function AnnouncementPoll({ poll, votes, userId, disabled, onVote }) {
 // days since, which muscle groups it hit, and a plain-language recovery
 // note. This is general training guidance (48-72hr recovery windows are a
 // common rule of thumb), not a personalized or medical recommendation.
-function buildLastWorkoutInsight(history) {
+// `programDay` (from computeTodaysProgramDay, or null with no active
+// program) folds in what's actually scheduled next -- the tip becomes
+// "X is next up" instead of a generic nudge, and the 48-72hr recovery
+// window doubles as the program's own rest-day logic: a program never
+// insists on training again the very next day just because a day is
+// "due" in rotation, since the rotation is scheduled by sessions
+// completed, not by calendar day.
+function buildLastWorkoutInsight(history, programDay) {
+  const nextUp = programDay ? `${programDay.dayLabel} is next up${programDay.deload ? " (deload week)" : ""}.` : null;
+
   if (!history || history.length === 0) {
-    return { daysSince: null, muscles: [], tip: "No workouts logged yet — start one to get going.", status: "none" };
+    const tip = programDay ? `No workouts logged yet — your program's first session is ${programDay.dayLabel}.` : "No workouts logged yet — start one to get going.";
+    return { daysSince: null, muscles: [], tip, status: "none", programDay };
   }
   const last = history[history.length - 1];
   const completedDate = new Date(last.completed_at);
@@ -117,12 +128,25 @@ function buildLastWorkoutInsight(history) {
   const muscles = [...new Set((last.workout_exercises || []).map((we) => we.exercises?.muscle_group).filter(Boolean))];
 
   let tip, status;
-  if (daysSince <= 0) { tip = "You already trained today. Nice work — recovery starts now."; status = "today"; }
-  else if (daysSince === 1) { tip = `Trained yesterday. Most muscle groups want 48-72 hours before hitting them hard again — a different focus today keeps things moving.`; status = "recovering"; }
-  else if (daysSince <= 3) { tip = "You're likely recovered from your last session. Good day to train."; status = "ready"; }
-  else { tip = `It's been ${daysSince} days. Consistency matters more than any single session — get back in when you can.`; status = "overdue"; }
+  if (daysSince <= 0) {
+    tip = "You already trained today. Nice work — recovery starts now.";
+    status = "today";
+  } else if (daysSince === 1) {
+    tip = programDay
+      ? `Trained yesterday. Most muscle groups want 48-72 hours before hitting them hard again — ${nextUp} when you're ready.`
+      : `Trained yesterday. Most muscle groups want 48-72 hours before hitting them hard again — a different focus today keeps things moving.`;
+    status = "recovering";
+  } else if (daysSince <= 3) {
+    tip = programDay ? `You're likely recovered from your last session. ${nextUp}` : "You're likely recovered from your last session. Good day to train.";
+    status = "ready";
+  } else {
+    tip = programDay
+      ? `It's been ${daysSince} days. ${nextUp}`
+      : `It's been ${daysSince} days. Consistency matters more than any single session — get back in when you can.`;
+    status = "overdue";
+  }
 
-  return { daysSince, muscles, tip, status };
+  return { daysSince, muscles, tip, status, programDay };
 }
 
 export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset, onProgramWorkoutStarted }) {
@@ -375,6 +399,21 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       .catch(() => { if (!cancelled) setActiveProgramForCalendar(null); });
     return () => { cancelled = true; };
   }, [user.id, programRefreshKey]);
+
+  // What day (Push/Pull/Legs/etc) is actually next in the active
+  // program's rotation right now, folded into the Last Workout insight
+  // below. Separate small fetch (just a session count) rather than
+  // reusing activeProgramForCalendar's effect, since this only needs to
+  // run once the program itself is known.
+  const [programDay, setProgramDay] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!activeProgramForCalendar) { setProgramDay(null); return; }
+    fetchProgramSessionCount(activeProgramForCalendar.id)
+      .then((completed) => { if (!cancelled) setProgramDay(computeTodaysProgramDay(activeProgramForCalendar, completed)); })
+      .catch(() => { if (!cancelled) setProgramDay(null); });
+    return () => { cancelled = true; };
+  }, [activeProgramForCalendar]);
 
   useEffect(() => {
     if (!profile?.is_admin) return;
@@ -637,7 +676,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const { byDate: calendarByDate, workoutsByDate } = useMemo(() => groupWorkoutsByDate(history || []), [history]);
   const monthGrid = useMemo(() => buildMonthGrid(calendarMonth, calendarByDate), [calendarMonth, calendarByDate]);
   const programForecastDates = useMemo(() => computeProgramForecastDates(activeProgramForCalendar, calendarByDate), [activeProgramForCalendar, calendarByDate]);
-  const insight = useMemo(() => buildLastWorkoutInsight(history), [history]);
+  const insight = useMemo(() => buildLastWorkoutInsight(history, programDay), [history, programDay]);
 
   function handleDayClick(dateStr) {
     const workouts = workoutsByDate[dateStr];
@@ -697,22 +736,32 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               {homeModules.find((m) => m.id === "insight")?.enabled && (
                 <div style={{
                   background: T.surface, border: `1px solid ${T.line}`, borderLeft: `3px solid ${insight.status === "overdue" ? T.accent : insight.status === "today" || insight.status === "ready" ? T.green : T.line}`,
-                  borderRadius: 12, padding: "12px 14px", marginTop: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 12,
+                  borderRadius: 12, padding: "12px 14px", marginTop: 8, marginBottom: 8,
                 }}>
-                  <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1, color: insight.status === "overdue" ? T.accent : T.text }}>
-                      {insight.daysSince === null ? "—" : insight.daysSince}
-                    </div>
-                    <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>day{insight.daysSince === 1 ? "" : "s"} ago</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0, borderLeft: `1px solid ${T.line}`, paddingLeft: 12 }}>
-                    {insight.muscles.length > 0 && (
-                      <div style={{ fontSize: 12, color: T.text, fontWeight: 600, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {insight.muscles.map((m) => muscleLabel(m, muscleNameMode)).join(" · ")}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
+                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1, color: insight.status === "overdue" ? T.accent : T.text }}>
+                        {insight.daysSince === null ? "—" : insight.daysSince}
                       </div>
-                    )}
-                    <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.4 }}>{insight.tip}</div>
+                      <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>day{insight.daysSince === 1 ? "" : "s"} ago</div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, borderLeft: `1px solid ${T.line}`, paddingLeft: 12 }}>
+                      {insight.muscles.length > 0 && (
+                        <div style={{ fontSize: 12, color: T.text, fontWeight: 600, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {insight.muscles.map((m) => muscleLabel(m, muscleNameMode)).join(" · ")}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.4 }}>{insight.tip}</div>
+                    </div>
                   </div>
+                  {programDay && (
+                    <button
+                      onClick={() => setShowProgramView(true)}
+                      style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                    >
+                      Open Program — {programDay.dayLabel}{programDay.deload ? " (deload)" : ""} <span style={{ color: T.dim }}>›</span>
+                    </button>
+                  )}
                 </div>
               )}
 

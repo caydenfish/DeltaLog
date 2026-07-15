@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { fetchExerciseLibrary, fetchPerformedExerciseIds } from "./lib/queries";
+import { fetchExercises, fetchPerformedExerciseIds, fetchFavoriteExerciseIds, setFavoriteExercise } from "./lib/queries";
+import { getPrefs } from "./lib/prefs";
+import ExercisePicker, { filterLibrary, splitGroupFor } from "./ExercisePicker";
+import { useDragReorder, InsertionLine } from "./DragReorder";
+import { IconX, IconDragHandle } from "./Icons";
 import { getSplits, getSplitExclusions } from "./lib/splits";
 import { IDEOLOGIES } from "./lib/ideologies";
 import { createProgram, addProgramExercises, fetchTotalSessionCount } from "./lib/programQueries";
@@ -29,8 +33,12 @@ const T = {
   accent: "#E8442E",
 };
 
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
+
 const EXPERIENCE_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const DURATIONS = [4, 6, 8, 12];
+
+const EMPTY_DAY_FILTERS = { search: "", muscleFilter: [], equipFilter: [], performedFilter: "all", sourceFilter: "all", showFilters: false };
 
 // Same PillRow/InfoBox pattern as SetupWizard.jsx (the new-user onboarding
 // flow) -- this wizard is meant to feel like an extension of that one
@@ -64,6 +72,83 @@ function InfoBox({ children }) {
   );
 }
 
+// One collapsible-free section per training day on the "Your exercises"
+// step -- same visual language as Templates.jsx's template builder
+// ("edit workout" page): a drag-reorderable pick list (drag handle,
+// name, Replace, Remove) with a planned-sets stepper under each row,
+// then a full ExercisePicker (search, Filters panel with split/muscle/
+// equipment/history chips, Favorites/Previously performed/Unperformed
+// sections) to add more. Each day gets its own picker filter state --
+// unlike Templates (which only ever builds one list and so shares one
+// filter state between its single Add panel and Replace sheet), three
+// simultaneous day sections filtering independently is the more useful
+// default here; a Push-day muscle filter carrying over to the Pull-day
+// picker would be surprising.
+function DaySection({ dayIndex, label, picks, onReorder, onRemove, onAdjustSets, onOpenReplace, filters, onFiltersChange, candidates, onPick, onToggleFavorite }) {
+  const drag = useDragReorder(onReorder);
+  const applySplit = (splitName) => {
+    const mode = getPrefs().muscleNameMode;
+    const group = splitGroupFor(splitName, mode);
+    const isActive = group.length > 0 && group.length === filters.muscleFilter.length && group.every((m) => filters.muscleFilter.includes(m));
+    onFiltersChange({ muscleFilter: isActive ? [] : group });
+  };
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+        Day {dayIndex + 1}: {label} ({picks.length})
+      </div>
+
+      {picks.length === 0 && <div style={{ color: T.dim, fontSize: 12, marginBottom: 8 }}>No exercises picked yet -- add some below.</div>}
+
+      <div style={{ marginBottom: 10 }}>
+        {picks.map((p, i) => (
+          <div
+            key={p.id}
+            ref={(el) => (drag.rowRefs.current[i] = el)}
+            style={{ position: "relative", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10, marginBottom: 6, opacity: drag.dragIndex === i ? 0.5 : 1 }}
+          >
+            <InsertionLine drag={drag} i={i} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                <div
+                  onPointerDown={(e) => drag.startRowDrag(i, e)}
+                  aria-label="Drag to reorder"
+                  title="Drag to reorder"
+                  style={{ cursor: "grab", color: T.dim, fontSize: 16, padding: "2px", touchAction: "none", flexShrink: 0, display: "flex", alignItems: "center" }}
+                ><IconDragHandle size={14} /></div>
+                <div style={{ color: T.text, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.short || p.name}</div>
+              </div>
+              <button onClick={() => onOpenReplace(p.id)} aria-label={`Replace ${p.name}`} title="Replace" style={{ ...smallBtn, marginRight: 6, flexShrink: 0 }}>&#8644;</button>
+              <button onClick={() => onRemove(p.id)} aria-label={`Remove ${p.name}`} title="Remove" style={{ ...smallBtn, color: T.accent, borderColor: T.accent, fontSize: 15, padding: "3px 10px", flexShrink: 0 }}>&minus;</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+              <button onClick={() => onAdjustSets(p.id, Math.max(1, (p.plannedSets ?? 3) - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>&minus;</button>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, minWidth: 16, textAlign: "center" }}>{p.plannedSets ?? 3}</div>
+              <button onClick={() => onAdjustSets(p.id, Math.min(12, (p.plannedSets ?? 3) + 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
+              <div style={{ fontSize: 11, color: T.dim, marginLeft: 2 }}>sets</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Add to {label.toLowerCase()}</div>
+      <ExercisePicker
+        list={candidates}
+        search={filters.search} onSearchChange={(v) => onFiltersChange({ search: v })}
+        muscleFilter={filters.muscleFilter} onToggleMuscle={(m) => onFiltersChange({ muscleFilter: filters.muscleFilter.includes(m) ? filters.muscleFilter.filter((x) => x !== m) : [...filters.muscleFilter, m] })}
+        onApplySplit={applySplit}
+        equipFilter={filters.equipFilter} onToggleEquip={(eq) => onFiltersChange({ equipFilter: filters.equipFilter.includes(eq) ? filters.equipFilter.filter((x) => x !== eq) : [...filters.equipFilter, eq] })}
+        performedFilter={filters.performedFilter} onSetPerformed={(v) => onFiltersChange({ performedFilter: v })}
+        sourceFilter={filters.sourceFilter} onSetSource={(v) => onFiltersChange({ sourceFilter: v })}
+        showFilters={filters.showFilters} onToggleFilters={() => onFiltersChange({ showFilters: !filters.showFilters })}
+        onPick={onPick}
+        onToggleFavorite={onToggleFavorite}
+      />
+    </div>
+  );
+}
+
 export default function ProgramSetup({ user, onClose, onCreated }) {
   const [step, setStep] = useState(0);
   const [trainingFocus, setTrainingFocus] = useState("Hypertrophy");
@@ -76,10 +161,11 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
   const [progressionOverride, setProgressionOverride] = useState(null); // null = recommended per Training Focus
 
   const [loading, setLoading] = useState(true);
-  const [rawLibrary, setRawLibrary] = useState([]);
+  const [library, setLibrary] = useState([]); // normalized exercises (normalizeExercise), + sessions/isFavorite like Templates.jsx
   const [performedIds, setPerformedIds] = useState(new Set());
-  const [picksByDay, setPicksByDay] = useState({}); // { dayIndex: [rawExerciseRow, ...] }
-  const [addSearch, setAddSearch] = useState({}); // { dayIndex: "search text" }
+  const [picksByDay, setPicksByDay] = useState({}); // { dayIndex: [{...normalizedExercise, plannedSets}, ...] }
+  const [dayFilters, setDayFilters] = useState({}); // { dayIndex: {search, muscleFilter, equipFilter, performedFilter, sourceFilter, showFilters} }
+  const [replacing, setReplacing] = useState(null); // { dayIndex, exerciseId } | null
   const [saving, setSaving] = useState(false);
 
   const splitOptions = Object.keys(SPLIT_ROTATIONS).filter((name) => dayLabelsForSplit(name).every((label) => getSplits()[label]));
@@ -88,13 +174,14 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
     let cancelled = false;
     (async () => {
       try {
-        const [lib, performed, totalSessions] = await Promise.all([
-          fetchExerciseLibrary(false),
+        const [lib, performed, favIds, totalSessions] = await Promise.all([
+          fetchExercises(),
           fetchPerformedExerciseIds(user.id),
+          fetchFavoriteExerciseIds(user.id),
           fetchTotalSessionCount(user.id),
         ]);
         if (cancelled) return;
-        setRawLibrary(lib);
+        setLibrary(lib.map((l) => ({ ...l, sessions: performed.has(l.id) ? 1 : 0, isFavorite: favIds.has(l.id) })));
         setPerformedIds(performed);
         const suggestion = suggestExperienceLevel(totalSessions);
         setSuggestedExperience(suggestion);
@@ -118,26 +205,58 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
   // Regenerates the auto-picked exercise list whenever the inputs that
   // determine it change.
   useEffect(() => {
-    if (!splitName || rawLibrary.length === 0) return;
+    if (!splitName || library.length === 0) return;
     const labels = dayLabelsForSplit(splitName);
     const perBucket = perBucketForExperience(experienceLevel || "Beginner");
     const next = {};
     labels.forEach((label, i) => {
       const buckets = getSplits()[label] || [];
       const excluded = getSplitExclusions(label);
-      next[i] = autoPickExercisesForDay(rawLibrary, buckets, performedIds, perBucket, excluded);
+      next[i] = autoPickExercisesForDay(library, buckets, performedIds, perBucket, excluded);
     });
     setPicksByDay(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [splitName, experienceLevel, rawLibrary]);
+  }, [splitName, experienceLevel, library]);
+
+  function filtersFor(dayIndex) {
+    return dayFilters[dayIndex] || EMPTY_DAY_FILTERS;
+  }
+  function updateFilters(dayIndex, patch) {
+    setDayFilters((prev) => ({ ...prev, [dayIndex]: { ...filtersFor(dayIndex), ...patch } }));
+  }
 
   function removePick(dayIndex, exerciseId) {
     setPicksByDay((prev) => ({ ...prev, [dayIndex]: (prev[dayIndex] || []).filter((e) => e.id !== exerciseId) }));
   }
 
   function addPick(dayIndex, ex) {
-    setPicksByDay((prev) => ({ ...prev, [dayIndex]: [...(prev[dayIndex] || []), ex] }));
-    setAddSearch((prev) => ({ ...prev, [dayIndex]: "" }));
+    setPicksByDay((prev) => ({ ...prev, [dayIndex]: [...(prev[dayIndex] || []), { ...ex, plannedSets: 3 }] }));
+  }
+
+  function replacePick(dayIndex, exerciseId, ex) {
+    setPicksByDay((prev) => ({
+      ...prev,
+      [dayIndex]: (prev[dayIndex] || []).map((p) => (p.id === exerciseId ? { ...ex, plannedSets: p.plannedSets } : p)),
+    }));
+    setReplacing(null);
+  }
+
+  function adjustPlannedSets(dayIndex, exerciseId, n) {
+    setPicksByDay((prev) => ({ ...prev, [dayIndex]: (prev[dayIndex] || []).map((p) => (p.id === exerciseId ? { ...p, plannedSets: n } : p)) }));
+  }
+
+  function reorderDay(dayIndex, updater) {
+    setPicksByDay((prev) => {
+      const current = prev[dayIndex] || [];
+      const nextList = typeof updater === "function" ? updater(current) : updater;
+      return { ...prev, [dayIndex]: nextList };
+    });
+  }
+
+  function toggleFavorite(id) {
+    setLibrary((prev) => prev.map((l) => (l.id === id ? { ...l, isFavorite: !l.isFavorite } : l)));
+    const target = library.find((l) => l.id === id);
+    setFavoriteExercise(user.id, id, !(target && target.isFavorite)).catch(() => {});
   }
 
   async function handleCreate() {
@@ -155,7 +274,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
       let position = 0;
       dayLabels.forEach((_, dayIndex) => {
         (picksByDay[dayIndex] || []).forEach((ex) => {
-          rows.push({ exerciseId: ex.id, position: position++, dayIndex, plannedSets: 3, progressionModel: customize ? progressionOverride : null });
+          rows.push({ exerciseId: ex.id, position: position++, dayIndex, plannedSets: ex.plannedSets ?? 3, progressionModel: customize ? progressionOverride : null });
         });
       });
       if (rows.length > 0) await addProgramExercises(programId, rows);
@@ -167,38 +286,32 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
 
   const dayLabels = splitName ? dayLabelsForSplit(splitName) : [];
   const totalPicked = Object.values(picksByDay).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+  const replacingDay = replacing ? picksByDay[replacing.dayIndex] || [] : [];
+  const replacingExercise = replacing ? replacingDay.find((p) => p.id === replacing.exerciseId) : null;
 
   const exercisesBody = (
     <div>
       {dayLabels.map((label, dayIndex) => {
         const picks = picksByDay[dayIndex] || [];
-        const buckets = getSplits()[label] || [];
-        const q = (addSearch[dayIndex] || "").toLowerCase();
-        const searchResults = q
-          ? rawLibrary.filter((r) => buckets.includes(r.muscle_group) && r.name.toLowerCase().includes(q) && !picks.some((p) => p.id === r.id)).slice(0, 6)
-          : [];
+        const pickedNames = new Set(picks.map((p) => p.name));
+        const filters = filtersFor(dayIndex);
+        const candidates = filterLibrary(library, { ...filters, exclude: pickedNames });
         return (
-          <div key={dayIndex} style={{ marginBottom: 16 }}>
-            <div style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Day {dayIndex + 1}: {label}</div>
-            {picks.length === 0 && <div style={{ color: T.dim, fontSize: 12, marginBottom: 6 }}>No exercises picked yet.</div>}
-            {picks.map((ex) => (
-              <div key={ex.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 6 }}>
-                <span style={{ color: T.text, fontSize: 13 }}>{ex.short || ex.name}</span>
-                <button onClick={() => removePick(dayIndex, ex.id)} aria-label={`Remove ${ex.name}`} style={{ background: "none", border: "none", color: T.dim, fontSize: 16 }}>×</button>
-              </div>
-            ))}
-            <input
-              value={addSearch[dayIndex] || ""}
-              onChange={(e) => setAddSearch((prev) => ({ ...prev, [dayIndex]: e.target.value }))}
-              placeholder={`Add another ${label} exercise…`}
-              style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 9, color: T.text, fontSize: 13, padding: "10px 12px", boxSizing: "border-box" }}
-            />
-            {searchResults.map((r) => (
-              <button key={r.id} onClick={() => addPick(dayIndex, r)} style={{ display: "block", width: "100%", textAlign: "left", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 9, padding: "10px 12px", marginTop: 6, color: T.text, fontSize: 13 }}>
-                + {r.short || r.name}
-              </button>
-            ))}
-          </div>
+          <DaySection
+            key={dayIndex}
+            dayIndex={dayIndex}
+            label={label}
+            picks={picks}
+            onReorder={(updater) => reorderDay(dayIndex, updater)}
+            onRemove={(id) => removePick(dayIndex, id)}
+            onAdjustSets={(id, n) => adjustPlannedSets(dayIndex, id, n)}
+            onOpenReplace={(id) => setReplacing({ dayIndex, exerciseId: id })}
+            filters={filters}
+            onFiltersChange={(patch) => updateFilters(dayIndex, patch)}
+            candidates={candidates}
+            onPick={(ex) => addPick(dayIndex, ex)}
+            onToggleFavorite={toggleFavorite}
+          />
         );
       })}
     </div>
@@ -346,6 +459,44 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
           {saving ? "Building…" : isLast ? "Create Program" : "Continue"}
         </button>
       </div>
+
+      {replacing && (() => {
+        const filters = filtersFor(replacing.dayIndex);
+        const pickedNames = new Set(replacingDay.filter((p) => p.id !== replacing.exerciseId).map((p) => p.name));
+        const replaceCandidates = filterLibrary(library, { ...filters, exclude: pickedNames });
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.75)", zIndex: 2100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+            <div style={{ width: "100%", maxWidth: 400, maxHeight: "85vh", display: "flex", flexDirection: "column", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0" }}>
+              <div style={{ padding: "16px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>
+                  Replace {replacingExercise?.short || replacingExercise?.name || "exercise"}
+                </div>
+                <button onClick={() => setReplacing(null)} aria-label="Close" style={smallBtn}><IconX size={12} /></button>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflow: "hidden", padding: "0 16px 16px", display: "flex", flexDirection: "column" }}>
+                <ExercisePicker
+                  list={replaceCandidates}
+                  search={filters.search} onSearchChange={(v) => updateFilters(replacing.dayIndex, { search: v })}
+                  muscleFilter={filters.muscleFilter} onToggleMuscle={(m) => updateFilters(replacing.dayIndex, { muscleFilter: filters.muscleFilter.includes(m) ? filters.muscleFilter.filter((x) => x !== m) : [...filters.muscleFilter, m] })}
+                  onApplySplit={(splitName) => {
+                    const mode = getPrefs().muscleNameMode;
+                    const group = splitGroupFor(splitName, mode);
+                    const isActive = group.length > 0 && group.length === filters.muscleFilter.length && group.every((m) => filters.muscleFilter.includes(m));
+                    updateFilters(replacing.dayIndex, { muscleFilter: isActive ? [] : group });
+                  }}
+                  equipFilter={filters.equipFilter} onToggleEquip={(eq) => updateFilters(replacing.dayIndex, { equipFilter: filters.equipFilter.includes(eq) ? filters.equipFilter.filter((x) => x !== eq) : [...filters.equipFilter, eq] })}
+                  performedFilter={filters.performedFilter} onSetPerformed={(v) => updateFilters(replacing.dayIndex, { performedFilter: v })}
+                  sourceFilter={filters.sourceFilter} onSetSource={(v) => updateFilters(replacing.dayIndex, { sourceFilter: v })}
+                  showFilters={filters.showFilters} onToggleFilters={() => updateFilters(replacing.dayIndex, { showFilters: !filters.showFilters })}
+                  onPick={(ex) => replacePick(replacing.dayIndex, replacing.exerciseId, ex)}
+                  onToggleFavorite={toggleFavorite}
+                  fillHeight
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

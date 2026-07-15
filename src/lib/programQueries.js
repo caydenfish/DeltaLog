@@ -7,6 +7,7 @@ import { supabase } from "./supabaseClient";
 import { normalizeExercise } from "./queries";
 import { getPrefs } from "./prefs";
 import { toDisplay } from "./weight";
+import { e1RM } from "./programEngine";
 
 // ---------- Programs ----------
 
@@ -141,6 +142,47 @@ export async function fetchTotalSessionCount(userId) {
     .not("completed_at", "is", null);
   if (error) throw error;
   return count || 0;
+}
+
+// Starting-weight estimate for an exercise the person has never logged,
+// used in place of the library's target_weight default -- which is 0
+// for nearly the entire exercise library (see seed_exercises.sql), so it
+// was producing nonsense prescriptions like "0lb x 10" for anything
+// without curated admin data. Looks at the person's own recent working
+// sets on OTHER exercises sharing this one's muscle_group Category,
+// preferring ones that also share its mechanism (Compound vs Isolation
+// -- a much closer proxy than muscle group alone, since an isolation
+// exercise shouldn't inherit a compound lift's working weight), and
+// estimates from the best recent e1RM in that pool. Returns null (not 0)
+// when there's nothing relevant logged at all, so the caller can fall
+// through to a bodyweight-based estimate or the library default instead
+// of pretending a number means something.
+export async function fetchFallbackWeightEstimate(userId, { muscleGroup, mechanism }) {
+  const { data, error } = await supabase
+    .from("workout_exercises")
+    .select("sets(weight, reps, rir, is_warmup), workouts!inner(user_id, completed_at), exercises!inner(muscle_group, mechanism)")
+    .eq("workouts.user_id", userId)
+    .eq("exercises.muscle_group", muscleGroup)
+    .not("workouts.completed_at", "is", null)
+    .order("workouts(completed_at)", { ascending: false })
+    .limit(60);
+  if (error) throw error;
+  const rows = data || [];
+  if (rows.length === 0) return null;
+
+  const sameMechanism = mechanism ? rows.filter((r) => r.exercises?.mechanism === mechanism) : [];
+  const pool = sameMechanism.length > 0 ? sameMechanism : rows;
+  const unit = getPrefs().units;
+
+  let best = 0;
+  for (const row of pool) {
+    for (const s of row.sets || []) {
+      if (s.is_warmup) continue;
+      const est = e1RM(toDisplay(Number(s.weight), unit), s.reps, s.rir ?? 2);
+      if (est > best) best = est;
+    }
+  }
+  return best > 0 ? best : null;
 }
 
 // Stamps the program engine's computed prescription onto a workout_exercises

@@ -14,7 +14,12 @@ export const CHANGELOG = {
     items: [
       "Program generator no longer double-books the same exercise on both Push and Pull day (or similar overlaps) — shoulder and arm exercises are now correctly sorted to the day they actually belong to.",
       "Browsing the Exercise Library by muscle group no longer shows unrelated muscles mixed in — e.g. Chest no longer surfaces Triceps, Shoulders no longer surfaces Calves. Full-body compound lifts still show up under every muscle group they train, they just won't drag their other muscles along as false options.",
+      "Program setup's \"Your exercises\" step redesigned to match the Template builder: each day is its own section with drag-to-reorder, Replace, Remove, and a sets stepper per exercise, plus the same full exercise picker (search, Filters, Favorites/Previously performed/Unperformed) used everywhere else in the app for adding more.",
       "New: Training Focus, Split, Experience level, and Progression model in the Program setup wizard now each have a short plain-language explanation right under the picker.",
+      "Home's Last Workout card now folds in your active program: what's next up in the rotation, plus an Open Program shortcut, right alongside the usual days-since-last-session recovery note.",
+      "Fixed prescribed weights showing as \"0lb x 10\" for exercises you haven't logged before. First-time exercises now start from an estimate based on your own recent training on similar exercises (or a light bodyweight-based guess if you're brand new to that muscle group entirely), instead of the exercise library's unset default.",
+      "You can now search the web for how to perform an exercise directly from a Program day, same as the Exercise Library already offered.",
+      "Abandoning a program now asks you to confirm first, and the button itself is far less prominent — no more accidentally ending a program with a stray tap.",
     ],
   },
   "1.11.6": {

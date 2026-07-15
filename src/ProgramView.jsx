@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
-import { startWorkout, addWorkoutExercise } from "./lib/queries";
+import { startWorkout, addWorkoutExercise, fetchProfile } from "./lib/queries";
 import { getPrefs } from "./lib/prefs";
-import { toCanonical } from "./lib/weight";
+import { toCanonical, toDisplay } from "./lib/weight";
 import {
   fetchActiveProgram,
   fetchProgramSessionCount,
   fetchRecentSessions,
+  fetchFallbackWeightEstimate,
   tagWorkoutExerciseWithProgram,
   updateProgramStatus,
 } from "./lib/programQueries";
-import { computePrescription, computeProgramWeek, isDeloadWeek, dayLabelsForSplit, defaultModelForFocus, PROGRESSION_MODELS } from "./lib/programEngine";
+import { computePrescription, computeTodaysProgramDay, estimateFallbackE1RM, defaultModelForFocus, PROGRESSION_MODELS } from "./lib/programEngine";
 import { InlineLoading } from "./LoadingSpinner";
-import { IconX } from "./Icons";
+import { IconX, IconSearch } from "./Icons";
 import ProgramSetup from "./ProgramSetup";
 
 const T = {
@@ -33,6 +34,8 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
   const [todaysExercises, setTodaysExercises] = useState([]); // [{ ...programExerciseRow, prescription }]
   const [showSetup, setShowSetup] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [confirmingAbandon, setConfirmingAbandon] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,19 +44,37 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
       setProgram(active);
       if (!active) { setLoading(false); return; }
 
-      const completed = await fetchProgramSessionCount(active.id);
-      const dayLabels = dayLabelsForSplit(active.splitName);
-      const currentWeek = computeProgramWeek(completed, active.daysPerWeek, active.durationWeeks);
-      const deloadWeek = isDeloadWeek(currentWeek, active.durationWeeks);
-      const todayDayIndex = dayLabels.length > 1 ? completed % dayLabels.length : 0;
+      const [completed, profile] = await Promise.all([
+        fetchProgramSessionCount(active.id),
+        fetchProfile(user.id),
+      ]);
+      const { dayIndex: todayDayIndex, week: currentWeek, deload: deloadWeek } = computeTodaysProgramDay(active, completed);
       setWeek(currentWeek);
       setDeload(deloadWeek);
 
       const unit = getPrefs().units;
+      const bodyweightDisplay = profile?.weight ? toDisplay(toCanonical(profile.weight, profile.weight_unit || "lb"), unit) : null;
       const todays = active.exercises.filter((pe) => pe.dayIndex === todayDayIndex);
       const withPrescriptions = await Promise.all(
         todays.map(async (pe) => {
           const sessions = await fetchRecentSessions(user.id, pe.exercise.id, 3);
+
+          // No history at all on this exact exercise -- try the
+          // person's own recent training on similar exercises first,
+          // then a conservative bodyweight-based guess, before ever
+          // falling back to the library's target_weight (0 for nearly
+          // everything, which is how "Arnold Press: 0lb x 10" happened).
+          let fallbackEstimate;
+          if (sessions.length === 0) {
+            const similar = await fetchFallbackWeightEstimate(user.id, { muscleGroup: pe.exercise.muscle, mechanism: pe.exercise.mechanism });
+            if (similar) {
+              fallbackEstimate = { e1RM: similar, source: "similar_exercises" };
+            } else {
+              const bodyweightGuess = estimateFallbackE1RM({ mechanism: pe.exercise.mechanism, bodyweightDisplay });
+              if (bodyweightGuess) fallbackEstimate = { e1RM: bodyweightGuess, source: "bodyweight" };
+            }
+          }
+
           const prescription = computePrescription({
             trainingFocus: active.trainingFocus,
             progressionModel: pe.progressionModel,
@@ -63,6 +84,7 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
             sessions,
             unit,
             fallbackWeight: pe.exercise.targetWeight,
+            fallbackEstimate,
           });
           return { ...pe, prescription };
         })
@@ -98,8 +120,14 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
   }
 
   async function abandonProgram() {
-    await updateProgramStatus(program.id, "abandoned");
-    load();
+    setAbandoning(true);
+    try {
+      await updateProgramStatus(program.id, "abandoned");
+      setConfirmingAbandon(false);
+      await load();
+    } finally {
+      setAbandoning(false);
+    }
   }
 
   const unit = getPrefs().units;
@@ -147,9 +175,21 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
               {todaysExercises.length === 0 && <div style={{ color: T.dim, fontSize: 13 }}>No exercises scheduled for today.</div>}
               {todaysExercises.map((item) => (
                 <div key={item.programExerciseId} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>{item.exercise.short || item.exercise.name}</span>
-                    <span style={{ color: T.text, fontSize: 13 }}>{item.plannedSets} sets</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <span style={{ color: T.text, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.exercise.short || item.exercise.name}</span>
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(`${item.exercise.name} exercise how to`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Search how to do ${item.exercise.name}`}
+                        title="Search how to do this exercise"
+                        style={{ flexShrink: 0, display: "flex", alignItems: "center", color: T.dim, padding: 2 }}
+                      >
+                        <IconSearch size={13} />
+                      </a>
+                    </span>
+                    <span style={{ color: T.text, fontSize: 13, flexShrink: 0 }}>{item.plannedSets} sets</span>
                   </div>
                   <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 600, color: T.text, marginTop: 4 }}>
                     {item.prescription.weight} <span style={{ color: T.dim, fontSize: 15 }}>{unit} ×</span> {item.prescription.reps}
@@ -161,9 +201,25 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
                 </div>
               ))}
 
-              <button onClick={abandonProgram} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12 }}>
-                Abandon this program
-              </button>
+              <div style={{ marginTop: 24, textAlign: "center" }}>
+                {confirmingAbandon ? (
+                  <div style={{ border: `1px solid ${T.line}`, borderRadius: 10, padding: 12 }}>
+                    <div style={{ color: T.dim, fontSize: 12, marginBottom: 10 }}>Abandon this program? Your progress on it won't be recoverable.</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => setConfirmingAbandon(false)} disabled={abandoning} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 12, fontWeight: 600 }}>
+                        Keep going
+                      </button>
+                      <button onClick={abandonProgram} disabled={abandoning} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 12, fontWeight: 600, opacity: abandoning ? 0.6 : 1 }}>
+                        {abandoning ? "Abandoning…" : "Yes, abandon it"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmingAbandon(true)} style={{ padding: "6px 4px", border: "none", background: "none", color: "#5B6270", fontSize: 11.5, textDecoration: "underline" }}>
+                    Abandon this program
+                  </button>
+                )}
+              </div>
             </div>
 
             <div style={{ padding: 16, borderTop: `1px solid ${T.line}` }}>

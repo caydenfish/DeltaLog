@@ -44,6 +44,13 @@ export function normalizeExercise(row) {
     short: row.short || row.name,
     targetWeight: Number(row.target_weight) || 0,
     muscle: row.muscle_group,
+    // Region tier (migration_064) and mechanism carried through
+    // unchanged -- needed by the Program generator's auto-pick scoring
+    // (autoPickExercisesForDay) and its split-exclusion filtering, which
+    // would otherwise need the raw un-normalized row shape instead of
+    // being able to share this one like every other exercise list does.
+    mechanism: row.mechanism,
+    muscleRegion: row.muscle_region,
     primaryMuscles: normalizeMuscleList(row.primary_muscles),
     secondaryMuscles: normalizeMuscleList(row.secondary_muscles),
     // Un-collapsed versions of the above, kept alongside them rather than

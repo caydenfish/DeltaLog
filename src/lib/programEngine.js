@@ -145,7 +145,8 @@ export function computePrescription({
   isDeloadWeek,
   sessions,
   unit,
-  fallbackWeight, // library default weight, used when there's no history at all
+  fallbackWeight, // library default weight (exercises.target_weight) -- last-resort only, since it's 0 for nearly the entire library
+  fallbackEstimate, // optional { e1RM, source: 'similar_exercises' | 'bodyweight' } -- a smarter starting point than the library default, derived by the caller from the person's own training data (see fetchFallbackWeightEstimate / estimateFallbackE1RM). Takes priority over fallbackWeight whenever present.
 }) {
   const model = progressionModel || defaultModelForFocus(trainingFocus);
   const { low, high } = IDEOLOGIES[trainingFocus];
@@ -170,13 +171,17 @@ export function computePrescription({
   }
 
   if (!hasHistory) {
-    const baseE1RM = e1RM(fallbackWeight, midReps, 2);
+    const baseE1RM = fallbackEstimate ? fallbackEstimate.e1RM : e1RM(fallbackWeight, midReps, 2);
     const weight = roundToStep(weightForReps(baseE1RM, midReps), unit);
+    const reasonBySource = {
+      similar_exercises: "No logs for this one yet — starting weight estimated from your recent training on similar exercises.",
+      bodyweight: "No training history to estimate from yet — a light starting point based on your bodyweight. This adjusts fast once you log a session.",
+    };
     return {
       weight,
       reps: midReps,
-      reasonCode: "no_history",
-      reasonText: "First time on this one, starting from the library default.",
+      reasonCode: fallbackEstimate ? `estimated_from_${fallbackEstimate.source}` : "no_history",
+      reasonText: fallbackEstimate ? reasonBySource[fallbackEstimate.source] : "First time on this one, starting from the library default.",
       isDeload: false,
     };
   }
@@ -282,6 +287,35 @@ export const EXPERIENCE_LEVEL_DESCRIPTIONS = {
   Advanced: "Three exercises per muscle group per day, for a long training history and the recovery capacity to handle the extra volume.",
 };
 
+// Single source of truth for "what day is this program on right now" --
+// used by both ProgramView (today's session) and Home's Last Workout
+// widget (so the dashboard can say what's coming up without duplicating
+// this math). `completedSessionCount` is sessions logged under this
+// specific program (fetchProgramSessionCount), not lifetime sessions.
+export function computeTodaysProgramDay(program, completedSessionCount) {
+  const dayLabels = dayLabelsForSplit(program.splitName);
+  const week = computeProgramWeek(completedSessionCount, program.daysPerWeek, program.durationWeeks);
+  const deload = isDeloadWeek(week, program.durationWeeks);
+  const dayIndex = dayLabels.length > 1 ? completedSessionCount % dayLabels.length : 0;
+  return { dayLabels, dayIndex, dayLabel: dayLabels[dayIndex], week, durationWeeks: program.durationWeeks, deload };
+}
+
+// Last-resort starting-weight estimate for someone with zero training
+// history to draw on for a given exercise AND nothing comparable logged
+// anywhere else either (a brand-new lifter's very first session, most
+// likely) -- deliberately conservative, deliberately not a real 1RM
+// estimate, just enough of a starting point to not show 0. Self-corrects
+// within a session or two via the normal double-progression/plateau
+// logic once real numbers exist. Returns null (not 0) when there's no
+// bodyweight on file to estimate from, so the caller can fall through to
+// the library default rather than silently substituting a wrong number.
+const BODYWEIGHT_FRACTION = { Compound: 0.3, Isolation: 0.1 };
+export function estimateFallbackE1RM({ mechanism, bodyweightDisplay }) {
+  if (!bodyweightDisplay || bodyweightDisplay <= 0) return null;
+  const fraction = BODYWEIGHT_FRACTION[mechanism] ?? BODYWEIGHT_FRACTION.Isolation;
+  return bodyweightDisplay * fraction;
+}
+
 // Multi-day split rotations the generator knows how to schedule across a
 // week. Each label must be a real entry in getSplits() (admin-editable
 // muscle groupings) -- day 0 of "Push/Pull/Legs" pulls from getSplits().Push,
@@ -316,33 +350,36 @@ export function defaultSplitForDays(daysPerWeek, availableSplitNames) {
   return "Full Body";
 }
 
-// Auto-picks exercises for one training day from the raw exercise library
-// (unnormalized rows -- needs `muscle_group`/`mechanism` as stored in the
-// exercises table). Compound movements are scored above isolation work
-// since they're the sane default backbone of a generated day; previously
-// performed exercises break ties so the picks lean toward things the
-// person already knows how to do. `perBucket` scales with experience
-// level in the caller -- fewer exercises per muscle group keeps a
-// beginner's first program simple, more gives an advanced lifter the
-// fuller day they'd expect. `excludedRegions` (a Set of muscle_detailed
-// keys, from getSplitExclusions -- migration_064) filters out exercises
-// whose Region belongs to the *other* side of a shared Category, e.g.
-// Rear Delts on a Push day even though "Shoulders" is a Push bucket --
-// without this, a Category match alone can't tell a front-delt raise
-// from a rear-delt one and picks both days independently.
-export function autoPickExercisesForDay(rawLibrary, muscleBuckets, performedIds, perBucket = 2, excludedRegions = new Set()) {
+// Auto-picks exercises for one training day from the normalized exercise
+// library (normalizeExercise() output -- same shape ExercisePicker and
+// every other exercise list in the app already uses, so the generator's
+// "Your exercises" step can share one fetch and one ExercisePicker
+// instance instead of needing a second, differently-shaped library just
+// for auto-pick scoring). Compound movements are scored above isolation
+// work since they're the sane default backbone of a generated day;
+// previously performed exercises break ties so the picks lean toward
+// things the person already knows how to do. `perBucket` scales with
+// experience level in the caller -- fewer exercises per muscle group
+// keeps a beginner's first program simple, more gives an advanced lifter
+// the fuller day they'd expect. `excludedRegions` (a Set of
+// muscle_detailed keys, from getSplitExclusions -- migration_064) filters
+// out exercises whose Region belongs to the *other* side of a shared
+// Category, e.g. Rear Delts on a Push day even though "Shoulders" is a
+// Push bucket -- without this, a Category match alone can't tell a
+// front-delt raise from a rear-delt one and picks both days independently.
+export function autoPickExercisesForDay(library, muscleBuckets, performedIds, perBucket = 2, excludedRegions = new Set()) {
   const picks = [];
   const usedIds = new Set();
   for (const bucket of muscleBuckets) {
-    const candidates = rawLibrary
-      .filter((r) => r.muscle_group === bucket && !usedIds.has(r.id) && !excludedRegions.has(r.muscle_region))
+    const candidates = library
+      .filter((r) => r.muscle === bucket && !usedIds.has(r.id) && !excludedRegions.has(r.muscleRegion))
       .sort((a, b) => {
         const scoreA = (a.mechanism === "Compound" ? 2 : 0) + (performedIds.has(a.id) ? 1 : 0);
         const scoreB = (b.mechanism === "Compound" ? 2 : 0) + (performedIds.has(b.id) ? 1 : 0);
         return scoreB - scoreA;
       });
     candidates.slice(0, perBucket).forEach((c) => {
-      picks.push(c);
+      picks.push({ ...c, plannedSets: 3 });
       usedIds.add(c.id);
     });
   }
