@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabaseClient";
-import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits, logAppOpen } from "./lib/queries";
+import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits, fetchSplitExclusions, logAppOpen } from "./lib/queries";
 import { setMuscleTaxonomyCache } from "./lib/muscleNomenclature";
-import { setSplitsCache } from "./lib/splits";
+import { setSplitsCache, setSplitExclusionsCache } from "./lib/splits";
 import { getPrefs } from "./lib/prefs";
 import Auth from "./Auth";
 import ResetPassword from "./ResetPassword";
@@ -44,6 +44,7 @@ export default function App() {
   useEffect(() => {
     fetchMuscleTaxonomy().then(setMuscleTaxonomyCache).catch(() => {});
     fetchSplits().then(setSplitsCache).catch(() => {});
+    fetchSplitExclusions().then(setSplitExclusionsCache).catch(() => {});
   }, []);
 
   useEffect(() => {

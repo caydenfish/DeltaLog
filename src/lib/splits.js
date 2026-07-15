@@ -36,3 +36,35 @@ export function setSplitsCache(rows) {
 export function getSplits() {
   return cache || DEFAULT_SPLITS;
 }
+
+// Region-tier (muscle_detailed) carve-outs (migration_064): a split can
+// include a Category (e.g. "Shoulders") while excluding specific Regions
+// within it that actually belong to the other side of the movement
+// pattern (e.g. Rear Delts, which is a pull muscle sharing a Category
+// with Front/Side Delts). Keeps the last hand-maintained mapping as a
+// fallback the same way DEFAULT_SPLITS does, using the plain-slug keys
+// those labels would produce -- only used before the cache has loaded.
+const DEFAULT_SPLIT_EXCLUSIONS = {
+  Push: ["rear_delts", "biceps", "brachialis", "forearm_flexors"],
+  Pull: ["front_delts", "side_delts", "triceps", "forearm_extensors"],
+};
+
+let exclusionCache = null; // null = not loaded yet -> callers fall back to DEFAULT_SPLIT_EXCLUSIONS
+
+export function setSplitExclusionsCache(rows) {
+  const built = {};
+  for (const row of rows) {
+    if (!row.splitName) continue;
+    if (!built[row.splitName]) built[row.splitName] = new Set();
+    built[row.splitName].add(row.key);
+  }
+  exclusionCache = built;
+}
+
+// Region-tier keys that should be filtered back OUT of an otherwise-
+// included Category for this split. Always returns a Set (empty if
+// nothing's excluded), never undefined.
+export function getSplitExclusions(splitName) {
+  if (exclusionCache) return exclusionCache[splitName] || new Set();
+  return new Set(DEFAULT_SPLIT_EXCLUSIONS[splitName] || []);
+}

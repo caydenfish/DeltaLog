@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
 import { fetchExerciseLibrary, fetchPerformedExerciseIds } from "./lib/queries";
-import { getSplits } from "./lib/splits";
+import { getSplits, getSplitExclusions } from "./lib/splits";
 import { IDEOLOGIES } from "./lib/ideologies";
 import { createProgram, addProgramExercises, fetchTotalSessionCount } from "./lib/programQueries";
 import {
   dayLabelsForSplit,
   defaultSplitForDays,
   SPLIT_ROTATIONS,
+  SPLIT_DESCRIPTIONS,
+  EXPERIENCE_LEVEL_DESCRIPTIONS,
   autoPickExercisesForDay,
   perBucketForExperience,
   suggestExperienceLevel,
+  defaultModelForFocus,
   PROGRESSION_MODELS,
+  PROGRESSION_MODEL_DESCRIPTIONS,
 } from "./lib/programEngine";
 import { InlineLoading } from "./LoadingSpinner";
 import Logo from "./Logo";
@@ -120,7 +124,8 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
     const next = {};
     labels.forEach((label, i) => {
       const buckets = getSplits()[label] || [];
-      next[i] = autoPickExercisesForDay(rawLibrary, buckets, performedIds, perBucket);
+      const excluded = getSplitExclusions(label);
+      next[i] = autoPickExercisesForDay(rawLibrary, buckets, performedIds, perBucket, excluded);
     });
     setPicksByDay(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,7 +225,12 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
       subtitle: suggestedExperience
         ? `Based on your logging history, we'd guess ${suggestedExperience} — tap to change it.`
         : "How experienced are you with lifting?",
-      body: <PillRow options={EXPERIENCE_LEVELS.map((l) => ({ key: l, label: l }))} value={experienceLevel} onChange={setExperienceLevel} />,
+      body: (
+        <>
+          <PillRow options={EXPERIENCE_LEVELS.map((l) => ({ key: l, label: l }))} value={experienceLevel} onChange={setExperienceLevel} />
+          {experienceLevel && <InfoBox>{EXPERIENCE_LEVEL_DESCRIPTIONS[experienceLevel]}</InfoBox>}
+        </>
+      ),
     },
     {
       title: "Customize the details?",
@@ -237,7 +247,12 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
           {
             title: "Split",
             subtitle: "Which days train which muscle groups.",
-            body: <PillRow options={splitOptions.map((s) => ({ key: s, label: s }))} value={splitName} onChange={setSplitName} />,
+            body: (
+              <>
+                <PillRow options={splitOptions.map((s) => ({ key: s, label: s }))} value={splitName} onChange={setSplitName} />
+                {splitName && <InfoBox>{SPLIT_DESCRIPTIONS[splitName]}</InfoBox>}
+              </>
+            ),
           },
           {
             title: "Progression model",
@@ -259,6 +274,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
                     {label}
                   </button>
                 ))}
+                <InfoBox>{PROGRESSION_MODEL_DESCRIPTIONS[progressionOverride || defaultModelForFocus(trainingFocus)]}</InfoBox>
               </div>
             ),
           },

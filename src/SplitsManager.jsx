@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { fetchMuscleGroups, fetchSplits, addSplit, renameSplit, deleteSplit, addSplitMuscle, removeSplitMuscle } from "./lib/queries";
-import { setSplitsCache } from "./lib/splits";
+import { fetchMuscleGroups, fetchMuscleDetailed, fetchSplits, fetchSplitExclusions, addSplit, renameSplit, deleteSplit, addSplitMuscle, removeSplitMuscle, addSplitExclusion, removeSplitExclusion } from "./lib/queries";
+import { setSplitsCache, setSplitExclusionsCache } from "./lib/splits";
 import { muscleLabel } from "./lib/muscleNomenclature";
 import { IconX } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
@@ -19,15 +19,21 @@ const T = {
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 };
 
 // Admin-only CRUD for which muscle_groups belong to each split (Push,
-// Pull, Legs, etc). Writes straight to the `splits`/`split_muscles`
-// tables (migration_043). Every mutation re-fetches and re-populates the
-// shared splits cache (setSplitsCache from lib/splits.js) so the
-// generator, exercise picker filters, and FAQ & Glossary's Split entry
-// all reflect the change immediately -- no separate sync step, and no
-// app update needed for the change to take effect for every user.
+// Pull, Legs, etc), plus which Regions within an included Category are
+// carved back out (split_muscle_exclusions, migration_064) -- e.g. Push
+// includes "Shoulders" but excludes "Rear Delts" since that's a
+// pull-pattern muscle. Writes straight to the
+// `splits`/`split_muscles`/`split_muscle_exclusions` tables. Every
+// mutation re-fetches and re-populates the shared splits/exclusions
+// cache (setSplitsCache/setSplitExclusionsCache from lib/splits.js) so
+// the generator, exercise picker filters, and FAQ & Glossary's Split
+// entry all reflect the change immediately -- no separate sync step, and
+// no app update needed for the change to take effect for every user.
 export default function SplitsManager({ onClose }) {
   const [splits, setSplits] = useState(null); // null = loading
   const [muscleGroups, setMuscleGroups] = useState([]);
+  const [muscleDetailed, setMuscleDetailed] = useState([]);
+  const [exclusions, setExclusions] = useState({}); // { [splitId]: Set(muscle_detailed_key) }
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set());
@@ -37,10 +43,23 @@ export default function SplitsManager({ onClose }) {
   const [newName, setNewName] = useState("");
 
   async function reload() {
-    const [splitRows, groups] = await Promise.all([fetchSplits(), fetchMuscleGroups()]);
+    const [splitRows, groups, detailed, exclusionRows] = await Promise.all([
+      fetchSplits(),
+      fetchMuscleGroups(),
+      fetchMuscleDetailed(),
+      fetchSplitExclusions(),
+    ]);
     setSplits(splitRows);
     setMuscleGroups(groups);
+    setMuscleDetailed(detailed);
+    const exclusionMap = {};
+    for (const row of exclusionRows) {
+      if (!exclusionMap[row.splitId]) exclusionMap[row.splitId] = new Set();
+      exclusionMap[row.splitId].add(row.key);
+    }
+    setExclusions(exclusionMap);
     setSplitsCache(splitRows);
+    setSplitExclusionsCache(exclusionRows);
   }
 
   useEffect(() => {
@@ -69,6 +88,7 @@ export default function SplitsManager({ onClose }) {
   }
 
   const sortedGroups = [...muscleGroups].sort((a, b) => a.label.localeCompare(b.label));
+  const sortedDetailed = [...muscleDetailed].sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
@@ -122,21 +142,51 @@ export default function SplitsManager({ onClose }) {
                 </div>
 
                 {open && (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-                    {sortedGroups.length === 0 && <div style={{ color: T.dim, fontSize: 12 }}>No muscle groups defined yet.</div>}
-                    {sortedGroups.map((g) => {
-                      const active = s.muscles.includes(g.key);
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {sortedGroups.length === 0 && <div style={{ color: T.dim, fontSize: 12 }}>No muscle groups defined yet.</div>}
+                      {sortedGroups.map((g) => {
+                        const active = s.muscles.includes(g.key);
+                        return (
+                          <button
+                            key={g.key}
+                            disabled={busy}
+                            onClick={() => run(() => (active ? removeSplitMuscle(s.id, g.key) : addSplitMuscle(s.id, g.key)))}
+                            style={{ padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(232,68,46,0.15)" : T.surface2, color: active ? T.text : T.dim }}
+                          >
+                            {muscleLabel(g.key, "generic")}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {(() => {
+                      const regionOptions = sortedDetailed.filter((d) => s.muscles.includes(d.generic_group));
+                      if (regionOptions.length === 0) return null;
+                      const excludedKeys = exclusions[s.id] || new Set();
                       return (
-                        <button
-                          key={g.key}
-                          disabled={busy}
-                          onClick={() => run(() => (active ? removeSplitMuscle(s.id, g.key) : addSplitMuscle(s.id, g.key)))}
-                          style={{ padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(232,68,46,0.15)" : T.surface2, color: active ? T.text : T.dim }}
-                        >
-                          {muscleLabel(g.key, "generic")}
-                        </button>
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.line}` }}>
+                          <div style={{ color: T.dim, fontSize: 11.5, marginBottom: 8 }}>
+                            Exclude specific muscles (e.g. keep "Shoulders" for Push but drop Rear Delts):
+                          </div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {regionOptions.map((d) => {
+                              const excluded = excludedKeys.has(d.key);
+                              return (
+                                <button
+                                  key={d.key}
+                                  disabled={busy}
+                                  onClick={() => run(() => (excluded ? removeSplitExclusion(s.id, d.key) : addSplitExclusion(s.id, d.key)))}
+                                  style={{ padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${excluded ? T.accent : T.line}`, background: excluded ? "rgba(232,68,46,0.15)" : "transparent", color: excluded ? T.text : T.dim, textDecoration: excluded ? "line-through" : "none" }}
+                                >
+                                  {d.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
-                    })}
+                    })()}
                   </div>
                 )}
               </div>

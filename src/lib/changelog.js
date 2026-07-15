@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.11.7": {
+    title: "Smarter Program exercise picks, cleaner Exercise Library browsing",
+    items: [
+      "Program generator no longer double-books the same exercise on both Push and Pull day (or similar overlaps) — shoulder and arm exercises are now correctly sorted to the day they actually belong to.",
+      "Browsing the Exercise Library by muscle group no longer shows unrelated muscles mixed in — e.g. Chest no longer surfaces Triceps, Shoulders no longer surfaces Calves. Full-body compound lifts still show up under every muscle group they train, they just won't drag their other muscles along as false options.",
+      "New: Training Focus, Split, Experience level, and Progression model in the Program setup wizard now each have a short plain-language explanation right under the picker.",
+    ],
+  },
   "1.11.6": {
     title: "A more organized Settings menu",
     items: [

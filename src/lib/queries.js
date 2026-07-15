@@ -291,6 +291,30 @@ export async function removeSplitMuscle(splitId, muscleGroup) {
   if (error) throw error;
 }
 
+// Region-tier exclusions (migration_064): a Region (muscle_detailed key)
+// that's carved back OUT of a split even though its parent Category is
+// included -- e.g. Push includes "Shoulders" but excludes "Rear Delts".
+// Returns {splitId, key, splitName} rows -- splitName feeds the runtime
+// cache (setSplitExclusionsCache, keyed the same way getSplits() is),
+// splitId is what SplitsManager's admin UI groups by.
+export async function fetchSplitExclusions() {
+  const { data, error } = await supabase
+    .from("split_muscle_exclusions")
+    .select("split_id, muscle_detailed_key, splits(name)");
+  if (error) throw error;
+  return data.map((r) => ({ splitId: r.split_id, key: r.muscle_detailed_key, splitName: r.splits?.name }));
+}
+
+export async function addSplitExclusion(splitId, muscleDetailedKey) {
+  const { error } = await supabase.from("split_muscle_exclusions").insert({ split_id: splitId, muscle_detailed_key: muscleDetailedKey });
+  if (error) throw error;
+}
+
+export async function removeSplitExclusion(splitId, muscleDetailedKey) {
+  const { error } = await supabase.from("split_muscle_exclusions").delete().eq("split_id", splitId).eq("muscle_detailed_key", muscleDetailedKey);
+  if (error) throw error;
+}
+
 // Admin-only: creates a brand-new exercise straight into the shared
 // library (created_by stays null), rather than as a personal custom
 // exercise that would need promoting later.

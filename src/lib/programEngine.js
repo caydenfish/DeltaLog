@@ -35,6 +35,16 @@ export const PROGRESSION_MODELS = {
   rir_autoregulation: "RIR Autoregulation",
 };
 
+// Short, plain-language blurbs for the setup wizard -- one per model,
+// written for the person picking a program, not for someone reading the
+// engine source. Keep in lockstep with the technical notes at the top of
+// this file if the underlying behavior ever changes.
+export const PROGRESSION_MODEL_DESCRIPTIONS = {
+  double_progression: "Work up to the top of your rep range at the same weight, then add weight next time and start back at the bottom. Simple and forgiving if your logging isn't perfectly consistent.",
+  percent_e1rm: "Your weight is set as a percentage of your estimated max, climbing gradually across the block. Built for lower-rep strength work, where jumping by a fixed weight increment is too coarse.",
+  rir_autoregulation: "Same idea as % of max, but nudges the weight based on how hard your last session actually felt. The most responsive option, but only as good as how honestly you log reps in reserve.",
+};
+
 // Same formula as SetLogger.jsx's local e1RM/weightForReps -- duplicated
 // rather than imported so this module has zero dependency on the logger,
 // but kept in lockstep intentionally. Change one, change both.
@@ -265,6 +275,13 @@ export function suggestExperienceLevel(totalSessionCount) {
   return "Beginner";
 }
 
+// Short, plain-language blurbs for the setup wizard's Experience step.
+export const EXPERIENCE_LEVEL_DESCRIPTIONS = {
+  Beginner: "Keeps each day simple: one exercise per muscle group. A good starting point if you're new to structured training.",
+  Intermediate: "Two exercises per muscle group per day, enough variety to keep progressing once the basics feel automatic.",
+  Advanced: "Three exercises per muscle group per day, for a long training history and the recovery capacity to handle the extra volume.",
+};
+
 // Multi-day split rotations the generator knows how to schedule across a
 // week. Each label must be a real entry in getSplits() (admin-editable
 // muscle groupings) -- day 0 of "Push/Pull/Legs" pulls from getSplits().Push,
@@ -273,6 +290,13 @@ export const SPLIT_ROTATIONS = {
   "Full Body": ["Full Body"],
   "Upper/Lower": ["Upper", "Lower"],
   "Push/Pull/Legs": ["Push", "Pull", "Legs"],
+};
+
+// Short, plain-language blurbs for the setup wizard's Split step.
+export const SPLIT_DESCRIPTIONS = {
+  "Full Body": "Trains every major muscle group each session. Best if you're training 2 days a week or fewer.",
+  "Upper/Lower": "Alternates upper body and lower body days, giving each muscle group more focused volume than Full Body.",
+  "Push/Pull/Legs": "Rotates pushing muscles (chest, shoulders, triceps), pulling muscles (back, biceps, rear delts), and legs across three days.",
 };
 
 export function dayLabelsForSplit(splitName) {
@@ -300,13 +324,18 @@ export function defaultSplitForDays(daysPerWeek, availableSplitNames) {
 // person already knows how to do. `perBucket` scales with experience
 // level in the caller -- fewer exercises per muscle group keeps a
 // beginner's first program simple, more gives an advanced lifter the
-// fuller day they'd expect.
-export function autoPickExercisesForDay(rawLibrary, muscleBuckets, performedIds, perBucket = 2) {
+// fuller day they'd expect. `excludedRegions` (a Set of muscle_detailed
+// keys, from getSplitExclusions -- migration_064) filters out exercises
+// whose Region belongs to the *other* side of a shared Category, e.g.
+// Rear Delts on a Push day even though "Shoulders" is a Push bucket --
+// without this, a Category match alone can't tell a front-delt raise
+// from a rear-delt one and picks both days independently.
+export function autoPickExercisesForDay(rawLibrary, muscleBuckets, performedIds, perBucket = 2, excludedRegions = new Set()) {
   const picks = [];
   const usedIds = new Set();
   for (const bucket of muscleBuckets) {
     const candidates = rawLibrary
-      .filter((r) => r.muscle_group === bucket && !usedIds.has(r.id))
+      .filter((r) => r.muscle_group === bucket && !usedIds.has(r.id) && !excludedRegions.has(r.muscle_region))
       .sort((a, b) => {
         const scoreA = (a.mechanism === "Compound" ? 2 : 0) + (performedIds.has(a.id) ? 1 : 0);
         const scoreB = (b.mechanism === "Compound" ? 2 : 0) + (performedIds.has(b.id) ? 1 : 0);

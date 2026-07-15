@@ -420,7 +420,15 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
       const inGroup = ex.muscle_group === browseGroup || (ex.primary_muscles || []).some((m) => genericBucket(m) === browseGroup);
       if (!inGroup) return false;
       if (browseDetail && browseDetail !== "ALL") {
-        const detailedNames = (ex.primary_muscles || []).map((m) => muscleLabel(m, level2Mode));
+        // Only the muscles that actually belong to the group being
+        // browsed count toward a Region match -- an exercise tagged with
+        // ten primary muscles across the body (a clean & jerk, a
+        // snatch...) is rightly findable under every Category it trains,
+        // but its Region tags from OTHER Categories aren't a Region of
+        // *this* one just because they're on the same row.
+        const detailedNames = (ex.primary_muscles || [])
+          .filter((m) => genericBucket(m) === browseGroup)
+          .map((m) => muscleLabel(m, level2Mode));
         if (!detailedNames.includes(browseDetail)) return false;
       }
     }
@@ -432,11 +440,19 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
   // Level 2 tiles for the second browse layer -- derived straight from
   // this group's exercises rather than a separate fetch, so regular
   // (non-admin) users get real tiles without needing taxonomy access.
+  // Filtered to muscles whose OWN generic bucket is the group being
+  // browsed, same reasoning as the browseDetail check above -- without
+  // this, a multi-muscle compound (Barbell Clean and Jerk, tagged with
+  // Quads/Traps/Delts/Triceps/Calves and everything in between) leaks
+  // every one of its other tags in as a false Region option the moment
+  // any single tag matches the group, e.g. "Calves" showing up while
+  // browsing Shoulders.
   const detailOptions = browseGroup && browseGroup !== "ALL"
     ? [...new Set(
         (exercises || [])
-          .filter((ex) => ex.muscle_group === browseGroup || (ex.primary_muscles || []).some((m) => genericBucket(m) === browseGroup))
-          .flatMap((ex) => (ex.primary_muscles || []).map((m) => muscleLabel(m, level2Mode)))
+          .flatMap((ex) => ex.primary_muscles || [])
+          .filter((m) => genericBucket(m) === browseGroup)
+          .map((m) => muscleLabel(m, level2Mode))
       )].sort()
     : [];
 
