@@ -4,10 +4,11 @@ const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: tr
 // The home dashboard's modules, in their default order — every user
 // effectively starts with this until they customize it via the pencil
 // icon on Home. Keep in sync with the switch in Home.jsx's renderModule.
-export const DEFAULT_HOME_MODULE_IDS = ["insight", "volume", "weight", "workoutTime", "muscleBreakdown", "calendar"];
+export const DEFAULT_HOME_MODULE_IDS = ["insight", "myPlan", "volume", "weight", "workoutTime", "muscleBreakdown", "calendar"];
 
 export const HOME_MODULE_LABELS = {
   insight: "Last workout",
+  myPlan: "My Plan",
   volume: "Volume over time",
   weight: "Bodyweight over time",
   workoutTime: "Workout time",
@@ -42,6 +43,23 @@ export function getPrefs() {
   }
 }
 
+// Independent Training Range per home chart (Volume, Bodyweight, Workout
+// Time, Muscle breakdown) -- e.g. someone might want Bodyweight pinned
+// to 90 Days while Volume stays at 30 Days. Falls back to the old
+// single `homeRange` pref for anything not yet set per-chart, so
+// existing users' one range carries over as every chart's starting
+// point rather than silently resetting to a hardcoded default.
+export function getChartRange(chartId) {
+  const prefs = getPrefs();
+  const perChart = prefs.homeChartRanges || {};
+  return perChart[chartId] || prefs.homeRange || "30d";
+}
+
+export function setChartRange(chartId, rangeKey) {
+  const prefs = getPrefs();
+  const perChart = { ...(prefs.homeChartRanges || {}), [chartId]: rangeKey };
+  setPref("homeChartRanges", perChart);
+}
 export function setPref(key, value) {
   const prefs = getPrefs();
   prefs[key] = value;

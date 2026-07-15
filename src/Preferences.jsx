@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getPrefs, setPref } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
 import { REST_TIMER_SOUNDS, REST_TIMER_VIBRATIONS, playRestTimerSound, triggerRestTimerVibration, notificationsSupported, getNotificationPermission, requestNotificationPermission, showRestTimerNotification } from "./lib/restTimerCues";
+import { IconChevronUp, IconChevronDown } from "./Icons";
 
 const T = {
   bg: "#101216",
@@ -37,6 +38,29 @@ function ToggleSwitch({ checked, onChange, ariaLabel }) {
         background: "#fff", transition: "left 0.15s",
       }} />
     </button>
+  );
+}
+
+// Collapsible group used to break the Training Preferences sub-screen
+// into digestible chunks instead of one long scroll of every field at
+// once -- collapsed by default, so opening Training Preferences shows
+// two clearly-labeled groups to choose between rather than everything
+// jammed onto one screen simultaneously.
+function Section({ title, subtitle, open, onToggle, children }) {
+  return (
+    <div style={{ marginBottom: 12, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, overflow: "hidden" }}>
+      <button
+        onClick={onToggle}
+        style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, background: "none", border: "none", padding: 14, textAlign: "left" }}
+      >
+        <div>
+          <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>{title}</div>
+          {subtitle && <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>{subtitle}</div>}
+        </div>
+        <div style={{ color: T.dim, flexShrink: 0, display: "flex", alignItems: "center" }}>{open ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}</div>
+      </button>
+      {open && <div style={{ padding: "0 14px 16px" }}>{children}</div>}
+    </div>
   );
 }
 
@@ -99,6 +123,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // "Units" and "Training Preferences" are real full-screen destinations
   // (SubScreen) rather than inline-expanding sections.
   const [screen, setScreen] = useState(null); // null | "units" | "training"
+  const [openTrainingSection, setOpenTrainingSection] = useState(null); // null | "focus" | "restTimer"
   const [notifPermission, setNotifPermission] = useState(() => getNotificationPermission());
 
   async function handleToggleRestTimerNotification(v) {
@@ -836,9 +861,22 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
 
       {screen === "training" && (
         <SubScreen title="Training Preferences" onBack={() => setScreen(null)}>
-          {renderTrainingFields()}
-          <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "4px 0 10px" }}>Rest Timer</div>
-          {renderRestTimerFields()}
+          <Section
+            title="Training Focus & Logging"
+            subtitle="Rep range, strength score, set entry, big plates, muscle names"
+            open={openTrainingSection === "focus"}
+            onToggle={() => setOpenTrainingSection((s) => (s === "focus" ? null : "focus"))}
+          >
+            {renderTrainingFields()}
+          </Section>
+          <Section
+            title="Rest Timer"
+            subtitle="Default durations, warmup rest, and end-of-timer alerts"
+            open={openTrainingSection === "restTimer"}
+            onToggle={() => setOpenTrainingSection((s) => (s === "restTimer" ? null : "restTimer"))}
+          >
+            {renderRestTimerFields()}
+          </Section>
         </SubScreen>
       )}
     </>

@@ -9,6 +9,7 @@ const T = {
   line: "#2C313B",
   text: "#F2F1EC",
   dim: "#8B919D",
+  accent: "#E8442E",
 };
 
 const chevron = (open) => ({ display: "inline-block", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "rotate(0deg)", color: T.dim, fontSize: 14, flexShrink: 0 });
@@ -17,37 +18,61 @@ function formatDate(dateStr) {
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-// Drill-down sheet behind a muscle's "N sets" count on Home -- lists every
-// exercise entry that contributed to that count (role-filtered: primary
-// mover vs. assisting/secondary), each expandable to the individual set's
-// weight and reps. Reuses the same `entries` shape volume.js already
+function roleTag(role) {
+  const isPrimary = role === "primary";
+  return {
+    fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
+    color: isPrimary ? T.accent : T.dim,
+    background: isPrimary ? "rgba(232,68,46,0.14)" : T.surface2,
+    border: `1px solid ${isPrimary ? T.accent : T.line}`,
+    borderRadius: 999, padding: "2px 7px", flexShrink: 0,
+  };
+}
+
+// Drill-down sheet behind a muscle's set count on Home (via the Coverage
+// breakdown list) -- lists every exercise entry that contributed to that
+// muscle's count, each expandable to the individual set's weight and
+// reps. Shows BOTH primary-mover and secondary/assisting entries
+// together (previously this only showed whichever role had more sets,
+// which buried the other role's contribution entirely) -- each row is
+// tagged with its role so it's clear which is which, and the header
+// breaks the total down into "X primary, Y secondary" instead of one
+// combined number. Reuses the same `entries` shape volume.js already
 // builds for the heatmap, so no extra fetch is needed. `muscle` is the
 // already-labeled name at the caller's selected naming mode (as produced
 // by computeMuscleSetCounts), so matching re-derives each entry's label
 // at that same mode rather than comparing raw muscle values directly.
-export default function MuscleSetsDetail({ muscle, role, entries, nameMode, units, onClose }) {
+export default function MuscleSetsDetail({ muscle, entries, nameMode, units, onClose }) {
   const [openIdx, setOpenIdx] = useState(null);
 
-  const rows = (entries || [])
-    .filter((e) => e.muscle !== "Full Body")
-    .filter((e) => {
-      if (role === "primary") {
-        const rawPrimary = e.primaryMuscles && e.primaryMuscles.length > 0 ? e.primaryMuscles : [e.muscle];
-        return rawPrimary.some((p) => isRealMuscle(p) && muscleLabel(p, nameMode) === muscle);
-      }
-      return (e.secondaryMuscles || []).some((sec) => isRealMuscle(sec) && sec !== "Full Body" && muscleLabel(sec, nameMode) === muscle);
-    })
-    .map((e) => ({ exerciseName: e.exerciseName, date: e.date, sets: e.sets }))
-    .sort((a, b) => b.date.localeCompare(a.date));
+  function buildRows(role) {
+    return (entries || [])
+      .filter((e) => e.muscle !== "Full Body")
+      .filter((e) => {
+        if (role === "primary") {
+          const rawPrimary = e.primaryMuscles && e.primaryMuscles.length > 0 ? e.primaryMuscles : [e.muscle];
+          return rawPrimary.some((p) => isRealMuscle(p) && muscleLabel(p, nameMode) === muscle);
+        }
+        return (e.secondaryMuscles || []).some((sec) => isRealMuscle(sec) && sec !== "Full Body" && muscleLabel(sec, nameMode) === muscle);
+      })
+      .map((e) => ({ exerciseName: e.exerciseName, date: e.date, sets: e.sets, role }));
+  }
 
-  const totalSets = rows.reduce((sum, r) => sum + r.sets.length, 0);
+  const rows = [...buildRows("primary"), ...buildRows("secondary")]
+    .sort((a, b) => b.date.localeCompare(a.date) || (a.role === "primary" ? -1 : 1));
+
+  const totalPrimary = rows.filter((r) => r.role === "primary").reduce((sum, r) => sum + r.sets.length, 0);
+  const totalSecondary = rows.filter((r) => r.role === "secondary").reduce((sum, r) => sum + r.sets.length, 0);
+  const totalSets = totalPrimary + totalSecondary;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.8)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div style={{ width: "100%", maxWidth: 420, maxHeight: "85vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
         <div style={{ marginBottom: 4 }}>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{muscle}</div>
-          <div style={{ fontSize: 12, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{role === "primary" ? "Primary" : "Secondary"} &middot; {totalSets} set{totalSets === 1 ? "" : "s"}</div>
+          <div style={{ fontSize: 12, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>
+            {totalSets} set{totalSets === 1 ? "" : "s"} &middot; {totalPrimary} primary, {totalSecondary} secondary
+          </div>
         </div>
 
         <div style={{ marginTop: 14 }}>
@@ -61,7 +86,10 @@ export default function MuscleSetsDetail({ muscle, role, entries, nameMode, unit
                   style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: 12, background: "none", border: "none", textAlign: "left" }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: T.text, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.exerciseName}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                      <span style={{ color: T.text, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.exerciseName}</span>
+                      <span style={roleTag(r.role)}>{r.role === "primary" ? "Primary" : "Secondary"}</span>
+                    </div>
                     <div style={{ color: T.dim, fontSize: 11 }}>{formatDate(r.date)} &middot; {r.sets.length} set{r.sets.length === 1 ? "" : "s"}</div>
                   </div>
                   <span style={chevron(open)}>&rsaquo;</span>

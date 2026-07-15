@@ -190,7 +190,7 @@ function SingleSelectPicker({ label, value, onChange, options, renderLabel, grou
         style={{ ...selectStyle, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
       >
         <span>{value ? display(value) : "Select…"}</span>
-        <IconChevronDown size={11} style={{ color: T.dim }} />
+        <IconChevronDown size={13} style={{ color: T.dim }} />
       </button>
 
       {showSheet && (

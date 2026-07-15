@@ -309,6 +309,25 @@ export function summarizeWorkoutDuration(history) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+// Per-generic-bucket set totals (primary+secondary combined, Full Body
+// tracked separately via its own set count) for the trailing 7 days —
+// today back 6 days, independent of whatever Training Range a chart
+// happens to be showing. Backs "My Plan" (the weekly-set-target module)
+// and its matching body-map coloring mode, both of which need "this
+// week" specifically, not "however many days is currently selected."
+export function computeRollingWeeklyTotals(history) {
+  const cutoff = toLocalDateStr(new Date(Date.now() - 6 * 86400000));
+  const { entries } = summarizeHistory(history || []);
+  const rolling = entries.filter((e) => e.date >= cutoff);
+  const { primary, secondary, fullBodySets } = computeMuscleSetCounts(rolling, "generic");
+  const totals = {};
+  for (const label of new Set([...Object.keys(primary), ...Object.keys(secondary)])) {
+    totals[label] = (primary[label] || 0) + (secondary[label] || 0);
+  }
+  totals["Full Body"] = fullBodySets;
+  return totals;
+}
+
 // entries suitable for computeMuscleVolumes, and a parallel list of
 // { date, volume } points for the volume-over-time chart.
 export function summarizeHistory(history) {

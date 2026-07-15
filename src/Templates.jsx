@@ -8,6 +8,7 @@ import { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconDownload, IconShare, IconDragHandle, IconChevronUp, IconChevronDown } from "./Icons";
 import ExercisePicker, { filterLibrary, splitGroupFor } from "./ExercisePicker";
 import CustomExerciseModal from "./CustomExerciseModal";
+import { useDragReorder, InsertionLine } from "./DragReorder";
 
 const T = {
   bg: "#101216",
@@ -21,65 +22,7 @@ const T = {
 };
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
-const shareIconBtn = { width: 30, height: 30, borderRadius: 999, border: "none", background: "rgba(232,68,46,0.14)", color: T.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
-
-// Renders a thin accent-colored line at the exact insertion point for a
-// dragged row, instead of highlighting the row being hovered over.
-function InsertionLine({ drag, i }) {
-  if (drag.dragIndex === null || drag.dragOverIndex !== i) return null;
-  if (drag.dragIndex > i) return <div style={{ position: "absolute", left: 8, right: 8, top: -6, height: 3, borderRadius: 2, background: T.accent }} />;
-  if (drag.dragIndex < i) return <div style={{ position: "absolute", left: 8, right: 8, bottom: -6, height: 3, borderRadius: 2, background: T.accent }} />;
-  return null;
-}
-
-// Pointer-based drag reorder, works for touch and mouse alike. Used for
-// both the template list and the exercise list within a template — call
-// once per list, at the top of the component (rules of hooks).
-function useDragReorder(setItems) {
-  const rowRefs = useRef([]);
-  const dragOverRef = useRef(null);
-  const [dragIndex, setDragIndex] = useState(null);
-  const [dragOverIndex, setDragOverIndex] = useState(null);
-
-  function startRowDrag(i, e) {
-    e.preventDefault();
-    setDragIndex(i);
-    setDragOverIndex(i);
-    dragOverRef.current = i;
-    const onMove = (ev) => {
-      const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
-      let closest = i;
-      let closestDist = Infinity;
-      rowRefs.current.forEach((el, idx) => {
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-        const mid = rect.top + rect.height / 2;
-        const dist = Math.abs(y - mid);
-        if (dist < closestDist) { closestDist = dist; closest = idx; }
-      });
-      dragOverRef.current = closest;
-      setDragOverIndex(closest);
-    };
-    const onEnd = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onEnd);
-      const to = dragOverRef.current;
-      setItems((prev) => {
-        if (i === to) return prev;
-        const next = [...prev];
-        const [item] = next.splice(i, 1);
-        next.splice(to, 0, item);
-        return next;
-      });
-      setDragIndex(null);
-      setDragOverIndex(null);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onEnd);
-  }
-
-  return { rowRefs, dragIndex, dragOverIndex, startRowDrag };
-}
+const shareIconBtn = { width: 34, height: 34, border: "none", background: "none", color: T.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
 
 export default function Templates({ user, onClose, initialPicks }) {
   const [library, setLibrary] = useState(null);
@@ -417,7 +360,7 @@ export default function Templates({ user, onClose, initialPicks }) {
                   <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{t.name}</div>
                   <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{t.exerciseCount} exercise{t.exerciseCount === 1 ? "" : "s"}</div>
                 </div>
-                <button onClick={() => handleShare(t.id)} aria-label="Share" title="Share" style={shareIconBtn}><IconShare size={14} /></button>
+                <button onClick={() => handleShare(t.id)} aria-label="Share" title="Share" style={shareIconBtn}><IconShare size={18} /></button>
                 <button onClick={() => startEdit(t)} disabled={loadingEditId === t.id} style={{ ...smallBtn, color: T.text }}>
                   {loadingEditId === t.id ? "Loading…" : "Edit"}
                 </button>

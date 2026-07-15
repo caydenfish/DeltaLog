@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
-import { getPrefs, setPref, getHomeModules, setHomeModules } from "./lib/prefs";
+import { getPrefs, setPref, getHomeModules, setHomeModules, getChartRange, setChartRange } from "./lib/prefs";
+import { RANGES } from "./lib/ranges";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
 import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, summarizeWorkoutDuration, bucketWeightHistory, bucketDailyVolume, bucketSeries, groupWorkoutsByDate } from "./lib/volume";
@@ -11,10 +12,11 @@ import { InlineLoading } from "./LoadingSpinner";
 import { toLocalDateStr } from "./lib/time";
 import BodyHeatmap from "./BodyHeatmap";
 import MuscleSetsDetail from "./MuscleSetsDetail";
-import HomeChartCard from "./HomeChartCard";
+import HomeChartCard, { RangeSwitcher } from "./HomeChartCard";
+import MyPlan from "./MyPlan";
 import HomeModulesEditor from "./HomeModulesEditor";
 import Logo from "./Logo";
-import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil } from "./Icons";
+import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX } from "./Icons";
 import Templates from "./Templates";
 import FAQ from "./FAQ";
 import AdminExercises from "./AdminExercises";
@@ -50,13 +52,6 @@ const T = {
   accent: "#E8442E",
   green: "#3BA55D",
 };
-
-const RANGES = [
-  { key: "7d", label: "7 Days", days: 7 },
-  { key: "30d", label: "30 Days", days: 30 },
-  { key: "90d", label: "90 Days", days: 90 },
-  { key: "365d", label: "1 Year", days: 365 },
-];
 
 function isoDaysAgo(days) {
   const d = new Date();
@@ -129,42 +124,41 @@ function buildLastWorkoutInsight(history) {
 }
 
 export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset }) {
-  const [range, setRangeState] = useState(() => getPrefs().homeRange);
-  function setRange(key) {
-    setRangeState(key);
-    setPref("homeRange", key);
+  // Each chart that has a Training Range keeps its own independent
+  // selection (e.g. Bodyweight pinned to 90 Days while Volume stays at
+  // 30 Days) instead of one range controlling all of them -- see
+  // getChartRange/setChartRange in lib/prefs.js.
+  function useModuleRange(chartId) {
+    const [rangeKey, setRangeKeyState] = useState(() => getChartRange(chartId));
+    function setRangeKey(key) {
+      setRangeKeyState(key);
+      setChartRange(chartId, key);
+    }
+    return [rangeKey, setRangeKey];
   }
+  const [volumeRange, setVolumeRange] = useModuleRange("volume");
+  const [weightRange, setWeightRange] = useModuleRange("weight");
+  const [workoutTimeRange, setWorkoutTimeRange] = useModuleRange("workoutTime");
+  const [muscleRange, setMuscleRange] = useModuleRange("muscleBreakdown");
   // Reorderable/toggleable home dashboard modules (pencil icon, top left).
   const [homeModules, setHomeModulesState] = useState(() => getHomeModules());
   const [showHomeModulesEditor, setShowHomeModulesEditor] = useState(false);
   function updateHomeModules(next) {
-    setHomeModulesState(next);
-    setHomeModules(next);
+    setHomeModulesState((prev) => {
+      const resolved = typeof next === "function" ? next(prev) : next;
+      setHomeModules(resolved);
+      return resolved;
+    });
   }
   // The date a person tapped on the Volume/Weight/Workout Time charts —
   // shared across all three so selecting one date highlights it
-  // everywhere at once. Cleared on any scroll or on a tap outside a
-  // chart, rather than sitting there indefinitely.
+  // everywhere at once, and surfaced together in the Selected Day
+  // summary card below the range row. Cleared (back to the normal
+  // aggregate charts) on any scroll or on a tap outside a chart, rather
+  // than sitting there indefinitely.
   const [lockedTs, setLockedTs] = useState(null);
-  const chartsSectionRef = useRef(null);
-  const scrollIdleTimer = useRef(null);
-  const [showFloatingRange, setShowFloatingRange] = useState(false);
-  function handleHomeScroll(e) {
+  function handleHomeScroll() {
     setLockedTs(null);
-    const el = chartsSectionRef.current;
-    if (el) {
-      const rect = el.getBoundingClientRect();
-      const containerRect = e.currentTarget.getBoundingClientRect();
-      const visible = rect.top < containerRect.bottom - 60 && rect.bottom > containerRect.top + 60;
-      setShowFloatingRange(visible);
-    } else {
-      setShowFloatingRange(false);
-    }
-    clearTimeout(scrollIdleTimer.current);
-    // Scrolling away from the charts hides it immediately (above); this
-    // also hides it once scrolling has simply stopped for a beat, so it
-    // doesn't linger on screen forever once someone's settled on a spot.
-    scrollIdleTimer.current = setTimeout(() => setShowFloatingRange(false), 1400);
   }
   // Ticks once a second while a workout is active so the Resume Workout
   // button's elapsed-time readout visibly moves, rather than showing a
@@ -237,7 +231,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // stuck showing labels derived from the small hardcoded fallback.
   const [taxonomyVersion, setTaxonomyVersion] = useState(getTaxonomyVersion);
   useEffect(() => subscribeTaxonomy(() => setTaxonomyVersion(getTaxonomyVersion())), []);
-  const [muscleDetail, setMuscleDetail] = useState(null); // { muscle, role } when the sets drill-down sheet is open
+  const [muscleDetail, setMuscleDetail] = useState(null); // { muscle } when the sets drill-down sheet is open
   const [scoreDisplay, setScoreDisplayState] = useState(() => getPrefs().scoreDisplay);
   const [weightEntryMode, setWeightEntryModeState] = useState(() => getPrefs().weightEntryMode);
   const [plate55Scope, setPlate55ScopeState] = useState(() => getPrefs().plate55Scope);
@@ -548,27 +542,30 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     }
   }
 
-  const rangeIdx = RANGES.findIndex((r) => r.key === range);
-  const rangeDef = RANGES[rangeIdx];
-  function shiftRange(delta) {
-    const next = rangeIdx + delta;
-    if (next < 0 || next >= RANGES.length) return;
-    setRange(RANGES[next].key);
-  }
-  const filteredHistory = useMemo(() => {
+  function filterHistoryByRange(rangeKey) {
     if (!history) return [];
-    if (!rangeDef.days) return history;
-    const cutoff = isoDaysAgo(rangeDef.days);
+    const def = RANGES.find((r) => r.key === rangeKey) || RANGES[1];
+    if (!def.days) return history;
+    const cutoff = isoDaysAgo(def.days);
     return history.filter((w) => w.completed_at >= cutoff);
-  }, [history, rangeDef]);
+  }
 
-  const { entries, dailyVolume: dailyVolumeLb } = useMemo(
-    () => summarizeHistory(filteredHistory),
-    [filteredHistory]
+  const volumeFilteredHistory = useMemo(() => filterHistoryByRange(volumeRange), [history, volumeRange]);
+  const weightFilteredHistory = useMemo(() => filterHistoryByRange(weightRange), [history, weightRange]);
+  const workoutTimeFilteredHistory = useMemo(() => filterHistoryByRange(workoutTimeRange), [history, workoutTimeRange]);
+  const muscleFilteredHistory = useMemo(() => filterHistoryByRange(muscleRange), [history, muscleRange]);
+
+  const { entries, dailyVolume: muscleDailyVolumeLb } = useMemo(
+    () => summarizeHistory(muscleFilteredHistory),
+    [muscleFilteredHistory]
+  );
+  const { dailyVolume: volumeDailyVolumeLb } = useMemo(
+    () => summarizeHistory(volumeFilteredHistory),
+    [volumeFilteredHistory]
   );
   const dailyVolume = useMemo(
-    () => bucketDailyVolume(dailyVolumeLb.map((d) => ({ ...d, volume: Math.round(toDisplay(d.volume, units)) })), range),
-    [dailyVolumeLb, units, range]
+    () => bucketDailyVolume(volumeDailyVolumeLb.map((d) => ({ ...d, volume: Math.round(toDisplay(d.volume, units)) })), volumeRange),
+    [volumeDailyVolumeLb, units, volumeRange]
   );
   const { primary, secondary, fullBodySets } = useMemo(() => computeMuscleSetCounts(entries, muscleNameMode), [entries, muscleNameMode, taxonomyVersion]);
   // Computed directly from the raw workout data for the selected range,
@@ -576,20 +573,25 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // drops sets from any exercise it can't categorize (e.g. a deleted
   // custom exercise), which would quietly undercount the total.
   const totalSetsInRange = useMemo(
-    () => filteredHistory.reduce(
+    () => muscleFilteredHistory.reduce(
       (total, w) => total + (w.workout_exercises || []).reduce((s, we) => s + (we.sets || []).filter((set) => !set.is_warmup).length, 0),
       0
     ),
-    [filteredHistory]
+    [muscleFilteredHistory]
   );
   const weightHistory = useMemo(
-    () => bucketWeightHistory(summarizeWeightHistory(filteredHistory), range),
-    [filteredHistory, range]
+    () => bucketWeightHistory(summarizeWeightHistory(weightFilteredHistory), weightRange),
+    [weightFilteredHistory, weightRange]
   );
   const workoutTimeData = useMemo(
-    () => bucketSeries(summarizeWorkoutDuration(filteredHistory), range, "minutes", "sum"),
-    [filteredHistory, range]
+    () => bucketSeries(summarizeWorkoutDuration(workoutTimeFilteredHistory), workoutTimeRange, "minutes", "sum"),
+    [workoutTimeFilteredHistory, workoutTimeRange]
   );
+
+  // The chart-lock summary card (below) needs to know each metric's
+  // current range to label the selected bucket correctly, since they can
+  // now differ per chart.
+
 
   // The calendar always reflects real training history, independent of
   // whatever range the volume chart above happens to be showing.
@@ -627,22 +629,22 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           {/* Header — pinned while the rest of the page scrolls beneath it */}
           <div style={{ padding: "20px 0 8px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", position: "sticky", top: 0, background: T.bg, zIndex: 5 }}>
             <div>
-              <button onClick={() => setShowHomeModulesEditor(true)} aria-label="Customize home" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
-                <IconPencil size={14} />
+              <button onClick={() => setShowHomeModulesEditor(true)} aria-label="Customize home" style={ghostIconBtn}>
+                <IconPencil size={19} />
               </button>
             </div>
             <Logo size={64} />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button onClick={openAnnouncements} aria-label="Announcements" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
-                <IconBell size={15} />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+              <button onClick={openAnnouncements} aria-label="Announcements" style={{ ...ghostIconBtn, position: "relative" }}>
+                <IconBell size={19} />
                 {unseenAnnouncements && (
-                  <span style={{ position: "absolute", top: -3, left: -3, width: 10, height: 10, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
+                  <span style={{ position: "absolute", top: 4, right: 4, width: 9, height: 9, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
                 )}
               </button>
-              <button onClick={() => setShowMenu(true)} aria-label="Settings" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
-                <IconMenu size={16} />
+              <button onClick={() => setShowMenu(true)} aria-label="Settings" style={{ ...ghostIconBtn, position: "relative" }}>
+                <IconMenu size={20} />
                 {unseenFeedbackCount > 0 && (
-                  <span style={{ position: "absolute", top: -3, left: -3, width: 10, height: 10, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
+                  <span style={{ position: "absolute", top: 4, right: 4, width: 9, height: 9, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
                 )}
               </button>
             </div>
@@ -674,20 +676,42 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 </div>
               )}
 
-              <div ref={chartsSectionRef}>
-                {homeModules.some((m) => m.enabled && ["volume", "weight", "workoutTime", "muscleBreakdown"].includes(m.id)) && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px", marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Training range</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <button onClick={() => shiftRange(-1)} disabled={rangeIdx === 0} style={rangeArrowBtn(rangeIdx === 0)} aria-label="Shorter range">‹</button>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text, minWidth: 62, textAlign: "center" }}>{rangeDef.label}</div>
-                      <button onClick={() => shiftRange(1)} disabled={rangeIdx === RANGES.length - 1} style={rangeArrowBtn(rangeIdx === RANGES.length - 1)} aria-label="Longer range">›</button>
+              <div>
+                {lockedTs != null && (() => {
+                  const volPoint = dailyVolume.find((d) => d.ts === lockedTs);
+                  const weightPoint = weightHistory.find((d) => d.ts === lockedTs);
+                  const timePoint = workoutTimeData.find((d) => d.ts === lockedTs);
+                  return (
+                    <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
+                          {new Date(lockedTs).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                        </div>
+                        <button onClick={() => setLockedTs(null)} aria-label="Clear selected day" style={{ background: "none", border: "none", color: T.dim, padding: 2, display: "flex" }}><IconX size={13} /></button>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <div style={{ flex: 1, textAlign: "center" }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: T.accent }}>{volPoint ? volPoint.volume.toLocaleString() : "—"}</div>
+                          <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Volume{volPoint ? ` (${units})` : ""}</div>
+                        </div>
+                        <div style={{ flex: 1, textAlign: "center", borderLeft: `1px solid ${T.line}`, borderRight: `1px solid ${T.line}` }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: T.green }}>{weightPoint ? weightPoint.weight.toLocaleString() : "—"}</div>
+                          <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Bodyweight{weightPoint ? ` (${units})` : ""}</div>
+                        </div>
+                        <div style={{ flex: 1, textAlign: "center" }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: "#3B82F6" }}>{timePoint ? timePoint.minutes.toLocaleString() : "—"}</div>
+                          <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Time{timePoint ? " (min)" : ""}</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 10, color: T.dim, marginTop: 6, textAlign: "center" }}>Values only line up across charts if their Training Ranges overlap this date</div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {homeModules.filter((m) => m.enabled).map((m) => {
                   switch (m.id) {
+                    case "myPlan":
+                      return <MyPlan key={m.id} userId={user.id} history={history} />;
                     case "volume":
                       return (
                         <HomeChartCard
@@ -696,7 +720,8 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           data={dailyVolume}
                           dataKey="volume"
                           color={T.accent}
-                          range={range}
+                          range={volumeRange}
+                          onRangeChange={setVolumeRange}
                           tooltipLabel="Volume"
                           valueFormatter={(v) => `${v.toLocaleString()} ${units}`}
                           emptyMessage="No completed workouts in this range yet."
@@ -712,7 +737,8 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           data={weightHistory}
                           dataKey="weight"
                           color={T.green}
-                          range={range}
+                          range={weightRange}
+                          onRangeChange={setWeightRange}
                           tooltipLabel="Bodyweight"
                           valueFormatter={(v) => `${v.toLocaleString()} ${units}`}
                           emptyMessage="No bodyweight logged in this range. Add it after a workout or in Settings."
@@ -728,7 +754,8 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           data={workoutTimeData}
                           dataKey="minutes"
                           color="#3B82F6"
-                          range={range}
+                          range={workoutTimeRange}
+                          onRangeChange={setWorkoutTimeRange}
                           tooltipLabel="Workout time"
                           valueFormatter={(v) => `${v.toLocaleString()} min`}
                           emptyMessage="No completed workouts in this range yet."
@@ -739,14 +766,15 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                     case "muscleBreakdown":
                       return (
                         <div key={m.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                            <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Muscle breakdown</div>
-                            <div style={{ fontSize: 11, color: T.dim }}>{totalSetsInRange} set{totalSetsInRange === 1 ? "" : "s"}</div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
+                            <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, flexShrink: 0 }}>Muscle breakdown</div>
+                            <RangeSwitcher range={muscleRange} onChange={setMuscleRange} />
                           </div>
+                          <div style={{ textAlign: "right", fontSize: 11, color: T.dim, marginBottom: 8 }}>{totalSetsInRange} set{totalSetsInRange === 1 ? "" : "s"}</div>
                           {Object.keys(primary).length === 0 && Object.keys(secondary).length === 0 ? (
                             <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Nothing logged in this range yet.</div>
                           ) : (
-                            <BodyHeatmap primary={primary} secondary={secondary} fullBodySets={fullBodySets} entries={entries} onSelectMuscle={(muscle, role) => setMuscleDetail({ muscle, role })} />
+                          <BodyHeatmap primary={primary} secondary={secondary} fullBodySets={fullBodySets} entries={entries} onSelectMuscle={(muscle) => setMuscleDetail({ muscle })} userId={user.id} fullHistory={history} />
                           )}
                         </div>
                       );
@@ -813,13 +841,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
             </>
           )}
         </div>
-        {showFloatingRange && (
-          <div style={{ position: "absolute", top: 66, left: "50%", transform: "translateX(-50%)", zIndex: 8, display: "flex", alignItems: "center", gap: 6, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 999, padding: "5px 8px", boxShadow: "0 4px 14px rgba(0,0,0,0.35)" }}>
-            <button onClick={() => shiftRange(-1)} disabled={rangeIdx === 0} style={rangeArrowBtn(rangeIdx === 0)} aria-label="Shorter range">‹</button>
-            <div style={{ fontSize: 12, fontWeight: 600, color: T.text, minWidth: 56, textAlign: "center" }}>{rangeDef.label}</div>
-            <button onClick={() => shiftRange(1)} disabled={rangeIdx === RANGES.length - 1} style={rangeArrowBtn(rangeIdx === RANGES.length - 1)} aria-label="Longer range">›</button>
-          </div>
-        )}
 
         {/* Start workout */}
         <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
@@ -1085,7 +1106,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {muscleDetail && (
         <MuscleSetsDetail
           muscle={muscleDetail.muscle}
-          role={muscleDetail.role}
           entries={entries}
           nameMode="detailed"
           units={units}
@@ -1347,7 +1367,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 }
 
 const navBtn = { width: 28, height: 28, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, fontSize: 14 };
-const rangeArrowBtn = (disabled) => ({ width: 22, height: 22, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface2, color: disabled ? "#3A404B" : T.dim, fontSize: 12, cursor: disabled ? "default" : "pointer" });
+const ghostIconBtn = { width: 38, height: 38, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
 
 function shiftMonth(setCalendarMonth, delta) {
   setCalendarMonth((prev) => {

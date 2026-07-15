@@ -9,18 +9,21 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
-  "1.11.2": {
+  "1.11.3": {
     title: "A customizable Home, and a clearer muscle breakdown",
     items: [
-      "Home now has a pencil icon (top left) that opens a Customize Home screen — turn any dashboard section on or off, and reorder them to match how you actually use the app.",
+      "Home now has a pencil icon (top left) that opens a Customize Home screen — turn any dashboard section on or off, and drag to reorder them to match how you actually use the app.",
       "Added a Workout Time chart alongside Volume and Bodyweight, showing how long your sessions have been running over time.",
-      "Tapping a point on the Volume, Bodyweight, or Workout Time charts now locks in that date across all three at once, so you can compare them side by side — tap elsewhere or scroll to clear it.",
-      "While scrolling through the chart section, a small range switcher floats into view so you can jump between 7 Days/30 Days/90 Days/1 Year without scrolling back up.",
-      "The muscle breakdown body map is now purely visual, with four clear color tiers (None/Low/Moderate/High) and a legend, instead of a tap-to-select outline. A new \"Coverage breakdown\" list underneath shows every muscle group's exact set count, including ones you haven't trained yet, so it's obvious what's been missed.",
-      "The Radar view is decluttered — capped to your top 8 trained muscles, each with its set count labeled right on the chart.",
+      "Tapping a point on the Volume, Bodyweight, or Workout Time charts now pulls up a Selected Day card showing all three values for that date together — scroll or tap elsewhere to return to the normal view.",
+      "The Training range switcher (7 Days/30 Days/90 Days/1 Year) now stays pinned near the top while you scroll through the chart section, instead of only being reachable by scrolling back to the very top of Home.",
+      "The muscle breakdown body map is now purely visual, with four clearly distinct color tiers (None/Low/Moderate/High) and a legend, instead of a tap-to-select outline. A new \"Coverage breakdown\" list underneath shows every muscle group's exact set count, including ones you haven't trained yet, so it's obvious what's been missed — tap any trained muscle to see both its primary and secondary sets broken out together.",
+      "The Radar view is decluttered — capped to your top 8 trained muscles, with a subtle scale of numbers running up the middle instead of a label stamped at every point.",
       "The exercise detail sheet in Exercise Library now has a back button pinned to the top, and the Google search link is now a clearly-labeled \"Search\" button instead of a small icon.",
       "Share buttons (templates, workout history) now use a proper share icon instead of a plain arrow character.",
-      "General icon polish throughout the app — drag handles and expand/collapse arrows now use real icons instead of text characters.",
+      "New: My Plan. Set a weekly set target per muscle group (slider, right on Home) and track this rolling week against it — gray until you've started, orange while under target, green once you've hit it. The Body map now has a matching \"My Plan\" view that colors the whole silhouette the same way, so you can see at a glance which muscles still need work this week.",
+      "Each chart on Home (Volume, Bodyweight, Workout Time, Muscle breakdown) now keeps its own independent time range instead of one range controlling all of them — pin Bodyweight to 90 Days while keeping Volume at 30 Days, for example. The range switcher now lives right on each chart's own header.",
+      "Training Preferences is now split into two collapsed groups (Training Focus & Logging, Rest Timer) instead of every field showing at once — tap into whichever one you need.",
+      "General icon polish throughout the app — drag handles and expand/collapse arrows now use real icons instead of text characters, and the icon buttons at the top of Home (customize, announcements, settings) are bigger, better centered, and no longer sit inside a filled circle.",
     ],
   },
   "1.11.1": {

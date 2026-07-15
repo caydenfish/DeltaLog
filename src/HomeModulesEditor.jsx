@@ -1,5 +1,6 @@
 import { HOME_MODULE_LABELS } from "./lib/prefs";
-import { IconChevronUp, IconChevronDown } from "./Icons";
+import { IconDragHandle } from "./Icons";
+import { useDragReorder, InsertionLine } from "./DragReorder";
 
 const T = {
   bg: "#101216",
@@ -11,27 +12,18 @@ const T = {
   accent: "#E8442E",
 };
 
-function move(arr, from, to) {
-  const next = [...arr];
-  const [item] = next.splice(from, 1);
-  next.splice(to, 0, item);
-  return next;
-}
-
 // The pencil-icon sheet on Home: lets someone turn dashboard modules on
 // or off and reorder them, without touching anything else about how
-// each module itself renders. Deliberately plain up/down buttons rather
-// than drag-and-drop — reliable with one thumb on a touchscreen, no
-// pointer/touch-event plumbing to get wrong.
+// each module itself renders. Reorder is drag-based (same
+// touch-and-mouse pointer drag used for Templates/exercise lists), not
+// up/down buttons -- a drag handle is the natural control on a
+// touchscreen, and matches how reordering already works everywhere else
+// reordering exists in the app.
 export default function HomeModulesEditor({ modules, onChange, onClose }) {
+  const drag = useDragReorder(onChange);
+
   function toggle(idx) {
-    const next = modules.map((m, i) => (i === idx ? { ...m, enabled: !m.enabled } : m));
-    onChange(next);
-  }
-  function moveItem(idx, delta) {
-    const to = idx + delta;
-    if (to < 0 || to >= modules.length) return;
-    onChange(move(modules, idx, to));
+    onChange(modules.map((m, i) => (i === idx ? { ...m, enabled: !m.enabled } : m)));
   }
 
   return (
@@ -44,24 +36,23 @@ export default function HomeModulesEditor({ modules, onChange, onClose }) {
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 21, fontWeight: 700, color: T.text }}>Customize Home</div>
           <button onClick={onClose} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "5px 12px", fontSize: 13 }}>Done</button>
         </div>
-        <div style={{ fontSize: 12.5, color: T.dim, marginBottom: 14 }}>Toggle modules on or off, and use the arrows to change their order on your dashboard.</div>
+        <div style={{ fontSize: 12.5, color: T.dim, marginBottom: 14 }}>Toggle modules on or off, and drag the handle to reorder them on your dashboard.</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {modules.map((m, i) => (
-            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 12px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <button
-                  onClick={() => moveItem(i, -1)}
-                  disabled={i === 0}
-                  aria-label="Move up"
-                  style={{ width: 22, height: 18, borderRadius: 5, border: `1px solid ${T.line}`, background: "none", color: i === 0 ? "#3A404B" : T.dim, display: "flex", alignItems: "center", justifyContent: "center" }}
-                ><IconChevronUp size={11} /></button>
-                <button
-                  onClick={() => moveItem(i, 1)}
-                  disabled={i === modules.length - 1}
-                  aria-label="Move down"
-                  style={{ width: 22, height: 18, borderRadius: 5, border: `1px solid ${T.line}`, background: "none", color: i === modules.length - 1 ? "#3A404B" : T.dim, display: "flex", alignItems: "center", justifyContent: "center" }}
-                ><IconChevronDown size={11} /></button>
+            <div
+              key={m.id}
+              ref={(el) => (drag.rowRefs.current[i] = el)}
+              style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 12px", opacity: drag.dragIndex === i ? 0.5 : 1 }}
+            >
+              <InsertionLine drag={drag} i={i} />
+              <div
+                onPointerDown={(e) => drag.startRowDrag(i, e)}
+                aria-label="Drag to reorder"
+                title="Drag to reorder"
+                style={{ cursor: "grab", color: T.dim, touchAction: "none", flexShrink: 0, display: "flex", alignItems: "center", padding: "4px 2px" }}
+              >
+                <IconDragHandle size={18} />
               </div>
               <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: m.enabled ? T.text : T.dim }}>{HOME_MODULE_LABELS[m.id] || m.id}</div>
               <button

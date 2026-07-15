@@ -1627,3 +1627,29 @@ export async function fetchDotsPercentile() {
   if (error) throw error;
   return data;
 }
+
+// The signed-in user's weekly set targets per muscle group, backing the
+// My Plan home module. Returns a plain { [muscle_group]: weekly_target_sets }
+// map (not the raw rows) since that's the shape every caller wants —
+// missing muscle groups just aren't in the map, callers fall back to a
+// sensible default rather than this function inventing one.
+export async function fetchMuscleGroupTargets(userId) {
+  const { data, error } = await supabase
+    .from("muscle_group_targets")
+    .select("muscle_group, weekly_target_sets")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const map = {};
+  for (const row of data || []) map[row.muscle_group] = row.weekly_target_sets;
+  return map;
+}
+
+// Upserts a single muscle group's weekly set target (one row per
+// muscle_group per user). Called per-slider on My Plan, debounced
+// client-side so dragging a slider doesn't fire a write per tick.
+export async function saveMuscleGroupTarget(userId, muscleGroup, weeklyTargetSets) {
+  const { error } = await supabase
+    .from("muscle_group_targets")
+    .upsert({ user_id: userId, muscle_group: muscleGroup, weekly_target_sets: weeklyTargetSets, updated_at: new Date().toISOString() });
+  if (error) throw error;
+}

@@ -662,7 +662,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
                   rel="noopener noreferrer"
                   style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 999, padding: "6px 11px", fontSize: 12, fontWeight: 600, color: T.text, textDecoration: "none" }}
                 >
-                  <IconSearch size={12} style={{ color: T.dim }} />
+                  <IconSearch size={14} style={{ color: T.dim }} />
                   Search
                 </a>
               </div>
