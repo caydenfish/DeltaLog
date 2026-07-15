@@ -9,6 +9,16 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.10.9": {
+    title: "Pinned headers, and a real fix for image flicker",
+    items: [
+      "Every screen's header now stays pinned in place while you scroll the content beneath it — Templates, Settings, Exercise Library, Workout History, and everywhere else.",
+      "The template builder's Save Template button is now pinned at the bottom of the screen, always reachable without scrolling.",
+      "\"Full Body\" removed from Exercise Library's browse-by-muscle-group tiles — those exercises now show up under their real muscle groups instead (or via View All / search).",
+      "Rest Timer settings moved into Training Preferences instead of being their own separate section.",
+      "Fixed a remaining cause of image flicker when saving a workout image with a photo background: the photo is now resized before use instead of processed at full camera resolution.",
+    ],
+  },
   "1.10.8": {
     title: "Template builder, matched to the workout logger",
     items: [

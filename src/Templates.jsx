@@ -363,9 +363,9 @@ export default function Templates({ user, onClose, initialPicks }) {
     : [];
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflow: "hidden" }}>
       <style>{`button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>
-      <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "100%", maxWidth: 400, height: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
           <button onClick={mode === "list" ? onClose : () => { setMode("list"); setEditingId(null); }} aria-label={mode === "list" ? "Close" : "Cancel"} style={smallBtn}>
             ‹
@@ -379,7 +379,7 @@ export default function Templates({ user, onClose, initialPicks }) {
         {error && <div style={{ margin: 16, padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.accent}`, color: T.accent, fontSize: 13 }}>{error}</div>}
 
         {mode === "list" ? (
-          <div style={{ padding: 16, flex: 1 }}>
+          <div style={{ padding: 16, flex: 1, minHeight: 0, overflowY: "auto" }}>
             <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
               <button
                 onClick={() => { setShowImport(true); setImportCode(""); setImportPreview(null); setImportError(null); }}
@@ -453,7 +453,8 @@ export default function Templates({ user, onClose, initialPicks }) {
             )}
           </div>
         ) : (
-          <div style={{ padding: 16, flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "16px 16px 0", overflowY: "auto", maxHeight: "42vh", flexShrink: 0 }}>
             <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Template name</div>
             <input
               autoFocus
@@ -511,36 +512,41 @@ export default function Templates({ user, onClose, initialPicks }) {
                 </div>
               </>
             )}
+            </div>
 
-            <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Add exercises</div>
-            {library === null ? (
-              <InlineLoading label="Loading exercises…" padding="8px 6px" />
-            ) : (
-              <div style={{ flex: 1, minHeight: 0, overflow: "hidden", marginBottom: 16, display: "flex", flexDirection: "column" }}>
-                <ExercisePicker
-                  list={candidates}
-                  search={search} onSearchChange={setSearch}
-                  muscleFilter={muscleFilter} onToggleMuscle={(m) => setMuscleFilter(muscleFilter.includes(m) ? muscleFilter.filter((x) => x !== m) : [...muscleFilter, m])} onApplySplit={applyPickerSplit}
-                  equipFilter={equipFilter} onToggleEquip={(eq) => setEquipFilter(equipFilter.includes(eq) ? equipFilter.filter((x) => x !== eq) : [...equipFilter, eq])}
-                  performedFilter={performedFilter} onSetPerformed={setPerformedFilter}
-                  sourceFilter={sourceFilter} onSetSource={setSourceFilter}
-                  showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
-                  onPick={addPick}
-                  onToggleFavorite={toggleFavorite}
-                  footer={createCustomFooter(addPick)}
-                  fillHeight
-                />
-              </div>
-            )}
+            <div style={{ padding: "12px 16px 0", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, flexShrink: 0 }}>Add exercises</div>
+              {library === null ? (
+                <InlineLoading label="Loading exercises…" padding="8px 6px" />
+              ) : (
+                <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                  <ExercisePicker
+                    list={candidates}
+                    search={search} onSearchChange={setSearch}
+                    muscleFilter={muscleFilter} onToggleMuscle={(m) => setMuscleFilter(muscleFilter.includes(m) ? muscleFilter.filter((x) => x !== m) : [...muscleFilter, m])} onApplySplit={applyPickerSplit}
+                    equipFilter={equipFilter} onToggleEquip={(eq) => setEquipFilter(equipFilter.includes(eq) ? equipFilter.filter((x) => x !== eq) : [...equipFilter, eq])}
+                    performedFilter={performedFilter} onSetPerformed={setPerformedFilter}
+                    sourceFilter={sourceFilter} onSetSource={setSourceFilter}
+                    showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
+                    onPick={addPick}
+                    onToggleFavorite={toggleFavorite}
+                    footer={createCustomFooter(addPick)}
+                    fillHeight
+                  />
+                </div>
+              )}
+            </div>
 
-            <button onClick={handleSave} disabled={!name.trim() || picks.length === 0 || saving} style={{
-              width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-              background: !name.trim() || picks.length === 0 || saving ? T.surface2 : T.accent,
-              color: !name.trim() || picks.length === 0 || saving ? T.dim : "#fff",
-              fontSize: 15, fontWeight: 700,
-            }}>
-              {saving ? "Saving…" : editingId ? "Save Changes" : "Save Template"}
-            </button>
+            <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface, flexShrink: 0 }}>
+              <button onClick={handleSave} disabled={!name.trim() || picks.length === 0 || saving} style={{
+                width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+                background: !name.trim() || picks.length === 0 || saving ? T.surface2 : T.accent,
+                color: !name.trim() || picks.length === 0 || saving ? T.dim : "#fff",
+                fontSize: 15, fontWeight: 700,
+              }}>
+                {saving ? "Saving…" : editingId ? "Save Changes" : "Save Template"}
+              </button>
+            </div>
           </div>
         )}
       </div>

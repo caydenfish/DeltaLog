@@ -51,17 +51,40 @@ export default function ExportWorkoutModal({ data, onClose }) {
   // same-origin data URL up front, well before Save Image is tapped,
   // means the capture never needs a live network fetch at all -- nothing
   // left to hang on.
+  //
+  // That data URL is also downscaled here rather than passed through at
+  // full camera resolution. A progress photo straight off a phone camera
+  // can be several megapixels; decoding and painting that at full size
+  // during html2canvas's capture pass is real, synchronous main-thread
+  // work, and is what was still showing up as a visible flicker/stutter
+  // specifically with a photo background, worst on mid-range Android
+  // devices (see prior investigation notes) even though the preview only
+  // ever displays it at 260-320px wide. Capping the longest edge and
+  // re-encoding as JPEG cuts both the decode cost and the data URL's own
+  // size substantially, with no visible quality loss at export size.
+  const MAX_PHOTO_DIM = 1200;
   useEffect(() => {
     if (!data.photoUrl) { setPhotoDataUrl(null); return; }
     let cancelled = false;
     fetch(data.photoUrl)
       .then((r) => r.blob())
       .then((blob) => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(objectUrl); resolve(img); };
+        img.onerror = (e) => { URL.revokeObjectURL(objectUrl); reject(e); };
+        img.src = objectUrl;
       }))
+      .then((img) => {
+        const scale = Math.min(1, MAX_PHOTO_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        return canvas.toDataURL("image/jpeg", 0.85);
+      })
       .then((dataUrl) => { if (!cancelled) setPhotoDataUrl(dataUrl); })
       .catch(() => { if (!cancelled) setPhotoDataUrl(null); }); // falls back to the remote URL below
     return () => { cancelled = true; };

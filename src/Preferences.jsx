@@ -49,7 +49,7 @@ function SubScreen({ title, onBack, children }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 40, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: 420, minHeight: "100vh", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
+        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onBack} aria-label="Back" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>&#8249;</button>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, textAlign: "center" }}>{title.toUpperCase()}</div>
           <div style={{ width: 26 }} />
@@ -98,7 +98,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // showTrainingPrefs/showUnitsGroup accordion-toggle booleans now that
   // "Units" and "Training Preferences" are real full-screen destinations
   // (SubScreen) rather than inline-expanding sections.
-  const [screen, setScreen] = useState(null); // null | "units" | "training" | "restTimer"
+  const [screen, setScreen] = useState(null); // null | "units" | "training"
   const [notifPermission, setNotifPermission] = useState(() => getNotificationPermission());
 
   async function handleToggleRestTimerNotification(v) {
@@ -138,8 +138,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // findable by search without requiring a tap into that sub-screen —
   // shown inline, right in the settings list, while a search is active.
   const unitsSearchMatch = searchActive && ["units", "timeFormat"].some(matches);
-  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "weightEntryMode", "plateSizes", "scientificNames"].some(matches);
-  const restTimerSearchMatch = searchActive && ["restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled"].some(matches);
+  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled"].some(matches);
 
   function update(key, val) {
     if (controlled) {
@@ -810,7 +809,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
             <button onClick={() => setScreen("training")} style={navRowBtn}>
               <div>
                 <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Training Preferences</div>
-                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Training focus, strength score, set entry, big plates, muscle names</div>
+                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Training focus, strength score, set entry, big plates, muscle names, rest timer</div>
               </div>
               <div style={{ color: T.dim, fontSize: 16 }}>›</div>
             </button>
@@ -818,21 +817,12 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
           {searchActive && trainingSearchMatch && (
             <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
               {renderTrainingFields()}
-            </div>
-          )}
-
-          {!searchActive && (
-            <button onClick={() => setScreen("restTimer")} style={navRowBtn}>
-              <div>
-                <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Rest Timer</div>
-                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Duration, plus sound and vibration when it ends</div>
-              </div>
-              <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-            </button>
-          )}
-          {searchActive && restTimerSearchMatch && (
-            <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
-              {renderRestTimerFields()}
+              {(matches("restSeconds") || matches("warmupRestSeconds") || matches("warmupRestEnabled") || matches("restTimerSoundEnabled") || matches("restTimerVibrationEnabled") || matches("restTimerNotificationEnabled")) && (
+                <>
+                  <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "4px 0 10px" }}>Rest Timer</div>
+                  {renderRestTimerFields()}
+                </>
+              )}
             </div>
           )}
         </>
@@ -847,11 +837,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
       {screen === "training" && (
         <SubScreen title="Training Preferences" onBack={() => setScreen(null)}>
           {renderTrainingFields()}
-        </SubScreen>
-      )}
-
-      {screen === "restTimer" && (
-        <SubScreen title="Rest Timer" onBack={() => setScreen(null)}>
+          <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "4px 0 10px" }}>Rest Timer</div>
           {renderRestTimerFields()}
         </SubScreen>
       )}

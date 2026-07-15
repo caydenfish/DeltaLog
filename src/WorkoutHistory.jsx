@@ -680,8 +680,7 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <style>{`button { cursor: pointer; }`}</style>
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
-          {selectMode ? (
+        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
             <button onClick={exitSelectMode} aria-label="Cancel" style={smallBtn}>Cancel</button>
           ) : (
             <button onClick={handleBack} aria-label="Back" style={smallBtn}>‹</button>

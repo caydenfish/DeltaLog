@@ -569,8 +569,8 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       <div style={{ width: "100%", maxWidth: 400, background: T.bg, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 100px" }}>
-          {/* Header — scrolls with the rest of the page */}
-          <div style={{ padding: "20px 0 8px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }}>
+          {/* Header — pinned while the rest of the page scrolls beneath it */}
+          <div style={{ padding: "20px 0 8px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", position: "sticky", top: 0, background: T.bg, zIndex: 5 }}>
             <div />
             <Logo size={64} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
