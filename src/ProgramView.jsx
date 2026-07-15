@@ -28,6 +28,7 @@ const T = {
 
 export default function ProgramView({ user, onClose, onWorkoutStarted }) {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [program, setProgram] = useState(null);
   const [week, setWeek] = useState(1);
   const [deload, setDeload] = useState(false);
@@ -39,6 +40,7 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const active = await fetchActiveProgram(user.id);
       setProgram(active);
@@ -64,14 +66,22 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
           // then a conservative bodyweight-based guess, before ever
           // falling back to the library's target_weight (0 for nearly
           // everything, which is how "Arnold Press: 0lb x 10" happened).
+          // Wrapped on its own: a failure estimating a smarter fallback
+          // for one exercise should never blank out the whole day's
+          // session, it should just fall through to the plain library
+          // default for that one exercise same as before this existed.
           let fallbackEstimate;
           if (sessions.length === 0) {
-            const similar = await fetchFallbackWeightEstimate(user.id, { muscleGroup: pe.exercise.muscle, mechanism: pe.exercise.mechanism });
-            if (similar) {
-              fallbackEstimate = { e1RM: similar, source: "similar_exercises" };
-            } else {
-              const bodyweightGuess = estimateFallbackE1RM({ mechanism: pe.exercise.mechanism, bodyweightDisplay });
-              if (bodyweightGuess) fallbackEstimate = { e1RM: bodyweightGuess, source: "bodyweight" };
+            try {
+              const similar = await fetchFallbackWeightEstimate(user.id, { muscleGroup: pe.exercise.muscle, mechanism: pe.exercise.mechanism });
+              if (similar) {
+                fallbackEstimate = { e1RM: similar, source: "similar_exercises" };
+              } else {
+                const bodyweightGuess = estimateFallbackE1RM({ mechanism: pe.exercise.mechanism, bodyweightDisplay });
+                if (bodyweightGuess) fallbackEstimate = { e1RM: bodyweightGuess, source: "bodyweight" };
+              }
+            } catch (err) {
+              console.error("Fallback weight estimate failed for", pe.exercise.name, err);
             }
           }
 
@@ -90,6 +100,9 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
         })
       );
       setTodaysExercises(withPrescriptions);
+    } catch (err) {
+      setLoadError(err.message || "Couldn't load today's session.");
+      setTodaysExercises([]);
     } finally {
       setLoading(false);
     }
@@ -172,7 +185,12 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
               )}
 
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today's session</div>
-              {todaysExercises.length === 0 && <div style={{ color: T.dim, fontSize: 13 }}>No exercises scheduled for today.</div>}
+              {loadError && (
+                <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 12, marginBottom: 10, color: T.accent, fontSize: 12 }}>
+                  Couldn't load today's session ({loadError}). <button onClick={load} style={{ background: "none", border: "none", color: T.accent, textDecoration: "underline", fontSize: 12, padding: 0 }}>Retry</button>
+                </div>
+              )}
+              {!loadError && todaysExercises.length === 0 && <div style={{ color: T.dim, fontSize: 13 }}>No exercises scheduled for today.</div>}
               {todaysExercises.map((item) => (
                 <div key={item.programExerciseId} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>

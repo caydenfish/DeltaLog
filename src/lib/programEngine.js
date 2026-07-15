@@ -392,6 +392,26 @@ export function perBucketForExperience(experienceLevel) {
   return 2; // Intermediate
 }
 
+// perBucketForExperience scales sensibly for a typical split day, which
+// only ever touches 2-3 muscle groups (Push, Pull, Legs, Upper, Lower).
+// A Full Body day touches every major muscle group in the SAME session,
+// so applying that same per-bucket count blows the day up fast: at 6
+// Categories (Chest/Back/Shoulders/Legs/Core/Arms), Intermediate's 2
+// exercises/bucket is already 12 exercises, and Advanced's 3 is 18
+// exercises -- 54 sets at the standard 3 sets/exercise, in one sitting.
+// Full-body programming guidance (ACSM: 2-4 sets per muscle group per
+// session; most full-body templates run ~4-6 total exercises) points at
+// roughly one exercise per muscle group regardless of training age --
+// experience level should still change how much weight/intensity a
+// person handles, just not how many muscle groups get stacked into a
+// single full-body session. Any split whose day covers most/all of the
+// split's Categories (5 or more) gets this same treatment, not just a
+// split literally named "Full Body".
+export function perBucketForDay(experienceLevel, bucketCount) {
+  if (bucketCount >= 5) return 1;
+  return perBucketForExperience(experienceLevel);
+}
+
 // "Sessions completed" -> program week, capped at durationWeeks. This is
 // the piece that makes the block restructure around what actually
 // happened instead of drifting against a calendar: a missed week simply

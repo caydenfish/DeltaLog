@@ -14,7 +14,7 @@ import {
   SPLIT_DESCRIPTIONS,
   EXPERIENCE_LEVEL_DESCRIPTIONS,
   autoPickExercisesForDay,
-  perBucketForExperience,
+  perBucketForDay,
   suggestExperienceLevel,
   defaultModelForFocus,
   PROGRESSION_MODELS,
@@ -96,7 +96,7 @@ function DaySection({ dayIndex, label, picks, onReorder, onRemove, onAdjustSets,
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-        Day {dayIndex + 1}: {label} ({picks.length})
+        {picks.length} exercise{picks.length === 1 ? "" : "s"}
       </div>
 
       {picks.length === 0 && <div style={{ color: T.dim, fontSize: 12, marginBottom: 8 }}>No exercises picked yet -- add some below.</div>}
@@ -167,6 +167,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
   const [dayFilters, setDayFilters] = useState({}); // { dayIndex: {search, muscleFilter, equipFilter, performedFilter, sourceFilter, showFilters} }
   const [replacing, setReplacing] = useState(null); // { dayIndex, exerciseId } | null
   const [saving, setSaving] = useState(false);
+  const [activeDayTab, setActiveDayTab] = useState(0);
 
   const splitOptions = Object.keys(SPLIT_ROTATIONS).filter((name) => dayLabelsForSplit(name).every((label) => getSplits()[label]));
 
@@ -202,16 +203,23 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daysPerWeek, customize]);
 
+  // A different split can mean a different number of days -- land back
+  // on the first tab rather than pointing at a day index that may no
+  // longer exist.
+  useEffect(() => {
+    setActiveDayTab(0);
+  }, [splitName]);
+
   // Regenerates the auto-picked exercise list whenever the inputs that
   // determine it change.
   useEffect(() => {
     if (!splitName || library.length === 0) return;
     const labels = dayLabelsForSplit(splitName);
-    const perBucket = perBucketForExperience(experienceLevel || "Beginner");
     const next = {};
     labels.forEach((label, i) => {
       const buckets = getSplits()[label] || [];
       const excluded = getSplitExclusions(label);
+      const perBucket = perBucketForDay(experienceLevel || "Beginner", buckets.length);
       next[i] = autoPickExercisesForDay(library, buckets, performedIds, perBucket, excluded);
     });
     setPicksByDay(next);
@@ -289,31 +297,45 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
   const replacingDay = replacing ? picksByDay[replacing.dayIndex] || [] : [];
   const replacingExercise = replacing ? replacingDay.find((p) => p.id === replacing.exerciseId) : null;
 
+  const dayTab = Math.min(activeDayTab, Math.max(0, dayLabels.length - 1));
+
   const exercisesBody = (
     <div>
-      {dayLabels.map((label, dayIndex) => {
-        const picks = picksByDay[dayIndex] || [];
+      {dayLabels.length > 1 && (
+        <div style={{ marginBottom: 16 }}>
+          <PillRow
+            options={dayLabels.map((label, i) => ({ key: i, label: `${label} (${(picksByDay[i] || []).length})` }))}
+            value={dayTab}
+            onChange={setActiveDayTab}
+            columns={dayLabels.length}
+          />
+        </div>
+      )}
+      {(() => {
+        const label = dayLabels[dayTab];
+        if (label === undefined) return null;
+        const picks = picksByDay[dayTab] || [];
         const pickedNames = new Set(picks.map((p) => p.name));
-        const filters = filtersFor(dayIndex);
+        const filters = filtersFor(dayTab);
         const candidates = filterLibrary(library, { ...filters, exclude: pickedNames });
         return (
           <DaySection
-            key={dayIndex}
-            dayIndex={dayIndex}
+            key={dayTab}
+            dayIndex={dayTab}
             label={label}
             picks={picks}
-            onReorder={(updater) => reorderDay(dayIndex, updater)}
-            onRemove={(id) => removePick(dayIndex, id)}
-            onAdjustSets={(id, n) => adjustPlannedSets(dayIndex, id, n)}
-            onOpenReplace={(id) => setReplacing({ dayIndex, exerciseId: id })}
+            onReorder={(updater) => reorderDay(dayTab, updater)}
+            onRemove={(id) => removePick(dayTab, id)}
+            onAdjustSets={(id, n) => adjustPlannedSets(dayTab, id, n)}
+            onOpenReplace={(id) => setReplacing({ dayIndex: dayTab, exerciseId: id })}
             filters={filters}
-            onFiltersChange={(patch) => updateFilters(dayIndex, patch)}
+            onFiltersChange={(patch) => updateFilters(dayTab, patch)}
             candidates={candidates}
-            onPick={(ex) => addPick(dayIndex, ex)}
+            onPick={(ex) => addPick(dayTab, ex)}
             onToggleFavorite={toggleFavorite}
           />
         );
-      })}
+      })()}
     </div>
   );
 
