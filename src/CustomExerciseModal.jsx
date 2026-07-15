@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, genericBucket } from "./lib/muscleNomenclature";
 import { getPrefs } from "./lib/prefs";
 import { fetchMuscleGroups, fetchMuscleTaxonomy, deriveEquipmentBucket } from "./lib/queries";
-import { IconX, IconCheck } from "./Icons";
+import { IconX, IconCheck, IconChevronDown } from "./Icons";
 
 const T = {
   bg: "#101216",
@@ -190,7 +190,7 @@ function SingleSelectPicker({ label, value, onChange, options, renderLabel, grou
         style={{ ...selectStyle, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
       >
         <span>{value ? display(value) : "Select…"}</span>
-        <span style={{ color: T.dim, fontSize: 12 }}>▼</span>
+        <IconChevronDown size={11} style={{ color: T.dim }} />
       </button>
 
       {showSheet && (

@@ -1,19 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
-import { getPrefs, setPref } from "./lib/prefs";
+import { getPrefs, setPref, getHomeModules, setHomeModules } from "./lib/prefs";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
-import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, bucketWeightHistory, bucketDailyVolume, groupWorkoutsByDate } from "./lib/volume";
+import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, summarizeWorkoutDuration, bucketWeightHistory, bucketDailyVolume, bucketSeries, groupWorkoutsByDate } from "./lib/volume";
 import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
 import { toDisplay } from "./lib/weight";
 import { InlineLoading } from "./LoadingSpinner";
 import { toLocalDateStr } from "./lib/time";
 import BodyHeatmap from "./BodyHeatmap";
 import MuscleSetsDetail from "./MuscleSetsDetail";
+import HomeChartCard from "./HomeChartCard";
+import HomeModulesEditor from "./HomeModulesEditor";
 import Logo from "./Logo";
-import { IconBell, IconMenu, IconPlus, IconArchive, IconClock } from "./Icons";
+import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil } from "./Icons";
 import Templates from "./Templates";
 import FAQ from "./FAQ";
 import AdminExercises from "./AdminExercises";
@@ -132,6 +133,38 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   function setRange(key) {
     setRangeState(key);
     setPref("homeRange", key);
+  }
+  // Reorderable/toggleable home dashboard modules (pencil icon, top left).
+  const [homeModules, setHomeModulesState] = useState(() => getHomeModules());
+  const [showHomeModulesEditor, setShowHomeModulesEditor] = useState(false);
+  function updateHomeModules(next) {
+    setHomeModulesState(next);
+    setHomeModules(next);
+  }
+  // The date a person tapped on the Volume/Weight/Workout Time charts —
+  // shared across all three so selecting one date highlights it
+  // everywhere at once. Cleared on any scroll or on a tap outside a
+  // chart, rather than sitting there indefinitely.
+  const [lockedTs, setLockedTs] = useState(null);
+  const chartsSectionRef = useRef(null);
+  const scrollIdleTimer = useRef(null);
+  const [showFloatingRange, setShowFloatingRange] = useState(false);
+  function handleHomeScroll(e) {
+    setLockedTs(null);
+    const el = chartsSectionRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const containerRect = e.currentTarget.getBoundingClientRect();
+      const visible = rect.top < containerRect.bottom - 60 && rect.bottom > containerRect.top + 60;
+      setShowFloatingRange(visible);
+    } else {
+      setShowFloatingRange(false);
+    }
+    clearTimeout(scrollIdleTimer.current);
+    // Scrolling away from the charts hides it immediately (above); this
+    // also hides it once scrolling has simply stopped for a beat, so it
+    // doesn't linger on screen forever once someone's settled on a spot.
+    scrollIdleTimer.current = setTimeout(() => setShowFloatingRange(false), 1400);
   }
   // Ticks once a second while a workout is active so the Resume Workout
   // button's elapsed-time readout visibly moves, rather than showing a
@@ -553,6 +586,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     () => bucketWeightHistory(summarizeWeightHistory(filteredHistory), range),
     [filteredHistory, range]
   );
+  const workoutTimeData = useMemo(
+    () => bucketSeries(summarizeWorkoutDuration(filteredHistory), range, "minutes", "sum"),
+    [filteredHistory, range]
+  );
 
   // The calendar always reflects real training history, independent of
   // whatever range the volume chart above happens to be showing.
@@ -584,12 +621,16 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   return (
     <div style={{ minHeight: "100vh", background: "#0A0B0D", display: "flex", justifyContent: "center" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap'); button { cursor: pointer; }`}</style>
-      <div style={{ width: "100%", maxWidth: 400, background: T.bg, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "100%", maxWidth: 400, background: T.bg, minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative" }}>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 100px" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 100px" }} onScroll={handleHomeScroll} onClick={() => setLockedTs(null)}>
           {/* Header — pinned while the rest of the page scrolls beneath it */}
           <div style={{ padding: "20px 0 8px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", position: "sticky", top: 0, background: T.bg, zIndex: 5 }}>
-            <div />
+            <div>
+              <button onClick={() => setShowHomeModulesEditor(true)} aria-label="Customize home" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
+                <IconPencil size={14} />
+              </button>
+            </div>
             <Logo size={64} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button onClick={openAnnouncements} aria-label="Announcements" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}>
@@ -607,202 +648,178 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
             </div>
           </div>
 
-          {history !== null && (
-            <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginTop: 8, marginBottom: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: insight.muscles.length > 0 || insight.tip ? 10 : 0 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: insight.status === "overdue" ? "rgba(232,68,46,0.14)" : insight.status === "today" || insight.status === "ready" ? "rgba(59,165,93,0.14)" : "rgba(139,145,157,0.14)",
-                  color: insight.status === "overdue" ? T.accent : insight.status === "today" || insight.status === "ready" ? T.green : T.dim,
-                }}>
-                  <IconClock size={18} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, lineHeight: 1.1, color: insight.status === "overdue" ? T.accent : T.text }}>
-                    {insight.daysSince === null ? "—" : `${insight.daysSince} day${insight.daysSince === 1 ? "" : "s"}`}
-                  </div>
-                  <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Since last workout</div>
-                </div>
-              </div>
-              {insight.muscles.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                  {insight.muscles.map((m) => (
-                    <span key={m} style={{ fontSize: 11, color: T.dim, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 9px" }}>
-                      {muscleLabel(m, muscleNameMode)}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div style={{ fontSize: 13, color: T.dim, lineHeight: 1.5 }}>{insight.tip}</div>
-            </div>
-          )}
           {history === null ? (
             <InlineLoading label="Loading your history…" padding="40px 0" />
           ) : (
             <>
-              {/* Shared training range — controls Volume, Weight, and Muscle breakdown below */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px", marginBottom: 8 }}>
-                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Training range</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <button onClick={() => shiftRange(-1)} disabled={rangeIdx === 0} style={rangeArrowBtn(rangeIdx === 0)} aria-label="Shorter range">‹</button>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text, minWidth: 62, textAlign: "center" }}>{rangeDef.label}</div>
-                  <button onClick={() => shiftRange(1)} disabled={rangeIdx === RANGES.length - 1} style={rangeArrowBtn(rangeIdx === RANGES.length - 1)} aria-label="Longer range">›</button>
-                </div>
-              </div>
-
-              {/* Volume over time */}
-              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: "14px 8px 8px", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, padding: "0 8px" }}>
-                  Volume over time
-                </div>
-                {dailyVolume.length === 0 ? (
-                  <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No completed workouts in this range yet.</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={160}>
-                    <LineChart data={dailyVolume} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
-                      <CartesianGrid stroke={T.line} strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="ts"
-                        type="number"
-                        scale="time"
-                        domain={["dataMin", "dataMax"]}
-                        tick={{ fill: T.dim, fontSize: 10 }}
-                        tickFormatter={(ts) =>
-                          range === "365d"
-                            ? new Date(ts).toLocaleString(undefined, { month: "short" })
-                            : new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })
-                        }
-                      />
-                      <YAxis tick={{ fill: T.dim, fontSize: 10 }} />
-                      <Tooltip
-                        contentStyle={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, fontSize: 12 }}
-                        labelStyle={{ color: T.text }}
-                        labelFormatter={(ts) =>
-                          range === "365d"
-                            ? new Date(ts).toLocaleString(undefined, { month: "long", year: "numeric" })
-                            : range === "30d"
-                            ? `Week of ${new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })}`
-                            : new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })
-                        }
-                        formatter={(v) => [`${v.toLocaleString()} ${units}`, "Volume"]}
-                      />
-                      <Line type="monotone" dataKey="volume" stroke={T.accent} strokeWidth={2} dot={{ r: 3, fill: T.accent }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-
-              {/* Bodyweight over time */}
-              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: "14px 8px 8px", marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, padding: "0 8px" }}>
-                    Bodyweight over time
-                  </div>
-                  {weightHistory.length === 0 ? (
-                    <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No bodyweight logged in this range. Add it after a workout or in Settings.</div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={160}>
-                      <LineChart data={weightHistory} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
-                        <CartesianGrid stroke={T.line} strokeDasharray="3 3" vertical={false} />
-                        <XAxis
-                          dataKey="ts"
-                          type="number"
-                          scale="time"
-                          domain={["dataMin", "dataMax"]}
-                          tick={{ fill: T.dim, fontSize: 10 }}
-                          tickFormatter={(ts) =>
-                            range === "365d"
-                              ? new Date(ts).toLocaleString(undefined, { month: "short" })
-                              : new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })
-                          }
-                        />
-                        <YAxis tick={{ fill: T.dim, fontSize: 10 }} domain={["auto", "auto"]} />
-                        <Tooltip
-                          contentStyle={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, fontSize: 12 }}
-                          labelStyle={{ color: T.text }}
-                          labelFormatter={(ts) =>
-                            range === "365d"
-                              ? new Date(ts).toLocaleString(undefined, { month: "long", year: "numeric" })
-                              : range === "30d"
-                              ? `Week of ${new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })}`
-                              : new Date(ts).toLocaleString(undefined, { month: "short", day: "numeric" })
-                          }
-                          formatter={(v) => [`${v.toLocaleString()} ${units}`, "Bodyweight"]}
-                        />
-                        <Line type="monotone" dataKey="weight" stroke={T.green} strokeWidth={2} dot={{ r: 3, fill: T.green }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-
-              {/* Muscle breakdown */}
-              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Muscle breakdown</div>
-                  <div style={{ fontSize: 11, color: T.dim }}>{totalSetsInRange} set{totalSetsInRange === 1 ? "" : "s"}</div>
-                </div>
-                {Object.keys(primary).length === 0 && Object.keys(secondary).length === 0 ? (
-                  <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Nothing logged in this range yet.</div>
-                ) : (
-                  <BodyHeatmap primary={primary} secondary={secondary} fullBodySets={fullBodySets} entries={entries} />
-                )}
-              </div>
-
-              {/* Calendar heatmap */}
-              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <button onClick={() => shiftMonth(setCalendarMonth, -1)} style={navBtn}>‹</button>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
-                      {calendarMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}
+              {homeModules.find((m) => m.id === "insight")?.enabled && (
+                <div style={{
+                  background: T.surface, border: `1px solid ${T.line}`, borderLeft: `3px solid ${insight.status === "overdue" ? T.accent : insight.status === "today" || insight.status === "ready" ? T.green : T.line}`,
+                  borderRadius: 12, padding: "12px 14px", marginTop: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 12,
+                }}>
+                  <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
+                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1, color: insight.status === "overdue" ? T.accent : T.text }}>
+                      {insight.daysSince === null ? "—" : insight.daysSince}
                     </div>
-                    {streak > 0 && (
-                      <div style={{ fontSize: 10, color: T.accent, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginTop: 1 }}>
-                        {streak} day streak
+                    <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>day{insight.daysSince === 1 ? "" : "s"} ago</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, borderLeft: `1px solid ${T.line}`, paddingLeft: 12 }}>
+                    {insight.muscles.length > 0 && (
+                      <div style={{ fontSize: 12, color: T.text, fontWeight: 600, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {insight.muscles.map((m) => muscleLabel(m, muscleNameMode)).join(" · ")}
                       </div>
                     )}
+                    <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.4 }}>{insight.tip}</div>
                   </div>
-                  <button onClick={() => shiftMonth(setCalendarMonth, 1)} style={navBtn}>›</button>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
-                  {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-                    <div key={i} style={{ textAlign: "center", fontSize: 10, color: T.dim }}>{d}</div>
-                  ))}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-                  {monthGrid.map((cell, i) => {
-                    if (!cell) return <div key={i} />;
-                    const hasWorkout = cell.volume > 0;
-                    const clickable = cell.volume > 0;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => clickable && handleDayClick(cell.date)}
-                        disabled={!clickable}
-                        title={cell.volume > 0 ? `${Math.round(toDisplay(cell.volume, units)).toLocaleString()} ${units} — tap for details` : undefined}
-                        style={{
-                          aspectRatio: "1", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 10, color: hasWorkout ? "#fff" : T.dim,
-                          background: hasWorkout ? T.accent : T.surface2,
-                          opacity: 1,
-                          border: cell.isToday ? `1px solid ${T.text}` : "none",
-                          padding: 0, cursor: clickable ? "pointer" : "default",
-                        }}
-                      >
-                        {cell.day}
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  onClick={() => setHistoryView({})}
-                  style={{ width: "100%", marginTop: 12, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                >
-                  View full history <span style={{ color: T.dim }}>›</span>
-                </button>
+              )}
+
+              <div ref={chartsSectionRef}>
+                {homeModules.some((m) => m.enabled && ["volume", "weight", "workoutTime", "muscleBreakdown"].includes(m.id)) && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px", marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Training range</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <button onClick={() => shiftRange(-1)} disabled={rangeIdx === 0} style={rangeArrowBtn(rangeIdx === 0)} aria-label="Shorter range">‹</button>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text, minWidth: 62, textAlign: "center" }}>{rangeDef.label}</div>
+                      <button onClick={() => shiftRange(1)} disabled={rangeIdx === RANGES.length - 1} style={rangeArrowBtn(rangeIdx === RANGES.length - 1)} aria-label="Longer range">›</button>
+                    </div>
+                  </div>
+                )}
+
+                {homeModules.filter((m) => m.enabled).map((m) => {
+                  switch (m.id) {
+                    case "volume":
+                      return (
+                        <HomeChartCard
+                          key={m.id}
+                          title="Volume over time"
+                          data={dailyVolume}
+                          dataKey="volume"
+                          color={T.accent}
+                          range={range}
+                          tooltipLabel="Volume"
+                          valueFormatter={(v) => `${v.toLocaleString()} ${units}`}
+                          emptyMessage="No completed workouts in this range yet."
+                          lockedTs={lockedTs}
+                          onLock={setLockedTs}
+                        />
+                      );
+                    case "weight":
+                      return (
+                        <HomeChartCard
+                          key={m.id}
+                          title="Bodyweight over time"
+                          data={weightHistory}
+                          dataKey="weight"
+                          color={T.green}
+                          range={range}
+                          tooltipLabel="Bodyweight"
+                          valueFormatter={(v) => `${v.toLocaleString()} ${units}`}
+                          emptyMessage="No bodyweight logged in this range. Add it after a workout or in Settings."
+                          lockedTs={lockedTs}
+                          onLock={setLockedTs}
+                        />
+                      );
+                    case "workoutTime":
+                      return (
+                        <HomeChartCard
+                          key={m.id}
+                          title="Workout time"
+                          data={workoutTimeData}
+                          dataKey="minutes"
+                          color="#3B82F6"
+                          range={range}
+                          tooltipLabel="Workout time"
+                          valueFormatter={(v) => `${v.toLocaleString()} min`}
+                          emptyMessage="No completed workouts in this range yet."
+                          lockedTs={lockedTs}
+                          onLock={setLockedTs}
+                        />
+                      );
+                    case "muscleBreakdown":
+                      return (
+                        <div key={m.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                            <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Muscle breakdown</div>
+                            <div style={{ fontSize: 11, color: T.dim }}>{totalSetsInRange} set{totalSetsInRange === 1 ? "" : "s"}</div>
+                          </div>
+                          {Object.keys(primary).length === 0 && Object.keys(secondary).length === 0 ? (
+                            <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Nothing logged in this range yet.</div>
+                          ) : (
+                            <BodyHeatmap primary={primary} secondary={secondary} fullBodySets={fullBodySets} entries={entries} onSelectMuscle={(muscle, role) => setMuscleDetail({ muscle, role })} />
+                          )}
+                        </div>
+                      );
+                    case "calendar":
+                      return (
+                        <div key={m.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                            <button onClick={() => shiftMonth(setCalendarMonth, -1)} style={navBtn}>‹</button>
+                            <div style={{ textAlign: "center" }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
+                                {calendarMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}
+                              </div>
+                              {streak > 0 && (
+                                <div style={{ fontSize: 10, color: T.accent, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginTop: 1 }}>
+                                  {streak} day streak
+                                </div>
+                              )}
+                            </div>
+                            <button onClick={() => shiftMonth(setCalendarMonth, 1)} style={navBtn}>›</button>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
+                            {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                              <div key={i} style={{ textAlign: "center", fontSize: 10, color: T.dim }}>{d}</div>
+                            ))}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+                            {monthGrid.map((cell, i) => {
+                              if (!cell) return <div key={i} />;
+                              const hasWorkout = cell.volume > 0;
+                              const clickable = cell.volume > 0;
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={() => clickable && handleDayClick(cell.date)}
+                                  disabled={!clickable}
+                                  title={cell.volume > 0 ? `${Math.round(toDisplay(cell.volume, units)).toLocaleString()} ${units} — tap for details` : undefined}
+                                  style={{
+                                    aspectRatio: "1", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontSize: 10, color: hasWorkout ? "#fff" : T.dim,
+                                    background: hasWorkout ? T.accent : T.surface2,
+                                    opacity: 1,
+                                    border: cell.isToday ? `1px solid ${T.text}` : "none",
+                                    padding: 0, cursor: clickable ? "pointer" : "default",
+                                  }}
+                                >
+                                  {cell.day}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <button
+                            onClick={() => setHistoryView({})}
+                            style={{ width: "100%", marginTop: 12, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                          >
+                            View full history <span style={{ color: T.dim }}>›</span>
+                          </button>
+                        </div>
+                      );
+                    default:
+                      return null;
+                  }
+                })}
               </div>
             </>
           )}
         </div>
+        {showFloatingRange && (
+          <div style={{ position: "absolute", top: 66, left: "50%", transform: "translateX(-50%)", zIndex: 8, display: "flex", alignItems: "center", gap: 6, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 999, padding: "5px 8px", boxShadow: "0 4px 14px rgba(0,0,0,0.35)" }}>
+            <button onClick={() => shiftRange(-1)} disabled={rangeIdx === 0} style={rangeArrowBtn(rangeIdx === 0)} aria-label="Shorter range">‹</button>
+            <div style={{ fontSize: 12, fontWeight: 600, color: T.text, minWidth: 56, textAlign: "center" }}>{rangeDef.label}</div>
+            <button onClick={() => shiftRange(1)} disabled={rangeIdx === RANGES.length - 1} style={rangeArrowBtn(rangeIdx === RANGES.length - 1)} aria-label="Longer range">›</button>
+          </div>
+        )}
 
         {/* Start workout */}
         <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
@@ -1070,10 +1087,13 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           muscle={muscleDetail.muscle}
           role={muscleDetail.role}
           entries={entries}
-          nameMode={muscleNameMode}
+          nameMode="detailed"
           units={units}
           onClose={() => setMuscleDetail(null)}
         />
+      )}
+      {showHomeModulesEditor && (
+        <HomeModulesEditor modules={homeModules} onChange={updateHomeModules} onClose={() => setShowHomeModulesEditor(false)} />
       )}
       {showAdminRoles && <AdminRoles currentUserId={user.id} onClose={() => setShowAdminRoles(false)} />}
       {showAdminUserActivity && isRealCreator && <AdminUserActivity onClose={() => setShowAdminUserActivity(false)} />}

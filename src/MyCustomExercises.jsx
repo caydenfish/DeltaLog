@@ -3,7 +3,7 @@ import { fetchMyCustomExercises, fetchArchivedCustomExercises, fetchMyPromotedEx
 import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import Templates from "./Templates";
-import { IconCheck } from "./Icons";
+import { IconCheck, IconChevronUp, IconChevronDown } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
 
 const T = {
@@ -243,7 +243,7 @@ export default function MyCustomExercises({ user, onClose }) {
             style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginTop: 6, marginBottom: showArchived ? 10 : 0, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
           >
             <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Archived Exercises{archivedRows && archivedRows.length > 0 ? ` (${archivedRows.length})` : ""}</div>
-            <div style={{ color: T.dim, fontSize: 16 }}>{showArchived ? "▲" : "▼"}</div>
+            <div style={{ color: T.dim, display: "flex", alignItems: "center" }}>{showArchived ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}</div>
           </button>
           {showArchived && (
             <div>
@@ -264,7 +264,7 @@ export default function MyCustomExercises({ user, onClose }) {
             style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginTop: 10, marginBottom: showPromoted ? 10 : 0, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
           >
             <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Promoted Exercises{promotedRows && promotedRows.length > 0 ? ` (${promotedRows.length})` : ""}</div>
-            <div style={{ color: T.dim, fontSize: 16 }}>{showPromoted ? "▲" : "▼"}</div>
+            <div style={{ color: T.dim, display: "flex", alignItems: "center" }}>{showPromoted ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}</div>
           </button>
           {showPromoted && (
             <div>

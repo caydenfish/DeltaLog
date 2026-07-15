@@ -13,7 +13,7 @@ import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import ExportWorkoutModal from "./ExportWorkoutModal";
 import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
-import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome } from "./Icons";
+import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome, IconDragHandle, IconChevronUp, IconChevronDown } from "./Icons";
 import { getSplits } from "./lib/splits";
 import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf } from "./lib/muscleNomenclature";
 // "Full Body" and "Neck" are real generic buckets (used for coloring/
@@ -1636,7 +1636,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                     aria-label="Drag to reorder"
                     title="Drag to reorder"
                     style={{ cursor: "grab", color: T.dim, fontSize: 18, padding: "4px 2px", touchAction: "none", flexShrink: 0, alignSelf: "stretch", display: "flex", alignItems: "center" }}
-                  >⠿</div>
+                  >
+                    <IconDragHandle size={16} />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       <ExerciseThumb muscle={w.muscle} mediaUrl={w.mediaUrl} size={22} /> {w.name}
@@ -2272,7 +2274,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                 onClick={() => setShowWorkoutPrefs(!showWorkoutPrefs)}
                 style={{ width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
               >
-                Preferences {showWorkoutPrefs ? "▲" : "▼"}
+                Preferences {showWorkoutPrefs ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}
               </button>
               {showWorkoutPrefs && (
                 <div style={{ marginTop: 10 }}>

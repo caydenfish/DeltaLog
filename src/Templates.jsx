@@ -5,7 +5,7 @@ import { muscleLabel } from "./lib/muscleNomenclature";
 import { getPrefs } from "./lib/prefs";
 import BodyHeatmap from "./BodyHeatmap";
 import { InlineLoading } from "./LoadingSpinner";
-import { IconX, IconDownload } from "./Icons";
+import { IconX, IconDownload, IconShare, IconDragHandle, IconChevronUp, IconChevronDown } from "./Icons";
 import ExercisePicker, { filterLibrary, splitGroupFor } from "./ExercisePicker";
 import CustomExerciseModal from "./CustomExerciseModal";
 
@@ -21,6 +21,7 @@ const T = {
 };
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
+const shareIconBtn = { width: 30, height: 30, borderRadius: 999, border: "none", background: "rgba(232,68,46,0.14)", color: T.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
 
 // Renders a thin accent-colored line at the exact insertion point for a
 // dragged row, instead of highlighting the row being hovered over.
@@ -410,13 +411,13 @@ export default function Templates({ user, onClose, initialPicks }) {
                   onPointerDown={(e) => templateDrag.startRowDrag(i, e)}
                   aria-label="Drag to reorder"
                   title="Drag to reorder"
-                  style={{ cursor: "grab", color: T.dim, fontSize: 18, padding: "4px 2px", touchAction: "none", flexShrink: 0 }}
-                >⠿</div>
+                  style={{ cursor: "grab", color: T.dim, fontSize: 18, padding: "4px 2px", touchAction: "none", flexShrink: 0, display: "flex", alignItems: "center" }}
+                ><IconDragHandle size={16} /></div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{t.name}</div>
                   <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{t.exerciseCount} exercise{t.exerciseCount === 1 ? "" : "s"}</div>
                 </div>
-                <button onClick={() => handleShare(t.id)} aria-label="Share" title="Share" style={{ ...smallBtn, padding: "4px 8px" }}>↗</button>
+                <button onClick={() => handleShare(t.id)} aria-label="Share" title="Share" style={shareIconBtn}><IconShare size={14} /></button>
                 <button onClick={() => startEdit(t)} disabled={loadingEditId === t.id} style={{ ...smallBtn, color: T.text }}>
                   {loadingEditId === t.id ? "Loading…" : "Edit"}
                 </button>
@@ -429,7 +430,7 @@ export default function Templates({ user, onClose, initialPicks }) {
 
             <button onClick={() => setShowArchived(!showArchived)} style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginTop: 6, marginBottom: showArchived ? 10 : 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Archived Templates{archivedTemplates && archivedTemplates.length > 0 ? ` (${archivedTemplates.length})` : ""}</div>
-              <div style={{ color: T.dim, fontSize: 16 }}>{showArchived ? "▲" : "▼"}</div>
+              <div style={{ color: T.dim, display: "flex", alignItems: "center" }}>{showArchived ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}</div>
             </button>
             {showArchived && (
               <div>
@@ -481,8 +482,8 @@ export default function Templates({ user, onClose, initialPicks }) {
                             onPointerDown={(e) => picksDrag.startRowDrag(i, e)}
                             aria-label="Drag to reorder"
                             title="Drag to reorder"
-                            style={{ cursor: "grab", color: T.dim, fontSize: 16, padding: "2px", touchAction: "none", flexShrink: 0 }}
-                          >⠿</div>
+                            style={{ cursor: "grab", color: T.dim, fontSize: 16, padding: "2px", touchAction: "none", flexShrink: 0, display: "flex", alignItems: "center" }}
+                          ><IconDragHandle size={14} /></div>
                           <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>{p.name}</div>
                         </div>
                         <button onClick={() => setReplacingId(p.id)} aria-label="Replace exercise" title="Replace" style={{ ...smallBtn, marginRight: 6 }}>⇄</button>

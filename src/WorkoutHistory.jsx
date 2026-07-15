@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ExerciseThumb from "./ExerciseThumb";
 import ExportWorkoutModal from "./ExportWorkoutModal";
-import { IconX, IconCamera, IconImage, IconTrash, IconCheck } from "./Icons";
+import { IconX, IconCamera, IconImage, IconTrash, IconCheck, IconShare } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
 import { formatWeight, toDisplay, toCanonical } from "./lib/weight";
 import { formatClockTime, toLocalDateStr } from "./lib/time";
@@ -373,8 +373,8 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
           <button onClick={() => setShowExport(true)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
             Save image
           </button>
-          <button onClick={handleShare} disabled={sharing} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
-            {sharing ? "…" : "Share ↗"}
+          <button onClick={handleShare} disabled={sharing} style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(232,68,46,0.14)", border: "none", color: T.accent, borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 600 }}>
+            {sharing ? "…" : <><IconShare size={12} /> Share</>}
           </button>
         </div>
       </div>

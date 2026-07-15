@@ -286,6 +286,29 @@ export function summarizeWeightHistory(history) {
 }
 
 
+// Per-workout duration (completed_at - started_at, in whole minutes),
+// keyed by the day the workout was completed on — feeds the Workout
+// Time chart the same way summarizeWeightHistory feeds the bodyweight
+// chart. Multiple workouts finished the same day are summed (matching
+// dailyVolume's "total moved that day" behavior, not averaged), since
+// two sessions in one day really did take that much combined time.
+// Skips anything missing either timestamp or with a non-positive
+// duration (clock skew, a workout started and completed in the same
+// instant via some edge-case flow) rather than plotting a bogus 0.
+export function summarizeWorkoutDuration(history) {
+  const byDate = {};
+  for (const w of history || []) {
+    if (!w.started_at || !w.completed_at) continue;
+    const minutes = Math.round((new Date(w.completed_at).getTime() - new Date(w.started_at).getTime()) / 60000);
+    if (minutes <= 0) continue;
+    const date = toLocalDateStr(w.completed_at);
+    byDate[date] = (byDate[date] || 0) + minutes;
+  }
+  return Object.entries(byDate)
+    .map(([date, minutes]) => ({ date, minutes }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 // entries suitable for computeMuscleVolumes, and a parallel list of
 // { date, volume } points for the volume-over-time chart.
 export function summarizeHistory(history) {

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { FRONT_REGIONS, BACK_REGIONS, OUTLINE_FRONT, OUTLINE_BACK, VIEWBOX_FRONT, VIEWBOX_BACK } from "./lib/bodyMapData";
 import { resolveRegions } from "./lib/bodyMapRegions";
 
@@ -14,7 +13,26 @@ const T = {
 // silhouette's muscle segments stay visible even at zero volume.
 const NEUTRAL = "#363C46";
 const OUTLINE_STROKE = "#4A5261";
-const DIM_ACCENT = "#5B2E28"; // floor of the intensity scale, so even a single logged set reads as visibly trained rather than washed out
+
+// Four fixed, visually distinct steps rather than a continuous gradient —
+// a continuous fade makes it hard to tell "this region is a little
+// behind" from "this region is way behind" at a glance, which was the
+// whole point of the color coding. Each region snaps to whichever step
+// its share of the best-trained region's volume falls into.
+const TIERS = [
+  { key: "none", label: "None", color: NEUTRAL, max: 0 },
+  { key: "low", label: "Low", color: "#7A3A2E", max: 1 / 3 },
+  { key: "moderate", label: "Moderate", color: "#C24230", max: 2 / 3 },
+  { key: "high", label: "High", color: T.accent, max: Infinity },
+];
+
+function tierFor(total, max) {
+  if (!total) return TIERS[0];
+  const frac = total / (max || 1);
+  if (frac <= TIERS[1].max) return TIERS[1];
+  if (frac <= TIERS[2].max) return TIERS[2];
+  return TIERS[3];
+}
 
 const SLUG_NAMES = {
   chest: "Chest",
@@ -40,21 +58,6 @@ function displayName(view, slug) {
   return SLUG_NAMES[slug] || slug;
 }
 
-function mixHex(hex1, hex2, t) {
-  const c1 = parseInt(hex1.slice(1), 16);
-  const c2 = parseInt(hex2.slice(1), 16);
-  const r = Math.round(((c1 >> 16) & 255) + ((((c2 >> 16) & 255) - ((c1 >> 16) & 255)) * t));
-  const g = Math.round(((c1 >> 8) & 255) + ((((c2 >> 8) & 255) - ((c1 >> 8) & 255)) * t));
-  const b = Math.round((c1 & 255) + (((c2 & 255) - (c1 & 255)) * t));
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-}
-
-function intensityColor(total, max) {
-  if (!total) return NEUTRAL;
-  const t = 0.3 + 0.7 * Math.min(1, total / (max || 1));
-  return mixHex(DIM_ACCENT, T.accent, t);
-}
-
 // Sums primary/secondary set-count maps (already at the Detailed taxonomy
 // tier -- see BodyHeatmap's call site) into per-region totals, keyed
 // "view:slug" since a few slugs (deltoids, trapezius, etc.) exist on
@@ -76,7 +79,7 @@ function buildRegionTotals(primary, secondary) {
   return totals;
 }
 
-function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, selected, onSelect }) {
+function Silhouette({ view, regions, outline, viewBox, totals, maxTotal }) {
   return (
     <svg viewBox={viewBox} width="100%" style={{ maxWidth: 150, display: "block", margin: "0 auto" }}>
       <path d={outline} fill="none" stroke={OUTLINE_STROKE} strokeWidth={2} vectorEffect="non-scaling-stroke" />
@@ -84,22 +87,13 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, selecte
         const key = `${view}:${region.slug}`;
         const t = totals[key] || { primary: 0, secondary: 0 };
         const total = t.primary + t.secondary;
-        const isSelected = selected && selected.view === view && selected.slug === region.slug;
+        const tier = tierFor(total, maxTotal);
         return (
-          <g
-            key={region.slug}
-            onClick={() => onSelect({ view, slug: region.slug, ...t, total })}
-            style={{ cursor: "pointer" }}
-          >
+          <g key={region.slug}>
             {region.paths.map((d, i) => (
-              <path
-                key={i}
-                d={d}
-                fill={intensityColor(total, maxTotal)}
-                stroke={isSelected ? T.text : "none"}
-                strokeWidth={isSelected ? 3 : 0}
-                vectorEffect="non-scaling-stroke"
-              />
+              <path key={i} d={d} fill={tier.color} vectorEffect="non-scaling-stroke">
+                <title>{`${displayName(view, region.slug)} — ${total} set${total === 1 ? "" : "s"} (${tier.label})`}</title>
+              </path>
             ))}
           </g>
         );
@@ -109,35 +103,33 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, selecte
 }
 
 // Anatomical body-map heatmap: front + back silhouette, each muscle
-// region tinted by how many sets it's taken (a dim red floor for any
-// nonzero count up to full accent at the highest-volume region), tap a
-// region to see its exact count below. Always computed at the Detailed
+// region shaded into one of four fixed volume tiers (see TIERS above) so
+// it's obvious at a glance which regions are lagging, without the noise
+// of a continuous gradient. Purely visual/view-only now — exact counts,
+// tap-to-drill-in, and "what's lacking" all live in the Coverage
+// breakdown list below it (BodyHeatmap.jsx), which is now the only place
+// selection/interaction happens (the old white selection outline here is
+// gone along with the tap handling). Always computed at the Detailed
 // taxonomy tier regardless of the app's Muscle Names preference — that's
 // the level of resolution the underlying art is actually drawn at (see
-// lib/bodyMapData.js's adaptation notes); Generic/Scientific-mode users
-// still get this view, it just doesn't collapse or split any further
-// than Detailed. `primary`/`secondary` here are Detailed-tier maps
-// specifically (not whatever mode the caller's other chart views use).
+// lib/bodyMapData.js's adaptation notes).
 export default function BodyMap({ primary = {}, secondary = {} }) {
-  const [selected, setSelected] = useState(null);
   const totals = buildRegionTotals(primary, secondary);
   const maxTotal = Math.max(1, ...Object.values(totals).map((t) => t.primary + t.secondary));
 
   return (
     <div>
       <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} selected={selected} onSelect={setSelected} />
-        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} selected={selected} onSelect={setSelected} />
+        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} />
+        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} />
       </div>
-      <div style={{ textAlign: "center", marginTop: 10, fontSize: 12.5, minHeight: 18 }}>
-        {selected ? (
-          <span style={{ color: T.text }}>
-            <span style={{ fontWeight: 700 }}>{displayName(selected.view, selected.slug)}</span>
-            <span style={{ color: T.dim }}> — {selected.total} set{selected.total === 1 ? "" : "s"}{selected.total > 0 ? ` (${selected.primary} primary, ${selected.secondary} secondary)` : ""}</span>
-          </span>
-        ) : (
-          <span style={{ color: T.dim }}>Tap a muscle to see its set count</span>
-        )}
+      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
+        {TIERS.map((t) => (
+          <div key={t.key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ width: 9, height: 9, borderRadius: 3, background: t.color, display: "inline-block", flexShrink: 0 }} />
+            <span style={{ fontSize: 10.5, color: T.dim }}>{t.label}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

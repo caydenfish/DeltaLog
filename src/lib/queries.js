@@ -802,18 +802,15 @@ export async function promoteExerciseToLibrary(exerciseId) {
 
 // Admin-only: removes a custom exercise from the review queue without
 // touching it in any way the creator would notice — it stays exactly as
-// it was, just marked reviewed so it stops showing up for you.
+// it was, just marked reviewed so it stops showing up for you. Routed
+// through admin_dismiss_exercise_submission (migration_061) so the
+// admin_reviewed flag, the submission-log update, and clearing every
+// admin's "New custom exercise submitted" notice for this exercise all
+// happen atomically — addressing a submission any of the three ways
+// (promote/merge/dismiss) auto-clears its own review notification.
 export async function dismissCustomExercise(exerciseId) {
-  const { error } = await supabase
-    .from("exercises")
-    .update({ admin_reviewed: true })
-    .eq("id", exerciseId);
+  const { error } = await supabase.rpc("admin_dismiss_exercise_submission", { target_id: exerciseId });
   if (error) throw error;
-  await supabase
-    .from("exercise_submissions")
-    .update({ status: "dismissed", resolved_at: new Date().toISOString() })
-    .eq("current_exercise_id", exerciseId)
-    .eq("status", "pending");
 }
 
 // Appends a search alias to an exercise, case-insensitive de-duped —

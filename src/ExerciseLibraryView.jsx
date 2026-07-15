@@ -642,30 +642,40 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
 
       {selected && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.8)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div style={{ width: "100%", maxWidth: 420, maxHeight: "85vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <ExerciseThumb muscle={selected.muscle_group} mediaUrl={selected.media_url} size={36} />
-              <a
-                href={`https://www.google.com/search?q=${encodeURIComponent(selected.name)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, textDecoration: "none" }}
-              >
+          <div style={{ width: "100%", maxWidth: 420, maxHeight: "85vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", boxSizing: "border-box" }}>
+            <div style={{ position: "sticky", top: 0, background: T.bg, borderBottom: `1px solid ${T.line}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, zIndex: 1 }}>
+              <button onClick={() => setSelected(null)} aria-label="Back" style={smallBtn}>&#8249;</button>
+              <div style={{ flex: 1, minWidth: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {selected.name}
-                <IconSearch size={13} style={{ color: T.dim, flexShrink: 0 }} />
-              </a>
+              </div>
             </div>
 
-            <DetailRow label="Nicknames" value={(selected.aliases || []).join(", ")} />
-            <DetailRow label="Equipment" value={(selected.equipment || []).join(", ")} />
-            <DetailRow label="Muscle group" value={muscleLabel(selected.muscle_group, "generic")} />
-            <DetailRow label="Primary muscles" value={formatMuscleList(selected.primary_muscles, muscleNameMode)} />
-            <DetailRow label="Secondary muscles" value={formatMuscleList(selected.secondary_muscles, muscleNameMode)} />
+            <div style={{ padding: 20, boxSizing: "border-box" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <ExerciseThumb muscle={selected.muscle_group} mediaUrl={selected.media_url} size={36} />
+                <div style={{ flex: 1, minWidth: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {selected.name}
+                </div>
+                <a
+                  href={`https://www.google.com/search?q=${encodeURIComponent(selected.name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 999, padding: "6px 11px", fontSize: 12, fontWeight: 600, color: T.text, textDecoration: "none" }}
+                >
+                  <IconSearch size={12} style={{ color: T.dim }} />
+                  Search
+                </a>
+              </div>
 
-            {userId && <ExerciseDefaultsEditor userId={userId} exercise={selected} />}
-            {userId && <ExerciseCharts userId={userId} exercise={selected} />}
+              <DetailRow label="Nicknames" value={(selected.aliases || []).join(", ")} />
+              <DetailRow label="Equipment" value={(selected.equipment || []).join(", ")} />
+              <DetailRow label="Muscle group" value={muscleLabel(selected.muscle_group, "generic")} />
+              <DetailRow label="Primary muscles" value={formatMuscleList(selected.primary_muscles, muscleNameMode)} />
+              <DetailRow label="Secondary muscles" value={formatMuscleList(selected.secondary_muscles, muscleNameMode)} />
 
-            <button onClick={() => setSelected(null)} style={{ width: "100%", marginTop: 8, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>Close</button>
+              {userId && <ExerciseDefaultsEditor userId={userId} exercise={selected} />}
+              {userId && <ExerciseCharts userId={userId} exercise={selected} />}
+            </div>
           </div>
         </div>
       )}

@@ -6,6 +6,16 @@
 
 const base = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" };
 
+export function IconShare({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M12 15V4" />
+      <polyline points="7,8.5 12,3.5 17,8.5" />
+      <path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+    </svg>
+  );
+}
+
 export function IconX({ size = 14, style }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
@@ -209,3 +219,316 @@ export function IconBarbell({ size = 15, style }) {
     </svg>
   );
 }
+
+// --- The icons below round out the set with common UI concepts the app
+// had been standing in for with raw text glyphs (‹ › ▲ ▼ ⠿ etc.) --
+// same stroke/size/currentColor conventions as everything above, so they
+// drop in anywhere those glyphs were used and inherit color/weight from
+// their surrounding button instead of being visually flat black-on-dim.
+
+export function IconChevronLeft({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <polyline points="15,5 8,12 15,19" />
+    </svg>
+  );
+}
+
+export function IconChevronRight({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <polyline points="9,5 16,12 9,19" />
+    </svg>
+  );
+}
+
+export function IconChevronUp({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <polyline points="5,15 12,8 19,15" />
+    </svg>
+  );
+}
+
+export function IconChevronDown({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <polyline points="5,9 12,16 19,9" />
+    </svg>
+  );
+}
+
+export function IconDragHandle({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} fill="currentColor">
+      <circle cx="9" cy="6" r="1.6" />
+      <circle cx="9" cy="12" r="1.6" />
+      <circle cx="9" cy="18" r="1.6" />
+      <circle cx="15" cy="6" r="1.6" />
+      <circle cx="15" cy="12" r="1.6" />
+      <circle cx="15" cy="18" r="1.6" />
+    </svg>
+  );
+}
+
+export function IconFilter({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+    </svg>
+  );
+}
+
+export function IconSort({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <line x1="4" y1="6" x2="16" y2="6" />
+      <line x1="4" y1="12" x2="12" y2="12" />
+      <line x1="4" y1="18" x2="8" y2="18" />
+      <polyline points="17,15 20,18 20,18 20,3" />
+    </svg>
+  );
+}
+
+export function IconCalendar({ size = 15, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <line x1="8" y1="3" x2="8" y2="7" />
+      <line x1="16" y1="3" x2="16" y2="7" />
+    </svg>
+  );
+}
+
+export function IconUpload({ size = 15, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M12 16V4" />
+      <polyline points="7,9 12,4 17,9" />
+      <path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+    </svg>
+  );
+}
+
+export function IconInfo({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <circle cx="12" cy="12" r="9" />
+      <line x1="12" y1="11" x2="12" y2="16.5" />
+      <circle cx="12" cy="7.5" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconAlertTriangle({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M12 3.5 L22 20.5 L2 20.5 Z" />
+      <line x1="12" y1="9.5" x2="12" y2="14.5" />
+      <circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconFlag({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M5 3v18" />
+      <path d="M5 4h11l-2.5 4L16 12H5" />
+    </svg>
+  );
+}
+
+export function IconTarget({ size = 15, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconRefresh({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M4 12a8 8 0 0 1 14-5.3L21 9" />
+      <polyline points="21,3 21,9 15,9" />
+      <path d="M20 12a8 8 0 0 1-14 5.3L3 15" />
+      <polyline points="3,21 3,15 9,15" />
+    </svg>
+  );
+}
+
+export function IconUndo({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M7 8H17a5 5 0 0 1 0 10H9" />
+      <polyline points="10,4 7,8 10,12" />
+    </svg>
+  );
+}
+
+export function IconEyeOpen({ size = 15, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function IconEyeOff({ size = 15, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M3 3l18 18" />
+      <path d="M10.6 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17.3 17.3 0 0 1-4 4.9M6.5 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 3.4-.6" />
+      <path d="M9.9 10a3 3 0 0 0 4.2 4.2" />
+    </svg>
+  );
+}
+
+export function IconLock({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+export function IconUnlock({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 9-3" />
+    </svg>
+  );
+}
+
+export function IconTrophy({ size = 15, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" />
+      <path d="M7 5H4a3 3 0 0 0 3 5" />
+      <path d="M17 5h3a3 3 0 0 1-3 5" />
+      <line x1="12" y1="14" x2="12" y2="18" />
+      <path d="M8 21h8" />
+      <path d="M9 18h6l1 3H8l1-3z" />
+    </svg>
+  );
+}
+
+export function IconGrid({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <rect x="13" y="3" width="8" height="8" rx="1.5" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" />
+      <rect x="13" y="13" width="8" height="8" rx="1.5" />
+    </svg>
+  );
+}
+
+export function IconList({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <line x1="9" y1="6" x2="20" y2="6" />
+      <line x1="9" y1="12" x2="20" y2="12" />
+      <line x1="9" y1="18" x2="20" y2="18" />
+      <circle cx="4.5" cy="6" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="18" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconSliders({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="18" x2="20" y2="18" />
+      <circle cx="9" cy="6" r="2" fill="none" />
+      <circle cx="16" cy="12" r="2" fill="none" />
+      <circle cx="7" cy="18" r="2" fill="none" />
+    </svg>
+  );
+}
+
+export function IconChartBar({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <line x1="5" y1="20" x2="5" y2="12" />
+      <line x1="12" y1="20" x2="12" y2="6" />
+      <line x1="19" y1="20" x2="19" y2="15" />
+    </svg>
+  );
+}
+
+export function IconChartLine({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <polyline points="3,17 9,10 13,14 21,5" />
+      <polyline points="15,5 21,5 21,11" />
+    </svg>
+  );
+}
+
+export function IconThumbsUp({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M7 11v10H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h3z" />
+      <path d="M7 11l4-7a2 2 0 0 1 2 2v4h6a2 2 0 0 1 2 2.3l-1.5 7A2 2 0 0 1 17.5 21H7" />
+    </svg>
+  );
+}
+
+export function IconMoreHorizontal({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} fill="currentColor">
+      <circle cx="5" cy="12" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="19" cy="12" r="1.8" />
+    </svg>
+  );
+}
+
+export function IconMoreVertical({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} fill="currentColor">
+      <circle cx="12" cy="5" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="12" cy="19" r="1.8" />
+    </svg>
+  );
+}
+
+export function IconExternalLink({ size = 13, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+      <polyline points="14,4 20,4 20,10" />
+      <line x1="20" y1="4" x2="11" y2="13" />
+    </svg>
+  );
+}
+
+export function IconMail({ size = 15, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <polyline points="3,7 12,13 21,7" />
+    </svg>
+  );
+}
+
+export function IconFire({ size = 15, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M12 3s-5 4.5-5 9.5A5 5 0 0 0 12 21a5 5 0 0 0 5-8.5C15.5 14 14 14.5 14 13c0-1.5 1-2.5 1-4.5C15 6 12 3 12 3z" />
+    </svg>
+  );
+}
+
