@@ -13,7 +13,7 @@ import {
   PROGRESSION_MODELS,
 } from "./lib/programEngine";
 import { InlineLoading } from "./LoadingSpinner";
-import { IconX } from "./Icons";
+import Logo from "./Logo";
 
 const T = {
   bg: "#101216",
@@ -28,40 +28,48 @@ const T = {
 const EXPERIENCE_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const DURATIONS = [4, 6, 8, 12];
 
-function SectionLabel({ children }) {
-  return <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, marginTop: 18 }}>{children}</div>;
-}
-
-function PillRow({ options, value, onChange, renderLabel }) {
+// Same PillRow/InfoBox pattern as SetupWizard.jsx (the new-user onboarding
+// flow) -- this wizard is meant to feel like an extension of that one
+// rather than a different, more form-like UI bolted on next to it.
+function PillRow({ options, value, onChange, columns }) {
   return (
-    <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
+    <div style={{ display: "flex", flexWrap: columns ? "wrap" : "nowrap", background: T.surface2, borderRadius: 12, padding: 4, gap: 4 }}>
       {options.map((opt) => (
         <button
-          key={opt}
-          onClick={() => onChange(opt)}
-          aria-pressed={value === opt}
+          key={String(opt.key)}
+          onClick={() => onChange(opt.key)}
           style={{
-            flex: 1, padding: "8px 4px", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none",
-            background: value === opt ? T.accent : "transparent",
-            color: value === opt ? "#fff" : T.dim,
+            flex: columns ? `1 1 calc(${100 / columns}% - 4px)` : 1,
+            padding: "14px 6px", borderRadius: 9, fontSize: 14, fontWeight: 700, border: "none",
+            background: value === opt.key ? T.accent : "transparent",
+            color: value === opt.key ? "#fff" : T.dim,
           }}
         >
-          {renderLabel ? renderLabel(opt) : opt}
+          {opt.label}
         </button>
       ))}
     </div>
   );
 }
 
+function InfoBox({ children }) {
+  return (
+    <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginTop: 18, fontSize: 13, color: T.dim, lineHeight: 1.6 }}>
+      {children}
+    </div>
+  );
+}
+
 export default function ProgramSetup({ user, onClose, onCreated }) {
-  const [mode, setMode] = useState("quick"); // quick | custom
+  const [step, setStep] = useState(0);
   const [trainingFocus, setTrainingFocus] = useState("Hypertrophy");
   const [daysPerWeek, setDaysPerWeek] = useState(3);
-  const [durationWeeks, setDurationWeeks] = useState(6);
-  const [splitName, setSplitName] = useState(null); // null until library loads and a default is derived
-  const [progressionOverride, setProgressionOverride] = useState(null); // null = use the training-focus default
   const [experienceLevel, setExperienceLevel] = useState(null);
   const [suggestedExperience, setSuggestedExperience] = useState(null);
+  const [customize, setCustomize] = useState(false);
+  const [durationWeeks, setDurationWeeks] = useState(6);
+  const [splitName, setSplitName] = useState(null);
+  const [progressionOverride, setProgressionOverride] = useState(null); // null = recommended per Training Focus
 
   const [loading, setLoading] = useState(true);
   const [rawLibrary, setRawLibrary] = useState([]);
@@ -96,17 +104,15 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
 
-  // Re-derives the default split whenever days/week changes in Quick Start
-  // (Custom leaves whatever the person picked alone).
+  // Keeps the default split in sync with days/week whenever someone
+  // hasn't opted into Customize (which lets them pick a split by hand).
   useEffect(() => {
-    if (mode === "quick" && splitOptions.length) setSplitName(defaultSplitForDays(daysPerWeek, splitOptions));
+    if (!customize && splitOptions.length) setSplitName(defaultSplitForDays(daysPerWeek, splitOptions));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [daysPerWeek, mode]);
+  }, [daysPerWeek, customize]);
 
   // Regenerates the auto-picked exercise list whenever the inputs that
-  // determine it change. Manual add/remove edits are intentionally not
-  // preserved across a regeneration -- changing split/experience/focus is
-  // rare enough mid-setup that reflowing cleanly beats partial staleness.
+  // determine it change.
   useEffect(() => {
     if (!splitName || rawLibrary.length === 0) return;
     const labels = dayLabelsForSplit(splitName);
@@ -136,7 +142,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
       const programId = await createProgram(user.id, {
         trainingFocus,
         experienceLevel: experienceLevel || "Beginner",
-        durationWeeks: mode === "quick" ? 6 : durationWeeks,
+        durationWeeks: customize ? durationWeeks : 6,
         daysPerWeek,
         splitName,
       });
@@ -144,7 +150,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
       let position = 0;
       dayLabels.forEach((_, dayIndex) => {
         (picksByDay[dayIndex] || []).forEach((ex) => {
-          rows.push({ exerciseId: ex.id, position: position++, dayIndex, plannedSets: 3, progressionModel: progressionOverride });
+          rows.push({ exerciseId: ex.id, position: position++, dayIndex, plannedSets: 3, progressionModel: customize ? progressionOverride : null });
         });
       });
       if (rows.length > 0) await addProgramExercises(programId, rows);
@@ -157,116 +163,172 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
   const dayLabels = splitName ? dayLabelsForSplit(splitName) : [];
   const totalPicked = Object.values(picksByDay).reduce((sum, arr) => sum + (arr?.length || 0), 0);
 
-  return (
-    <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 2000, display: "flex", justifyContent: "center", overflow: "hidden" }}>
-      <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", height: "100%" }}>
-        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 26 }} />
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>BUILD A PROGRAM</div>
-          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: T.dim, justifySelf: "end" }}><IconX size={20} /></button>
-        </div>
-
-        {loading ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}><InlineLoading /></div>
-        ) : (
-          <>
-            <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
-              <div style={{ marginTop: 16 }}>
-                <PillRow options={["quick", "custom"]} value={mode} onChange={setMode} renderLabel={(o) => (o === "quick" ? "Quick Start" : "Custom")} />
+  const exercisesBody = (
+    <div>
+      {dayLabels.map((label, dayIndex) => {
+        const picks = picksByDay[dayIndex] || [];
+        const buckets = getSplits()[label] || [];
+        const q = (addSearch[dayIndex] || "").toLowerCase();
+        const searchResults = q
+          ? rawLibrary.filter((r) => buckets.includes(r.muscle_group) && r.name.toLowerCase().includes(q) && !picks.some((p) => p.id === r.id)).slice(0, 6)
+          : [];
+        return (
+          <div key={dayIndex} style={{ marginBottom: 16 }}>
+            <div style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Day {dayIndex + 1}: {label}</div>
+            {picks.length === 0 && <div style={{ color: T.dim, fontSize: 12, marginBottom: 6 }}>No exercises picked yet.</div>}
+            {picks.map((ex) => (
+              <div key={ex.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 6 }}>
+                <span style={{ color: T.text, fontSize: 13 }}>{ex.short || ex.name}</span>
+                <button onClick={() => removePick(dayIndex, ex.id)} aria-label={`Remove ${ex.name}`} style={{ background: "none", border: "none", color: T.dim, fontSize: 16 }}>×</button>
               </div>
-
-              <SectionLabel>Training Focus</SectionLabel>
-              <PillRow options={Object.keys(IDEOLOGIES)} value={trainingFocus} onChange={setTrainingFocus} />
-              <div style={{ color: T.dim, fontSize: 11, marginTop: 6 }}>{IDEOLOGIES[trainingFocus].desc}</div>
-
-              <SectionLabel>Days per week</SectionLabel>
-              <PillRow options={[2, 3, 4, 5, 6]} value={daysPerWeek} onChange={setDaysPerWeek} />
-
-              <SectionLabel>Experience level</SectionLabel>
-              <PillRow options={EXPERIENCE_LEVELS} value={experienceLevel} onChange={setExperienceLevel} />
-              {suggestedExperience && (
-                <div style={{ color: T.dim, fontSize: 11, marginTop: 6 }}>
-                  Based on your logging history, we'd guess <b style={{ color: T.text }}>{suggestedExperience}</b>. Tap to change it.
-                </div>
-              )}
-
-              {mode === "custom" && (
-                <>
-                  <SectionLabel>Program length</SectionLabel>
-                  <PillRow options={DURATIONS} value={durationWeeks} onChange={setDurationWeeks} renderLabel={(w) => `${w}wk`} />
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 6 }}>Last week of the block is a built-in deload.</div>
-
-                  <SectionLabel>Split</SectionLabel>
-                  <PillRow options={splitOptions} value={splitName} onChange={setSplitName} />
-
-                  <SectionLabel>Progression model</SectionLabel>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <button
-                      onClick={() => setProgressionOverride(null)}
-                      aria-pressed={progressionOverride === null}
-                      style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, border: `1px solid ${progressionOverride === null ? T.accent : T.line}`, background: progressionOverride === null ? "rgba(232,68,46,0.1)" : T.surface, color: T.text, fontSize: 13 }}
-                    >
-                      Recommended (per Training Focus)
-                    </button>
-                    {Object.entries(PROGRESSION_MODELS).map(([key, label]) => (
-                      <button
-                        key={key}
-                        onClick={() => setProgressionOverride(key)}
-                        aria-pressed={progressionOverride === key}
-                        style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, border: `1px solid ${progressionOverride === key ? T.accent : T.line}`, background: progressionOverride === key ? "rgba(232,68,46,0.1)" : T.surface, color: T.text, fontSize: 13 }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              <SectionLabel>Exercises ({totalPicked} auto-picked, adjust below)</SectionLabel>
-              {dayLabels.map((label, dayIndex) => {
-                const picks = picksByDay[dayIndex] || [];
-                const buckets = getSplits()[label] || [];
-                const q = (addSearch[dayIndex] || "").toLowerCase();
-                const searchResults = q
-                  ? rawLibrary.filter((r) => buckets.includes(r.muscle_group) && r.name.toLowerCase().includes(q) && !picks.some((p) => p.id === r.id)).slice(0, 6)
-                  : [];
-                return (
-                  <div key={dayIndex} style={{ marginBottom: 14 }}>
-                    <div style={{ color: T.text, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Day {dayIndex + 1}: {label}</div>
-                    {picks.length === 0 && <div style={{ color: T.dim, fontSize: 12, marginBottom: 6 }}>No exercises picked yet.</div>}
-                    {picks.map((ex) => (
-                      <div key={ex.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
-                        <span style={{ color: T.text, fontSize: 13 }}>{ex.short || ex.name}</span>
-                        <button onClick={() => removePick(dayIndex, ex.id)} aria-label={`Remove ${ex.name}`} style={{ background: "none", border: "none", color: T.dim, fontSize: 16 }}>×</button>
-                      </div>
-                    ))}
-                    <input
-                      value={addSearch[dayIndex] || ""}
-                      onChange={(e) => setAddSearch((prev) => ({ ...prev, [dayIndex]: e.target.value }))}
-                      placeholder={`Add another ${label} exercise…`}
-                      style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }}
-                    />
-                    {searchResults.map((r) => (
-                      <button key={r.id} onClick={() => addPick(dayIndex, r)} style={{ display: "block", width: "100%", textAlign: "left", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, padding: "8px 10px", marginTop: 6, color: T.text, fontSize: 13 }}>
-                        + {r.short || r.name}
-                      </button>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div style={{ padding: 16, borderTop: `1px solid ${T.line}` }}>
-              <button
-                onClick={handleCreate}
-                disabled={saving || totalPicked === 0}
-                style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontWeight: 700, fontSize: 15, opacity: saving || totalPicked === 0 ? 0.6 : 1 }}
-              >
-                {saving ? "Building…" : "Create Program"}
+            ))}
+            <input
+              value={addSearch[dayIndex] || ""}
+              onChange={(e) => setAddSearch((prev) => ({ ...prev, [dayIndex]: e.target.value }))}
+              placeholder={`Add another ${label} exercise…`}
+              style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 9, color: T.text, fontSize: 13, padding: "10px 12px", boxSizing: "border-box" }}
+            />
+            {searchResults.map((r) => (
+              <button key={r.id} onClick={() => addPick(dayIndex, r)} style={{ display: "block", width: "100%", textAlign: "left", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 9, padding: "10px 12px", marginTop: 6, color: T.text, fontSize: 13 }}>
+                + {r.short || r.name}
               </button>
-            </div>
-          </>
-        )}
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const steps = [
+    {
+      title: "Training Focus",
+      subtitle: "Sets your rep ranges and default progression style for the whole program.",
+      body: (
+        <>
+          <PillRow options={Object.keys(IDEOLOGIES).map((k) => ({ key: k, label: k }))} value={trainingFocus} onChange={setTrainingFocus} />
+          <InfoBox>{IDEOLOGIES[trainingFocus].desc}</InfoBox>
+        </>
+      ),
+    },
+    {
+      title: "Days per week",
+      subtitle: "How many days can you train?",
+      body: <PillRow options={[2, 3, 4, 5, 6].map((n) => ({ key: n, label: String(n) }))} value={daysPerWeek} onChange={setDaysPerWeek} columns={5} />,
+    },
+    {
+      title: "Experience level",
+      subtitle: suggestedExperience
+        ? `Based on your logging history, we'd guess ${suggestedExperience} — tap to change it.`
+        : "How experienced are you with lifting?",
+      body: <PillRow options={EXPERIENCE_LEVELS.map((l) => ({ key: l, label: l }))} value={experienceLevel} onChange={setExperienceLevel} />,
+    },
+    {
+      title: "Customize the details?",
+      subtitle: "Quick Start uses sensible defaults for length, split, and progression style.",
+      body: <PillRow options={[{ key: false, label: "Quick Start" }, { key: true, label: "Customize" }]} value={customize} onChange={setCustomize} />,
+    },
+    ...(customize
+      ? [
+          {
+            title: "Program length",
+            subtitle: "Last week of the block is a built-in deload.",
+            body: <PillRow options={DURATIONS.map((w) => ({ key: w, label: `${w}wk` }))} value={durationWeeks} onChange={setDurationWeeks} columns={4} />,
+          },
+          {
+            title: "Split",
+            subtitle: "Which days train which muscle groups.",
+            body: <PillRow options={splitOptions.map((s) => ({ key: s, label: s }))} value={splitName} onChange={setSplitName} />,
+          },
+          {
+            title: "Progression model",
+            subtitle: "How your weight and reps advance week to week.",
+            body: (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  onClick={() => setProgressionOverride(null)}
+                  style={{ textAlign: "left", padding: "14px 14px", borderRadius: 12, border: `1px solid ${progressionOverride === null ? T.accent : T.line}`, background: progressionOverride === null ? "rgba(232,68,46,0.1)" : T.surface, color: T.text, fontSize: 14, fontWeight: 600 }}
+                >
+                  Recommended (per Training Focus)
+                </button>
+                {Object.entries(PROGRESSION_MODELS).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setProgressionOverride(key)}
+                    style={{ textAlign: "left", padding: "14px 14px", borderRadius: 12, border: `1px solid ${progressionOverride === key ? T.accent : T.line}`, background: progressionOverride === key ? "rgba(232,68,46,0.1)" : T.surface, color: T.text, fontSize: 14, fontWeight: 600 }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ),
+          },
+        ]
+      : []),
+    {
+      title: "Your exercises",
+      subtitle: `${totalPicked} auto-picked per muscle group — add or remove anything below.`,
+      body: exercisesBody,
+      wide: true,
+    },
+  ];
+
+  const current = steps[step];
+  const isLast = step === steps.length - 1;
+
+  function handleNext() {
+    if (isLast) handleCreate();
+    else setStep(step + 1);
+  }
+
+  if (loading) {
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: T.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <InlineLoading />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000, overflowY: "auto", background: T.bg, display: "flex", flexDirection: "column", padding: 24, boxSizing: "border-box" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <button
+          onClick={() => (step === 0 ? onClose() : setStep(step - 1))}
+          aria-label={step === 0 ? "Close" : "Back"}
+          style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14 }}
+        >
+          {step === 0 ? "×" : "‹"}
+        </button>
+        <Logo size={36} />
+        <div style={{ width: 32 }} />
+      </div>
+
+      <div style={{ display: "flex", gap: 5, marginBottom: 28 }}>
+        {steps.map((_, i) => (
+          <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= step ? T.accent : T.line }} />
+        ))}
+      </div>
+
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: current.wide ? "flex-start" : "center", maxWidth: 380, width: "100%", margin: "0 auto" }}>
+        <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, textAlign: "center" }}>
+          Step {step + 1} of {steps.length}
+        </div>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
+          {current.title}
+        </div>
+        <div style={{ color: T.dim, fontSize: 13, textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
+          {current.subtitle}
+        </div>
+        {current.body}
+      </div>
+
+      <div style={{ width: "100%", maxWidth: 380, margin: "0 auto", paddingTop: 16 }}>
+        <button
+          onClick={handleNext}
+          disabled={saving || (isLast && totalPicked === 0)}
+          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700, opacity: saving || (isLast && totalPicked === 0) ? 0.6 : 1 }}
+        >
+          {saving ? "Building…" : isLast ? "Create Program" : "Continue"}
+        </button>
       </div>
     </div>
   );

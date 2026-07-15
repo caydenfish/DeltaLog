@@ -15,6 +15,7 @@ import MuscleSetsDetail from "./MuscleSetsDetail";
 import HomeChartCard, { RangeSwitcher } from "./HomeChartCard";
 import WeeklySetGoals, { WeeklySetGoalsEditor } from "./WeeklySetGoals";
 import ProgramView from "./ProgramView";
+import { fetchActiveProgram } from "./lib/programQueries";
 import HomeModulesEditor from "./HomeModulesEditor";
 import Logo from "./Logo";
 import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX } from "./Icons";
@@ -253,6 +254,25 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     return !q || keywords.toLowerCase().includes(q);
   }
 
+  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, timeFormat };
+  function handlePreferencesChange(key, val) {
+    if (key === "units") setUnits(val);
+    else if (key === "muscleNameMode") setMuscleNameMode(val);
+    else if (key === "scoreDisplay") setScoreDisplay(val);
+    else if (key === "weightEntryMode") setWeightEntryMode(val);
+    else if (key === "restSeconds") setRestDefault(val);
+    else if (key === "warmupRestSeconds") setWarmupRestDefault(val);
+    else if (key === "warmupRestEnabled") setWarmupRestEnabled(val);
+    else if (key === "restTimerSoundEnabled") setRestTimerSoundEnabled(val);
+    else if (key === "restTimerSound") setRestTimerSound(val);
+    else if (key === "restTimerVibrationEnabled") setRestTimerVibrationEnabled(val);
+    else if (key === "restTimerVibration") setRestTimerVibration(val);
+    else if (key === "restTimerNotificationEnabled") setRestTimerNotificationEnabled(val);
+    else if (key === "plate55Scope") setPlate55Scope(val);
+    else if (key === "trainingIdeology") setTrainingIdeology(val);
+    else if (key === "timeFormat") setTimeFormat(val);
+  }
+
   // Greets the person once per calendar day, on whichever login happens
   // first that day, with everything shipped since their last visit — not
   // just the current version, in case they skipped a few releases.
@@ -309,6 +329,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date(); d.setDate(1); return d;
   });
+  const [activeProgramForCalendar, setActiveProgramForCalendar] = useState(null);
   const [profile, setProfile] = useState(null);
   const isRealAdmin = !!profile?.is_admin;
   const isRealCreator = !!profile?.is_creator;
@@ -319,6 +340,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // the admin out of flipping back.
   const effectiveIsAdmin = isRealAdmin && adminViewMode === "admin";
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showPreferencesScreen, setShowPreferencesScreen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -339,6 +361,20 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     })();
     return () => { cancelled = true; };
   }, [user.id]);
+
+  // Active program, used only to forecast upcoming training days on the
+  // Home calendar (dashed markers past today) — not the program's own
+  // detail, which lives in ProgramView. Refetched whenever ProgramView
+  // is closed, since that's the only place a program gets created,
+  // completed, or abandoned.
+  const [programRefreshKey, setProgramRefreshKey] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetchActiveProgram(user.id)
+      .then((p) => { if (!cancelled) setActiveProgramForCalendar(p); })
+      .catch(() => { if (!cancelled) setActiveProgramForCalendar(null); });
+    return () => { cancelled = true; };
+  }, [user.id, programRefreshKey]);
 
   useEffect(() => {
     if (!profile?.is_admin) return;
@@ -600,6 +636,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // whatever range the volume chart above happens to be showing.
   const { byDate: calendarByDate, workoutsByDate } = useMemo(() => groupWorkoutsByDate(history || []), [history]);
   const monthGrid = useMemo(() => buildMonthGrid(calendarMonth, calendarByDate), [calendarMonth, calendarByDate]);
+  const programForecastDates = useMemo(() => computeProgramForecastDates(activeProgramForCalendar, calendarByDate), [activeProgramForCalendar, calendarByDate]);
   const insight = useMemo(() => buildLastWorkoutInsight(history), [history]);
 
   function handleDayClick(dateStr) {
@@ -807,19 +844,26 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                             {monthGrid.map((cell, i) => {
                               if (!cell) return <div key={i} />;
                               const hasWorkout = cell.volume > 0;
+                              const isForecast = !hasWorkout && programForecastDates.has(cell.date);
                               const clickable = cell.volume > 0;
                               return (
                                 <button
                                   key={i}
                                   onClick={() => clickable && handleDayClick(cell.date)}
                                   disabled={!clickable}
-                                  title={cell.volume > 0 ? `${Math.round(toDisplay(cell.volume, units)).toLocaleString()} ${units} — tap for details` : undefined}
+                                  title={
+                                    cell.volume > 0
+                                      ? `${Math.round(toDisplay(cell.volume, units)).toLocaleString()} ${units} — tap for details`
+                                      : isForecast
+                                        ? "Forecasted program day"
+                                        : undefined
+                                  }
                                   style={{
                                     aspectRatio: "1", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: 10, color: hasWorkout ? "#fff" : T.dim,
+                                    fontSize: 10, color: hasWorkout ? "#fff" : isForecast ? T.accent : T.dim,
                                     background: hasWorkout ? T.accent : T.surface2,
                                     opacity: 1,
-                                    border: cell.isToday ? `1px solid ${T.text}` : "none",
+                                    border: cell.isToday ? `1px solid ${T.text}` : isForecast ? `1px dashed ${T.accent}` : "none",
                                     padding: 0, cursor: clickable ? "pointer" : "default",
                                   }}
                                 >
@@ -828,6 +872,12 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                               );
                             })}
                           </div>
+                          {activeProgramForCalendar && (
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 8 }}>
+                              <span style={{ width: 9, height: 9, borderRadius: 3, border: `1px dashed ${T.accent}`, display: "inline-block", flexShrink: 0 }} />
+                              <span style={{ fontSize: 10.5, color: T.dim }}>Forecasted program day</span>
+                            </div>
+                          )}
                           <button
                             onClick={() => setHistoryView({})}
                             style={{ width: "100%", marginTop: 12, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
@@ -880,22 +930,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
             </div>
 
             <div style={{ padding: 16, flex: 1 }}>
-              {/* Workouts */}
-              {(settingsMatch("templates workouts reusable build manage") || settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") || settingsMatch("program generator training block multi-week progression deload science coach") || settingsMatch("weekly set goals my plan targets muscle group individual uniform one for all")) && (
+              {/* Training Plan */}
+              {(settingsMatch("program generator training block multi-week progression deload science coach") || settingsMatch("weekly set goals my plan targets muscle group individual uniform one for all")) && (
               <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Workouts</div>
-              {settingsMatch("weekly set goals my plan targets muscle group individual uniform one for all") && (
-              <button
-                onClick={() => setShowWeeklySetGoals(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Weekly Set Goals</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Set a weekly target per muscle group, or one number for all of them</div>
-                </div>
-                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-              </button>
-              )}
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Training Plan</div>
               {settingsMatch("program generator training block multi-week progression deload science coach") && (
               <button
                 onClick={() => setShowProgramView(true)}
@@ -908,6 +946,25 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 <div style={{ color: T.dim, fontSize: 16 }}>›</div>
               </button>
               )}
+              {settingsMatch("weekly set goals my plan targets muscle group individual uniform one for all") && (
+              <button
+                onClick={() => setShowWeeklySetGoals(true)}
+                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
+              >
+                <div>
+                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Weekly Set Goals</div>
+                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Set a weekly target per muscle group, or one number for all of them</div>
+                </div>
+                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
+              </button>
+              )}
+              </>
+              )}
+
+              {/* Workout Library */}
+              {(settingsMatch("templates workouts reusable build manage") || settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete")) && (
+              <>
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Workout Library</div>
               {settingsMatch("templates workouts reusable build manage") && (
               <button
                 onClick={() => setShowTemplates(true)}
@@ -921,7 +978,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 <div style={{ color: T.dim, fontSize: 16 }}>›</div>
               </button>
               )}
-
               {settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") && (
               <button
                 onClick={() => setShowExerciseLibraryView(true)}
@@ -954,27 +1010,29 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                   <div style={{ color: T.dim, fontSize: 16 }}>›</div>
                 </button>
                 )}
-                <Preferences
-                  value={{ units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, timeFormat }}
-                  filterQuery={settingsQuery}
-                  onChange={(key, val) => {
-                    if (key === "units") setUnits(val);
-                    else if (key === "muscleNameMode") setMuscleNameMode(val);
-                    else if (key === "scoreDisplay") setScoreDisplay(val);
-                    else if (key === "weightEntryMode") setWeightEntryMode(val);
-                    else if (key === "restSeconds") setRestDefault(val);
-                    else if (key === "warmupRestSeconds") setWarmupRestDefault(val);
-                    else if (key === "warmupRestEnabled") setWarmupRestEnabled(val);
-                    else if (key === "restTimerSoundEnabled") setRestTimerSoundEnabled(val);
-                    else if (key === "restTimerSound") setRestTimerSound(val);
-                    else if (key === "restTimerVibrationEnabled") setRestTimerVibrationEnabled(val);
-                    else if (key === "restTimerVibration") setRestTimerVibration(val);
-                    else if (key === "restTimerNotificationEnabled") setRestTimerNotificationEnabled(val);
-                    else if (key === "plate55Scope") setPlate55Scope(val);
-                    else if (key === "trainingIdeology") setTrainingIdeology(val);
-                    else if (key === "timeFormat") setTimeFormat(val);
-                  }}
-                />
+                {settingsQuery.trim() === "" ? (
+                  // Browse mode: a single consistent nav row, matching every
+                  // other Settings destination — clicking opens the full
+                  // Preferences screen rather than dumping the whole field
+                  // list inline here (the one place that used to break from
+                  // the rest of the menu's "everything is a tidy button"
+                  // pattern).
+                  <button
+                    onClick={() => setShowPreferencesScreen(true)}
+                    style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
+                  >
+                    <div>
+                      <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Preferences</div>
+                      <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Units, training focus, rest timer, and more</div>
+                    </div>
+                    <div style={{ color: T.dim, fontSize: 16 }}>›</div>
+                  </button>
+                ) : (
+                  // Search mode: surface the exact matching field(s) right
+                  // here instead of sending someone into a sub-screen to
+                  // find what they just typed.
+                  <Preferences value={preferencesValue} filterQuery={settingsQuery} onChange={handlePreferencesChange} />
+                )}
               </div>
               </>
               )}
@@ -1093,11 +1151,25 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
       {showTemplates && <Templates user={user} onClose={() => setShowTemplates(false)} />}
       {showWeeklySetGoals && <WeeklySetGoalsEditor userId={user.id} onClose={() => setShowWeeklySetGoals(false)} />}
+      {showPreferencesScreen && (
+        <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
+          <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
+              <button onClick={() => setShowPreferencesScreen(false)} aria-label="Back" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>PREFERENCES</div>
+              <div style={{ width: 26 }} />
+            </div>
+            <div style={{ padding: 16, flex: 1 }}>
+              <Preferences value={preferencesValue} onChange={handlePreferencesChange} />
+            </div>
+          </div>
+        </div>
+      )}
       {showProgramView && (
         <ProgramView
           user={user}
-          onClose={() => setShowProgramView(false)}
-          onWorkoutStarted={() => { setShowProgramView(false); setShowMenu(false); onProgramWorkoutStarted(); }}
+          onClose={() => { setShowProgramView(false); setProgramRefreshKey((k) => k + 1); }}
+          onWorkoutStarted={() => { setShowProgramView(false); setShowMenu(false); setProgramRefreshKey((k) => k + 1); onProgramWorkoutStarted(); }}
         />
       )}
       {showTerms && <TermsViewer onClose={() => setShowTerms(false)} />}
@@ -1427,4 +1499,24 @@ function buildMonthGrid(monthDate, byDate) {
     cells.push({ day, date: dateStr, volume: byDate[dateStr] || 0, isToday: dateStr === todayStr });
   }
   return cells;
+}
+
+// Forecasts which upcoming calendar days an active program's next
+// sessions should land on -- a lightweight even-interval projection
+// (every ~7/daysPerWeek days starting today), not a fixed weekday
+// schedule, since program setup doesn't collect specific training days.
+// Only ever projects forward from today, and only up to a month out, so
+// it can't wildly outrun the block or clutter past months. Returns a
+// Set of "YYYY-MM-DD" strings.
+function computeProgramForecastDates(program, actualByDate) {
+  const dates = new Set();
+  if (!program || program.status !== "active" || !program.daysPerWeek) return dates;
+  const interval = Math.max(1, Math.round(7 / program.daysPerWeek));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 0, cursor = new Date(today); i < 12; i++, cursor.setDate(cursor.getDate() + interval)) {
+    const dateStr = toLocalDateStr(cursor);
+    if (!actualByDate[dateStr]) dates.add(dateStr);
+  }
+  return dates;
 }

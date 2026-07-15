@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.11.6": {
+    title: "A more organized Settings menu",
+    items: [
+      "Preferences is now its own screen (tap Preferences under Profile & Preferences), instead of the full list of fields sitting inline in the middle of Settings — it's now a clean tap-through like everything else. Searching Settings still surfaces the exact matching field right there without navigating anywhere, same as before.",
+      "Settings reorganized into clearer groups: Training Plan (Program, Weekly Set Goals) and Workout Library (Templates, Exercise Library) instead of one mixed \"Workouts\" section.",
+    ],
+  },
   "1.11.5": {
     title: "Weekly Set Goals (formerly My Plan), and a cleaner Radar scale",
     items: [

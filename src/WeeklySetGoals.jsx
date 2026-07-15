@@ -24,11 +24,11 @@ const DEFAULT_TARGET = 10;
 const MIN_TARGET = 0;
 const MAX_TARGET = 30;
 
-// Every muscle group gets a weekly set target here (including Full
-// Body), matching Cayden's "eight sliders" call -- even though Full
-// Body doesn't map onto a body-map region (see BodyMap.jsx/
-// bodyMapRegions.js), it still gets tracked and shown in this list.
-const MUSCLES = Object.keys(MUSCLE_COLORS);
+// Every muscle group gets a weekly set goal here, except Full Body --
+// Full Body tags are being phased out app-wide, and even before that,
+// a "weekly set goal" was never a meaningful concept for it the way it
+// is for a real muscle group.
+const MUSCLES = Object.keys(MUSCLE_COLORS).filter((m) => m !== "Full Body");
 
 // A +/- stepper with a typeable number field in the middle, used
 // instead of a drag slider anywhere a target is actually edited. Sliders

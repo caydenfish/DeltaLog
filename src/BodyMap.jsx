@@ -189,9 +189,6 @@ export default function BodyMap({ primary = {}, secondary = {}, mode = "intensit
           </div>
         ))}
       </div>
-      {mode === "plan" && (
-        <div style={{ textAlign: "center", fontSize: 10.5, color: T.dim, marginTop: 6 }}>Full Body isn't shown here — see its progress in Weekly Set Goals</div>
-      )}
     </div>
   );
 }

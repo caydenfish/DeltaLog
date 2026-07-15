@@ -5,6 +5,16 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.11.6",
+    date: "2026-07-15",
+    items: [
+      "Scoping decision, not a code change: Cayden's \"disbanding full body tags\" note was scoped to Weekly Set Goals only (already shipped in 1.11.5) rather than a system-wide removal — Full Body remains a real muscle_group value on the exercises table, in MUSCLE_COLORS, splits, the generator, volume/coverage charts, and plate-size logic, pending a dedicated pass where each currently-Full-Body-tagged exercise gets manually reassigned (no rule can safely auto-resolve what a barbell complex's \"real\" primary muscle is).",
+      "Settings menu restructure, addressing feedback that it needed to be more intuitive. Root cause: every destination in Settings was a consistent tap-through button except one — the embedded <Preferences> component was rendered fully inline in the middle of the Profile & Preferences section, dumping its entire (if internally collapsed) field list into the main scrolling list rather than living behind its own row like Templates/Exercise Library/Program/Weekly Set Goals/Help & Support/Admin all do.",
+      "Fix preserves the one thing that inline rendering was actually good for (Settings search revealing an exact matching preference field without navigating away) while fixing the inconsistency for normal browsing: Home.jsx now branches on settingsQuery.trim() === \"\" — when empty (browsing), a single \"Preferences\" nav row renders and opens a new full-screen destination (new showPreferencesScreen state, chrome matches every other full-screen Settings destination: sticky header, back chevron, centered title); when non-empty (searching), the exact prior behavior is preserved — <Preferences filterQuery={settingsQuery} .../> renders inline so a search for e.g. \"rest timer\" still surfaces that field directly in the list. The value object and onChange dispatcher (previously an inline object + inline arrow function passed straight to the embedded component) were extracted to preferencesValue/handlePreferencesChange at the top of the component so both the search-mode inline render and the new full-screen destination share one definition rather than duplicating the 15-branch onChange switch.",
+      "The \"Workouts\" section (which had grown to 4 mixed-purpose buttons after Program and Weekly Set Goals were added on top of the original Templates/Exercise Library) split into two headers: \"Training Plan\" (Program, Weekly Set Goals — planning/goal-setting) and \"Workout Library\" (Templates, Exercise Library — reference/data management). Same settingsMatch keyword-search behavior per button, just regrouped under headers that match how someone would actually think to look for each one.",
+    ],
+  },
+  {
     version: "1.11.5",
     date: "2026-07-15",
     items: [
