@@ -9,6 +9,17 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.11.4": {
+    title: "Program: a science-backed multi-week training program generator",
+    items: [
+      "New: Program. Build a multi-week training program from Home's menu — pick a Training Focus, days per week, and let it suggest your experience level from your logging history (or set it yourself). Quick Start defaults everything sensibly; Custom lets you set program length, split, and which progression style to use.",
+      "Every session in a program shows a prescribed weight and reps for each exercise, computed from your own training history — no more guessing what to load. A short line under each target explains why it's what it is (hit the top of your rep range, easing back in after time off, holding steady through a plateau, etc.), so the number never just quietly changes on you.",
+      "Three progression styles under the hood, matched to your Training Focus by default: Double Progression (Hypertrophy/Endurance), % of e1RM (Strength), and RIR Autoregulation as an optional pick in Custom setup. See the new Program Generator section in FAQ for what each one actually does.",
+      "Every program has a built-in deload week at the end of the block, and progress is tracked by sessions completed rather than the calendar — missing a week just waits for you instead of throwing off the plan.",
+      "My Plan can now suggest weekly set targets straight from your active program — one tap to apply them, and every slider stays fully editable afterward.",
+      "Exercises for a program are auto-picked per muscle group (favoring compound movements and exercises you've already done), with a search box under each day to swap in whatever you'd rather do instead.",
+    ],
+  },
   "1.11.3": {
     title: "A customizable Home, and a clearer muscle breakdown",
     items: [

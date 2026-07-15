@@ -157,6 +157,12 @@ export default function App() {
             onStartWorkout={() => { setResumeWorkout(null); setMode("workout"); }}
             onResumeWorkout={() => setMode("workout")}
             onDataReset={() => setProfile(null)}
+            onProgramWorkoutStarted={() => {
+              // The program-generated workout was already created server-side
+              // (ProgramView calls startWorkout/addWorkoutExercise itself) --
+              // refetch it the same way onGoHome does, then drop straight in.
+              fetchActiveWorkout(session.user.id).then((w) => { setResumeWorkout(w); setMode("workout"); }).catch(() => {});
+            }}
           />
         )}
       </>

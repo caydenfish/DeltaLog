@@ -1223,7 +1223,7 @@ export async function fetchActiveWorkout(userId) {
 
   const { data: exRows, error: exErr } = await supabase
     .from("workout_exercises")
-    .select("id, position, planned_sets, planned_warmup_sets, superset_group, exercises (*), sets (set_number, weight, reps, rir, is_warmup)")
+    .select("id, position, planned_sets, planned_warmup_sets, superset_group, program_id, program_week, prescribed_weight, prescribed_reps, progression_reason, exercises (*), sets (set_number, weight, reps, rir, is_warmup)")
     .eq("workout_id", workout.id)
     .order("position");
   if (exErr) throw exErr;
@@ -1241,6 +1241,11 @@ export async function fetchActiveWorkout(userId) {
       plannedSets: row.planned_sets,
       plannedWarmupSets: row.planned_warmup_sets,
       supersetGroup: row.superset_group,
+      programId: row.program_id,
+      programWeek: row.program_week,
+      prescribedWeight: row.prescribed_weight === null ? null : Number(toDisplay(row.prescribed_weight, getPrefs().units)),
+      prescribedReps: row.prescribed_reps,
+      progressionReason: row.progression_reason,
       exercise: normalizeExercise(row.exercises),
       sets: [...row.sets].sort((a, b) => a.set_number - b.set_number).map((s) => ({ weight: toDisplay(Number(s.weight), getPrefs().units), reps: s.reps, rir: s.rir, isWarmup: !!s.is_warmup })),
     })),

@@ -110,7 +110,17 @@ function diffBadge(diff, unit) {
 // Always produces an ideology-adjusted target, with or without history.
 // Falls back to treating the library's default weight as a Hypertrophy-effort
 // performance at RIR 2, so every exercise responds to ideology switching.
+//
+// When `ex` came from an active Program (see newItem/resumeWorkout above),
+// prescribedWeight/prescribedReps are already computed by the program
+// engine and returned directly here, with the plain-language reason
+// carried along for display -- the ideology math below never runs for
+// that exercise. Every other exercise (no active program, or a program
+// slot without a prescription for some reason) behaves exactly as before.
 function targetFor(ex, ideologyName, unit) {
+  if (ex.prescribedWeight != null && ex.prescribedReps != null) {
+    return { weight: ex.prescribedWeight, reps: ex.prescribedReps, anchored: true, baseE1RM: null, source: null, reasonText: ex.progressionReason, fromProgram: true };
+  }
   const { low, high } = IDEOLOGIES[ideologyName];
   const reps = Math.round((low + high) / 2);
   const lastWorkingSets = ex.lastWeek.filter((s) => !s.isWarmup);
@@ -156,6 +166,15 @@ const newItem = (hydrated, dbId, planned = 3, plannedWarmup = 0) => ({
   warmupRestSeconds: hydrated.savedWarmupRestSeconds || null, // null = use the global warmup default
   ideology: null,
   supersetGroup: null,
+  // Set (from resumeWorkout's exerciseRows) only when this slot was
+  // generated from an active Program -- prescribedWeight/prescribedReps
+  // are the program engine's precomputed target, already unit-adjusted,
+  // and progressionReason is the plain-language "why" shown next to it.
+  // targetFor() below returns these directly when present, bypassing the
+  // ideology-based math entirely for that exercise.
+  prescribedWeight: null,
+  prescribedReps: null,
+  progressionReason: null,
 });
 
 // ---------- Reusable pieces (module scope so identity stays stable across renders) ----------
@@ -486,6 +505,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             if (cancelled) return;
             const item = newItem(hydrated, row.weId, row.plannedSets, row.plannedWarmupSets || 0);
             item.supersetGroup = row.supersetGroup ?? null;
+            item.prescribedWeight = row.prescribedWeight ?? null;
+            item.prescribedReps = row.prescribedReps ?? null;
+            item.progressionReason = row.progressionReason ?? null;
             items.push(item);
             setsArr.push(row.sets);
           }
@@ -2383,7 +2405,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
 
           {showTargetInfo && (
             <div style={{ marginTop: 10, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 12px", fontSize: 12, color: T.dim, lineHeight: 1.5 }}>
-              {target.anchored ? (
+              {target.fromProgram ? (
+                <><b style={{ color: T.text }}>Program coach:</b> {target.reasonText}</>
+              ) : target.anchored ? (
                 <>Based on your best estimated 1RM of <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>, from {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir} last session. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps as the working target.</>
               ) : (
                 <>No session history yet, so this starts from the library default of {ex.targetWeight} {unit}, treated as a moderate hypertrophy effort (~{target.baseE1RM} {unit} estimated 1RM). Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range. Log a session and this becomes personalized.</>

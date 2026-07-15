@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { fetchMuscleGroupTargets, saveMuscleGroupTarget } from "./lib/queries";
+import { fetchActiveProgram } from "./lib/programQueries";
+import { dayLabelsForSplit } from "./lib/programEngine";
 import { computeRollingWeeklyTotals } from "./lib/volume";
 import { MUSCLE_COLORS } from "./lib/muscleColors";
 import { statusColorFor } from "./lib/planStatus";
@@ -37,6 +39,8 @@ const MUSCLES = Object.keys(MUSCLE_COLORS);
 // Training Range selector.
 export default function MyPlan({ userId, history }) {
   const [targets, setTargets] = useState(null); // null = loading
+  const [suggestion, setSuggestion] = useState(null); // { programId, byMuscle: {muscle: sets} } | null
+  const [dismissed, setDismissed] = useState(false);
   const saveTimers = useRef({});
 
   useEffect(() => {
@@ -56,6 +60,46 @@ export default function MyPlan({ userId, history }) {
       });
     return () => { cancelled = true; };
   }, [userId]);
+
+  // One-time suggestion when a program exists: the program suggests
+  // weekly set targets, but never writes them automatically -- My Plan
+  // stays user-editable, this is a single tap to accept, not a live sync.
+  useEffect(() => {
+    let cancelled = false;
+    fetchActiveProgram(userId)
+      .then((program) => {
+        if (cancelled || !program) return;
+        const dismissKey = `myPlanSuggestionDismissed:${program.id}`;
+        if (localStorage.getItem(dismissKey)) return;
+        const dayLabels = dayLabelsForSplit(program.splitName);
+        const weeklyMultiplier = program.daysPerWeek / Math.max(1, dayLabels.length);
+        const byMuscle = {};
+        for (const pe of program.exercises) {
+          const m = pe.exercise.muscle;
+          if (!m) continue;
+          byMuscle[m] = (byMuscle[m] || 0) + pe.plannedSets * weeklyMultiplier;
+        }
+        for (const m of Object.keys(byMuscle)) byMuscle[m] = Math.round(byMuscle[m]);
+        if (Object.keys(byMuscle).length > 0) setSuggestion({ programId: program.id, byMuscle });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  function applySuggestion() {
+    if (!suggestion) return;
+    setTargets((prev) => ({ ...prev, ...suggestion.byMuscle }));
+    Object.entries(suggestion.byMuscle).forEach(([muscle, value]) => {
+      saveMuscleGroupTarget(userId, muscle, value).catch(() => {});
+    });
+    localStorage.setItem(`myPlanSuggestionDismissed:${suggestion.programId}`, "1");
+    setDismissed(true);
+  }
+
+  function dismissSuggestion() {
+    if (suggestion) localStorage.setItem(`myPlanSuggestionDismissed:${suggestion.programId}`, "1");
+    setDismissed(true);
+  }
 
   const rollingTotals = useMemo(() => computeRollingWeeklyTotals(history), [history]);
 
@@ -92,6 +136,18 @@ export default function MyPlan({ userId, history }) {
       <div style={{ fontSize: 11.5, color: T.dim, marginBottom: 14, lineHeight: 1.4 }}>
         Set a weekly set target per muscle group. The Body map's "My Plan" view colors each region the same way: gray until you've started, orange while under target, green once you've hit it.
       </div>
+
+      {suggestion && !dismissed && (
+        <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, padding: 12, marginBottom: 16 }}>
+          <div style={{ color: T.text, fontSize: 12.5, marginBottom: 8, lineHeight: 1.4 }}>
+            Your active program suggests weekly set targets for {Object.keys(suggestion.byMuscle).length} muscle group{Object.keys(suggestion.byMuscle).length === 1 ? "" : "s"}. Applying won't change anything else here — you can still adjust any slider afterward.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={applySuggestion} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.accent, color: "#fff", fontSize: 12.5, fontWeight: 700 }}>Apply suggestion</button>
+            <button onClick={dismissSuggestion} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Dismiss</button>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {MUSCLES.map((m) => {

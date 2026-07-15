@@ -154,6 +154,35 @@ const SECTIONS = [
     ],
   },
   {
+    title: "Program Generator",
+    items: [
+      {
+        term: "Training Program",
+        body: "A multi-week block built around one Training Focus, with a set duration and a scheduled deload in the final week. Progress through it is tracked by sessions completed, not the calendar — a missed week just waits for you rather than desyncing the plan.",
+      },
+      {
+        term: "Double Progression",
+        body: "The progression model used for Hypertrophy and Endurance by default: work up to the top of your rep range for every set at a fixed weight, then add weight next time and drop back to the bottom of the range. Simple, and forgiving of an off day.",
+      },
+      {
+        term: "% of e1RM",
+        body: "The progression model used for Strength by default: your working weight is a percentage of a rolling estimated 1RM, and that percentage climbs across the block. The 1RM estimate is smoothed across your last few sessions rather than reacting to any single one, so one rough or one lucky session can't swing your target.",
+      },
+      {
+        term: "RIR Autoregulation",
+        body: "An optional progression model: your next target nudges up or down based on how many reps you had in reserve last time versus what was expected. Highest ceiling of the three, but only as good as how honestly RIR gets logged — offered as a choice, not a default.",
+      },
+      {
+        term: "Deload Week",
+        body: "The scheduled final week of a program block: volume and intensity are cut on purpose so you recover before starting the next one. Not optional — it's baked into every block's duration.",
+      },
+      {
+        term: "Program Coach",
+        body: "The short line shown next to a program-prescribed target explaining why it moved (hit the top of your rep range, easing back in after a layoff, holding steady through a plateau, and so on) — so a number never changes without a reason attached.",
+      },
+    ],
+  },
+  {
     title: "Tracking & Scoring",
     items: [
       {
