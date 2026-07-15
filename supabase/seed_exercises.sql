@@ -1,3 +1,8 @@
+-- Deliberately unnumbered: this is one-time seed data, not a schema
+-- migration, so it doesn't get a migration_NNN slot. Chronologically it
+-- runs between migration_001_initial_schema.sql and migration_002 — see
+-- ../README.md.
+--
 -- Seed the exercise library from the exercise database spreadsheet.
 -- Run after schema.sql. 252 exercises.
 -- NOTE: `short` and `target_weight` are left at defaults (null / 0) since

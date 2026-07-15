@@ -1146,12 +1146,10 @@ export async function exportTemplate(userId, templateId) {
 // since the library itself isn't shared, only the template shape — are
 // silently dropped; skippedCount tells the import screen how many.
 export async function fetchSharedTemplate(code) {
-  const { data: shared, error } = await supabase
-    .from("shared_templates")
-    .select("id, name, exercises")
-    .eq("code", (code || "").trim().toUpperCase())
-    .maybeSingle();
+  const { data, error } = await supabase
+    .rpc("get_shared_template_by_code", { p_code: (code || "").trim().toUpperCase() });
   if (error) throw error;
+  const shared = data && data[0];
   if (!shared) return null;
 
   const exerciseIds = shared.exercises.map((e) => e.exercise_id);
@@ -1616,12 +1614,9 @@ export async function shareWorkout(userId, snapshot) {
 // share link. Returns null if the code doesn't exist.
 export async function fetchSharedWorkout(code) {
   const { data, error } = await supabase
-    .from("shared_workouts")
-    .select("snapshot, created_at")
-    .eq("code", (code || "").trim().toUpperCase())
-    .maybeSingle();
+    .rpc("get_shared_workout_by_code", { p_code: (code || "").trim().toUpperCase() });
   if (error) throw error;
-  return data ? data.snapshot : null;
+  return data && data[0] ? data[0].snapshot : null;
 }
 
 // Real percentile rank (0-100) of the current user's all-time best DOTS

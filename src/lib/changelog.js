@@ -9,6 +9,12 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.10.10": {
+    title: "Behind-the-scenes security hardening",
+    items: [
+      "Tightened data access rules across the backend as part of a routine security review — no visible changes, just extra protection around how your data is stored and accessed.",
+    ],
+  },
   "1.10.9": {
     title: "Pinned headers, and a real fix for image flicker",
     items: [
