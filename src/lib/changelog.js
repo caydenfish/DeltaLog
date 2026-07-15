@@ -9,6 +9,15 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.11.1": {
+    title: "Body map, exercise lookup, and a few polish fixes",
+    items: [
+      "Exercise names in the Exercise Library now link out to a Google search for that exact exercise, in case you want a form video or more detail.",
+      "The button in the mid-workout menu that takes you home is now a house icon instead of a second menu icon, so it's not confused with the button that opens the workout menu.",
+      "The Resume Workout button now shows a live-ticking elapsed time, so it's obvious a workout has been sitting paused instead of just sitting there quietly.",
+      "Reworked the \"Since last workout\" card on Home to match the app's newer look — a status-colored icon, cleaner layout, and last session's muscles as tags instead of a plain sentence.",
+    ],
+  },
   "1.10.10": {
     title: "Behind-the-scenes security hardening",
     items: [

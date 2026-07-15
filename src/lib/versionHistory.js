@@ -5,6 +5,19 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.11.1",
+    date: "2026-07-15",
+    items: [
+      "Added IconSearch and IconHome to Icons.jsx (shared stroke-icon set, same base style object as every other icon there).",
+      "ExerciseLibraryView.jsx: the exercise name in the detail sheet is now an <a> linking to `https://www.google.com/search?q=` + encodeURIComponent(selected.name), target=\"_blank\" rel=\"noopener noreferrer\", with a small IconSearch alongside. Text/font styling unchanged, just wrapped in a link with text-decoration:none so it doesn't look like a generic hyperlink against the dark theme.",
+      "SetLogger.jsx: the WORKOUT MENU sub-screen's top-right button (onGoHome, aria-label was \"Main menu\") switched from IconMenu to IconHome and relabeled to \"Home\" — this is the button that actually navigates back to the dashboard (workout stays active in the background). The OTHER top-right button on the main workout view (setShowMenu, aria-label \"Workout menu\") is unchanged and correctly still IconMenu, since it genuinely opens a menu/sheet rather than navigating anywhere.",
+      "Home.jsx: added a ticking clock (setInterval, 1000ms, cleared on unmount or when activeWorkout.started_at changes) computing elapsed time from activeWorkout.started_at via fetchActiveWorkout's existing started_at column — no new query needed, that field was already being fetched and just wasn't used for a live display. Rendered as a small tabular-nums line under \"Resume Workout\" inside the same button. Formats h:mm:ss once past an hour, m:ss before that, matching SetLogger's own hhmmss() convention (duplicated locally in Home.jsx rather than extracted to a shared lib, since it's one line and SetLogger's version isn't currently exported).",
+      "Note: the literal instruction was to change the button text from \"Resume Workout\" to \"Resume Workout\" — already what it says, so no text change was made; flagged back to Cayden to clarify what was actually intended there.",
+      "Home.jsx buildLastWorkoutInsight() now returns a `status` field (\"none\"|\"today\"|\"recovering\"|\"ready\"|\"overdue\") derived from the same daysSince thresholds the tip text already used, so the render side doesn't re-derive them. The \"Since last workout\" card reworked: a 40px circular icon badge (IconClock) tinted by status (accent/red for overdue, green for today/ready, dim gray for recovering/none) replaces the old plain two-line header-row layout; day count and \"Since last workout\" caption now stack vertically next to the badge instead of being split-justified across the card width; the \"Last session: X, Y\" sentence became a row of small pill/chip tags (matching the chip style already used elsewhere, e.g. Splits/muscle filter chips) instead of a comma-joined string.",
+      "Open item, not yet built: Cayden asked what it would take to get a distinct icon for every exercise (300+ entries). No open-licensed asset exists at that granularity the way the body-map silhouette did last patch — hand-illustrating 300+ unique exercise icons is a real commissioned-illustration-scale undertaking, not something to fabricate at quality in one session. Proposed a realistic middle ground instead (equipment-type glyph -- Barbell/Dumbbell/Cable/Machine/Kettlebell/Bodyweight/Other, the 7 values EQUIPMENT_LIST already tracks -- tinted by muscle_group, replacing today's one-size-fits-all IconImage fallback with zero new asset dependencies) but did not build it, pending Cayden's go-ahead.",
+    ],
+  },
+  {
     version: "1.10.10",
     date: "2026-07-15",
     items: [

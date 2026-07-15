@@ -13,7 +13,7 @@ import { toLocalDateStr } from "./lib/time";
 import BodyHeatmap from "./BodyHeatmap";
 import MuscleSetsDetail from "./MuscleSetsDetail";
 import Logo from "./Logo";
-import { IconBell, IconMenu, IconPlus, IconArchive } from "./Icons";
+import { IconBell, IconMenu, IconPlus, IconArchive, IconClock } from "./Icons";
 import Templates from "./Templates";
 import FAQ from "./FAQ";
 import AdminExercises from "./AdminExercises";
@@ -108,7 +108,7 @@ function AnnouncementPoll({ poll, votes, userId, disabled, onVote }) {
 // common rule of thumb), not a personalized or medical recommendation.
 function buildLastWorkoutInsight(history) {
   if (!history || history.length === 0) {
-    return { daysSince: null, muscles: [], tip: "No workouts logged yet — start one to get going." };
+    return { daysSince: null, muscles: [], tip: "No workouts logged yet — start one to get going.", status: "none" };
   }
   const last = history[history.length - 1];
   const completedDate = new Date(last.completed_at);
@@ -118,13 +118,13 @@ function buildLastWorkoutInsight(history) {
 
   const muscles = [...new Set((last.workout_exercises || []).map((we) => we.exercises?.muscle_group).filter(Boolean))];
 
-  let tip;
-  if (daysSince <= 0) tip = "You already trained today. Nice work — recovery starts now.";
-  else if (daysSince === 1) tip = `Trained yesterday. Most muscle groups want 48-72 hours before hitting them hard again — a different focus today keeps things moving.`;
-  else if (daysSince <= 3) tip = "You're likely recovered from your last session. Good day to train.";
-  else tip = `It's been ${daysSince} days. Consistency matters more than any single session — get back in when you can.`;
+  let tip, status;
+  if (daysSince <= 0) { tip = "You already trained today. Nice work — recovery starts now."; status = "today"; }
+  else if (daysSince === 1) { tip = `Trained yesterday. Most muscle groups want 48-72 hours before hitting them hard again — a different focus today keeps things moving.`; status = "recovering"; }
+  else if (daysSince <= 3) { tip = "You're likely recovered from your last session. Good day to train."; status = "ready"; }
+  else { tip = `It's been ${daysSince} days. Consistency matters more than any single session — get back in when you can.`; status = "overdue"; }
 
-  return { daysSince, muscles, tip };
+  return { daysSince, muscles, tip, status };
 }
 
 export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset }) {
@@ -133,6 +133,24 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     setRangeState(key);
     setPref("homeRange", key);
   }
+  // Ticks once a second while a workout is active so the Resume Workout
+  // button's elapsed-time readout visibly moves, rather than showing a
+  // number frozen at whatever it was when Home last mounted -- the
+  // whole point is to be a nagging reminder that time is passing.
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    if (!activeWorkout?.started_at) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [activeWorkout?.started_at]);
+  const activeWorkoutElapsed = (() => {
+    if (!activeWorkout?.started_at) return "";
+    const totalSec = Math.max(0, Math.floor((nowTick - new Date(activeWorkout.started_at).getTime()) / 1000));
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+  })();
   const [history, setHistory] = useState(null); // null = loading
   const [streak, setStreak] = useState(0);
   const [error, setError] = useState(null);
@@ -591,15 +609,28 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
           {history !== null && (
             <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginTop: 8, marginBottom: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>
-                  {insight.daysSince === null ? "—" : `${insight.daysSince} day${insight.daysSince === 1 ? "" : "s"}`}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: insight.muscles.length > 0 || insight.tip ? 10 : 0 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: insight.status === "overdue" ? "rgba(232,68,46,0.14)" : insight.status === "today" || insight.status === "ready" ? "rgba(59,165,93,0.14)" : "rgba(139,145,157,0.14)",
+                  color: insight.status === "overdue" ? T.accent : insight.status === "today" || insight.status === "ready" ? T.green : T.dim,
+                }}>
+                  <IconClock size={18} />
                 </div>
-                <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Since last workout</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, lineHeight: 1.1, color: insight.status === "overdue" ? T.accent : T.text }}>
+                    {insight.daysSince === null ? "—" : `${insight.daysSince} day${insight.daysSince === 1 ? "" : "s"}`}
+                  </div>
+                  <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Since last workout</div>
+                </div>
               </div>
               {insight.muscles.length > 0 && (
-                <div style={{ fontSize: 12, color: T.dim, marginBottom: 8 }}>
-                  Last session: <span style={{ color: T.text }}>{insight.muscles.map((m) => muscleLabel(m, muscleNameMode)).join(", ")}</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {insight.muscles.map((m) => (
+                    <span key={m} style={{ fontSize: 11, color: T.dim, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 9px" }}>
+                      {muscleLabel(m, muscleNameMode)}
+                    </span>
+                  ))}
                 </div>
               )}
               <div style={{ fontSize: 13, color: T.dim, lineHeight: 1.5 }}>{insight.tip}</div>
@@ -712,7 +743,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 {Object.keys(primary).length === 0 && Object.keys(secondary).length === 0 ? (
                   <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Nothing logged in this range yet.</div>
                 ) : (
-                  <BodyHeatmap primary={primary} secondary={secondary} fullBodySets={fullBodySets} onSelectMuscle={(muscle, role) => setMuscleDetail({ muscle, role })} />
+                  <BodyHeatmap primary={primary} secondary={secondary} fullBodySets={fullBodySets} entries={entries} />
                 )}
               </div>
 
@@ -776,8 +807,9 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
         {/* Start workout */}
         <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
           {activeWorkout ? (
-            <button onClick={onResumeWorkout} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
-              Resume Workout
+            <button onClick={onResumeWorkout} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+              <span>Resume Workout</span>
+              <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}>{activeWorkoutElapsed}</span>
             </button>
           ) : (
             <button onClick={onStartWorkout} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>

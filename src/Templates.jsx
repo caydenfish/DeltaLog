@@ -505,7 +505,7 @@ export default function Templates({ user, onClose, initialPicks }) {
 
                 <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Coverage</div>
                 <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
-                  <BodyHeatmap primary={heatPrimary} secondary={heatSecondary} fullBodySets={heatFullBodySets} />
+                  <BodyHeatmap primary={heatPrimary} secondary={heatSecondary} fullBodySets={heatFullBodySets} entries={heatmapEntries} />
                   <div style={{ fontSize: 11, color: T.dim, textAlign: "center", marginTop: 8 }}>
                     Based on planned sets for these exercises, not actual training volume.
                   </div>

@@ -13,7 +13,7 @@ import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import ExportWorkoutModal from "./ExportWorkoutModal";
 import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
-import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell } from "./Icons";
+import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome } from "./Icons";
 import { getSplits } from "./lib/splits";
 import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf } from "./lib/muscleNomenclature";
 // "Full Body" and "Neck" are real generic buckets (used for coloring/
@@ -2205,8 +2205,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
               <button onClick={() => { setShowMenu(false); setFinishConfirm(false); }} aria-label="Close" style={smallBtn}>‹</button>
               <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>WORKOUT MENU</div>
-              <button onClick={onGoHome} aria-label="Main menu" title="Back to main menu — your workout stays active" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0, justifySelf: "end" }}>
-                <IconMenu size={16} />
+              <button onClick={onGoHome} aria-label="Home" title="Back to home — your workout stays active" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0, justifySelf: "end" }}>
+                <IconHome size={16} />
               </button>
             </div>
             <div style={{ padding: 16, flex: 1 }}>
@@ -2220,7 +2220,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                 {Object.keys(livePrimary).length === 0 && Object.keys(liveSecondary).length === 0 ? (
                   <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Log a set to see it light up here.</div>
                 ) : (
-                  <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} />
+                  <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} entries={liveVolumeEntries} />
                 )}
               </div>
 

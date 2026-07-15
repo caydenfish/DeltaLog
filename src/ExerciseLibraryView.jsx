@@ -12,7 +12,7 @@ import { InlineLoading } from "./LoadingSpinner";
 import MuscleTaxonomyManager from "./MuscleTaxonomyManager";
 import CustomExerciseModal from "./CustomExerciseModal";
 import MyCustomExercises from "./MyCustomExercises";
-import { IconX, IconGear, IconPencil, IconCheck } from "./Icons";
+import { IconX, IconGear, IconPencil, IconCheck, IconSearch } from "./Icons";
 
 const T = {
   bg: "#101216",
@@ -645,7 +645,15 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
           <div style={{ width: "100%", maxWidth: 420, maxHeight: "85vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <ExerciseThumb muscle={selected.muscle_group} mediaUrl={selected.media_url} size={36} />
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{selected.name}</div>
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(selected.name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, textDecoration: "none" }}
+              >
+                {selected.name}
+                <IconSearch size={13} style={{ color: T.dim, flexShrink: 0 }} />
+              </a>
             </div>
 
             <DetailRow label="Nicknames" value={(selected.aliases || []).join(", ")} />

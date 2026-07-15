@@ -170,6 +170,34 @@ export function IconArchive({ size = 14, style }) {
   );
 }
 
+export function IconClock({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3.5 2" />
+    </svg>
+  );
+}
+
+export function IconSearch({ size = 14, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <line x1="15.5" y1="15.5" x2="21" y2="21" />
+    </svg>
+  );
+}
+
+export function IconHome({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M4 11.5L12 4l8 7.5" />
+      <path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" />
+      <path d="M10 20v-6h4v6" />
+    </svg>
+  );
+}
+
 export function IconBarbell({ size = 15, style }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
