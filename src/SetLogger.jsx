@@ -73,12 +73,6 @@ const T = {
   green: "#3BA55D",
 };
 
-// Module-scope twin of the component-local `smallBtn` (defined further
-// down inside SetLogger itself) -- SetRow is a module-level function,
-// declared and used before the component's local `smallBtn` exists, so
-// it needs its own copy rather than referencing that one.
-const SMALL_BTN = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" };
-
 // EQUIPMENT_LIST now lives in ./ExercisePicker (imported above), shared
 // with the template builder's picker.
 
@@ -256,20 +250,16 @@ function matchingLastWeekSet(lastWeek, sets, i) {
 }
 
 
-// Shared column template for both the set-list header and every row, so
-// the header's labels line up with the actual columns below them --
-// the previous header (two plain flex:1 spans) ignored the badge/arrow
-// widths the rows use and drifted out of alignment as a result. The
-// trailing checkbox column only exists while delete-select mode is on;
-// everything else stays fixed so toggling that mode doesn't reflow any
-// other column.
-const SET_ROW_TEMPLATE = (deleteMode) => `28px 1fr 20px 1fr${deleteMode ? " 30px" : ""}`;
+// Today row's column template -- much simpler than the old combined
+// row's, since last-session data now lives entirely in the separate
+// Last Session tile rather than needing its own paired column here.
+const TODAY_ROW_TEMPLATE = (deleteMode) => `22px 1fr${deleteMode ? " 26px" : ""}`;
 
 // A small gold-star badge the moment today's set beats the matching
 // last-session set's estimated 1RM -- kept separate from the existing
 // volume (weight x reps) diff badge below, since a lighter weight for
 // more reps can be a genuine e1RM PR even when raw volume reads flat or
-// down, and the two used to only ever show the volume side.
+// down.
 function e1rmPRDelta(todaySet, comparison) {
   if (!todaySet || !comparison) return null;
   const today = e1RM(todaySet.weight, todaySet.reps, todaySet.rir);
@@ -278,85 +268,105 @@ function e1rmPRDelta(todaySet, comparison) {
   return delta > 0 ? delta : null;
 }
 
-// Combined Last-session/Today row. Tapping a logged row opens it for
-// editing (replaces the old dedicated Edit button); in delete-select
-// mode the same tap toggles that row's checkbox instead. Deletion itself
-// is no longer a per-row action -- see the header's Delete control and
-// the confirm step in the parent, which batches whatever's checked here.
-// Sized to flex-fill the space between the rest timer and the log
-// button: flex: 1 1 0 divides that space evenly across however many
-// rows exist, minHeight keeps a row logging-heavy exercise from
-// shrinking past readable/tappable, maxHeight keeps a 1-2 set exercise
-// from stretching into an oversized row with a lot of dead space in it.
-function SetRow({ label, lastSet, todaySet, unit, comparison, onCopyLast, onToggleWarmup, onRowTap, deleteMode, selected, onToggleSelect }) {
-  const badgeStyle = { width: 26, height: 26, borderRadius: 8, background: todaySet?.isWarmup ? "rgba(232,168,46,0.18)" : T.surface2, color: todaySet?.isWarmup ? "#E8A82E" : T.dim, fontSize: 12, fontWeight: todaySet?.isWarmup ? 700 : 400, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
-  const volumeBadge = comparison && todaySet ? diffBadge(Math.round(todaySet.weight * todaySet.reps - comparison.weight * comparison.reps), unit === "lb" ? "lb·vol" : "kg·vol") : null;
+// Aggregate stats for the Last Session tile: total working volume, the
+// best e1RM of the session, and each working set's reps@RIR for the
+// compact chip row underneath -- warmups excluded from all three, same
+// convention the rest of the app (bestE1RM, workoutDone, etc.) already
+// uses for "real" session numbers.
+function lastSessionStats(lastWeek) {
+  const working = (lastWeek || []).filter((s) => !s.isWarmup);
+  const totalVolume = Math.round(working.reduce((v, s) => v + s.weight * s.reps, 0));
+  const bestE1RM = working.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
+  return { working, totalVolume, bestE1RM };
+}
+
+// Left tile: a read-only snapshot of the last time this exercise was
+// trained -- total volume and best e1RM as headline stats, then every
+// working set's reps@RIR as small chips underneath, so there's still
+// enough to work off of (what weight, what reps, how hard) without
+// listing full rows the way the old paired layout did.
+function LastSessionTile({ lastWeek, unit }) {
+  const { working, totalVolume, bestE1RM } = lastSessionStats(lastWeek);
+  return (
+    <div style={{ flex: "0.92 1 0", minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Last session</div>
+      {working.length === 0 ? (
+        <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>No history yet</div>
+      ) : (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontSize: 11, color: T.dim }}>Volume</span>
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text }}>{totalVolume} {unit}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontSize: 11, color: T.dim }}>Best e1RM</span>
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text }}>{Math.round(bestE1RM)} {unit}</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+            {working.map((s, i) => (
+              <span key={i} style={{ fontSize: 10.5, color: T.dim, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 6, padding: "3px 6px", whiteSpace: "nowrap" }}>
+                {s.weight}{unit}×{s.reps} <span style={{ opacity: 0.75 }}>RIR{s.rir}</span>
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Right tile's individual set row. Tapping a row opens it for editing;
+// in delete-select mode the same tap toggles that row's checkbox
+// instead. Sized to ~60% of the previous combined row's height, since
+// each row here only ever carries today's data.
+function TodaySetRow({ label, todaySet, unit, comparison, onToggleWarmup, onRowTap, deleteMode, selected, onToggleSelect }) {
+  const badgeStyle = { width: 20, height: 20, borderRadius: 6, background: todaySet?.isWarmup ? "rgba(232,168,46,0.18)" : T.surface, color: todaySet?.isWarmup ? "#E8A82E" : T.dim, fontSize: 10.5, fontWeight: todaySet?.isWarmup ? 700 : 400, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+  const volumeBadge = comparison ? diffBadge(Math.round(todaySet.weight * todaySet.reps - comparison.weight * comparison.reps), unit === "lb" ? "lb·vol" : "kg·vol") : null;
   const e1rmDelta = e1rmPRDelta(todaySet, comparison);
-  const rowClickable = !!todaySet;
 
   return (
     <div
-      onClick={rowClickable ? () => (deleteMode ? onToggleSelect() : onRowTap()) : undefined}
+      onClick={() => (deleteMode ? onToggleSelect() : onRowTap())}
       style={{
         display: "grid",
-        gridTemplateColumns: SET_ROW_TEMPLATE(deleteMode),
+        gridTemplateColumns: TODAY_ROW_TEMPLATE(deleteMode),
         alignItems: "center",
-        gap: 8,
+        gap: 6,
         flex: "1 1 0",
-        minHeight: 64,
-        maxHeight: 108,
-        padding: "0 12px",
-        background: selected ? "rgba(232,90,90,0.10)" : T.surface,
+        minHeight: 40,
+        maxHeight: 66,
+        padding: "0 8px",
+        background: selected ? "rgba(232,90,90,0.10)" : T.surface2,
         border: `1px solid ${selected ? T.accent : T.line}`,
-        borderRadius: 12,
-        cursor: rowClickable ? "pointer" : "default",
+        borderRadius: 10,
+        cursor: "pointer",
       }}
     >
-      {!deleteMode && onToggleWarmup && todaySet ? (
+      {!deleteMode ? (
         <button onClick={(e) => { e.stopPropagation(); onToggleWarmup(); }} aria-label={todaySet.isWarmup ? "Unmark as warmup" : "Mark as warmup"} style={{ ...badgeStyle, border: "none", cursor: "pointer" }}>{label}</button>
       ) : (
         <div style={badgeStyle}>{label}</div>
       )}
 
-      <div style={{ minWidth: 0, display: "flex", alignItems: "baseline", gap: 6, color: T.dim, fontSize: 14 }}>
-        {lastSet ? <>{lastSet.weight} {unit} × {lastSet.reps} <span style={{ fontSize: 11, opacity: 0.7 }}>RIR {lastSet.rir}</span></> : <span style={{ opacity: 0.5 }}>—</span>}
-      </div>
-
-      <div style={{ color: T.dim, fontSize: 14, textAlign: "center" }}>→</div>
-
-      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 3 }}>
-        {todaySet ? (
-          <>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>{todaySet.weight} {unit} × {todaySet.reps}</span>
-              <span style={{ fontSize: 11, color: T.dim }}>RIR {todaySet.rir}</span>
-            </div>
-            {(volumeBadge || e1rmDelta) && (
-              <div style={{ display: "flex", gap: 10 }}>
-                {e1rmDelta && (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: "#FFD166" }}>
-                    <IconStar size={11} filled style={{ color: "#FFD166" }} />+{e1rmDelta} e1RM
-                  </span>
-                )}
-                {volumeBadge && <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{volumeBadge.text}</span>}
-              </div>
-            )}
-          </>
-        ) : lastSet ? (
-          <button onClick={(e) => { e.stopPropagation(); onCopyLast(); }} style={{ ...SMALL_BTN, alignSelf: "flex-start" }}>Copy</button>
-        ) : null}
+      <div style={{ minWidth: 0, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap", rowGap: 1 }}>
+        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>{todaySet.weight} {unit} × {todaySet.reps}</span>
+        <span style={{ fontSize: 10, color: T.dim }}>RIR {todaySet.rir}</span>
+        {e1rmDelta && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 10, fontWeight: 700, color: "#FFD166" }}>
+            <IconStar size={10} filled style={{ color: "#FFD166" }} />+{e1rmDelta}
+          </span>
+        )}
+        {volumeBadge && <span style={{ fontSize: 10, fontWeight: 700, color: T.text }}>{volumeBadge.text}</span>}
       </div>
 
       {deleteMode && (
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          {todaySet && (
-            <div
-              onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
-              style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${selected ? T.accent : T.line}`, background: selected ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-            >
-              {selected && <IconCheck size={13} style={{ color: "#fff" }} />}
-            </div>
-          )}
+        <div
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? T.accent : T.line}`, background: selected ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+        >
+          {selected && <IconCheck size={12} style={{ color: "#fff" }} />}
         </div>
       )}
     </div>
@@ -1648,7 +1658,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     try {
       await deleteWorkout(workoutId);
     } catch (err) {
-      note(`Couldn't fully delete on the server, but leaving anyway: ${err.message}`);
+      try {
+        await deleteWorkout(workoutId);
+      } catch (err2) {
+        setCancelling(false);
+        note(`Couldn't cancel: ${err2.message}. It's still on your account -- try again.`);
+        return;
+      }
     }
     clearSessionState(workoutId);
     setCancelling(false);
@@ -2944,91 +2960,84 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         )}
 
         {!wizardOpen && (
-        <div key={exIdx} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ flex: 1, padding: "12px 16px", overflowY: "auto", animation: "slideIn 0.18s ease", display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div style={{ display: "grid", gridTemplateColumns: SET_ROW_TEMPLATE(deleteMode), alignItems: "center", marginBottom: 8, fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>
-            <div />
-            <span>Last session</span>
-            <div />
-            <span>Today</span>
-            {deleteMode && <div />}
-          </div>
+        <div key={exIdx} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ flex: 1, padding: "12px 16px", overflowY: "auto", animation: "slideIn 0.18s ease", display: "flex", gap: 10, minHeight: 0 }}>
+          <LastSessionTile lastWeek={lastWeek} unit={unit} />
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            {deleteMode ? (
-              confirmDeleteSets ? (
-                <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, background: "rgba(232,90,90,0.12)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: "8px 12px" }}>
-                  <span style={{ fontSize: 12.5, color: T.text }}>Delete {selectedForDelete.size} set{selectedForDelete.size === 1 ? "" : "s"}? This can't be undone.</span>
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    <button onClick={() => setConfirmDeleteSets(false)} style={smallBtn}>Cancel</button>
-                    <button
-                      onClick={() => {
-                        deleteLoggedSets(exIdx, selectedForDelete);
-                        setDeleteMode(false); setSelectedForDelete(new Set()); setConfirmDeleteSets(false);
-                      }}
-                      style={{ ...smallBtn, background: T.accent, color: "#fff", borderColor: T.accent }}
-                    >
-                      Delete
-                    </button>
+          <div style={{ flex: "1.08 1 0", minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8, minHeight: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", minHeight: 22 }}>
+              {deleteMode ? (
+                confirmDeleteSets ? (
+                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6, background: "rgba(232,90,90,0.12)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: "8px 10px" }}>
+                    <span style={{ fontSize: 11.5, color: T.text }}>Delete {selectedForDelete.size} set{selectedForDelete.size === 1 ? "" : "s"}? This can't be undone.</span>
+                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                      <button onClick={() => setConfirmDeleteSets(false)} style={smallBtn}>Cancel</button>
+                      <button
+                        onClick={() => {
+                          deleteLoggedSets(exIdx, selectedForDelete);
+                          setDeleteMode(false); setSelectedForDelete(new Set()); setConfirmDeleteSets(false);
+                        }}
+                        style={{ ...smallBtn, background: T.accent, color: "#fff", borderColor: T.accent }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 11, color: T.dim }}>{selectedForDelete.size} selected</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => { setDeleteMode(false); setSelectedForDelete(new Set()); }} style={smallBtn}>Cancel</button>
+                      <button
+                        onClick={() => selectedForDelete.size > 0 && setConfirmDeleteSets(true)}
+                        disabled={selectedForDelete.size === 0}
+                        style={{ ...smallBtn, opacity: selectedForDelete.size === 0 ? 0.5 : 1, color: T.accent, borderColor: T.accent }}
+                      >
+                        Delete ({selectedForDelete.size})
+                      </button>
+                    </div>
+                  </>
+                )
               ) : (
                 <>
-                  <span style={{ fontSize: 12.5, color: T.dim }}>{selectedForDelete.size} selected</span>
+                  <span style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Today</span>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => { setDeleteMode(false); setSelectedForDelete(new Set()); }} style={smallBtn}>Cancel</button>
-                    <button
-                      onClick={() => selectedForDelete.size > 0 && setConfirmDeleteSets(true)}
-                      disabled={selectedForDelete.size === 0}
-                      style={{ ...smallBtn, opacity: selectedForDelete.size === 0 ? 0.5 : 1, color: T.accent, borderColor: T.accent }}
-                    >
-                      Delete ({selectedForDelete.size})
-                    </button>
+                    {lastWeek.length > sets.length && <button onClick={copyAll} style={smallBtn}>Copy last session</button>}
+                    {sets.length > 0 && <button onClick={() => setDeleteMode(true)} style={smallBtn}>Delete sets</button>}
                   </div>
                 </>
-              )
-            ) : (
-              <>
-                <div />
-                <div style={{ display: "flex", gap: 6 }}>
-                  {lastWeek.length > 0 && <button onClick={copyAll} style={smallBtn}>Copy all</button>}
-                  {sets.length > 0 && <button onClick={() => setDeleteMode(true)} style={smallBtn}>Delete sets</button>}
-                </div>
-              </>
-            )}
-          </div>
+              )}
+            </div>
 
-          {lastWeek.length === 0 && sets.length === 0 && (
-            <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 20px", border: `1px dashed ${T.line}`, borderRadius: 12, marginBottom: 8 }}>No history yet. Targets use the library default until you log a session.</div>
-          )}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, minHeight: 0 }}>
-            {Array.from({ length: Math.max(lastWeek.length, sets.length) }).map((_, i) => {
-              const todaySet = sets[i];
-              const lastSet = lastWeek[i];
-              const label = todaySet ? setLabels(sets)[i] : lastSet ? setLabels(lastWeek)[i] : String(i + 1);
-              const comparison = todaySet ? matchingLastWeekSet(lastWeek, sets, i) : null;
-              return (
-                <SetRow
-                  key={i}
-                  label={label}
-                  lastSet={lastSet}
-                  todaySet={todaySet}
-                  comparison={comparison}
-                  unit={unit}
-                  onCopyLast={() => openWizard(lastSet)}
-                  onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
-                  onRowTap={() => openWizard(todaySet, i)}
-                  deleteMode={deleteMode}
-                  selected={selectedForDelete.has(i)}
-                  onToggleSelect={() => {
-                    setSelectedForDelete((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(i)) next.delete(i); else next.add(i);
-                      return next;
-                    });
-                  }}
-                />
-              );
-            })}
+            {sets.length === 0 ? (
+              <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>Nothing logged yet</div>
+            ) : (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, minHeight: 0, overflowY: "auto" }}>
+                {sets.map((todaySet, i) => {
+                  const label = setLabels(sets)[i];
+                  const comparison = matchingLastWeekSet(lastWeek, sets, i);
+                  return (
+                    <TodaySetRow
+                      key={i}
+                      label={label}
+                      todaySet={todaySet}
+                      comparison={comparison}
+                      unit={unit}
+                      onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
+                      onRowTap={() => openWizard(todaySet, i)}
+                      deleteMode={deleteMode}
+                      selected={selectedForDelete.has(i)}
+                      onToggleSelect={() => {
+                        setSelectedForDelete((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(i)) next.delete(i); else next.add(i);
+                          return next;
+                        });
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
         )}

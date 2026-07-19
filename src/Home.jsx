@@ -733,32 +733,34 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   return (
     <div style={{ minHeight: "100vh", background: "#0A0B0D", display: "flex", justifyContent: "center" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap'); button { cursor: pointer; }`}</style>
-      <div style={{ width: "100%", maxWidth: 400, background: T.bg, minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative" }}>
+      <div style={{ width: "100%", maxWidth: 400, background: T.bg, height: "100vh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 100px" }} onScroll={handleHomeScroll} onClick={() => setLockedTs(null)}>
-          {/* Header — pinned while the rest of the page scrolls beneath it */}
-          <div style={{ padding: "16px 0", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", position: "sticky", top: 0, background: T.bg, borderBottom: `1px solid ${T.line}`, zIndex: 5 }}>
-            <div>
-              <button onClick={() => setShowHomeModulesEditor(true)} aria-label="Customize home" style={ghostIconBtn}>
-                <IconPencil size={19} />
-              </button>
-            </div>
-            <Logo size={64} />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-              <button onClick={openAnnouncements} aria-label="Announcements" style={{ ...ghostIconBtn, position: "relative" }}>
-                <IconBell size={19} />
-                {unseenAnnouncements && (
-                  <span style={{ position: "absolute", top: 4, right: 4, width: 9, height: 9, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
-                )}
-              </button>
-              <button onClick={() => setShowMenu(true)} aria-label="Settings" style={{ ...ghostIconBtn, position: "relative" }}>
-                <IconMenu size={20} />
-                {unseenFeedbackCount > 0 && (
-                  <span style={{ position: "absolute", top: 4, right: 4, width: 9, height: 9, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
-                )}
-              </button>
-            </div>
+        {/* Header — a fixed flex sibling above the scrolling content, same pattern as the Start Workout bar below, rather than sticky positioning inside the scroll container (which never reliably stuck: the content div's ancestors only had minHeight set, so the whole page scrolled at the window level instead of the div clipping/scrolling internally). */}
+        <div style={{ padding: "16px 16px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", background: T.bg, borderBottom: `1px solid ${T.line}`, flexShrink: 0 }}>
+          <div>
+            <button onClick={() => setShowHomeModulesEditor(true)} aria-label="Customize home" style={ghostIconBtn}>
+              <IconPencil size={19} />
+            </button>
           </div>
+          <Logo size={64} />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+            <button onClick={openAnnouncements} aria-label="Announcements" style={{ ...ghostIconBtn, position: "relative" }}>
+              <IconBell size={19} />
+              {unseenAnnouncements && (
+                <span style={{ position: "absolute", top: 4, right: 4, width: 9, height: 9, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
+              )}
+            </button>
+            <button onClick={() => setShowMenu(true)} aria-label="Settings" style={{ ...ghostIconBtn, position: "relative" }}>
+              <IconMenu size={20} />
+              {unseenFeedbackCount > 0 && (
+                <span style={{ position: "absolute", top: 4, right: 4, width: 9, height: 9, borderRadius: 999, background: T.accent, border: `2px solid ${T.bg}` }} />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 100px" }} onScroll={handleHomeScroll} onClick={() => setLockedTs(null)}>
+
 
           {showUpdateNotice && (
             <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 12, padding: "12px 14px", marginTop: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>

@@ -622,6 +622,7 @@ export async function completeWorkout(workoutId) {
 // Deletes a workout entirely (drives "Cancel workout"). workout_exercises
 // and sets cascade-delete automatically via their foreign keys.
 export async function deleteWorkout(workoutId) {
+  await supabase.auth.getSession();
   const { error } = await supabase.from("workouts").delete().eq("id", workoutId);
   if (error) throw error;
 }

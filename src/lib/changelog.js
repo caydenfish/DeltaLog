@@ -9,6 +9,16 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.3": {
+    title: "Set logging redesigned, home header fixed, and a persistent-workout bug fixed",
+    items: [
+      "Set logging redesigned: Last Session and Today are now two separate tiles side by side instead of one combined row per set. Last Session shows your total volume, best e1RM, and every set's reps/RIR at a glance; Today is where you actually log and review sets, sized about 60% shorter per row than before.",
+      "Tap any logged set to edit it directly — no separate Edit button needed anymore.",
+      "Deleting sets: tap \"Delete sets,\" check off however many you want to remove, then confirm — instead of a delete button on every single row.",
+      "Fixed: a canceled workout could keep pulling you back into it every time you fully closed and reopened the app, even after canceling it multiple times.",
+      "Home screen header (logo, edit, announcements, menu) now actually stays pinned in place while the rest of the page scrolls beneath it, and its spacing is now even from top to bottom.",
+    ],
+  },
   "1.12.1": {
     title: "Pause workouts, smarter targets, and a big round of fixes",
     items: [
