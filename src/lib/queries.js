@@ -627,6 +627,12 @@ export async function deleteWorkout(workoutId) {
   if (error) throw error;
 }
 
+export async function deleteAllIncompleteWorkouts(userId) {
+  await supabase.auth.getSession();
+  const { error } = await supabase.from("workouts").delete().eq("user_id", userId).is("completed_at", null);
+  if (error) throw error;
+}
+
 // Marks a workout as paused (stamps paused_at). Called both for an
 // explicit "Pause" tap and as the first step of "Save for later" (which
 // pauses, then navigates home). While paused_at is set, Home shows a

@@ -9,6 +9,20 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.6": {
+    title: "Fixed mid-workout scrolling",
+    items: [
+      "Fixed: scrolling mid-workout could drag the whole screen along with it, hiding the exercise strip at the top or the Log next set button at the bottom depending on scroll position. Only the Last Session/Today area scrolls now; everything above and below it stays put.",
+    ],
+  },
+  "1.12.5": {
+    title: "Persistent-workout bug actually fixed, and set-list polish",
+    items: [
+      "Fixed for real this time: a canceled workout could still keep pulling you back into it on every app open, even after canceling repeatedly. Canceling now clears out any old abandoned workouts on your account, not just the current one.",
+      "The Last Session / Today tiles now stretch to fill the full space down to the Log next set button, with Volume and e1RM anchored at the very bottom of each tile.",
+      "If you log more sets today than you did last session, Last Session now keeps scrolling in step with Today instead of running out early — the extra spots just show blank since there's nothing to compare them to.",
+    ],
+  },
   "1.12.4": {
     title: "Set logging refined, and exercise progress shown as a fill instead of a fraction",
     items: [

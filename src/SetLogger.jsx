@@ -49,7 +49,7 @@ import {
   deleteSet,
   updateSet,
   completeWorkout,
-  deleteWorkout,
+  deleteAllIncompleteWorkouts,
   pauseWorkout,
   resumeWorkoutFromPause,
   saveExerciseDefaults,
@@ -768,7 +768,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     if (!savedWorkout || resumingSaved) return;
     setResumingSaved(true);
     try {
-      if (workoutId) deleteWorkout(workoutId).catch(() => {});
+      if (workoutId) deleteAllIncompleteWorkouts(user.id).catch(() => {});
       clearSessionState(workoutId);
       const items = [];
       const setsArr = [];
@@ -951,9 +951,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   async function handleDiscardNewWorkout() {
     setDiscardingNewWorkout(true);
     try {
-      await deleteWorkout(workoutId);
+      await deleteAllIncompleteWorkouts(user.id);
     } catch (err) {
-      note(`Couldn't fully delete on the server, but leaving anyway: ${err.message}`);
+      try {
+        await deleteAllIncompleteWorkouts(user.id);
+      } catch (err2) {
+        note(`Couldn't fully delete on the server: ${err2.message}`);
+      }
     }
     clearSessionState(workoutId);
     setDiscardingNewWorkout(false);
@@ -1620,10 +1624,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   async function handleConfirmCancel() {
     setCancelling(true);
     try {
-      await deleteWorkout(workoutId);
+      await deleteAllIncompleteWorkouts(user.id);
     } catch (err) {
       try {
-        await deleteWorkout(workoutId);
+        await deleteAllIncompleteWorkouts(user.id);
       } catch (err2) {
         setCancelling(false);
         note(`Couldn't cancel: ${err2.message}. It's still on your account -- try again.`);
@@ -2471,7 +2475,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <style>{`${fontImport} button { cursor: pointer; }`}</style>
         <div style={frame}>
           <div style={{ padding: "16px 16px 0" }}>
-            <button onClick={() => { deleteWorkout(workoutId).catch(() => {}); clearSessionState(workoutId); onFinished(); }} aria-label="Back to home" style={smallBtn}>‹</button>
+            <button onClick={() => { deleteAllIncompleteWorkouts(user.id).catch(() => {}); clearSessionState(workoutId); onFinished(); }} aria-label="Back to home" style={smallBtn}>‹</button>
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 24, textAlign: "center" }}>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text }}>EMPTY WORKOUT</div>
@@ -2978,21 +2982,26 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <div style={{ flex: "0.92 1 0", minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 10, flex: 1, minHeight: 0 }}>
+            <div style={{ flex: "0.92 1 0", minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
               {lastWeek.length === 0 ? (
                 <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>No history yet</div>
               ) : (
                 <>
                   <div ref={lastRowsRef} onScroll={() => syncSetListScroll("last")} className="no-scrollbar" style={{ height: ROWS_CONTAINER_HEIGHT, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
-                    {lastWeek.map((s, i) => (
-                      <SessionSetRow key={i} label={setLabels(lastWeek)[i]} set={s} unit={unit} interactive={false} />
-                    ))}
+                    {Array.from({ length: Math.max(lastWeek.length, sets.length) }).map((_, i) => {
+                      const s = lastWeek[i];
+                      return s ? (
+                        <SessionSetRow key={i} label={setLabels(lastWeek)[i]} set={s} unit={unit} interactive={false} />
+                      ) : (
+                        <div key={i} style={{ height: ROW_HEIGHT, flexShrink: 0 }} />
+                      );
+                    })}
                   </div>
                   {(() => {
                     const { totalVolume, bestE1RM } = sessionStats(lastWeek);
                     return (
-                      <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
+                      <div style={{ marginTop: "auto", borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
                         <span>Volume <b style={{ color: T.text, fontWeight: 700 }}>{totalVolume} {unit}</b></span>
                         <span>e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(bestE1RM)} {unit}</b></span>
                       </div>
@@ -3002,7 +3011,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               )}
             </div>
 
-            <div style={{ flex: "1.08 1 0", minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ flex: "1.08 1 0", minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
               {sets.length === 0 ? (
                 <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>Nothing logged yet</div>
               ) : (
@@ -3033,7 +3042,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     const last = sessionStats(lastWeek);
                     const today = sessionStats(sets);
                     return (
-                      <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
+                      <div style={{ marginTop: "auto", borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
                         <span>Volume <b style={{ color: T.text, fontWeight: 700 }}>{today.totalVolume} {unit}</b> {diffLabel(today.totalVolume - last.totalVolume)}</span>
                         <span>e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(today.bestE1RM)} {unit}</b> {diffLabel(today.bestE1RM - last.bestE1RM)}</span>
                       </div>

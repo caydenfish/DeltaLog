@@ -5,6 +5,22 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.12.6",
+    date: "2026-07-19",
+    items: [
+      "Fixed the mid-workout whole-screen-scrolls bug. SetLogger.jsx's own layout was already correct: the exercise chip strip and full exercise header (name, target, ideology, machine/equipment setup, notes) render as plain non-scrolling flex siblings before the intentional scroll region, and the Log next set footer is a plain sibling after it, with only the Last Session/Today two-tile area (flex:1, overflowY:auto) meant to scroll -- both outer and frame (this component's own wrapper divs) already use a definite height (100dvh / 100%) with overflow:hidden, not minHeight, so they were never the issue. The actual gap was one level up: index.html's html/body/#root had no height or overflow rule at all, so nothing stopped the real document/viewport itself from becoming a second, unintended scroll container layered on top of the intentional one -- any moment the true viewport came out even a pixel taller than the app's own 100dvh layout (mobile dynamic toolbar show/hide, virtual keyboard, a dvh recalculation lag, all common in a standalone-mode PWA) let native touch scroll take over the whole page, dragging every pinned element (chip strip, header, footer) off-screen together depending on scroll direction -- exactly the reported symptom. Fixed by adding `html, body, #root { height: 100%; overflow: hidden; }`, forcing every screen's own internal overflow:auto region to be the only place scrolling can ever happen, app-wide (not just SetLogger).",
+    ],
+  },
+  {
+    version: "1.12.5",
+    date: "2026-07-19",
+    items: [
+      "Root-caused the persistent-workout bug for real: the 1.12.3 fix (session refresh + retry before deleteWorkout) addressed the original failure mode but missed a compounding one -- every prior failed cancel attempt (each hitting that same stale-token RLS failure, or any other silent failure) left its own orphaned incomplete workouts row behind rather than just one. fetchActiveWorkout picks the single most recent incomplete row by started_at, so even a now-successful cancel of today's workout just surfaced the next-most-recent leftover from an earlier failed attempt -- structurally identical to \"canceling never works\" from the person's side, and exactly what ~20 cancel attempts on a single stuck workout would produce. New queries.deleteAllIncompleteWorkouts(userId): same getSession()-refresh-first pattern as deleteWorkout, but deletes every workouts row for that user with completed_at IS NULL rather than one row by id -- safe since the app only ever supports one active workout at a time by design. handleConfirmCancel and handleDiscardNewWorkout (SetLogger.jsx) switched from deleteWorkout(workoutId) + retry to deleteAllIncompleteWorkouts(user.id) + retry; the two remaining fire-and-forget call sites (handleResumePreviousSaved, the empty-workout back button) also switched to the bulk version for the same opportunistic cleanup at no added complexity. deleteWorkout(workoutId) itself is unchanged and still used by WorkoutHistory.jsx for deleting a specific past *completed* workout, an unrelated case.",
+      "SetLogger.jsx two-tile layout: the row containing both tiles gained flex:1/minHeight:0 so it now stretches to fill all remaining space down to the footer button (previously sized to fit its own content only). Each tile dropped its uniform gap:8 in favor of the bottom Volume/e1RM stat block using marginTop:\"auto\", so the fixed-height rows container (unchanged from 1.12.4) stays exactly the same size while the tile itself extends however far the available space goes, with the stats pinned at the very bottom rather than sitting directly under the last row.",
+      "Last Session's row list now renders Math.max(lastWeek.length, sets.length) slots instead of just lastWeek.length: any index beyond lastWeek's own sets renders a blank, borderless placeholder at the same ROW_HEIGHT instead of nothing. Without this, once Today had more logged sets than last session, Last Session's shorter scroll container would simply hit its own max scrollTop partway through and stop following Today's scroll position, breaking the set-number alignment syncSetListScroll relies on. The blank filler keeps both containers' total scrollable height equal so the sync stays pixel-accurate regardless of which side has more sets.",
+    ],
+  },
+  {
     version: "1.12.4",
     date: "2026-07-19",
     items: [
