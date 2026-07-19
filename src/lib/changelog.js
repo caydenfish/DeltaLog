@@ -9,6 +9,18 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.8": {
+    title: "Set list no longer scrolls unless it needs to",
+    items: [
+      "Last Session and Today no longer reserve empty scrollable space for 4 sets when you've only got 1 or 2 — the tiles now size to fit exactly however many sets there are, and only start scrolling once you've actually got more than 4.",
+    ],
+  },
+  "1.12.7": {
+    title: "Faster update notifications",
+    items: [
+      "The \"new version ready\" banner now shows up much sooner if you keep the app open a long time or just background it instead of closing it, rather than only being checked when you fully quit and reopen.",
+    ],
+  },
   "1.12.6": {
     title: "Fixed mid-workout scrolling",
     items: [

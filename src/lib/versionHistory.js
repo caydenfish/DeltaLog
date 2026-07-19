@@ -5,6 +5,20 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.12.8",
+    date: "2026-07-19",
+    items: [
+      "SetLogger.jsx: both rows containers previously used a fixed height (ROWS_CONTAINER_HEIGHT, 4 rows' worth) regardless of how many sets actually existed, so overflowY:auto was technically a no-op with fewer sets but still left visibly wasted empty space in the box below however many rows were real. New rowsContainerHeight(count) computes height for exactly `count` rows capped at ROWS_VISIBLE (4) -- below the cap the container fits its content exactly with nothing to scroll; at or beyond it, it locks to the 4-row height and the rest becomes genuinely scrollable. Both tiles now pass rowsContainerHeight(Math.max(lastWeek.length, sets.length)) -- the same shared count already used for blank-row padding -- so the two containers stay the same height as each other at every set count, not just once 4+ rows are in play. Today's row list also gained the same blank-placeholder padding Last Session already had (previously only handled Today-has-more-than-Last; now symmetric both directions), keeping the scroll-sync behavior correct regardless of which side has more sets logged.",
+    ],
+  },
+  {
+    version: "1.12.7",
+    date: "2026-07-19",
+    items: [
+      "App.jsx: registerSW's onNeedRefresh only ever fired off the browser's own native service-worker update check, which is tied to navigation/reload rather than any fixed schedule -- someone who rarely fully quits DeltaLog (backgrounding it on their phone instead, the far more common pattern than closing it) could sit on a stale build indefinitely with no update banner ever appearing. New onRegisteredSW(swUrl, registration) callback captures the actual ServiceWorkerRegistration into swRegistrationRef; a new effect calls registration.update() on two triggers -- a 30-minute setInterval for tabs left open continuously, and a visibilitychange listener that checks immediately whenever the tab/app becomes visible again (reuses the same signal SetLogger's own session-flush logic already listens for). Both are opportunistic checks only; onNeedRefresh and the existing \"Reload now\" banner/flow in Home.jsx are unchanged.",
+    ],
+  },
+  {
     version: "1.12.6",
     date: "2026-07-19",
     items: [

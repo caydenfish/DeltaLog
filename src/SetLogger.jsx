@@ -240,7 +240,16 @@ function setLabels(sets) {
 const ROW_HEIGHT = 56;
 const ROW_GAP = 6;
 const ROWS_VISIBLE = 4;
-const ROWS_CONTAINER_HEIGHT = ROW_HEIGHT * ROWS_VISIBLE + ROW_GAP * (ROWS_VISIBLE - 1);
+
+// Height for exactly `count` rows, capped at ROWS_VISIBLE -- below that
+// cap the container is sized to fit the actual rows with nothing to
+// scroll (overflowY:auto is a no-op when content fits); at or beyond
+// the cap it locks to the 4-row height and the rest becomes genuinely
+// scrollable.
+function rowsContainerHeight(count) {
+  const n = Math.min(Math.max(count, 0), ROWS_VISIBLE);
+  return n === 0 ? 0 : n * ROW_HEIGHT + (n - 1) * ROW_GAP;
+}
 
 // Today row's column template.
 const TODAY_ROW_TEMPLATE = (deleteMode) => `22px 1fr${deleteMode ? " 26px" : ""}`;
@@ -2988,7 +2997,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>No history yet</div>
               ) : (
                 <>
-                  <div ref={lastRowsRef} onScroll={() => syncSetListScroll("last")} className="no-scrollbar" style={{ height: ROWS_CONTAINER_HEIGHT, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
+                  <div ref={lastRowsRef} onScroll={() => syncSetListScroll("last")} className="no-scrollbar" style={{ height: rowsContainerHeight(Math.max(lastWeek.length, sets.length)), overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
                     {Array.from({ length: Math.max(lastWeek.length, sets.length) }).map((_, i) => {
                       const s = lastWeek[i];
                       return s ? (
@@ -3016,27 +3025,32 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>Nothing logged yet</div>
               ) : (
                 <>
-                  <div ref={todayRowsRef} onScroll={() => syncSetListScroll("today")} className="no-scrollbar" style={{ height: ROWS_CONTAINER_HEIGHT, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
-                    {sets.map((s, i) => (
-                      <SessionSetRow
-                        key={i}
-                        label={setLabels(sets)[i]}
-                        set={s}
-                        unit={unit}
-                        interactive
-                        deleteMode={deleteMode}
-                        selected={selectedForDelete.has(i)}
-                        onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
-                        onRowTap={() => openWizard(s, i)}
-                        onToggleSelect={() => {
-                          setSelectedForDelete((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(i)) next.delete(i); else next.add(i);
-                            return next;
-                          });
-                        }}
-                      />
-                    ))}
+                  <div ref={todayRowsRef} onScroll={() => syncSetListScroll("today")} className="no-scrollbar" style={{ height: rowsContainerHeight(Math.max(lastWeek.length, sets.length)), overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
+                    {Array.from({ length: Math.max(lastWeek.length, sets.length) }).map((_, i) => {
+                      const s = sets[i];
+                      return s ? (
+                        <SessionSetRow
+                          key={i}
+                          label={setLabels(sets)[i]}
+                          set={s}
+                          unit={unit}
+                          interactive
+                          deleteMode={deleteMode}
+                          selected={selectedForDelete.has(i)}
+                          onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
+                          onRowTap={() => openWizard(s, i)}
+                          onToggleSelect={() => {
+                            setSelectedForDelete((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(i)) next.delete(i); else next.add(i);
+                              return next;
+                            });
+                          }}
+                        />
+                      ) : (
+                        <div key={i} style={{ height: ROW_HEIGHT, flexShrink: 0 }} />
+                      );
+                    })}
                   </div>
                   {(() => {
                     const last = sessionStats(lastWeek);

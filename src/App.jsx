@@ -41,14 +41,41 @@ export default function App() {
   // the showUpdateNotice condition passed to Home below).
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const updateSWRef = useRef(null);
+  const swRegistrationRef = useRef(null);
 
   useEffect(() => {
     updateSWRef.current = registerSW({
       onNeedRefresh() { setUpdateAvailable(true); },
+      onRegisteredSW(swUrl, registration) {
+        swRegistrationRef.current = registration || null;
+      },
       // onOfflineReady intentionally omitted -- nothing to tell the
       // person here, the whole point of precaching is that they never
       // notice the difference between online and offline-ready.
     });
+  }, []);
+
+  // The browser's own native service-worker update check is tied to
+  // navigation/reload, not to how long a tab has been sitting open --
+  // someone who rarely fully closes DeltaLog (backgrounding it on their
+  // phone instead) could sit on a stale build indefinitely without this.
+  // Two extra triggers: a 30-minute poll for tabs left open continuously,
+  // and an immediate check on visibilitychange, which covers the far
+  // more common case of the app being backgrounded and reopened rather
+  // than fully quit.
+  useEffect(() => {
+    function checkForUpdate() {
+      if (swRegistrationRef.current) swRegistrationRef.current.update().catch(() => {});
+    }
+    const id = setInterval(checkForUpdate, 30 * 60 * 1000);
+    function onVisible() {
+      if (document.visibilityState === "visible") checkForUpdate();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   // Actually applies the waiting update and reloads. Passed down to
