@@ -5,6 +5,17 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.12.4",
+    date: "2026-07-19",
+    items: [
+      "SetLogger.jsx: iterated live in-chat (Visualizer preview) to a finalized two-tile design, replacing the previous round's chip-summary Last Session tile. New shared SessionSetRow component renders both tiles' rows identically (weight x reps stacked above 'RIR n · e1RM n', both computed via the existing e1RM() helper) -- `interactive` prop toggles the tap-to-edit/warmup-toggle/delete-select chrome, so Last Session's rows are the same shape with that chrome simply absent. Per-row e1RM PR star and volume-diff badges (added two rounds ago) removed in favor of one aggregate Volume/e1RM comparison at the bottom of the Today tile (new diffLabel() helper -- green/(+n) or accent-red/(-n), nothing at exactly even) versus a matching Volume/e1RM block at the bottom of Last Session (via new shared sessionStats(), a rename/generalization of the old lastSessionStats() to work on either set list).",
+      "Row height fixed at ROW_HEIGHT=56 (previously a flex min/max range) with ROWS_VISIBLE=4 and ROW_GAP=6 driving a fixed ROWS_CONTAINER_HEIGHT so exactly 4 rows show before that inner list scrolls -- only the rows themselves scroll now, not the tile's header label or bottom stats. New lastRowsRef/todayRowsRef + scrollSyncingRef and syncSetListScroll(): scrolling either tile's rows sets the other's scrollTop to match (guarded against feedback loop), keeping set numbers lined up across both since row heights are identical on both sides. Both scroll containers get a new .no-scrollbar class (scrollbar-width:none / ::-webkit-scrollbar{display:none}) added to the main workout view's style block, next to the existing .chipstrip pattern. goTo() resets both refs' scrollTop to 0 on exercise switch, matching every other per-exercise transient UI state it already clears.",
+      "'Last session' / 'Today' labels and the Delete sets control moved out of each tile and into one shared header row above both, each cell height-pinned to 22px so the two labels sit on the same baseline regardless of whether Today's cell also contains the taller Delete sets button (previously the button's own height pushed Today's label down relative to Last Session's plain text).",
+      "Dead code removed: diffBadge(), e1rmPRDelta(), matchingLastWeekSet(), and the previous LastSessionTile/TodaySetRow components, all superseded by the above.",
+      "Workout exercise strip (top chip row): the '2/4' fraction text on an in-progress exercise's pill replaced with a proportional green fill (2 of 4 sets = 25% width green background from the left), same idea as the existing fully-green 'done' state just partial. Text color forced to the brighter T.text shade whenever any fill is present, for contrast against the green.",
+    ],
+  },
+  {
     version: "1.12.3",
     date: "2026-07-19",
     items: [

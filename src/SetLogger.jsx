@@ -102,14 +102,6 @@ function weightForReps(oneRM, reps) {
   return oneRM / (1 + reps / 30);
 }
 
-// Formats a single metric delta vs last session as a signed, colored badge.
-// Returns null when there's no change, so the caller can omit that line.
-function diffBadge(diff, unit) {
-  if (!diff) return null;
-  const sign = diff > 0 ? "+" : "";
-  return { text: `${sign}${diff} ${unit}` };
-}
-
 // Always produces an ideology-adjusted target, with or without history.
 // Falls back to treating the library's default weight as a Hypertrophy-effort
 // performance at RIR 2, so every exercise responds to ideology switching.
@@ -238,130 +230,87 @@ function setLabels(sets) {
   return (sets || []).map((s) => (s.isWarmup ? `W${++warmup}` : `${++working}`));
 }
 
-// Finds the set in `lastWeek` that corresponds to `sets[i]` for comparison
-// badges: same type (warmup vs working) at the same occurrence index within
-// that type, e.g. today's 2nd working set compares to last session's 2nd
-// working set, even if the warmup counts differ between sessions.
-function matchingLastWeekSet(lastWeek, sets, i) {
-  const isWarmup = sets[i].isWarmup;
-  const occurrence = sets.slice(0, i + 1).filter((s) => !!s.isWarmup === !!isWarmup).length - 1;
-  const sameType = (lastWeek || []).filter((s) => !!s.isWarmup === !!isWarmup);
-  return sameType[occurrence];
-}
 
 
-// Today row's column template -- much simpler than the old combined
-// row's, since last-session data now lives entirely in the separate
-// Last Session tile rather than needing its own paired column here.
+// Fixed per-row height (not a min/max flex range anymore) -- sized so
+// exactly 4 rows fill the visible window before scrolling kicks in,
+// per the live preview round. ROWS_VISIBLE/ROW_GAP feed the container
+// height calc below so the "4 sets visible" math only lives in one
+// place.
+const ROW_HEIGHT = 56;
+const ROW_GAP = 6;
+const ROWS_VISIBLE = 4;
+const ROWS_CONTAINER_HEIGHT = ROW_HEIGHT * ROWS_VISIBLE + ROW_GAP * (ROWS_VISIBLE - 1);
+
+// Today row's column template.
 const TODAY_ROW_TEMPLATE = (deleteMode) => `22px 1fr${deleteMode ? " 26px" : ""}`;
 
-// A small gold-star badge the moment today's set beats the matching
-// last-session set's estimated 1RM -- kept separate from the existing
-// volume (weight x reps) diff badge below, since a lighter weight for
-// more reps can be a genuine e1RM PR even when raw volume reads flat or
-// down.
-function e1rmPRDelta(todaySet, comparison) {
-  if (!todaySet || !comparison) return null;
-  const today = e1RM(todaySet.weight, todaySet.reps, todaySet.rir);
-  const prior = e1RM(comparison.weight, comparison.reps, comparison.rir);
-  const delta = Math.round(today - prior);
-  return delta > 0 ? delta : null;
+// Small colored (+/-) badge for the aggregate Volume/e1RM comparison at
+// the bottom of the Today tile -- green for up, accent red for down,
+// nothing at exactly even. Separate from the old per-row e1RM PR/volume
+// badges (dropped in this round in favor of one aggregate comparison
+// per stat rather than one on every row).
+function diffLabel(diff) {
+  const rounded = Math.round(diff);
+  if (rounded === 0) return null;
+  return (
+    <span style={{ color: rounded > 0 ? T.green : T.accent, fontWeight: 700 }}>
+      ({rounded > 0 ? "+" : ""}{rounded})
+    </span>
+  );
 }
 
-// Aggregate stats for the Last Session tile: total working volume, the
-// best e1RM of the session, and each working set's reps@RIR for the
-// compact chip row underneath -- warmups excluded from all three, same
-// convention the rest of the app (bestE1RM, workoutDone, etc.) already
-// uses for "real" session numbers.
-function lastSessionStats(lastWeek) {
-  const working = (lastWeek || []).filter((s) => !s.isWarmup);
+// Aggregate stats for a set list (Last Session's history, or Today's
+// sets so far): total working volume and the best e1RM -- warmups
+// excluded from both, same convention the rest of the app (bestE1RM,
+// workoutDone, etc.) already uses for "real" session numbers.
+function sessionStats(setsList) {
+  const working = (setsList || []).filter((s) => !s.isWarmup);
   const totalVolume = Math.round(working.reduce((v, s) => v + s.weight * s.reps, 0));
   const bestE1RM = working.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
   return { working, totalVolume, bestE1RM };
 }
 
-// Left tile: a read-only snapshot of the last time this exercise was
-// trained -- total volume and best e1RM as headline stats, then every
-// working set's reps@RIR as small chips underneath, so there's still
-// enough to work off of (what weight, what reps, how hard) without
-// listing full rows the way the old paired layout did.
-function LastSessionTile({ lastWeek, unit }) {
-  const { working, totalVolume, bestE1RM } = lastSessionStats(lastWeek);
-  return (
-    <div style={{ flex: "0.92 1 0", minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Last session</div>
-      {working.length === 0 ? (
-        <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>No history yet</div>
-      ) : (
-        <>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontSize: 11, color: T.dim }}>Volume</span>
-              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text }}>{totalVolume} {unit}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontSize: 11, color: T.dim }}>Best e1RM</span>
-              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text }}>{Math.round(bestE1RM)} {unit}</span>
-            </div>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-            {working.map((s, i) => (
-              <span key={i} style={{ fontSize: 10.5, color: T.dim, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 6, padding: "3px 6px", whiteSpace: "nowrap" }}>
-                {s.weight}{unit}×{s.reps} <span style={{ opacity: 0.75 }}>RIR{s.rir}</span>
-              </span>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// Right tile's individual set row. Tapping a row opens it for editing;
-// in delete-select mode the same tap toggles that row's checkbox
-// instead. Sized to ~60% of the previous combined row's height, since
-// each row here only ever carries today's data.
-function TodaySetRow({ label, todaySet, unit, comparison, onToggleWarmup, onRowTap, deleteMode, selected, onToggleSelect }) {
-  const badgeStyle = { width: 20, height: 20, borderRadius: 6, background: todaySet?.isWarmup ? "rgba(232,168,46,0.18)" : T.surface, color: todaySet?.isWarmup ? "#E8A82E" : T.dim, fontSize: 10.5, fontWeight: todaySet?.isWarmup ? 700 : 400, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
-  const volumeBadge = comparison ? diffBadge(Math.round(todaySet.weight * todaySet.reps - comparison.weight * comparison.reps), unit === "lb" ? "lb·vol" : "kg·vol") : null;
-  const e1rmDelta = e1rmPRDelta(todaySet, comparison);
+// One row renderer shared by both tiles, so Last Session and Today can
+// never drift apart visually. Weight x reps stacked above RIR + e1RM
+// (rather than one crowded inline row) so nothing has to wrap or shrink
+// to fit. `interactive` toggles the tap-to-edit/warmup-toggle/
+// delete-select chrome; Last Session's rows are the same shape with all
+// of that chrome simply absent.
+function SessionSetRow({ label, set, unit, interactive, deleteMode, selected, onToggleWarmup, onRowTap, onToggleSelect }) {
+  const rm = Math.round(e1RM(set.weight, set.reps, set.rir));
+  const badgeStyle = { width: 20, height: 20, borderRadius: 6, background: set.isWarmup ? "rgba(232,168,46,0.18)" : T.surface, color: set.isWarmup ? "#E8A82E" : T.dim, fontSize: 10.5, fontWeight: set.isWarmup ? 700 : 400, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
 
   return (
     <div
-      onClick={() => (deleteMode ? onToggleSelect() : onRowTap())}
+      onClick={interactive ? () => (deleteMode ? onToggleSelect() : onRowTap()) : undefined}
       style={{
         display: "grid",
-        gridTemplateColumns: TODAY_ROW_TEMPLATE(deleteMode),
+        gridTemplateColumns: interactive ? TODAY_ROW_TEMPLATE(deleteMode) : "20px 1fr",
         alignItems: "center",
         gap: 6,
-        flex: "1 1 0",
-        minHeight: 40,
-        maxHeight: 66,
+        height: ROW_HEIGHT,
+        flexShrink: 0,
         padding: "0 8px",
-        background: selected ? "rgba(232,90,90,0.10)" : T.surface2,
+        background: selected ? "rgba(232,90,90,0.10)" : interactive ? T.surface2 : T.surface,
         border: `1px solid ${selected ? T.accent : T.line}`,
         borderRadius: 10,
-        cursor: "pointer",
+        cursor: interactive ? "pointer" : "default",
+        overflow: "hidden",
       }}
     >
-      {!deleteMode ? (
-        <button onClick={(e) => { e.stopPropagation(); onToggleWarmup(); }} aria-label={todaySet.isWarmup ? "Unmark as warmup" : "Mark as warmup"} style={{ ...badgeStyle, border: "none", cursor: "pointer" }}>{label}</button>
+      {interactive && !deleteMode ? (
+        <button onClick={(e) => { e.stopPropagation(); onToggleWarmup(); }} aria-label={set.isWarmup ? "Unmark as warmup" : "Mark as warmup"} style={{ ...badgeStyle, border: "none", cursor: "pointer" }}>{label}</button>
       ) : (
         <div style={badgeStyle}>{label}</div>
       )}
 
-      <div style={{ minWidth: 0, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap", rowGap: 1 }}>
-        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>{todaySet.weight} {unit} × {todaySet.reps}</span>
-        <span style={{ fontSize: 10, color: T.dim }}>RIR {todaySet.rir}</span>
-        {e1rmDelta && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 10, fontWeight: 700, color: "#FFD166" }}>
-            <IconStar size={10} filled style={{ color: "#FFD166" }} />+{e1rmDelta}
-          </span>
-        )}
-        {volumeBadge && <span style={{ fontSize: 10, fontWeight: 700, color: T.text }}>{volumeBadge.text}</span>}
+      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 1, overflow: "hidden" }}>
+        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, fontWeight: 700, color: T.text, whiteSpace: "nowrap" }}>{set.weight} {unit} × {set.reps}</span>
+        <span style={{ fontSize: 9.5, color: T.dim, whiteSpace: "nowrap" }}>RIR {set.rir} · e1RM {rm}</span>
       </div>
 
-      {deleteMode && (
+      {interactive && deleteMode && (
         <div
           onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
           style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? T.accent : T.line}`, background: selected ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
@@ -512,6 +461,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const startTime = useRef(Date.now());
   const stripRef = useRef(null);
   const chipRefs = useRef([]);
+  const lastRowsRef = useRef(null);
+  const todayRowsRef = useRef(null);
+  const scrollSyncingRef = useRef(false);
 
   const restCompletedForRef = useRef(null); // which restEndsAt value has already fired its completion cue, so it only fires once per timer
 
@@ -857,6 +809,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     setWizardOpen(false); setShowCalc(false); setEditIndex(null); setLoaded([]);
     setEditingNote(false); setShowSetup(false); setShowIdeology(false); setShowTargetInfo(false);
     setDeleteMode(false); setSelectedForDelete(new Set()); setConfirmDeleteSets(false);
+    if (lastRowsRef.current) lastRowsRef.current.scrollTop = 0;
+    if (todayRowsRef.current) todayRowsRef.current.scrollTop = 0;
   }
 
   function onTouchStart(e) { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }
@@ -1180,6 +1134,16 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     const target = (allSets[i] || [])[setIdx];
     setSetWarmup(workout[i].dbId, setIdx + 1, !(target && target.isWarmup)).catch((err) => note(`Couldn't save: ${err.message}`));
   }
+  function syncSetListScroll(source) {
+    if (scrollSyncingRef.current) return;
+    const other = source === "last" ? todayRowsRef.current : lastRowsRef.current;
+    const self = source === "last" ? lastRowsRef.current : todayRowsRef.current;
+    if (!other || !self) return;
+    scrollSyncingRef.current = true;
+    other.scrollTop = self.scrollTop;
+    scrollSyncingRef.current = false;
+  }
+
   function deleteLoggedSet(i, setIdx) {
     setAllSets(allSets.map((arr, k) => (k === i ? arr.filter((_, j) => j !== setIdx) : arr)));
     deleteSet(workout[i].dbId, setIdx + 1).catch((err) => note(`Couldn't remove set: ${err.message}`));
@@ -2553,6 +2517,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         button { cursor: pointer; }
         @keyframes slideIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
         .chipstrip::-webkit-scrollbar { display: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
       `}</style>
       <div style={frame}>
         {showMenu && (
@@ -2707,12 +2673,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px 0" }}>
           <div ref={stripRef} className="chipstrip" style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", flex: 1 }}>
             {workout.map((w, i) => {
-              const done = allSets[i].filter((s) => !s.isWarmup).length >= w.planned;
+              const doneCount = allSets[i].filter((s) => !s.isWarmup).length;
+              const done = doneCount >= w.planned;
+              const pct = !done && w.planned > 0 ? Math.min(100, Math.round((doneCount / w.planned) * 100)) : 0;
               const active = i === exIdx;
               return (
-                <button key={i} ref={(el) => (chipRefs.current[i] = el)} onClick={() => goTo(i)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, fontSize: 12, whiteSpace: "nowrap", border: `1px solid ${done ? T.green : active ? T.accent : T.line}`, background: done ? T.green : active ? "rgba(232,68,46,0.12)" : T.surface, color: done ? "#fff" : active ? T.text : T.dim, flexShrink: 0 }}>
-                  {w.short}
-                  {!done && <span style={{ opacity: 0.7 }}>{allSets[i].filter((s) => !s.isWarmup).length}/{w.planned}</span>}
+                <button key={i} ref={(el) => (chipRefs.current[i] = el)} onClick={() => goTo(i)} style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, fontSize: 12, whiteSpace: "nowrap", border: `1px solid ${done ? T.green : active ? T.accent : T.line}`, background: done ? T.green : active ? "rgba(232,68,46,0.12)" : T.surface, color: done ? "#fff" : pct > 0 ? T.text : active ? T.text : T.dim, flexShrink: 0 }}>
+                  {pct > 0 && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: T.green }} />}
+                  <span style={{ position: "relative" }}>{w.short}</span>
                 </button>
               );
             })}
@@ -2960,14 +2928,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         )}
 
         {!wizardOpen && (
-        <div key={exIdx} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ flex: 1, padding: "12px 16px", overflowY: "auto", animation: "slideIn 0.18s ease", display: "flex", gap: 10, minHeight: 0 }}>
-          <LastSessionTile lastWeek={lastWeek} unit={unit} />
-
-          <div style={{ flex: "1.08 1 0", minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8, minHeight: 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", minHeight: 22 }}>
+        <div key={exIdx} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ flex: 1, padding: "12px 16px", overflowY: "auto", animation: "slideIn 0.18s ease", display: "flex", flexDirection: "column", minHeight: 0 }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 6 }}>
+            <div style={{ flex: "0.92 1 0", minWidth: 0, height: 22, display: "flex", alignItems: "center" }}>
+              <span style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Last session</span>
+            </div>
+            <div style={{ flex: "1.08 1 0", minWidth: 0 }}>
               {deleteMode ? (
                 confirmDeleteSets ? (
-                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6, background: "rgba(232,90,90,0.12)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: "8px 10px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "rgba(232,90,90,0.12)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: "8px 10px" }}>
                     <span style={{ fontSize: 11.5, color: T.text }}>Delete {selectedForDelete.size} set{selectedForDelete.size === 1 ? "" : "s"}? This can't be undone.</span>
                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                       <button onClick={() => setConfirmDeleteSets(false)} style={smallBtn}>Cancel</button>
@@ -2983,8 +2952,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <span style={{ fontSize: 11, color: T.dim }}>{selectedForDelete.size} selected</span>
+                  <div style={{ height: 22, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 11, color: T.dim, whiteSpace: "nowrap" }}>{selectedForDelete.size} selected</span>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={() => { setDeleteMode(false); setSelectedForDelete(new Set()); }} style={smallBtn}>Cancel</button>
                       <button
@@ -2995,49 +2964,84 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                         Delete ({selectedForDelete.size})
                       </button>
                     </div>
-                  </>
+                  </div>
                 )
               ) : (
-                <>
-                  <span style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Today</span>
+                <div style={{ height: 22, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Today</span>
                   <div style={{ display: "flex", gap: 6 }}>
-                    {lastWeek.length > sets.length && <button onClick={copyAll} style={smallBtn}>Copy last session</button>}
-                    {sets.length > 0 && <button onClick={() => setDeleteMode(true)} style={smallBtn}>Delete sets</button>}
+                    {lastWeek.length > sets.length && <button onClick={copyAll} style={{ ...smallBtn, whiteSpace: "nowrap" }}>Copy last session</button>}
+                    {sets.length > 0 && <button onClick={() => setDeleteMode(true)} style={{ ...smallBtn, whiteSpace: "nowrap" }}>Delete sets</button>}
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: "0.92 1 0", minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+              {lastWeek.length === 0 ? (
+                <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>No history yet</div>
+              ) : (
+                <>
+                  <div ref={lastRowsRef} onScroll={() => syncSetListScroll("last")} className="no-scrollbar" style={{ height: ROWS_CONTAINER_HEIGHT, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
+                    {lastWeek.map((s, i) => (
+                      <SessionSetRow key={i} label={setLabels(lastWeek)[i]} set={s} unit={unit} interactive={false} />
+                    ))}
+                  </div>
+                  {(() => {
+                    const { totalVolume, bestE1RM } = sessionStats(lastWeek);
+                    return (
+                      <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
+                        <span>Volume <b style={{ color: T.text, fontWeight: 700 }}>{totalVolume} {unit}</b></span>
+                        <span>e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(bestE1RM)} {unit}</b></span>
+                      </div>
+                    );
+                  })()}
                 </>
               )}
             </div>
 
-            {sets.length === 0 ? (
-              <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>Nothing logged yet</div>
-            ) : (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, minHeight: 0, overflowY: "auto" }}>
-                {sets.map((todaySet, i) => {
-                  const label = setLabels(sets)[i];
-                  const comparison = matchingLastWeekSet(lastWeek, sets, i);
-                  return (
-                    <TodaySetRow
-                      key={i}
-                      label={label}
-                      todaySet={todaySet}
-                      comparison={comparison}
-                      unit={unit}
-                      onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
-                      onRowTap={() => openWizard(todaySet, i)}
-                      deleteMode={deleteMode}
-                      selected={selectedForDelete.has(i)}
-                      onToggleSelect={() => {
-                        setSelectedForDelete((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(i)) next.delete(i); else next.add(i);
-                          return next;
-                        });
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            )}
+            <div style={{ flex: "1.08 1 0", minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+              {sets.length === 0 ? (
+                <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>Nothing logged yet</div>
+              ) : (
+                <>
+                  <div ref={todayRowsRef} onScroll={() => syncSetListScroll("today")} className="no-scrollbar" style={{ height: ROWS_CONTAINER_HEIGHT, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
+                    {sets.map((s, i) => (
+                      <SessionSetRow
+                        key={i}
+                        label={setLabels(sets)[i]}
+                        set={s}
+                        unit={unit}
+                        interactive
+                        deleteMode={deleteMode}
+                        selected={selectedForDelete.has(i)}
+                        onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
+                        onRowTap={() => openWizard(s, i)}
+                        onToggleSelect={() => {
+                          setSelectedForDelete((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(i)) next.delete(i); else next.add(i);
+                            return next;
+                          });
+                        }}
+                      />
+                    ))}
+                  </div>
+                  {(() => {
+                    const last = sessionStats(lastWeek);
+                    const today = sessionStats(sets);
+                    return (
+                      <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
+                        <span>Volume <b style={{ color: T.text, fontWeight: 700 }}>{today.totalVolume} {unit}</b> {diffLabel(today.totalVolume - last.totalVolume)}</span>
+                        <span>e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(today.bestE1RM)} {unit}</b> {diffLabel(today.bestE1RM - last.bestE1RM)}</span>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
           </div>
         </div>
         )}

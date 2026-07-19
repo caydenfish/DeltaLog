@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.4": {
+    title: "Set logging refined, and exercise progress shown as a fill instead of a fraction",
+    items: [
+      "Last Session and Today now list sets in the exact same format, side by side, each showing weight x reps, RIR, and e1RM per set — plus a Volume and best e1RM summary at the bottom of each tile, with Today's showing how it compares to last time (green for up, red for down).",
+      "Both lists show up to 4 sets before scrolling; scroll either side and the other follows, so set numbers always stay lined up.",
+      "In the workout exercise strip up top, an in-progress exercise's pill now fills with green proportionally to sets completed, instead of showing a \"2/4\" style count.",
+    ],
+  },
   "1.12.3": {
     title: "Set logging redesigned, home header fixed, and a persistent-workout bug fixed",
     items: [
