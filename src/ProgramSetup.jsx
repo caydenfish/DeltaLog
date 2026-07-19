@@ -9,6 +9,7 @@ import { IDEOLOGIES } from "./lib/ideologies";
 import { createProgram, addProgramExercises, fetchTotalSessionCount } from "./lib/programQueries";
 import {
   dayLabelsForSplit,
+  expandDayLabelsForWeek,
   defaultSplitForDays,
   SPLIT_ROTATIONS,
   SPLIT_DESCRIPTIONS,
@@ -211,20 +212,30 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
   }, [splitName]);
 
   // Regenerates the auto-picked exercise list whenever the inputs that
-  // determine it change.
+  // determine it change. Uses the *expanded* per-week day list (see
+  // expandDayLabelsForWeek), not the split's bare 3/2-day rotation, so a
+  // 6-day PPL week gets 6 real day-sections instead of 3 that then get
+  // silently duplicated at scheduling time. usedIds accumulates across
+  // the loop (in day order) so a later day -- especially a repeat cycle,
+  // e.g. the second Legs day -- prefers exercises the earlier days in
+  // the same week didn't already use, on top of the cycle-based pattern
+  // bias autoPickExercisesForDay applies for Legs specifically.
   useEffect(() => {
     if (!splitName || library.length === 0) return;
-    const labels = dayLabelsForSplit(splitName);
+    const expanded = expandDayLabelsForWeek(splitName, daysPerWeek);
     const next = {};
-    labels.forEach((label, i) => {
+    const usedIds = new Set();
+    expanded.forEach(({ label, cycle }, i) => {
       const buckets = getSplits()[label] || [];
       const excluded = getSplitExclusions(label);
       const perBucket = perBucketForDay(experienceLevel || "Beginner", buckets.length);
-      next[i] = autoPickExercisesForDay(library, buckets, performedIds, perBucket, excluded);
+      const picks = autoPickExercisesForDay(library, buckets, performedIds, perBucket, excluded, cycle, usedIds);
+      picks.forEach((p) => usedIds.add(p.id));
+      next[i] = picks;
     });
     setPicksByDay(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [splitName, experienceLevel, library]);
+  }, [splitName, daysPerWeek, experienceLevel, library]);
 
   function filtersFor(dayIndex) {
     return dayFilters[dayIndex] || EMPTY_DAY_FILTERS;
@@ -270,7 +281,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
   async function handleCreate() {
     setSaving(true);
     try {
-      const dayLabels = dayLabelsForSplit(splitName);
+      const expanded = expandDayLabelsForWeek(splitName, daysPerWeek);
       const programId = await createProgram(user.id, {
         trainingFocus,
         experienceLevel: experienceLevel || "Beginner",
@@ -280,9 +291,9 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
       });
       const rows = [];
       let position = 0;
-      dayLabels.forEach((_, dayIndex) => {
+      expanded.forEach((_, dayIndex) => {
         (picksByDay[dayIndex] || []).forEach((ex) => {
-          rows.push({ exerciseId: ex.id, position: position++, dayIndex, plannedSets: ex.plannedSets ?? 3, progressionModel: customize ? progressionOverride : null });
+          rows.push({ exerciseId: ex.id, position: position++, dayIndex, plannedSets: ex.plannedSets ?? 3, plannedWarmupSets: ex.plannedWarmupSets ?? 0, progressionModel: customize ? progressionOverride : null });
         });
       });
       if (rows.length > 0) await addProgramExercises(programId, rows);
@@ -292,7 +303,13 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
     }
   }
 
-  const dayLabels = splitName ? dayLabelsForSplit(splitName) : [];
+  const dayLabels = splitName ? expandDayLabelsForWeek(splitName, daysPerWeek).map(({ label, cycle }, i, arr) => {
+    // Only disambiguate a label when it actually repeats this week (e.g.
+    // "Legs" and "Legs (2)" on a 6-day PPL week) -- a 3-day week's plain
+    // "Push"/"Pull"/"Legs" stays exactly as it read before this feature.
+    const repeatsThisWeek = arr.filter((d) => d.label === label).length > 1;
+    return repeatsThisWeek ? `${label} (${cycle + 1})` : label;
+  }) : [];
   const totalPicked = Object.values(picksByDay).reduce((sum, arr) => sum + (arr?.length || 0), 0);
   const replacingDay = replacing ? picksByDay[replacing.dayIndex] || [] : [];
   const replacingExercise = replacing ? replacingDay.find((p) => p.id === replacing.exerciseId) : null;

@@ -141,7 +141,8 @@ export default function App() {
         {mode === "workout" ? (
           <SetLogger
             user={session.user}
-            resumeWorkout={resumeWorkout}
+            resumeWorkout={resumeWorkout?.isPaused ? null : resumeWorkout}
+            savedWorkout={resumeWorkout?.isPaused ? resumeWorkout : null}
             onFinished={() => { setResumeWorkout(null); setMode("home"); }}
             onGoHome={() => {
               // Unlike onFinished, the workout itself isn't touched — it's
@@ -155,7 +156,7 @@ export default function App() {
           <Home
             user={session.user}
             activeWorkout={resumeWorkout}
-            onStartWorkout={() => { setResumeWorkout(null); setMode("workout"); }}
+            onStartWorkout={() => { setMode("workout"); }}
             onResumeWorkout={() => setMode("workout")}
             onDataReset={() => setProfile(null)}
             onProgramWorkoutStarted={() => {

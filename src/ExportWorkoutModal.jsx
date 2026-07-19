@@ -118,7 +118,21 @@ export default function ExportWorkoutModal({ data, onClose }) {
       // keeps the live and cloned layouts in sync so there's nothing
       // to visibly snap into place.
       if (containerRef.current) containerRef.current.scrollTop = 0;
-      const canvas = await html2canvas(previewRef.current, { backgroundColor: T.bg, scale: 2, useCORS: true, scrollX: 0, scrollY: 0, imageTimeout: 3000 });
+      // html2canvas measures the cloned node's natural content size, which
+      // for the Story layout could run taller than the fixed 260x~462
+      // frame (overflow: hidden clips what's rendered on screen, but
+      // html2canvas's clone doesn't always respect that the same way) --
+      // producing a PNG taller/narrower than true 9:16. Instagram then has
+      // to squeeze that into its actual Story frame, which is exactly the
+      // visible extra compression/cropping reported. Pinning width/height
+      // explicitly forces the capture to the same box the preview shows,
+      // regardless of what the cloned content would naturally measure.
+      const captureWidth = layout === "story" ? 260 : 320;
+      const captureHeight = layout === "story" ? Math.round(260 * 16 / 9) : previewRef.current.offsetHeight;
+      const canvas = await html2canvas(previewRef.current, {
+        backgroundColor: T.bg, scale: 2, useCORS: true, scrollX: 0, scrollY: 0, imageTimeout: 3000,
+        width: captureWidth, height: captureHeight, windowWidth: captureWidth, windowHeight: captureHeight,
+      });
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = url;

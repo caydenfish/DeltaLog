@@ -9,6 +9,32 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.1": {
+    title: "Pause workouts, smarter targets, and a big round of fixes",
+    items: [
+      "New: pause a workout mid-session (freezes the workout and rest timers) and Save for later. Next time you start a workout, you can pick up right where you left off instead of losing it.",
+      "Target weight/reps now adapts to what you've actually logged today, not just last session — and you can choose how it's calculated in Preferences (or during setup): Double Progression, % of e1RM, or RIR Autoregulation.",
+      "Program generator now orders each day's exercises with compound lifts first and adds warmup sets to the lead lift automatically. A 6-day Push/Pull/Legs week also gets real variety on repeat days instead of an identical clone — e.g. a quad/glute-focused Leg day and a separate hamstring-focused one.",
+      "Custom machine setup redesigned: proper text entry instead of a browser popup, previously-used machine names suggested automatically, and a new Settings > Machine Names screen to rename or delete a machine everywhere it's used at once.",
+      "Completed exercises now highlight green in the workout strip instead of showing a checkmark.",
+      "Exercise names now link directly to a \"how to\" search, in both a workout and a Program day.",
+      "Mid-workout replace-exercise flow redesigned as a full screen with a proper header and footer.",
+      "Last session vs. Today set comparison redesigned into one compact combined list instead of two separate stacked lists.",
+      "Target weight/reps is now more prominent and easier to spot at a glance.",
+      "Post-workout summary screen: only the \"Workout Complete\" header stays pinned while you scroll; everything else (stats, PRs, exercise breakdown) scrolls normally.",
+      "Setup wizard trimmed: removed the Default Set Entry, Big Plates, and Default Rest Timer steps (still adjustable anytime in Preferences) and added a new Target Calculation Method step.",
+      "Announcements: added a \"Dismiss all\" option when you have more than one.",
+      "A half-typed weight/reps entry is no longer lost if you back out of logging a set without saving it.",
+      "Note delete button moved inside the note editor.",
+      "Fixed: replacing an exercise mid-workout could leave the old one behind instead of properly swapping it out.",
+      "Fixed: an exercise removed mid-workout with no sets logged could still show up afterward in history as \"No sets logged.\"",
+      "Fixed: Push/Pull/Legs split wasn't including ab/core exercises on any day.",
+      "Fixed: opening Program right after finishing today's session showed tomorrow's workout instead of confirming today's was done.",
+      "Fixed: mid-workout muscle heatmap/radar could show the wrong muscles under Detailed or Scientific muscle-name display mode.",
+      "Fixed: Instagram Story image export was coming out too tall and looking compressed once added to a real Story.",
+      "Disabled the pull-down-to-refresh gesture on Android so it can't be triggered by accident mid-workout.",
+    ],
+  },
   "1.11.7": {
     title: "Smarter Program exercise picks, cleaner Exercise Library browsing",
     items: [

@@ -18,6 +18,7 @@ import ProgramView from "./ProgramView";
 import { fetchActiveProgram, fetchProgramSessionCount } from "./lib/programQueries";
 import { computeTodaysProgramDay } from "./lib/programEngine";
 import HomeModulesEditor from "./HomeModulesEditor";
+import MachineNamesManager from "./MachineNamesManager";
 import Logo from "./Logo";
 import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX } from "./Icons";
 import Templates from "./Templates";
@@ -192,13 +193,15 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // whole point is to be a nagging reminder that time is passing.
   const [nowTick, setNowTick] = useState(Date.now());
   useEffect(() => {
-    if (!activeWorkout?.started_at) return;
+    if (!activeWorkout?.startedAt || activeWorkout?.isPaused) return;
     const id = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [activeWorkout?.started_at]);
+  }, [activeWorkout?.startedAt, activeWorkout?.isPaused]);
   const activeWorkoutElapsed = (() => {
-    if (!activeWorkout?.started_at) return "";
-    const totalSec = Math.max(0, Math.floor((nowTick - new Date(activeWorkout.started_at).getTime()) / 1000));
+    if (!activeWorkout?.startedAt) return "";
+    const runStart = new Date(activeWorkout.startedAt).getTime() + (activeWorkout.pausedTotalSec || 0) * 1000;
+    const nowOrPause = activeWorkout.isPaused && activeWorkout.pausedAt ? new Date(activeWorkout.pausedAt).getTime() : nowTick;
+    const totalSec = Math.max(0, Math.floor((nowOrPause - runStart) / 1000));
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
     const s = totalSec % 60;
@@ -225,6 +228,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [showAdminFeedback, setShowAdminFeedback] = useState(false);
   const [showAdminHome, setShowAdminHome] = useState(false);
   const [showExerciseLibraryView, setShowExerciseLibraryView] = useState(false);
+  const [showMachineNames, setShowMachineNames] = useState(false);
   const [showAdminRoles, setShowAdminRoles] = useState(false);
   const [showAdminUserActivity, setShowAdminUserActivity] = useState(false);
   const [showAdminReferralSources, setShowAdminReferralSources] = useState(false);
@@ -264,6 +268,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [weightEntryMode, setWeightEntryModeState] = useState(() => getPrefs().weightEntryMode);
   const [plate55Scope, setPlate55ScopeState] = useState(() => getPrefs().plate55Scope);
   const [trainingIdeology, setTrainingIdeologyState] = useState(() => getPrefs().trainingIdeology);
+  const [targetCalcMethod, setTargetCalcMethodState] = useState(() => getPrefs().targetCalcMethod);
   const [timeFormat, setTimeFormatState] = useState(() => getPrefs().timeFormat);
   const [adminViewMode, setAdminViewModeState] = useState(() => getPrefs().adminViewMode);
   function setAdminViewMode(mode) {
@@ -278,7 +283,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     return !q || keywords.toLowerCase().includes(q);
   }
 
-  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, timeFormat };
+  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, targetCalcMethod, timeFormat };
   function handlePreferencesChange(key, val) {
     if (key === "units") setUnits(val);
     else if (key === "muscleNameMode") setMuscleNameMode(val);
@@ -294,6 +299,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     else if (key === "restTimerNotificationEnabled") setRestTimerNotificationEnabled(val);
     else if (key === "plate55Scope") setPlate55Scope(val);
     else if (key === "trainingIdeology") setTrainingIdeology(val);
+    else if (key === "targetCalcMethod") { setTargetCalcMethodState(val); setPref("targetCalcMethod", val); }
     else if (key === "timeFormat") setTimeFormat(val);
   }
 
@@ -618,6 +624,31 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  // Dismiss all: same per-item logic as dismissAnnouncementItem (personal
+  // notifications deleted outright, global announcements recorded as a
+  // per-user dismissal), just run across everything currently showing
+  // instead of one at a time. Best-effort per item -- one failing
+  // shouldn't block the rest from clearing, so any that fail just stay
+  // in the list rather than the whole action erroring out.
+  const [dismissingAll, setDismissingAll] = useState(false);
+  async function dismissAllAnnouncements() {
+    const current = announcements || [];
+    if (current.length === 0) return;
+    setDismissingAll(true);
+    const succeeded = [];
+    await Promise.all(current.map(async (a) => {
+      try {
+        if (a.kind === "personal") await dismissNotification(a.id);
+        else await dismissAnnouncementForUser(a.id, user.id);
+        succeeded.push(a);
+      } catch {
+        // left in the list below; the person can retry individually or hit Dismiss all again
+      }
+    }));
+    setAnnouncements((prev) => (prev || []).filter((x) => !succeeded.some((s) => s.kind === x.kind && s.id === x.id)));
+    setDismissingAll(false);
   }
 
   function filterHistoryByRange(rangeKey) {
@@ -946,7 +977,12 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
         {/* Start workout */}
         <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
-          {activeWorkout ? (
+          {activeWorkout?.isPaused && (
+            <div style={{ textAlign: "center", fontSize: 12, color: T.dim, marginBottom: 8 }}>
+              You have a paused workout — pick "Resume previous workout" after starting
+            </div>
+          )}
+          {activeWorkout && !activeWorkout.isPaused ? (
             <button onClick={onResumeWorkout} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span>Resume Workout</span>
               <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}>{activeWorkoutElapsed}</span>
@@ -1011,7 +1047,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               )}
 
               {/* Workout Library */}
-              {(settingsMatch("templates workouts reusable build manage") || settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete")) && (
+              {(settingsMatch("templates workouts reusable build manage") || settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") || settingsMatch("machine names hammer strength life fitness gym equipment rename delete setup")) && (
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Workout Library</div>
               {settingsMatch("templates workouts reusable build manage") && (
@@ -1030,11 +1066,23 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               {settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") && (
               <button
                 onClick={() => setShowExerciseLibraryView(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
+                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
               >
                 <div>
                   <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Exercise Library</div>
                   <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Browse every exercise, including your own custom ones</div>
+                </div>
+                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
+              </button>
+              )}
+              {settingsMatch("machine names hammer strength life fitness gym equipment rename delete setup") && (
+              <button
+                onClick={() => setShowMachineNames(true)}
+                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
+              >
+                <div>
+                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Machine Names</div>
+                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Rename or delete a custom machine everywhere it's used</div>
                 </div>
                 <div style={{ color: T.dim, fontSize: 16 }}>›</div>
               </button>
@@ -1259,6 +1307,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       )}
       {showAdmin && <AdminExercises user={user} onClose={() => setShowAdmin(false)} />}
       {showExerciseLibraryView && <ExerciseLibraryView muscleNameMode={muscleNameMode} isAdmin={effectiveIsAdmin} userId={user.id} onClose={() => setShowExerciseLibraryView(false)} />}
+      {showMachineNames && <MachineNamesManager user={user} onClose={() => setShowMachineNames(false)} />}
       {muscleDetail && (
         <MuscleSetsDetail
           muscle={muscleDetail.muscle}
@@ -1344,6 +1393,13 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                   {announcements === null && <InlineLoading />}
                   {announcements !== null && announcements.length === 0 && (
                     <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>Nothing posted yet.</div>
+                  )}
+                  {announcements && announcements.length > 1 && (
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                      <button onClick={dismissAllAnnouncements} disabled={dismissingAll} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "5px 10px", fontSize: 12 }}>
+                        {dismissingAll ? "Dismissing…" : "Dismiss all"}
+                      </button>
+                    </div>
                   )}
                   {announcements?.map((a) => (
                     <div key={`${a.kind}-${a.id}`} style={{ background: T.surface, border: `1px solid ${a.kind === "personal" ? T.accent : T.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>

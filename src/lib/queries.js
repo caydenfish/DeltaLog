@@ -51,6 +51,13 @@ export function normalizeExercise(row) {
     // being able to share this one like every other exercise list does.
     mechanism: row.mechanism,
     muscleRegion: row.muscle_region,
+    // Movement pattern (squat/hinge/lunge/press/pull/row/curl/extension/
+    // raise/carry) -- not used anywhere before the program generator's
+    // day-variant logic (programEngine.js), which needs it to tell a
+    // quad/glute-dominant Legs exercise (squat, lunge) from a
+    // hamstring/glute-dominant one (hinge) when building two distinct
+    // Leg days for a 6-day PPL week.
+    pattern: row.pattern || null,
     primaryMuscles: normalizeMuscleList(row.primary_muscles),
     secondaryMuscles: normalizeMuscleList(row.secondary_muscles),
     // Un-collapsed versions of the above, kept alongside them rather than
@@ -588,7 +595,23 @@ export async function deleteSet(workoutExerciseId, setNumber) {
 }
 
 // Marks a workout complete (drives the "Finish workout" button).
+// Marking a workout complete also prunes any exercise slots that never
+// got a set logged (added, then abandoned/replaced mid-workout without
+// the removal actually taking, e.g. a dropped network request on
+// removeWorkoutExercise). Without this, those slots survive with zero
+// sets and show up in history forever as "No sets logged." — a phantom
+// entry for an exercise the person never actually did.
 export async function completeWorkout(workoutId) {
+  const { data: rows, error: rowsErr } = await supabase
+    .from("workout_exercises")
+    .select("id, sets(id)")
+    .eq("workout_id", workoutId);
+  if (rowsErr) throw rowsErr;
+  const emptyIds = (rows || []).filter((r) => !r.sets || r.sets.length === 0).map((r) => r.id);
+  if (emptyIds.length > 0) {
+    const { error: pruneErr } = await supabase.from("workout_exercises").delete().in("id", emptyIds);
+    if (pruneErr) throw pruneErr;
+  }
   const { error } = await supabase
     .from("workouts")
     .update({ completed_at: new Date().toISOString() })
@@ -600,6 +623,27 @@ export async function completeWorkout(workoutId) {
 // and sets cascade-delete automatically via their foreign keys.
 export async function deleteWorkout(workoutId) {
   const { error } = await supabase.from("workouts").delete().eq("id", workoutId);
+  if (error) throw error;
+}
+
+// Marks a workout as paused (stamps paused_at). Called both for an
+// explicit "Pause" tap and as the first step of "Save for later" (which
+// pauses, then navigates home). While paused_at is set, Home shows a
+// plain "Start Workout" button instead of auto-forcing "Resume Workout",
+// and the empty-workout screen offers this workout back as an explicit
+// "Resume previous workout" choice.
+export async function pauseWorkout(workoutId) {
+  const { error } = await supabase.from("workouts").update({ paused_at: new Date().toISOString() }).eq("id", workoutId);
+  if (error) throw error;
+}
+
+// Clears the pause, folding the just-finished pause interval into
+// paused_total_sec so elapsed-time math (started_at + paused_total_sec
+// shifted forward) keeps excluding time spent paused. newPausedTotalSec
+// is computed client-side (old total + seconds since paused_at) since
+// the caller already has both values in hand from fetchActiveWorkout.
+export async function resumeWorkoutFromPause(workoutId, newPausedTotalSec) {
+  const { error } = await supabase.from("workouts").update({ paused_at: null, paused_total_sec: newPausedTotalSec }).eq("id", workoutId);
   if (error) throw error;
 }
 
@@ -804,10 +848,10 @@ export async function fetchCustomExercisesForReview() {
   if (!data || data.length === 0) return data || [];
 
   const creatorIds = [...new Set(data.map((r) => r.created_by).filter(Boolean))];
-  const { data: profilesData, error: profErr } = await supabase
-    .from("profiles")
-    .select("id, first_name, last_name")
-    .in("id", creatorIds);
+  // Plain profiles select would silently come back empty for every
+  // submitter other than the admin themself (profiles' only RLS policy
+  // is own-row-only) — the admin-gated RPC bypasses that safely instead.
+  const { data: profilesData, error: profErr } = await supabase.rpc("admin_get_profile_names", { ids: creatorIds });
   if (profErr) throw profErr;
   const byId = new Map((profilesData || []).map((p) => [p.id, p]));
   return data.map((r) => {
@@ -912,10 +956,7 @@ export async function fetchAllExerciseSubmissions() {
   if (!data || data.length === 0) return [];
 
   const userIds = [...new Set(data.map((r) => r.user_id).filter(Boolean))];
-  const { data: profilesData, error: profErr } = await supabase
-    .from("profiles")
-    .select("id, first_name, last_name")
-    .in("id", userIds);
+  const { data: profilesData, error: profErr } = await supabase.rpc("admin_get_profile_names", { ids: userIds });
   if (profErr) throw profErr;
   const byId = new Map((profilesData || []).map((p) => [p.id, p]));
   return data.map((r) => {
@@ -988,6 +1029,84 @@ export async function saveExerciseDefaults(userId, exerciseId, setup, notes, res
   if (warmupRestSeconds !== undefined) payload.warmup_rest_seconds = warmupRestSeconds; // omit to leave existing value untouched
   const { error } = await supabase.from("exercise_defaults").upsert(payload);
   if (error) throw error;
+}
+
+// Every distinct custom machine name (e.g. "Hammer Strength", "Life
+// Fitness") this user has ever added to any exercise's setup, across
+// their whole exercise_defaults table -- backs both the "previously
+// used" suggestions when adding a machine mid-workout, and the Settings
+// screen that lets someone rename/delete one everywhere at once instead
+// of per-exercise. Machine data lives inside each row's `setup._machines`
+// JSON blob (there's no separate machines table), so this has to fetch
+// every row and collect keys client-side rather than a single indexed
+// query -- fine at this scale (one row per exercise someone's actually
+// configured, not per set/workout).
+export async function fetchAllMachineNames(userId) {
+  const { data, error } = await supabase
+    .from("exercise_defaults")
+    .select("setup")
+    .eq("user_id", userId)
+    .not("setup", "is", null);
+  if (error) throw error;
+  const names = new Set();
+  for (const row of data || []) {
+    for (const name of Object.keys(row.setup?._machines || {})) names.add(name);
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+// Renames a machine name everywhere it appears across this user's
+// exercises in one go (Settings' "edit machine names" screen), instead
+// of having to fix it exercise-by-exercise. If the new name collides
+// with a machine that already exists on a given exercise, the two
+// entries are merged (new name's fields win for any field both define),
+// rather than silently dropping one.
+export async function renameMachineNameEverywhere(userId, oldName, newName) {
+  const trimmed = newName.trim();
+  if (!trimmed || trimmed === oldName) return;
+  const { data, error } = await supabase
+    .from("exercise_defaults")
+    .select("exercise_id, setup")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const updates = [];
+  for (const row of data || []) {
+    const machines = row.setup?._machines;
+    if (!machines || !(oldName in machines)) continue;
+    const nextMachines = { ...machines };
+    nextMachines[trimmed] = { ...(nextMachines[trimmed] || {}), ...nextMachines[oldName] };
+    delete nextMachines[oldName];
+    const nextSetup = { ...row.setup, _machines: nextMachines };
+    if (nextSetup._activeMachine === oldName) nextSetup._activeMachine = trimmed;
+    updates.push({ user_id: userId, exercise_id: row.exercise_id, setup: nextSetup });
+  }
+  if (updates.length === 0) return;
+  const { error: upErr } = await supabase.from("exercise_defaults").upsert(updates);
+  if (upErr) throw upErr;
+}
+
+// Deletes a machine name (and its saved setup) from every exercise it
+// appears on for this user. Same "everywhere at once" reasoning as
+// rename above.
+export async function deleteMachineNameEverywhere(userId, name) {
+  const { data, error } = await supabase
+    .from("exercise_defaults")
+    .select("exercise_id, setup")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const updates = [];
+  for (const row of data || []) {
+    const machines = row.setup?._machines;
+    if (!machines || !(name in machines)) continue;
+    const nextMachines = { ...machines };
+    delete nextMachines[name];
+    const nextSetup = { ...row.setup, _machines: nextMachines };
+    if (nextSetup._activeMachine === name) nextSetup._activeMachine = "";
+    updates.push({ user_id: userId, exercise_id: row.exercise_id, setup: nextSetup });
+  }
+  if (updates.length === 0) return;
+  const { error: upErr } = await supabase.from("exercise_defaults").upsert(updates);
+  if (upErr) throw upErr;
 }
 
 // Saves the post-workout capture screen (body weight + session notes).
@@ -1243,7 +1362,7 @@ export async function submitFeedback(userId, type, message, context) {
 export async function fetchActiveWorkout(userId) {
   const { data: workout, error } = await supabase
     .from("workouts")
-    .select("id, ideology, started_at")
+    .select("id, ideology, started_at, paused_at, paused_total_sec")
     .eq("user_id", userId)
     .is("completed_at", null)
     .order("started_at", { ascending: false })
@@ -1267,6 +1386,9 @@ export async function fetchActiveWorkout(userId) {
     id: workout.id,
     ideology: workout.ideology,
     startedAt: workout.started_at,
+    isPaused: !!workout.paused_at,
+    pausedAt: workout.paused_at,
+    pausedTotalSec: workout.paused_total_sec || 0,
     exerciseRows: exRows.map((row) => ({
       weId: row.id,
       plannedSets: row.planned_sets,

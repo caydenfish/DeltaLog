@@ -26,10 +26,22 @@
       button:focus, a:focus, button:focus-visible, a:focus-visible {
         outline: none;
       }
+      /* Chrome/Android's native "pull down at the top of the page to
+         reload" gesture is easy to trigger by accident on a scrollable
+         screen (workout log, history, exercise picker) and, unlike a
+         real refresh button, gives no warning before it reloads the
+         whole app mid-workout. overscroll-behavior-y: none on both html
+         and body (Android needs it on the actual scrolling element,
+         which varies by browser chrome, so setting both covers it)
+         disables just that overscroll-triggered navigation — normal
+         scrolling everywhere else is untouched. */
+      html, body {
+        overscroll-behavior-y: none;
+      }
     </style>
     <title>DeltaLog</title>
   </head>
-  <body style="margin:0; background:#101216; font-family: 'Barlow Condensed', sans-serif;">
+  <body style="margin:0; background:#101216; font-family: 'Barlow Condensed', sans-serif; overscroll-behavior-y: none;">
     <div id="root" data-html2canvas-ignore="true"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

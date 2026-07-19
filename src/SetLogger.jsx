@@ -50,7 +50,10 @@ import {
   updateSet,
   completeWorkout,
   deleteWorkout,
+  pauseWorkout,
+  resumeWorkoutFromPause,
   saveExerciseDefaults,
+  fetchAllMachineNames,
   saveWorkoutSummary,
   saveWorkoutAsTemplate,
   fetchTemplates,
@@ -117,17 +120,45 @@ function diffBadge(diff, unit) {
 // carried along for display -- the ideology math below never runs for
 // that exercise. Every other exercise (no active program, or a program
 // slot without a prescription for some reason) behaves exactly as before.
-function targetFor(ex, ideologyName, unit) {
+// todaysWorkingSets lets the target react to what's actually been logged
+// THIS session (e.g. 140x10 @ RIR4 implies more in the tank than the
+// target assumed) instead of only ever looking at last week's numbers
+// until the next session. Once at least one working set is in, it takes
+// priority over history — today's real performance is a better signal
+// for what's next than a week-old data point.
+function targetFor(ex, ideologyName, unit, todaysWorkingSets = [], method = "rir_autoregulation") {
   if (ex.prescribedWeight != null && ex.prescribedReps != null) {
     return { weight: ex.prescribedWeight, reps: ex.prescribedReps, anchored: true, baseE1RM: null, source: null, reasonText: ex.progressionReason, fromProgram: true };
   }
   const { low, high } = IDEOLOGIES[ideologyName];
-  const reps = Math.round((low + high) / 2);
   const lastWorkingSets = ex.lastWeek.filter((s) => !s.isWarmup);
-  const bestFromHistory = lastWorkingSets.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
+  const step = unit === "kg" ? 2.5 : 5;
+
+  // Double Progression: climb reps at the SAME weight session to session
+  // until every working set hits the top of the rep range, then bump the
+  // weight one step and restart at the bottom. Deliberately ignores
+  // today's own sets as an anchor (unlike the other two methods) --
+  // double progression is specifically about a stable weight across a
+  // whole session, not reacting mid-session.
+  if (method === "double_progression" && lastWorkingSets.length > 0) {
+    const lastSet = lastWorkingSets[lastWorkingSets.length - 1];
+    const hitTop = lastWorkingSets.every((s) => s.reps >= high);
+    const weight = hitTop ? Math.round((lastSet.weight + step) / step) * step : lastSet.weight;
+    const reps = hitTop ? low : high;
+    const baseE1RM = e1RM(weight, reps, lastSet.rir ?? 2);
+    return { weight, reps, anchored: true, baseE1RM: Math.round(baseE1RM), source: lastSet, fromToday: false, method };
+  }
+
+  const reps = Math.round((low + high) / 2);
+  // RIR Autoregulation reacts to whatever's already been logged THIS
+  // session (140x10 @ RIR4 implies more in the tank than the target
+  // assumed); % of e1RM and the double-progression fallback above both
+  // stay anchored to last session's numbers only.
+  const candidateSets = method === "rir_autoregulation" && todaysWorkingSets.length > 0 ? todaysWorkingSets : lastWorkingSets;
+  const bestFromHistory = candidateSets.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
   let baseE1RM, anchored, source;
   if (bestFromHistory > 0) {
-    const bestSet = lastWorkingSets.reduce((best, s) => (e1RM(s.weight, s.reps, s.rir) > e1RM(best.weight, best.reps, best.rir) ? s : best));
+    const bestSet = candidateSets.reduce((best, s) => (e1RM(s.weight, s.reps, s.rir) > e1RM(best.weight, best.reps, best.rir) ? s : best));
     baseE1RM = bestFromHistory;
     anchored = true;
     source = bestSet;
@@ -137,9 +168,8 @@ function targetFor(ex, ideologyName, unit) {
     anchored = false;
     source = { weight: ex.targetWeight, reps: hypReps, rir: 2 };
   }
-  const step = unit === "kg" ? 2.5 : 5;
   const weight = Math.round(weightForReps(baseE1RM, reps) / step) * step;
-  return { weight, reps, anchored, baseE1RM: Math.round(baseE1RM), source };
+  return { weight, reps, anchored, baseE1RM: Math.round(baseE1RM), source, fromToday: method === "rir_autoregulation" && todaysWorkingSets.length > 0, method };
 }
 
 function greedyPerSide(total, bar, unit, muscleGroup) {
@@ -219,41 +249,50 @@ function matchingLastWeekSet(lastWeek, sets, i) {
   return sameType[occurrence];
 }
 
-function SetCard({ s, label, ghost, actions, comparison, unit, onToggleWarmup }) {
-  const repsBadge = comparison ? diffBadge(s.reps - comparison.reps, Math.abs(s.reps - comparison.reps) === 1 ? "Rep" : "Reps") : null;
-  const weightBadge = comparison ? diffBadge(s.weight - comparison.weight, unit === "kg" ? "Kg" : "Lbs") : null;
-  const volumeBadge = comparison ? diffBadge(Math.round(s.weight * s.reps - comparison.weight * comparison.reps), "Vol") : null;
-  const matched = comparison && !repsBadge && !weightBadge && !volumeBadge;
-  const badgeStyle = { width: 26, height: 26, borderRadius: 8, background: s.isWarmup ? "rgba(232,168,46,0.18)" : T.surface2, color: s.isWarmup ? "#E8A82E" : T.dim, fontSize: 12, fontWeight: s.isWarmup ? 700 : 400, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+
+// Compact combined Last-session/Today row: one line per set number, both
+// sides shown together, instead of two full stacked lists of full-width
+// cards (which is what this replaces). Roughly halves the vertical space
+// per set and puts the comparison directly in view rather than requiring
+// scrolling between two separate sections to line matching sets up
+// mentally. Either side can be absent (today has no set yet for this
+// number, or today has more sets than last session logged) and just
+// renders as an empty placeholder on that side.
+function CompactSetRow({ label, lastSet, todaySet, unit, comparison, onCopyLast, onToggleWarmup, onEdit, onDelete }) {
+  const badgeStyle = { width: 24, height: 24, borderRadius: 7, background: todaySet?.isWarmup ? "rgba(232,168,46,0.18)" : T.surface2, color: todaySet?.isWarmup ? "#E8A82E" : T.dim, fontSize: 11, fontWeight: todaySet?.isWarmup ? 700 : 400, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+  const volumeBadge = comparison && todaySet ? diffBadge(Math.round(todaySet.weight * todaySet.reps - comparison.weight * comparison.reps), "Vol") : null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: ghost ? "transparent" : T.surface, border: `1px ${ghost ? "dashed" : "solid"} ${T.line}`, borderRadius: 12, marginBottom: 8, opacity: ghost ? 0.75 : 1 }}>
-      {onToggleWarmup ? (
-        <button onClick={onToggleWarmup} aria-label={s.isWarmup ? "Unmark as warmup" : "Mark as warmup"} title={s.isWarmup ? "Unmark as warmup" : "Mark as warmup"} style={{ ...badgeStyle, border: "none", cursor: "pointer" }}>{label}</button>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, marginBottom: 6 }}>
+      {onToggleWarmup && todaySet ? (
+        <button onClick={onToggleWarmup} aria-label={todaySet.isWarmup ? "Unmark as warmup" : "Mark as warmup"} style={{ ...badgeStyle, border: "none", cursor: "pointer" }}>{label}</button>
       ) : (
         <div style={badgeStyle}>{label}</div>
       )}
-      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 600, color: ghost ? T.dim : T.text }}>
-        {s.weight} <span style={{ color: T.dim, fontSize: 16 }}>{unit} x</span> {s.reps}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 5, color: T.dim, fontSize: 13 }}>
+        {lastSet ? <>{lastSet.weight} {unit} × {lastSet.reps} <span style={{ fontSize: 10, opacity: 0.7 }}>RIR {lastSet.rir}</span></> : <span style={{ opacity: 0.5 }}>—</span>}
       </div>
-      <div style={{ marginLeft: "auto", textAlign: "right", display: "flex", alignItems: "center", gap: 8 }}>
-        <div>
-          <div style={{ fontSize: 12, color: T.dim }}>RIR {s.rir} · e1RM {Math.round(e1RM(s.weight, s.reps, s.rir))}</div>
-          {comparison && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, marginTop: 2 }}>
-              {repsBadge && <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{repsBadge.text}</span>}
-              {weightBadge && <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{weightBadge.text}</span>}
-              {volumeBadge && <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{volumeBadge.text}</span>}
-              {matched && <span style={{ fontSize: 11, color: T.dim }}>Matched last session</span>}
-            </div>
-          )}
-        </div>
-        {actions}
+      <div style={{ color: T.dim, fontSize: 13 }}>→</div>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: 5 }}>
+        {todaySet ? (
+          <>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{todaySet.weight} {unit} × {todaySet.reps}</span>
+            <span style={{ fontSize: 10, color: T.dim }}>RIR {todaySet.rir}</span>
+            {volumeBadge && <span style={{ fontSize: 10, fontWeight: 700, color: T.text }}>{volumeBadge.text}</span>}
+          </>
+        ) : (
+          <span style={{ fontSize: 13, color: T.dim, opacity: 0.6 }}>Not logged</span>
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+        {!todaySet && lastSet && <button onClick={onCopyLast} style={smallBtn}>Copy</button>}
+        {todaySet && <button onClick={onEdit} style={smallBtn}>Edit</button>}
+        {todaySet && <button onClick={onDelete} aria-label="Delete set" style={{ ...smallBtn, color: T.accent, borderColor: T.accent }}>✕</button>}
       </div>
     </div>
   );
 }
 
-export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout }) {
+export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, savedWorkout }) {
   const [view, setView] = useState("workout");
   const [library, setLibrary] = useState([]);
   const [workoutId, setWorkoutId] = useState(null);
@@ -278,6 +317,16 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const [discardingNewWorkout, setDiscardingNewWorkout] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
+  // Explicit pause (distinct from just leaving the app, which keeps
+  // ticking and relies on the app-level auto-resume). While paused, both
+  // this timer and the rest timer are frozen and the workout is
+  // "saved for later" — Home won't auto-force back into it, and the
+  // empty-workout screen for a fresh workout can offer it back via
+  // "Resume previous workout".
+  const [isPaused, setIsPaused] = useState(false);
+  const pauseStartedAtRef = useRef(null); // ms timestamp of the current pause, null when not paused
+  const pausedTotalSecRef = useRef(0); // cumulative seconds from all *completed* pauses on this workout
+  const [resumingSaved, setResumingSaved] = useState(false); // true while swapping the fresh empty workout for a saved one
   const [bodyWeightInput, setBodyWeightInput] = useState("");
   const [progressPhotoFile, setProgressPhotoFile] = useState(null);
   const [progressPhotoPreview, setProgressPhotoPreview] = useState(null);
@@ -327,6 +376,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const [noteDraft, setNoteDraft] = useState("");
   const [showSetup, setShowSetup] = useState(false);
   const [showMachineSetup, setShowMachineSetup] = useState(false);
+  const [knownMachineNames, setKnownMachineNames] = useState([]); // every machine name this user has ever used, any exercise -- for "previously used" suggestions
+  const [addingMachine, setAddingMachine] = useState(false);
+  const [newMachineName, setNewMachineName] = useState("");
+  const [renamingMachine, setRenamingMachine] = useState(null); // machine name currently being renamed, or null
+  const [renameDraft, setRenameDraft] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [weight, setWeight] = useState("");
@@ -335,6 +389,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const [highlightMissing, setHighlightMissing] = useState({ weight: false, reps: false, rir: false });
   const [showCalc, setShowCalc] = useState(false);
   const [loaded, setLoaded] = useState([]);
+  // Per-exercise-slot (keyed by dbId) draft of whatever was typed into the
+  // set-entry wizard but never logged — so backing out (Cancel, switching
+  // exercises) doesn't silently throw away a half-typed weight/reps the
+  // next time that exercise's wizard is reopened for the same upcoming set.
+  const [drafts, setDrafts] = useState({});
   const [barMode, setBarMode] = useState(0); // starting weight for the plate calculator; 0 until a per-exercise value is loaded or set
   const [customBar, setCustomBar] = useState("");
   const [showBarInfo, setShowBarInfo] = useState(false);
@@ -374,6 +433,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
 
   useEffect(() => {
     if (!restEndsAt) { setRestLeft(0); setRestOverSec(0); return; }
+    if (isPaused) return; // frozen — restEndsAt gets shifted forward on resume instead of ticking through the pause
     const tick = () => {
       const diff = Math.round((restEndsAt - Date.now()) / 1000);
       if (diff > 0) { setRestLeft(diff); setRestOverSec(0); }
@@ -397,7 +457,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [restEndsAt]);
+  }, [restEndsAt, isPaused]);
 
   // Persist a full "where was I" snapshot on every relevant change — not
   // just which exercise, but which sub-screen or tool was open: the set
@@ -474,11 +534,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   ]);
 
   // Overall workout timer, shown in the menu. Ticks from when this
-  // component mounted (i.e. when the workout was started).
+  // workout was started, shifted forward by any time spent paused so
+  // paused stretches never count toward it. Frozen entirely while
+  // isPaused (the interval just isn't running), so the displayed value
+  // holds steady at whatever it was the moment Pause was tapped.
   useEffect(() => {
+    if (isPaused) return;
     const id = setInterval(() => setElapsedSec(Math.floor((Date.now() - startTime.current) / 1000)), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [isPaused]);
 
   // Boots the session: loads the exercise library, then either resumes an
   // in-progress workout passed in from App (so leaving the browser
@@ -522,7 +586,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
           // landed back on the first exercise.
           setWorkoutId(resumeWorkout.id);
           setGlobalIdeology(resumeWorkout.ideology);
-          if (resumeWorkout.startedAt) startTime.current = new Date(resumeWorkout.startedAt).getTime();
+          pausedTotalSecRef.current = resumeWorkout.pausedTotalSec || 0;
+          if (resumeWorkout.startedAt) startTime.current = new Date(resumeWorkout.startedAt).getTime() + pausedTotalSecRef.current * 1000;
+          if (resumeWorkout.isPaused) {
+            setIsPaused(true);
+            pauseStartedAtRef.current = resumeWorkout.pausedAt ? new Date(resumeWorkout.pausedAt).getTime() : Date.now();
+            setElapsedSec(Math.max(0, Math.floor((pauseStartedAtRef.current - startTime.current) / 1000)));
+          }
           setWorkout(items);
           setAllSets(setsArr);
 
@@ -606,7 +676,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   const planned = ex ? ex.planned : 0;
   const effIdeology = ex && ex.ideology ? ex.ideology : globalIdeology;
   const ideo = IDEOLOGIES[effIdeology];
-  const target = ex ? targetFor(ex, effIdeology, unit) : null;
+  const target = ex ? targetFor(ex, effIdeology, unit, sets.filter((s) => !s.isWarmup), getPrefs().targetCalcMethod) : null;
   const barWeight = barMode === "custom" ? parseFloat(customBar) || 0 : barMode;
   const setNum = sets.filter((s) => !s.isWarmup).length + 1;
   const lastLogged = sets[sets.length - 1];
@@ -616,8 +686,89 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
 
   const note = (msg, type = "e1rm", ms = 4000) => { setFlash({ type, msg }); setTimeout(() => setFlash(null), ms); };
 
+  // Freezes the workout timer and rest timer where they stand, and
+  // stamps paused_at in the DB so the pause survives a reload. Doesn't
+  // navigate anywhere by itself — "Save for later" (below) is pause +
+  // going home; a bare "Pause" just freezes in place so you can step
+  // away mid-set without the timers running.
+  function handlePause() {
+    if (isPaused || !workoutId) return;
+    pauseStartedAtRef.current = Date.now();
+    setIsPaused(true);
+    pauseWorkout(workoutId).catch(() => {});
+  }
+
+  // Un-freezes: shifts startTime and any running rest timer forward by
+  // exactly how long the pause lasted, so neither jumps ahead, and folds
+  // that duration into paused_total_sec so a later reload computes the
+  // same frozen/live values consistently.
+  function handleResumeFromPause() {
+    if (!isPaused) return;
+    const pausedMs = Date.now() - (pauseStartedAtRef.current || Date.now());
+    startTime.current += pausedMs;
+    pausedTotalSecRef.current += Math.round(pausedMs / 1000);
+    if (restEndsAt) setRestEndsAt(restEndsAt + pausedMs);
+    pauseStartedAtRef.current = null;
+    setIsPaused(false);
+    if (workoutId) resumeWorkoutFromPause(workoutId, pausedTotalSecRef.current).catch(() => {});
+  }
+
+  // Pause (if not already) then drop back to Home. Unlike onGoHome from
+  // the workout menu, this is a deliberate "I'll finish this later" —
+  // Home reflects that by offering a plain "Start Workout" instead of
+  // auto-forcing back in, and the paused workout resurfaces as an
+  // explicit choice next time a fresh workout is started.
+  function handleSaveForLater() {
+    if (!isPaused) handlePause();
+    setShowMenu(false);
+    onGoHome();
+  }
+
+  // Swaps the current (empty, freshly-created) workout for a previously
+  // paused/saved one, chosen from the empty-workout screen's "Resume
+  // previous workout" option. Deletes the throwaway empty row, then
+  // hydrates exactly like the boot-time resume path does.
+  async function handleResumePreviousSaved() {
+    if (!savedWorkout || resumingSaved) return;
+    setResumingSaved(true);
+    try {
+      if (workoutId) deleteWorkout(workoutId).catch(() => {});
+      clearSessionState(workoutId);
+      const items = [];
+      const setsArr = [];
+      for (const row of savedWorkout.exerciseRows) {
+        const hydrated = await hydrateExercise(user.id, row.exercise);
+        const item = newItem(hydrated, row.weId, row.plannedSets, row.plannedWarmupSets || 0);
+        item.supersetGroup = row.supersetGroup ?? null;
+        item.prescribedWeight = row.prescribedWeight ?? null;
+        item.prescribedReps = row.prescribedReps ?? null;
+        item.progressionReason = row.progressionReason ?? null;
+        items.push(item);
+        setsArr.push(row.sets);
+      }
+      const saved = loadSessionState(savedWorkout.id);
+      setWorkoutId(savedWorkout.id);
+      setGlobalIdeology(savedWorkout.ideology);
+      pausedTotalSecRef.current = savedWorkout.pausedTotalSec || 0;
+      if (savedWorkout.startedAt) startTime.current = new Date(savedWorkout.startedAt).getTime() + pausedTotalSecRef.current * 1000;
+      if (savedWorkout.isPaused) {
+        setIsPaused(true);
+        pauseStartedAtRef.current = savedWorkout.pausedAt ? new Date(savedWorkout.pausedAt).getTime() : Date.now();
+        setElapsedSec(Math.max(0, Math.floor((pauseStartedAtRef.current - startTime.current) / 1000)));
+      }
+      setWorkout(items);
+      setAllSets(setsArr);
+      if (saved && typeof saved.exIdx === "number" && saved.exIdx < items.length) setExIdx(saved.exIdx);
+    } catch (err) {
+      note(err.message || "Couldn't resume that workout.", "e1rm");
+    } finally {
+      setResumingSaved(false);
+    }
+  }
+
   function goTo(i) {
     if (i < 0 || i >= workout.length || i === exIdx) return;
+    stashDraft();
     setExIdx(i);
     setWizardOpen(false); setShowCalc(false); setEditIndex(null); setLoaded([]);
     setEditingNote(false); setShowSetup(false); setShowIdeology(false); setShowTargetInfo(false);
@@ -690,12 +841,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     setAddingExercises(true);
     const planned = workout[i].planned;
     const plannedWarmup = workout[i].plannedWarmup || 0;
+    const oldDbId = workout[i].dbId;
     try {
       const dbId = await addWorkoutExercise(workoutId, libItem.id, i, planned, "", null, plannedWarmup);
       const hydrated = await hydrateExercise(user.id, libItem);
       const item = newItem(hydrated, dbId, planned, plannedWarmup);
       setWorkout(workout.map((w, k) => (k === i ? item : w)));
       setAllSets(allSets.map((a, k) => (k === i ? [] : a)));
+      // The old slot is done for — remove it from the DB now that the
+      // new one has taken its place, so it can't linger as an orphaned
+      // zero-set row that later resurfaces in history.
+      if (oldDbId) await removeWorkoutExercise(oldDbId);
     } catch (err) {
       note(`Couldn't add ${libItem.name}: ${err.message}`);
     }
@@ -1021,6 +1177,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   function setActiveMachine(name) {
     updateSetup("_activeMachine", name);
   }
+  useEffect(() => {
+    if (!showMachineSetup || !user) return;
+    let cancelled = false;
+    fetchAllMachineNames(user.id).then((names) => { if (!cancelled) setKnownMachineNames(names); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [showMachineSetup, user]);
+
   function addMachine(rawName) {
     const name = rawName.trim();
     if (!name) return;
@@ -1036,6 +1199,21 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     const nextSetup = { ...ex.setup, _machines: machines, _activeMachine: activeMachine === name ? "" : activeMachine };
     setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, setup: nextSetup } : w)));
     saveExerciseDefaults(user.id, ex.id, nextSetup, ex.notes).catch((err) => note(`Couldn't remove machine: ${err.message}`));
+  }
+  // Renames a machine on THIS exercise only -- quick in-context fix for
+  // a typo or a slightly different name than usual. Renaming everywhere
+  // at once (every exercise this machine name shows up on) lives in
+  // Settings instead (see MachineNamesManager), since that's a much
+  // bigger, more deliberate action than fixing one exercise's setup.
+  function renameMachine(oldName, newNameRaw) {
+    const newName = newNameRaw.trim();
+    if (!newName || newName === oldName) return;
+    const machines = { ...(ex.setup["_machines"] || {}) };
+    machines[newName] = { ...(machines[newName] || {}), ...(machines[oldName] || {}) };
+    delete machines[oldName];
+    const nextSetup = { ...ex.setup, _machines: machines, _activeMachine: activeMachine === oldName ? newName : activeMachine };
+    setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, setup: nextSetup } : w)));
+    saveExerciseDefaults(user.id, ex.id, nextSetup, ex.notes).catch((err) => note(`Couldn't rename machine: ${err.message}`));
   }
 
   // Starting weight carries over per exercise (set-to-set, workout-to-
@@ -1153,8 +1331,20 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     }
   }
 
+  // Saves whatever's currently typed as this exercise's draft for its next
+  // (not-yet-logged) set, so reopening the wizard restores it instead of
+  // recomputing a fresh target/last-set prefill. Only meaningful for a new
+  // set, not while editing a past one (editIndex !== null) — an edit's
+  // values always come from the set itself.
+  function stashDraft() {
+    if (!wizardOpen || editIndex !== null || !ex) return;
+    setDrafts((d) => ({ ...d, [ex.dbId]: { weight, reps, rir } }));
+  }
+
   function openWizard(prefill, editIdx = null) {
+    const draft = editIdx === null ? drafts[ex.dbId] : null;
     if (prefill) { setWeight(String(prefill.weight)); setReps(String(prefill.reps)); setRir(prefill.rir !== undefined ? prefill.rir : null); }
+    else if (draft) { setWeight(draft.weight); setReps(draft.reps); setRir(draft.rir); }
     else if (lastLogged) {
       const lw = lastWeek[Math.min(sets.length, lastWeek.length - 1)];
       setWeight(String(lastLogged.weight)); setReps(String(lw ? lw.reps : target.reps)); setRir(null);
@@ -1220,6 +1410,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
     const isWarmup = sets.length < (ex.plannedWarmup || 0);
     const nextSets = [...sets, { ...entry, isWarmup }];
     setAllSets(allSets.map((arr, i) => (i === exIdx ? nextSets : arr)));
+    setDrafts((d) => { const { [ex.dbId]: _drop, ...rest } = d; return rest; });
     setWizardOpen(false); setShowCalc(false);
     // Superset: no rest between paired exercises, only after finishing a full
     // round through the group. Jump straight to whichever partner is behind.
@@ -1250,7 +1441,19 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
   // Live muscle volumes for the in-workout heatmap, computed from whatever
   // has actually been logged so far this session. Warmup sets are excluded
   // — they're not working volume.
-  const liveVolumeEntries = workout.map((w, i) => ({ muscle: w.muscle, primaryMuscles: w.primaryMuscles, secondaryMuscles: w.secondaryMuscles, sets: (allSets[i] || []).filter((s) => !s.isWarmup) }));
+  // rawPrimaryMuscles/rawSecondaryMuscles (not the generic-bucket-
+  // collapsed primaryMuscles/secondaryMuscles) -- computeMuscleSetCounts
+  // needs the granular tags to tell e.g. front delts from rear delts
+  // apart under Detailed/Scientific display mode. Using the collapsed
+  // version here (as this used to) is what made the mid-workout
+  // heatmap/radar show the wrong muscles: every Shoulders-bucket
+  // exercise collapsed to the same representative label regardless of
+  // which head it actually trains, while the post-workout history view
+  // (summarizeHistory, volume.js) already read the raw tags straight
+  // from the DB row and got it right -- the two disagreed only because
+  // they were fed different granularity, not because either's math was
+  // wrong.
+  const liveVolumeEntries = workout.map((w, i) => ({ muscle: w.muscle, primaryMuscles: w.rawPrimaryMuscles, secondaryMuscles: w.rawSecondaryMuscles, sets: (allSets[i] || []).filter((s) => !s.isWarmup) }));
   const { primary: livePrimary, secondary: liveSecondary, fullBodySets: liveFullBodySets } = computeMuscleSetCounts(liveVolumeEntries, muscleNameMode);
 
   // Flags sets that look like a typo or wrong-plate mistake rather than a
@@ -1743,30 +1946,44 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                   </div>
                 )}
                 {w.notes && <div style={{ fontSize: 12, color: T.dim, marginTop: 8, fontStyle: "italic" }}>Note: {w.notes}</div>}
-                {pickerFor === i && (
-                  <div style={{ marginTop: 10, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 8 }}>
-                    <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Replace with</div>
-                    <ExercisePicker
-                      list={filteredLibrary(inWorkout)}
-                      search={pickerSearch} onSearchChange={setPickerSearch}
-                      muscleFilter={muscleFilter} onToggleMuscle={(m) => setMuscleFilter(muscleFilter.includes(m) ? muscleFilter.filter((x) => x !== m) : [...muscleFilter, m])} onApplySplit={applyPickerSplit}
-                      equipFilter={equipFilter} onToggleEquip={(eq) => setEquipFilter(equipFilter.includes(eq) ? equipFilter.filter((x) => x !== eq) : [...equipFilter, eq])}
-                      performedFilter={performedFilter} onSetPerformed={setPerformedFilter}
-                      sourceFilter={sourceFilter} onSetSource={setSourceFilter}
-                      showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
-                      onPick={(l) => replaceExercise(i, l)}
-                      onToggleFavorite={toggleFavorite}
-                      footer={<>
-                        {allSets[i].length > 0 && <div style={{ fontSize: 11, color: T.accent, marginTop: 4 }}>Replacing clears the {allSets[i].length} set{allSets[i].length > 1 ? "s" : ""} already logged today.</div>}
-                        {createCustomFooter((l) => replaceExercise(i, l))}
-                      </>}
-                    />
-                  </div>
-                )}
               </div>
             ))}
           </div>
         </div>
+        {typeof pickerFor === "number" && (
+          <div style={{ position: "absolute", inset: 0, background: T.bg, zIndex: 20, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
+              <button onClick={closePicker} aria-label="Close" style={smallBtn}>‹</button>
+              <div style={{ textAlign: "center", minWidth: 0 }}>
+                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>REPLACE EXERCISE</div>
+                <div style={{ fontSize: 11, color: T.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Currently: {workout[pickerFor]?.short || workout[pickerFor]?.name}</div>
+              </div>
+              <div />
+            </div>
+            <div style={{ flex: 1, padding: 16, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
+              <ExercisePicker
+                list={filteredLibrary(inWorkout)}
+                search={pickerSearch} onSearchChange={setPickerSearch}
+                muscleFilter={muscleFilter} onToggleMuscle={(m) => setMuscleFilter(muscleFilter.includes(m) ? muscleFilter.filter((x) => x !== m) : [...muscleFilter, m])} onApplySplit={applyPickerSplit}
+                equipFilter={equipFilter} onToggleEquip={(eq) => setEquipFilter(equipFilter.includes(eq) ? equipFilter.filter((x) => x !== eq) : [...equipFilter, eq])}
+                performedFilter={performedFilter} onSetPerformed={setPerformedFilter}
+                sourceFilter={sourceFilter} onSetSource={setSourceFilter}
+                showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
+                onPick={(l) => replaceExercise(pickerFor, l)}
+                fillHeight
+                onToggleFavorite={toggleFavorite}
+                footer={createCustomFooter((l) => replaceExercise(pickerFor, l))}
+              />
+            </div>
+            {allSets[pickerFor]?.length > 0 && (
+              <div style={{ padding: "12px 16px", borderTop: `1px solid ${T.line}`, background: T.surface }}>
+                <div style={{ fontSize: 12, color: T.accent, textAlign: "center" }}>
+                  Replacing clears the {allSets[pickerFor].length} set{allSets[pickerFor].length > 1 ? "s" : ""} already logged today.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {pickerFor === "add" && (
           <div style={{ position: "absolute", inset: 0, background: T.bg, zIndex: 20, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
@@ -1897,69 +2114,70 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, color: T.text }}>WORKOUT COMPLETE</div>
             <div style={{ color: T.dim, fontSize: 13, marginTop: 2 }}>{dateStr}</div>
           </div>
-          <div style={{ display: "flex", gap: 8, padding: "14px 16px" }}>
-            {[
-              { label: "Sets", value: totalWorkingSets, sub: totalWarmupSets > 0 ? `+${totalWarmupSets} warmup` : null },
-              { label: "Volume", value: `${totalVolume.toLocaleString()} ${unit}` },
-              { label: "Duration", value: `${durationMin} min` },
-            ].map((s) => (
-              <div key={s.label} style={{ flex: 1, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>{s.value}</div>
-                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{s.label}</div>
-                {s.sub && <div style={{ fontSize: 10, color: T.dim, marginTop: 1 }}>{s.sub}</div>}
-              </div>
-            ))}
-          </div>
-
-          {facts.length > 0 && (
-            <div style={{ margin: "0 16px 14px", background: "rgba(59,165,93,0.1)", border: `1px solid ${T.green}`, borderRadius: 12, padding: 12 }}>
-              {facts.map((f, idx) => (
-                <div key={idx} style={{ fontSize: 13, color: "#7BD69B", marginBottom: idx < facts.length - 1 ? 4 : 0, display: "flex", alignItems: "center", gap: 6 }}><IconCheck size={12} /> {f}</div>
-              ))}
-            </div>
-          )}
-
-          {(prResults.weight.length + prResults.reps.length + prResults.volume.length) > 0 && (
-            <div style={{ margin: "0 16px 14px", background: T.surface, border: "1px solid #FFD166", borderRadius: 12, padding: 12 }}>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Personal records</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[
-                  { key: "weight", label: "Weight", list: prResults.weight, unit },
-                  { key: "reps", label: "Reps", list: prResults.reps, unit: "reps" },
-                  { key: "volume", label: "Volume", list: prResults.volume, unit },
-                ].map((cat) => (
-                  <button
-                    key={cat.key}
-                    onClick={() => cat.list.length > 0 && setExpandedPR(expandedPR === cat.key ? null : cat.key)}
-                    disabled={cat.list.length === 0}
-                    style={{
-                      flex: 1, background: expandedPR === cat.key ? "rgba(255,209,102,0.18)" : T.surface2,
-                      border: `1px solid ${cat.list.length > 0 ? "#FFD166" : T.line}`, borderRadius: 10, padding: "10px 6px", textAlign: "center",
-                      opacity: cat.list.length === 0 ? 0.4 : 1,
-                    }}
-                  >
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: cat.list.length > 0 ? "#FFD166" : T.dim }}>{cat.list.length}</div>
-                    <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{cat.label} PR{cat.list.length === 1 ? "" : "s"}</div>
-                  </button>
-                ))}
-              </div>
-              {expandedPR && (
-                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {{ weight: prResults.weight, reps: prResults.reps, volume: prResults.volume }[expandedPR].map((pr, idx) => (
-                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "4px 0", borderTop: idx > 0 ? `1px solid ${T.line}` : "none" }}>
-                      <span style={{ color: T.text }}>{pr.name}</span>
-                      <span style={{ color: "#FFD166", fontWeight: 700 }}>
-                        {expandedPR === "reps" ? `${pr.value} reps` : `${pr.value} ${unit}`}
-                        {pr.previous > 0 && <span style={{ color: T.dim, fontWeight: 400 }}> (prev {pr.previous}{expandedPR === "reps" ? "" : " lb"})</span>}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           <div style={{ flex: 1, padding: "0 16px 16px", overflowY: "auto" }}>
+            <div style={{ display: "flex", gap: 8, padding: "14px 0" }}>
+              {[
+                { label: "Sets", value: totalWorkingSets, sub: totalWarmupSets > 0 ? `+${totalWarmupSets} warmup` : null },
+                { label: "Volume", value: `${totalVolume.toLocaleString()} ${unit}` },
+                { label: "Duration", value: `${durationMin} min` },
+              ].map((s) => (
+                <div key={s.label} style={{ flex: 1, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>{s.value}</div>
+                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{s.label}</div>
+                  {s.sub && <div style={{ fontSize: 10, color: T.dim, marginTop: 1 }}>{s.sub}</div>}
+                </div>
+              ))}
+            </div>
+
+            {facts.length > 0 && (
+              <div style={{ marginBottom: 14, background: "rgba(59,165,93,0.1)", border: `1px solid ${T.green}`, borderRadius: 12, padding: 12 }}>
+                {facts.map((f, idx) => (
+                  <div key={idx} style={{ fontSize: 13, color: "#7BD69B", marginBottom: idx < facts.length - 1 ? 4 : 0, display: "flex", alignItems: "center", gap: 6 }}><IconCheck size={12} /> {f}</div>
+                ))}
+              </div>
+            )}
+
+            {(prResults.weight.length + prResults.reps.length + prResults.volume.length) > 0 && (
+              <div style={{ marginBottom: 14, background: T.surface, border: "1px solid #FFD166", borderRadius: 12, padding: 12 }}>
+                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Personal records</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[
+                    { key: "weight", label: "Weight", list: prResults.weight, unit },
+                    { key: "reps", label: "Reps", list: prResults.reps, unit: "reps" },
+                    { key: "volume", label: "Volume", list: prResults.volume, unit },
+                  ].map((cat) => (
+                    <button
+                      key={cat.key}
+                      onClick={() => cat.list.length > 0 && setExpandedPR(expandedPR === cat.key ? null : cat.key)}
+                      disabled={cat.list.length === 0}
+                      style={{
+                        flex: 1, background: expandedPR === cat.key ? "rgba(255,209,102,0.18)" : T.surface2,
+                        border: `1px solid ${cat.list.length > 0 ? "#FFD166" : T.line}`, borderRadius: 10, padding: "10px 6px", textAlign: "center",
+                        opacity: cat.list.length === 0 ? 0.4 : 1,
+                      }}
+                    >
+                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: cat.list.length > 0 ? "#FFD166" : T.dim }}>{cat.list.length}</div>
+                      <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{cat.label} PR{cat.list.length === 1 ? "" : "s"}</div>
+                    </button>
+                  ))}
+                </div>
+                {expandedPR && (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {{ weight: prResults.weight, reps: prResults.reps, volume: prResults.volume }[expandedPR].map((pr, idx) => (
+                      <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "4px 0", borderTop: idx > 0 ? `1px solid ${T.line}` : "none" }}>
+                        <span style={{ color: T.text }}>{pr.name}</span>
+                        <span style={{ color: "#FFD166", fontWeight: 700 }}>
+                          {expandedPR === "reps" ? `${pr.value} reps` : `${pr.value} ${unit}`}
+                          {pr.previous > 0 && <span style={{ color: T.dim, fontWeight: 400 }}> (prev {pr.previous}{expandedPR === "reps" ? "" : " lb"})</span>}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {exerciseRows.map((row) => {
               if (!row) return null;
               const { w, i, exSets, bestToday, delta, hasHistory, isPR, twoForTwo } = row;
@@ -2189,6 +2407,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             <button onClick={() => setView("generator")} style={{ width: "100%", maxWidth: 280, marginTop: 24, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}><IconBolt size={14} /> Generate workout</button>
             <button onClick={openTemplates} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 15 }}>Use a Template</button>
             <button onClick={() => { setManageFromScratch(true); setView("manage"); }} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Add exercises manually</button>
+            {savedWorkout && (
+              <button onClick={handleResumePreviousSaved} disabled={resumingSaved} style={{ width: "100%", maxWidth: 280, marginTop: 18, padding: "13px 0", borderRadius: 12, border: `1px dashed ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.accent, fontSize: 15, fontWeight: 600 }}>
+                {resumingSaved ? "Resuming…" : "Resume previous workout"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -2234,8 +2457,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
               </button>
             </div>
             <div style={{ padding: 16, flex: 1 }}>
-              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 16, textAlign: "center", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Workout time</div>
+              <div style={{ background: T.surface, border: `1px solid ${isPaused ? T.accent : T.line}`, borderRadius: 14, padding: 16, textAlign: "center", marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: isPaused ? T.accent : T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, fontWeight: isPaused ? 700 : 400 }}>{isPaused ? "Paused" : "Workout time"}</div>
                 <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 36, fontWeight: 700, color: T.text }}>{hhmmss(elapsedSec)}</div>
               </div>
 
@@ -2261,6 +2484,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                     <button onClick={handleFinishClick} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Yes, finish</button>
                   </div>
                 </div>
+              )}
+
+              {!finishConfirm && (
+                isPaused ? (
+                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                    <button onClick={handleResumeFromPause} style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Resume</button>
+                    <button onClick={handleSaveForLater} style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Save for later</button>
+                  </div>
+                ) : (
+                  <button onClick={handlePause} style={{ width: "100%", marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Pause</button>
+                )
               )}
 
               {outlierReview && outlierReview.length > 0 && (
@@ -2368,8 +2602,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
               const done = allSets[i].filter((s) => !s.isWarmup).length >= w.planned;
               const active = i === exIdx;
               return (
-                <button key={i} ref={(el) => (chipRefs.current[i] = el)} onClick={() => goTo(i)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, fontSize: 12, whiteSpace: "nowrap", border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(232,68,46,0.12)" : T.surface, color: active ? T.text : T.dim, flexShrink: 0 }}>
-                  {done && <span style={{ color: T.green, fontWeight: 700 }}><IconCheck size={12} /></span>}
+                <button key={i} ref={(el) => (chipRefs.current[i] = el)} onClick={() => goTo(i)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, fontSize: 12, whiteSpace: "nowrap", border: `1px solid ${done ? T.green : active ? T.accent : T.line}`, background: done ? T.green : active ? "rgba(232,68,46,0.12)" : T.surface, color: done ? "#fff" : active ? T.text : T.dim, flexShrink: 0 }}>
                   {w.short}
                   {!done && <span style={{ opacity: 0.7 }}>{allSets[i].filter((s) => !s.isWarmup).length}/{w.planned}</span>}
                 </button>
@@ -2384,7 +2617,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <button onClick={() => goTo(exIdx - 1)} style={arrowBtn(exIdx === 0)} aria-label="Previous exercise">‹</button>
             <div style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: 0.3, color: T.text, lineHeight: 1.1 }}>{ex.name}</div>
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(`how to ${ex.name}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: 0.3, color: T.text, lineHeight: 1.1, textDecoration: "none", display: "inline-block" }}
+              >
+                {ex.name}
+              </a>
               <div style={{ color: T.dim, fontSize: 12, marginTop: 2 }}>Exercise {exIdx + 1} of {workout.length} · {exDone ? `${sets.filter((s) => !s.isWarmup).length}/${planned} sets done` : `Set ${setNum} of ${planned}`}{ex.supersetGroup != null && <span style={{ color: T.accent, fontWeight: 700 }}> · Superset</span>}</div>
             </div>
             <button onClick={() => goTo(exIdx + 1)} style={arrowBtn(exIdx === workout.length - 1)} aria-label="Next exercise">›</button>
@@ -2392,14 +2632,22 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
 
           {!wizardOpen && (
           <>
+          <button
+            onClick={() => setShowTargetInfo(!showTargetInfo)}
+            style={{ width: "100%", marginTop: 10, padding: "10px 14px", borderRadius: 12, border: `1px solid ${showTargetInfo ? T.accent : T.line}`, background: "rgba(232,68,46,0.08)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          >
+            <span style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Target</span>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: 0.3 }}>
+              {target.weight} {unit} <span style={{ color: T.dim, fontWeight: 500 }}>×</span> {target.reps}
+            </span>
+            <span style={{ fontSize: 11, color: T.dim }}>ⓘ</span>
+          </button>
+
           <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "center" }}>
             <button onClick={() => { setShowIdeology(!showIdeology); setShowTargetInfo(false); }} style={{ fontSize: 12, color: T.text, background: T.surface2, border: `1px solid ${showIdeology ? T.accent : T.line}`, borderRadius: 999, padding: "3px 10px", display: "flex", alignItems: "center", gap: 5 }}>
               {effIdeology} · {ideo.low}-{ideo.high} reps
               {ex.ideology && <span style={{ width: 5, height: 5, borderRadius: 3, background: T.accent, display: "inline-block" }} title="Override for this exercise" />}
               <span style={{ fontSize: 9, color: T.dim }}>▾</span>
-            </button>
-            <button onClick={() => { setShowTargetInfo(!showTargetInfo); setShowIdeology(false); }} style={{ fontSize: 12, color: T.dim, background: T.surface, border: `1px solid ${showTargetInfo ? T.accent : T.line}`, borderRadius: 999, padding: "3px 10px" }}>
-              Target {target.weight} {unit} x {target.reps} <span style={{ fontSize: 9 }}>ⓘ</span>
             </button>
           </div>
 
@@ -2407,6 +2655,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
             <div style={{ marginTop: 10, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 12px", fontSize: 12, color: T.dim, lineHeight: 1.5 }}>
               {target.fromProgram ? (
                 <><b style={{ color: T.text }}>Program coach:</b> {target.reasonText}</>
+              ) : target.anchored && target.fromToday ? (
+                <>Updated from what you just logged today: {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir}, estimated 1RM <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps.</>
               ) : target.anchored ? (
                 <>Based on your best estimated 1RM of <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>, from {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir} last session. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps as the working target.</>
               ) : (
@@ -2447,14 +2697,65 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                   <button onClick={() => setActiveMachine("")} style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${!activeMachine ? T.accent : T.line}`, background: !activeMachine ? "rgba(232,68,46,0.12)" : T.surface, color: !activeMachine ? T.text : T.dim }}>Default</button>
-                  {savedMachines.map((m) => (
-                    <button key={m} onClick={() => setActiveMachine(m)} onDoubleClick={() => removeMachine(m)} title="Double-tap to remove" style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${activeMachine === m ? T.accent : T.line}`, background: activeMachine === m ? "rgba(232,68,46,0.12)" : T.surface, color: activeMachine === m ? T.text : T.dim }}>{m}</button>
-                  ))}
-                  <button
-                    onClick={() => { const name = window.prompt("Machine name, e.g. \"Hammer Strength\" or \"Free Motion\""); if (name) addMachine(name); }}
-                    style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, border: `1px dashed ${T.line}`, background: "none", color: T.dim }}
-                  >+ Machine</button>
+                  {savedMachines.map((m) =>
+                    renamingMachine === m ? (
+                      <div key={m} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        <input
+                          autoFocus
+                          value={renameDraft}
+                          onChange={(e) => setRenameDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && renameDraft.trim()) { renameMachine(m, renameDraft); setRenamingMachine(null); }
+                            if (e.key === "Escape") setRenamingMachine(null);
+                          }}
+                          style={{ width: 110, background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 999, color: T.text, fontSize: 11, padding: "4px 8px", outline: "none" }}
+                        />
+                        <button onClick={() => { if (renameDraft.trim()) { renameMachine(m, renameDraft); } setRenamingMachine(null); }} aria-label="Save name" style={{ background: "none", border: "none", color: T.accent, fontSize: 11 }}><IconCheck size={11} /></button>
+                      </div>
+                    ) : (
+                      <button key={m} onClick={() => setActiveMachine(m)} onDoubleClick={() => { setRenamingMachine(m); setRenameDraft(m); }} title="Double-tap to rename" style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${activeMachine === m ? T.accent : T.line}`, background: activeMachine === m ? "rgba(232,68,46,0.12)" : T.surface, color: activeMachine === m ? T.text : T.dim, display: "flex", alignItems: "center", gap: 5 }}>
+                        {m}
+                        <span onClick={(e) => { e.stopPropagation(); removeMachine(m); }} role="button" aria-label={`Remove ${m}`} style={{ color: T.dim, fontSize: 10 }}>✕</span>
+                      </button>
+                    )
+                  )}
+                  {!addingMachine ? (
+                    <button
+                      onClick={() => { setAddingMachine(true); setNewMachineName(""); }}
+                      style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, border: `1px dashed ${T.line}`, background: "none", color: T.dim }}
+                    >+ Machine</button>
+                  ) : null}
                 </div>
+                {addingMachine && (
+                  <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10, marginBottom: 10 }}>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <input
+                        autoFocus
+                        value={newMachineName}
+                        onChange={(e) => setNewMachineName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && newMachineName.trim()) { addMachine(newMachineName); setAddingMachine(false); } if (e.key === "Escape") setAddingMachine(false); }}
+                        placeholder="e.g. Hammer Strength, Life Fitness"
+                        style={{ flex: 1, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "7px 10px", outline: "none", boxSizing: "border-box" }}
+                      />
+                      <button
+                        onClick={() => { if (newMachineName.trim()) { addMachine(newMachineName); setAddingMachine(false); } }}
+                        disabled={!newMachineName.trim()}
+                        style={{ padding: "0 14px", borderRadius: 8, border: "none", background: newMachineName.trim() ? T.accent : T.surface2, color: newMachineName.trim() ? "#fff" : T.dim, fontSize: 13, fontWeight: 700 }}
+                      >Add</button>
+                      <button onClick={() => setAddingMachine(false)} aria-label="Cancel" style={{ padding: "0 10px", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13 }}>✕</button>
+                    </div>
+                    {knownMachineNames.filter((n) => !savedMachines.includes(n) && n.toLowerCase().includes(newMachineName.trim().toLowerCase())).length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Previously used</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {knownMachineNames.filter((n) => !savedMachines.includes(n) && n.toLowerCase().includes(newMachineName.trim().toLowerCase())).map((n) => (
+                            <button key={n} onClick={() => { addMachine(n); setAddingMachine(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface2, color: T.text }}>{n}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <div style={{ fontSize: 13, color: T.text, flex: 1 }}>Seat height</div>
                   {heightField("Seat height")}
@@ -2517,13 +2818,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
               <button onClick={() => { setNoteDraft(ex.notes); setEditingNote(true); }} style={{ background: "none", border: "none", color: T.dim, fontSize: 12, fontStyle: ex.notes ? "italic" : "normal", padding: 0 }}>
                 {ex.notes ? <>"{ex.notes}" <IconPencil size={11} /></> : "+ Add note"}
               </button>
-              {ex.notes && <button onClick={deleteNote} style={{ background: "none", border: "none", color: T.accent, fontSize: 11, padding: 0 }}>Delete</button>}
             </div>
           ) : (
             <div style={{ marginTop: 6 }}>
               <textarea value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Cues, tempo, anything worth remembering..." rows={2} style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 13, padding: 8, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
               <div style={{ fontSize: 10, color: T.dim, marginTop: 3 }}>Saved per exercise, persists across sessions until deleted.</div>
               <div style={{ display: "flex", gap: 6, marginTop: 6, justifyContent: "flex-end" }}>
+                {ex.notes && <button onClick={() => { deleteNote(); setEditingNote(false); }} style={{ ...smallBtn, color: T.accent }}>Delete</button>}
                 <button onClick={() => setEditingNote(false)} style={smallBtn}>Cancel</button>
                 <button onClick={saveNote} style={{ ...smallBtn, color: T.text, borderColor: T.accent }}>Save note</button>
               </div>
@@ -2552,17 +2853,36 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
 
         {!wizardOpen && (
         <div key={exIdx} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ flex: 1, padding: "12px 16px", overflowY: "auto", animation: "slideIn 0.18s ease" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Last session</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <div style={{ display: "flex", gap: 16, fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>
+              <span style={{ flex: 1 }}>Last session</span>
+              <span style={{ flex: 1 }}>Today</span>
+            </div>
             {lastWeek.length > 0 && <button onClick={copyAll} style={smallBtn}>Copy all</button>}
           </div>
-          {lastWeek.length === 0 && (
+          {lastWeek.length === 0 && sets.length === 0 && (
             <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 20px", border: `1px dashed ${T.line}`, borderRadius: 12, marginBottom: 8 }}>No history yet. Targets use the library default until you log a session.</div>
           )}
-          {lastWeek.map((s, i) => <SetCard key={"lw" + i} s={s} label={setLabels(lastWeek)[i]} ghost unit={unit} actions={<button onClick={() => openWizard(s)} style={smallBtn}>Copy</button>} />)}
-          <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 8px" }}>Today</div>
-          {sets.length === 0 && <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>No sets logged yet.</div>}
-          {sets.map((s, i) => <SetCard key={i} s={s} label={setLabels(sets)[i]} comparison={matchingLastWeekSet(lastWeek, sets, i)} unit={unit} onToggleWarmup={() => toggleSetWarmup(exIdx, i)} actions={<div style={{ display: "flex", gap: 6 }}><button onClick={() => openWizard(s, i)} style={smallBtn}>Edit</button><button onClick={() => deleteLoggedSet(exIdx, i)} aria-label="Delete set" style={{ ...smallBtn, color: T.accent, borderColor: T.accent }}>Delete</button></div>} />)}
+          {Array.from({ length: Math.max(lastWeek.length, sets.length) }).map((_, i) => {
+            const todaySet = sets[i];
+            const lastSet = lastWeek[i];
+            const label = todaySet ? setLabels(sets)[i] : lastSet ? setLabels(lastWeek)[i] : String(i + 1);
+            const comparison = todaySet ? matchingLastWeekSet(lastWeek, sets, i) : null;
+            return (
+              <CompactSetRow
+                key={i}
+                label={label}
+                lastSet={lastSet}
+                todaySet={todaySet}
+                comparison={comparison}
+                unit={unit}
+                onCopyLast={() => openWizard(lastSet)}
+                onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
+                onEdit={() => openWizard(todaySet, i)}
+                onDelete={() => deleteLoggedSet(exIdx, i)}
+              />
+            );
+          })}
         </div>
         )}
 
@@ -2702,7 +3022,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout })
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                <button onClick={() => { setWizardOpen(false); setShowCalc(false); setEditIndex(null); }} style={{ flex: 1, padding: "14px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
+                <button onClick={() => { stashDraft(); setWizardOpen(false); setShowCalc(false); setEditIndex(null); }} style={{ flex: 1, padding: "14px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
                 <button onClick={saveSet} style={{ flex: 2, padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>
                   {editIndex !== null ? "Save changes" : "Log set"}
                 </button>

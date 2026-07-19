@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getPrefs, setPref } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
+import { PROGRESSION_MODELS, PROGRESSION_MODEL_DESCRIPTIONS } from "./lib/programEngine";
 import { REST_TIMER_SOUNDS, REST_TIMER_VIBRATIONS, playRestTimerSound, triggerRestTimerVibration, notificationsSupported, getNotificationPermission, requestNotificationPermission, showRestTimerNotification } from "./lib/restTimerCues";
 import { IconChevronUp, IconChevronDown } from "./Icons";
 
@@ -114,10 +115,12 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     restTimerNotificationEnabled: getPrefs().restTimerNotificationEnabled,
     plate55Scope: getPrefs().plate55Scope,
     trainingIdeology: getPrefs().trainingIdeology,
+    targetCalcMethod: getPrefs().targetCalcMethod,
     timeFormat: getPrefs().timeFormat,
   }));
   const [showScoreInfo, setShowScoreInfo] = useState(false);
   const [showIdeologyInfo, setShowIdeologyInfo] = useState(false);
+  const [showTargetCalcInfo, setShowTargetCalcInfo] = useState(false);
   // Which grouped sub-screen (if any) is open. Replaces the old
   // showTrainingPrefs/showUnitsGroup accordion-toggle booleans now that
   // "Units" and "Training Preferences" are real full-screen destinations
@@ -148,6 +151,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     scientificNames: "muscle names generic detailed scientific anatomy nomenclature",
     trainingIdeology: "training focus rep range hypertrophy strength endurance ideology methodology default",
     scoreDisplay: "strength score dots percentile deltalog",
+    targetCalcMethod: "target calculation method progression double progression percent e1rm rir autoregulation",
     weightEntryMode: "default set entry manual plate calculator logging type",
     plateSizes: "big plates 55 lb 25 kg bumpers squats deadlifts",
     restSeconds: "rest timer default seconds",
@@ -163,7 +167,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // findable by search without requiring a tap into that sub-screen —
   // shown inline, right in the settings list, while a search is active.
   const unitsSearchMatch = searchActive && ["units", "timeFormat"].some(matches);
-  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled"].some(matches);
+  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "targetCalcMethod", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled"].some(matches);
 
   function update(key, val) {
     if (controlled) {
@@ -174,7 +178,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     }
   }
 
-  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology } = state;
+  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod } = state;
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -307,6 +311,41 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
               No strength score shown. Nothing is compared against other users.
             </div>
           )}
+        </div>
+        )}
+
+        {matches("targetCalcMethod") && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <div style={{ color: T.text, fontSize: 14 }}>Target calculation method</div>
+            <button onClick={() => setShowTargetCalcInfo(!showTargetCalcInfo)} aria-label="What's the difference?" style={{ width: 16, height: 16, borderRadius: 999, border: `1px solid ${T.dim}`, background: "none", color: T.dim, fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>i</button>
+          </div>
+          {showTargetCalcInfo && (
+            <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 10, marginBottom: 8, fontSize: 12, color: T.dim, lineHeight: 1.5 }}>
+              {Object.entries(PROGRESSION_MODELS).map(([key, label]) => (
+                <div key={key} style={{ marginBottom: key === "rir_autoregulation" ? 0 : 8 }}>
+                  <b style={{ color: T.text }}>{label}</b> — {PROGRESSION_MODEL_DESCRIPTIONS[key]}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ color: T.dim, fontSize: 11, marginBottom: 8 }}>How the weight/reps suggested for your next set is worked out</div>
+          <div style={{ display: "flex", flexDirection: "column", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
+            {Object.entries(PROGRESSION_MODELS).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => update("targetCalcMethod", key)}
+                aria-pressed={targetCalcMethod === key}
+                style={{
+                  padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none",
+                  background: targetCalcMethod === key ? T.accent : "transparent",
+                  color: targetCalcMethod === key ? "#fff" : T.dim,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         )}
 

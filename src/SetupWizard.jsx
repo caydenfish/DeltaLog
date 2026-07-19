@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getPrefs, setPref } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
+import { PROGRESSION_MODELS, PROGRESSION_MODEL_DESCRIPTIONS } from "./lib/programEngine";
 import Logo from "./Logo";
 
 const T = {
@@ -42,47 +43,14 @@ function InfoBox({ children }) {
   );
 }
 
-// Same looping plate-slide animation used in the tutorial's plate
-// calculator step — repeated here so the "Default set entry" step in the
-// wizard actually shows what each option looks like, not just names them.
-function PlateCalcVisual() {
-  return (
-    <div style={{ width: "100%", height: 46, marginTop: 14, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <style>{`
-        @keyframes dl-slide-left { 0% { transform: translateX(-14px); opacity: 0; } 30%, 70% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(-14px); opacity: 0; } }
-        @keyframes dl-slide-right { 0% { transform: translateX(14px); opacity: 0; } 30%, 70% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(14px); opacity: 0; } }
-      `}</style>
-      <svg width="140" height="40" viewBox="0 0 140 40">
-        <line x1="10" y1="20" x2="130" y2="20" stroke={T.dim} strokeWidth="3" />
-        <rect x="30" y="10" width="6" height="20" rx="1" fill={T.dim} opacity="0.5" />
-        <rect x="104" y="10" width="6" height="20" rx="1" fill={T.dim} opacity="0.5" />
-        <g style={{ animation: "dl-slide-left 2.2s ease-in-out infinite" }}>
-          <rect x="12" y="4" width="10" height="32" rx="2" fill={T.accent} />
-        </g>
-        <g style={{ animation: "dl-slide-left 2.2s ease-in-out infinite 0.15s" }}>
-          <rect x="24" y="7" width="7" height="26" rx="2" fill={T.accent} opacity="0.75" />
-        </g>
-        <g style={{ animation: "dl-slide-right 2.2s ease-in-out infinite" }}>
-          <rect x="118" y="4" width="10" height="32" rx="2" fill={T.accent} />
-        </g>
-        <g style={{ animation: "dl-slide-right 2.2s ease-in-out infinite 0.15s" }}>
-          <rect x="109" y="7" width="7" height="26" rx="2" fill={T.accent} opacity="0.75" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
 export default function SetupWizard({ onComplete, onClose }) {
   const prefs = getPrefs();
   const [step, setStep] = useState(0);
   const [units, setUnits] = useState(prefs.units);
   const [trainingIdeology, setTrainingIdeology] = useState(prefs.trainingIdeology);
   const [scoreDisplay, setScoreDisplay] = useState(prefs.scoreDisplay);
-  const [weightEntryMode, setWeightEntryMode] = useState(prefs.weightEntryMode);
-  const [plate55Scope, setPlate55Scope] = useState(prefs.plate55Scope);
   const [muscleNameMode, setMuscleNameMode] = useState(prefs.muscleNameMode);
-  const [restSeconds, setRestSeconds] = useState(prefs.restSeconds);
+  const [targetCalcMethod, setTargetCalcMethod] = useState(prefs.targetCalcMethod);
 
   const steps = [
     {
@@ -123,24 +91,19 @@ export default function SetupWizard({ onComplete, onClose }) {
       ),
     },
     {
-      title: "Default set entry",
-      subtitle: "How weight opens when you log a set. Switch anytime, per set.",
+      title: "Target calculation method",
+      subtitle: "How the weight/reps suggested for your next set is worked out. Switch anytime in Preferences.",
       body: (
         <>
-          <PillRow options={[{ key: "manual", label: "Manual entry" }, { key: "plate", label: "Plate calculator" }]} value={weightEntryMode} onChange={setWeightEntryMode} />
-          <InfoBox>
-            <b style={{ color: T.text }}>Manual entry</b> is a plain weight field — fastest if you already know the number, like on a machine with a weight stack.
-            <br /><br />
-            <b style={{ color: T.text }}>Plate calculator</b> tracks what's actually loaded on the bar. Tap plates to load it — the total updates live and mirrors both sides — or type a target weight and tap Optimize loading to fill the bar with the fewest plates in one move. No more mental math at the rack.
-          </InfoBox>
-          <PlateCalcVisual />
+          <PillRow
+            options={Object.entries(PROGRESSION_MODELS).map(([key, label]) => ({ key, label }))}
+            value={targetCalcMethod}
+            onChange={setTargetCalcMethod}
+            columns={1}
+          />
+          <InfoBox>{PROGRESSION_MODEL_DESCRIPTIONS[targetCalcMethod]}</InfoBox>
         </>
       ),
-    },
-    {
-      title: `Big plates (${units === "kg" ? "25 kg" : "55 lb"})`,
-      subtitle: "Some gyms only stock these as bumpers for squats and deadlifts, not bench.",
-      body: <PillRow options={[{ key: "off", label: "Off" }, { key: "lower", label: "Squats & deadlifts" }, { key: "all", label: "All lifts" }]} value={plate55Scope} onChange={setPlate55Scope} columns={1} />,
     },
     {
       title: "Muscle names",
@@ -152,19 +115,6 @@ export default function SetupWizard({ onComplete, onClose }) {
         </>
       ),
     },
-    {
-      title: "Default rest timer",
-      subtitle: "Starts counting down after you log a set. Exercises with their own custom time keep it.",
-      body: (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 8 }}>
-          <button onClick={() => setRestSeconds(Math.max(15, restSeconds - 15))} style={{ width: 48, height: 48, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 22, fontWeight: 700 }}>−</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 40, fontWeight: 700, color: T.text, minWidth: 100, textAlign: "center" }}>
-            {Math.floor(restSeconds / 60)}:{String(restSeconds % 60).padStart(2, "0")}
-          </div>
-          <button onClick={() => setRestSeconds(Math.min(600, restSeconds + 15))} style={{ width: 48, height: 48, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 22, fontWeight: 700 }}>+</button>
-        </div>
-      ),
-    },
   ];
 
   const current = steps[step];
@@ -174,10 +124,8 @@ export default function SetupWizard({ onComplete, onClose }) {
     setPref("units", units);
     setPref("trainingIdeology", trainingIdeology);
     setPref("scoreDisplay", scoreDisplay);
-    setPref("weightEntryMode", weightEntryMode);
-    setPref("plate55Scope", plate55Scope);
+    setPref("targetCalcMethod", targetCalcMethod);
     setPref("muscleNameMode", muscleNameMode);
-    setPref("restSeconds", restSeconds);
     setPref("setupWizardSeen", true);
     onComplete();
   }

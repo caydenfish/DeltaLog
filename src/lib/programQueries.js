@@ -36,6 +36,7 @@ export async function addProgramExercises(programId, exercisesArr) {
     position: e.position,
     day_index: e.dayIndex ?? 0,
     planned_sets: e.plannedSets ?? 3,
+    planned_warmup_sets: e.plannedWarmupSets ?? 0,
     progression_model: e.progressionModel || null,
   }));
   const { error } = await supabase.from("program_exercises").insert(rows);
@@ -56,7 +57,7 @@ export async function fetchActiveProgram(userId) {
 
   const { data: exRows, error: exErr } = await supabase
     .from("program_exercises")
-    .select("id, position, day_index, planned_sets, progression_model, exercises (*)")
+    .select("id, position, day_index, planned_sets, planned_warmup_sets, progression_model, exercises (*)")
     .eq("program_id", program.id)
     .order("position");
   if (exErr) throw exErr;
@@ -75,6 +76,7 @@ export async function fetchActiveProgram(userId) {
       position: row.position,
       dayIndex: row.day_index,
       plannedSets: row.planned_sets,
+      plannedWarmupSets: row.planned_warmup_sets || 0,
       progressionModel: row.progression_model,
       exercise: normalizeExercise(row.exercises),
     })),
@@ -102,6 +104,27 @@ export async function fetchProgramSessionCount(programId) {
     .not("workouts.completed_at", "is", null);
   if (error) throw error;
   return new Set((data || []).map((r) => r.workout_id)).size;
+}
+
+// The most recently *completed* program session's date. Program day
+// advancement is purely session-count-based (computeTodaysProgramDay has
+// no concept of calendar date), so the instant a session completes,
+// "today's day" recomputes to tomorrow's slot — meaning ProgramView, if
+// reopened right after finishing, showed tomorrow's exercises instead of
+// a "you're done for today" summary. This is what lets the caller tell
+// those two situations apart: compare this date against today's local
+// date before trusting computeTodaysProgramDay's result.
+export async function fetchLastProgramSession(programId) {
+  const { data, error } = await supabase
+    .from("workout_exercises")
+    .select("workout_id, workouts!inner(completed_at)")
+    .eq("program_id", programId)
+    .not("workouts.completed_at", "is", null)
+    .order("workouts(completed_at)", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+  return { completedAt: data[0].workouts.completed_at };
 }
 
 // ---------- History for the progression engine ----------

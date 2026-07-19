@@ -5,11 +5,13 @@ import { toCanonical, toDisplay } from "./lib/weight";
 import {
   fetchActiveProgram,
   fetchProgramSessionCount,
+  fetchLastProgramSession,
   fetchRecentSessions,
   fetchFallbackWeightEstimate,
   tagWorkoutExerciseWithProgram,
   updateProgramStatus,
 } from "./lib/programQueries";
+import { toLocalDateStr } from "./lib/time";
 import { computePrescription, computeTodaysProgramDay, estimateFallbackE1RM, defaultModelForFocus, PROGRESSION_MODELS } from "./lib/programEngine";
 import { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconSearch } from "./Icons";
@@ -33,6 +35,14 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
   const [week, setWeek] = useState(1);
   const [deload, setDeload] = useState(false);
   const [todaysExercises, setTodaysExercises] = useState([]); // [{ ...programExerciseRow, prescription }]
+  // True when the most recently completed session for this program was
+  // today — see fetchLastProgramSession for why this matters: day
+  // advancement is session-count-based, so finishing today's session
+  // immediately recomputes "today's day" to tomorrow's slot. Without this
+  // check, reopening Program right after finishing showed tomorrow's
+  // exercises with a live "Start Today's Session" button, as if nothing
+  // had happened yet.
+  const [completedToday, setCompletedToday] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [starting, setStarting] = useState(false);
   const [confirmingAbandon, setConfirmingAbandon] = useState(false);
@@ -46,11 +56,25 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
       setProgram(active);
       if (!active) { setLoading(false); return; }
 
-      const [completed, profile] = await Promise.all([
+      const [completed, profile, lastSession] = await Promise.all([
         fetchProgramSessionCount(active.id),
         fetchProfile(user.id),
+        fetchLastProgramSession(active.id),
       ]);
       const { dayIndex: todayDayIndex, week: currentWeek, deload: deloadWeek } = computeTodaysProgramDay(active, completed);
+      setWeek(currentWeek);
+      setDeload(deloadWeek);
+
+      const doneToday = !!lastSession && toLocalDateStr(new Date(lastSession.completedAt)) === toLocalDateStr(new Date());
+      setCompletedToday(doneToday);
+      if (doneToday) {
+        // Don't show tomorrow's day as if it were today's — leave the
+        // list empty; the render below shows the completed-for-today
+        // state instead, until the calendar date actually turns over.
+        setTodaysExercises([]);
+        setLoading(false);
+        return;
+      }
       setWeek(currentWeek);
       setDeload(deloadWeek);
 
@@ -117,7 +141,7 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
       const unit = getPrefs().units;
       const workoutId = await startWorkout(user.id, program.trainingFocus);
       for (const item of todaysExercises) {
-        const weId = await addWorkoutExercise(workoutId, item.exercise.id, item.position, item.plannedSets);
+        const weId = await addWorkoutExercise(workoutId, item.exercise.id, item.position, item.plannedSets, "", null, item.plannedWarmupSets || 0);
         await tagWorkoutExerciseWithProgram(weId, {
           programId: program.id,
           programWeek: week,
@@ -190,8 +214,14 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
                   Couldn't load today's session ({loadError}). <button onClick={load} style={{ background: "none", border: "none", color: T.accent, textDecoration: "underline", fontSize: 12, padding: 0 }}>Retry</button>
                 </div>
               )}
-              {!loadError && todaysExercises.length === 0 && <div style={{ color: T.dim, fontSize: 13 }}>No exercises scheduled for today.</div>}
-              {todaysExercises.map((item) => (
+              {completedToday && (
+                <div style={{ background: "rgba(59,165,93,0.12)", border: `1px solid ${T.green}`, borderRadius: 10, padding: 14, marginBottom: 10, textAlign: "center" }}>
+                  <div style={{ color: T.green, fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Today's session is done ✓</div>
+                  <div style={{ color: T.dim, fontSize: 12.5 }}>Nice work. Your next session unlocks tomorrow.</div>
+                </div>
+              )}
+              {!loadError && !completedToday && todaysExercises.length === 0 && <div style={{ color: T.dim, fontSize: 13 }}>No exercises scheduled for today.</div>}
+              {!completedToday && todaysExercises.map((item) => (
                 <div key={item.programExerciseId} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -240,15 +270,17 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
               </div>
             </div>
 
-            <div style={{ padding: 16, borderTop: `1px solid ${T.line}` }}>
-              <button
-                onClick={startSession}
-                disabled={starting || todaysExercises.length === 0}
-                style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontWeight: 700, fontSize: 15, opacity: starting || todaysExercises.length === 0 ? 0.6 : 1 }}
-              >
-                {starting ? "Starting…" : "Start Today's Session"}
-              </button>
-            </div>
+            {!completedToday && (
+              <div style={{ padding: 16, borderTop: `1px solid ${T.line}` }}>
+                <button
+                  onClick={startSession}
+                  disabled={starting || todaysExercises.length === 0}
+                  style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontWeight: 700, fontSize: 15, opacity: starting || todaysExercises.length === 0 ? 0.6 : 1 }}
+                >
+                  {starting ? "Starting…" : "Start Today's Session"}
+                </button>
+              </div>
+            )}
           </>
         )}
 

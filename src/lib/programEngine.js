@@ -293,11 +293,11 @@ export const EXPERIENCE_LEVEL_DESCRIPTIONS = {
 // this math). `completedSessionCount` is sessions logged under this
 // specific program (fetchProgramSessionCount), not lifetime sessions.
 export function computeTodaysProgramDay(program, completedSessionCount) {
-  const dayLabels = dayLabelsForSplit(program.splitName);
+  const dayLabels = expandDayLabelsForWeek(program.splitName, program.daysPerWeek);
   const week = computeProgramWeek(completedSessionCount, program.daysPerWeek, program.durationWeeks);
   const deload = isDeloadWeek(week, program.durationWeeks);
   const dayIndex = dayLabels.length > 1 ? completedSessionCount % dayLabels.length : 0;
-  return { dayLabels, dayIndex, dayLabel: dayLabels[dayIndex], week, durationWeeks: program.durationWeeks, deload };
+  return { dayLabels, dayIndex, dayLabel: dayLabels[dayIndex].label, week, durationWeeks: program.durationWeeks, deload };
 }
 
 // Last-resort starting-weight estimate for someone with zero training
@@ -337,6 +337,34 @@ export function dayLabelsForSplit(splitName) {
   return SPLIT_ROTATIONS[splitName] || ["Full Body"];
 }
 
+// Expands a split's base rotation to fill a full training week when
+// daysPerWeek is a clean multiple of it (6 days on a 3-day PPL rotation,
+// 4 days on a 2-day Upper/Lower rotation) -- e.g. Push/Pull/Legs at 6
+// days/week used to just repeat the exact same 3 days twice with zero
+// distinction (dayIndex = completedSessionCount % 3), so the "second"
+// Legs day was identical to the first. Returns one entry per actual day
+// in the week, each tagged with which pass through the base rotation
+// it is (`cycle`: 0 for the first time through, 1 for the second, ...)
+// so autoPickExercisesForDay can give repeat days a genuinely different
+// flavor (e.g. glute/quad-focused vs hamstring-focused Legs) instead of
+// silently cloning the first cycle. Falls back to the plain
+// modulo-cycling behavior (all cycle: 0, same as before) when
+// daysPerWeek isn't a clean multiple of the base rotation -- there's no
+// single obviously-right way to split remainder days, so this only
+// changes behavior in the unambiguous case.
+export function expandDayLabelsForWeek(splitName, daysPerWeek) {
+  const base = dayLabelsForSplit(splitName);
+  if (!daysPerWeek || base.length <= 1 || daysPerWeek % base.length !== 0) {
+    return base.map((label) => ({ label, cycle: 0 }));
+  }
+  const cycles = daysPerWeek / base.length;
+  const out = [];
+  for (let c = 0; c < cycles; c++) {
+    for (const label of base) out.push({ label, cycle: c });
+  }
+  return out;
+}
+
 // Maps a raw days-per-week choice to a sensible default rotation, used by
 // Quick Start so the person isn't asked to pick a split by hand. Falls
 // back to whichever known rotation the admin-configured splits can
@@ -349,6 +377,17 @@ export function defaultSplitForDays(daysPerWeek, availableSplitNames) {
   if (has("Push") && has("Pull") && has("Legs")) return "Push/Pull/Legs";
   return "Full Body";
 }
+
+// Movement patterns that skew quad/glute-dominant vs hamstring/glute-
+// dominant, for giving a repeat Legs day (see expandDayLabelsForWeek) an
+// actual distinct focus rather than just "whatever wasn't picked last
+// time." Not exhaustive of every pattern in the schema (press/pull/row/
+// curl/extension/raise/carry exist too) -- only Legs' own patterns need
+// an entry here since this bias only ever applies to the Legs bucket.
+const LEGS_PATTERN_FOCUS = {
+  0: ["squat", "lunge"], // quad/glute-dominant
+  1: ["hinge"], // hamstring/glute-dominant
+};
 
 // Auto-picks exercises for one training day from the normalized exercise
 // library (normalizeExercise() output -- same shape ExercisePicker and
@@ -367,15 +406,36 @@ export function defaultSplitForDays(daysPerWeek, availableSplitNames) {
 // Category, e.g. Rear Delts on a Push day even though "Shoulders" is a
 // Push bucket -- without this, a Category match alone can't tell a
 // front-delt raise from a rear-delt one and picks both days independently.
-export function autoPickExercisesForDay(library, muscleBuckets, performedIds, perBucket = 2, excludedRegions = new Set()) {
+//
+// `cycle` (from expandDayLabelsForWeek) and `usedIdsThisWeek` together
+// give a repeat day real variety instead of a clone: for the Legs
+// bucket specifically, candidates matching that cycle's pattern focus
+// (LEGS_PATTERN_FOCUS) are scored above ones that don't, so cycle 1
+// leans hamstring/hinge work while cycle 0 leans quad/glute; for every
+// bucket, anything already picked earlier in the week (usedIdsThisWeek)
+// is deprioritized (not hard-excluded -- a short library may not have
+// enough distinct options) so a second Push/Pull/Legs pass surfaces
+// different exercises where the library allows it.
+//
+// The returned list is also reordered so Compound-mechanism exercises
+// lead the day and Isolation work follows, regardless of which bucket
+// they came from -- a sane, general "strategic exercise order" default
+// (big multi-joint lifts first, while fresh) rather than the incidental
+// bucket-iteration order. The first exercise of the day (the main
+// compound lift the session is built around) gets 2 warmup sets by
+// default; everything after it gets none, on the assumption the first
+// exercise's warmup sets did the job of raising core temperature and
+// grooving the movement pattern for the rest of the session.
+export function autoPickExercisesForDay(library, muscleBuckets, performedIds, perBucket = 2, excludedRegions = new Set(), cycle = 0, usedIdsThisWeek = new Set()) {
   const picks = [];
   const usedIds = new Set();
   for (const bucket of muscleBuckets) {
+    const focusPatterns = bucket === "Legs" ? LEGS_PATTERN_FOCUS[cycle] : null;
     const candidates = library
       .filter((r) => r.muscle === bucket && !usedIds.has(r.id) && !excludedRegions.has(r.muscleRegion))
       .sort((a, b) => {
-        const scoreA = (a.mechanism === "Compound" ? 2 : 0) + (performedIds.has(a.id) ? 1 : 0);
-        const scoreB = (b.mechanism === "Compound" ? 2 : 0) + (performedIds.has(b.id) ? 1 : 0);
+        const scoreA = (a.mechanism === "Compound" ? 2 : 0) + (performedIds.has(a.id) ? 1 : 0) + (focusPatterns && focusPatterns.includes(a.pattern) ? 3 : 0) - (usedIdsThisWeek.has(a.id) ? 4 : 0);
+        const scoreB = (b.mechanism === "Compound" ? 2 : 0) + (performedIds.has(b.id) ? 1 : 0) + (focusPatterns && focusPatterns.includes(b.pattern) ? 3 : 0) - (usedIdsThisWeek.has(b.id) ? 4 : 0);
         return scoreB - scoreA;
       });
     candidates.slice(0, perBucket).forEach((c) => {
@@ -383,7 +443,8 @@ export function autoPickExercisesForDay(library, muscleBuckets, performedIds, pe
       usedIds.add(c.id);
     });
   }
-  return picks;
+  const ordered = [...picks].sort((a, b) => (a.mechanism === "Compound" ? 0 : 1) - (b.mechanism === "Compound" ? 0 : 1));
+  return ordered.map((p, i) => ({ ...p, plannedWarmupSets: i === 0 && p.mechanism === "Compound" ? 2 : 0 }));
 }
 
 export function perBucketForExperience(experienceLevel) {

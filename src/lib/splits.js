@@ -14,11 +14,11 @@
 // hand-maintained values, matching the current 8-bucket generic
 // taxonomy) until the cache has loaded.
 const DEFAULT_SPLITS = {
-  Push: ["Chest", "Shoulders", "Arms"],
-  Pull: ["Back", "Shoulders", "Arms"],
-  Legs: ["Legs"],
+  Push: ["Chest", "Shoulders", "Arms", "Core"],
+  Pull: ["Back", "Shoulders", "Arms", "Core"],
+  Legs: ["Legs", "Core"],
   Upper: ["Chest", "Back", "Shoulders", "Arms"],
-  Lower: ["Legs"],
+  Lower: ["Legs", "Core"],
   "Full Body": ["Chest", "Back", "Shoulders", "Legs", "Core", "Arms"],
 };
 
