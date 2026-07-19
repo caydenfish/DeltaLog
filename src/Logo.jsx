@@ -10,7 +10,7 @@ const T = {
 export default function Logo({ size = 40 }) {
   const height = size * 0.7;
   return (
-    <svg width={size} height={height} viewBox="0 0 100 70">
+    <svg width={size} height={height} viewBox="0 0 100 70" style={{ display: "block" }}>
       <line x1="0" y1="55" x2="100" y2="55" stroke={T.accent} strokeWidth="3" />
       <rect x="0" y="43" width="7.5" height="24" rx="1.5" fill={T.accent} />
       <rect x="8.5" y="40" width="9.5" height="30" rx="1.5" fill={T.accent} />

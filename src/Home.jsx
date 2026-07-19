@@ -737,7 +737,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
         <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 100px" }} onScroll={handleHomeScroll} onClick={() => setLockedTs(null)}>
           {/* Header — pinned while the rest of the page scrolls beneath it */}
-          <div style={{ padding: "20px 0 8px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", position: "sticky", top: 0, background: T.bg, zIndex: 5 }}>
+          <div style={{ padding: "16px 0", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", position: "sticky", top: 0, background: T.bg, borderBottom: `1px solid ${T.line}`, zIndex: 5 }}>
             <div>
               <button onClick={() => setShowHomeModulesEditor(true)} aria-label="Customize home" style={ghostIconBtn}>
                 <IconPencil size={19} />
