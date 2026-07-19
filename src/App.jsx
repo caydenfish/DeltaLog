@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { registerSW } from "virtual:pwa-register";
 import { supabase } from "./lib/supabaseClient";
 import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits, fetchSplitExclusions, logAppOpen } from "./lib/queries";
 import { setMuscleTaxonomyCache } from "./lib/muscleNomenclature";
@@ -32,6 +33,32 @@ export default function App() {
   // surfaces a manual reload option instead of leaving someone stuck on
   // a blank/loading screen with no way out short of force-quitting.
   const [stuck, setStuck] = useState(false);
+  // True once a new service worker has installed and is waiting to take
+  // over (a new version has been deployed while this tab's been open).
+  // registerType is "prompt" (vite.config.js), not "autoUpdate" -- we
+  // want to tell the person instead of silently reloading out from
+  // under them, and specifically never while a workout is active (see
+  // the showUpdateNotice condition passed to Home below).
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const updateSWRef = useRef(null);
+
+  useEffect(() => {
+    updateSWRef.current = registerSW({
+      onNeedRefresh() { setUpdateAvailable(true); },
+      // onOfflineReady intentionally omitted -- nothing to tell the
+      // person here, the whole point of precaching is that they never
+      // notice the difference between online and offline-ready.
+    });
+  }, []);
+
+  // Actually applies the waiting update and reloads. Passed down to
+  // Home as the "Reload now" action; the person can also just close and
+  // reopen the app themselves, which has the same effect once a new
+  // service worker is waiting.
+  function applyUpdate() {
+    if (updateSWRef.current) updateSWRef.current(true);
+    else window.location.reload();
+  }
 
   // Muscle labels (muscleLabel/genericBucket) are read synchronously
   // during render all over the app, so the admin-editable taxonomy is
@@ -159,6 +186,8 @@ export default function App() {
             onStartWorkout={() => { setMode("workout"); }}
             onResumeWorkout={() => setMode("workout")}
             onDataReset={() => setProfile(null)}
+            showUpdateNotice={updateAvailable && !resumeWorkout}
+            onApplyUpdate={applyUpdate}
             onProgramWorkoutStarted={() => {
               // The program-generated workout was already created server-side
               // (ProgramView calls startWorkout/addWorkoutExercise itself) --

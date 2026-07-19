@@ -5,8 +5,20 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   plugins: [
     react(),
+    // registerType: "prompt" (was "autoUpdate") + injectRegister: null --
+    // "autoUpdate" silently activates a new service worker and reloads
+    // the page out from under whatever the person is doing, including
+    // mid-workout. We register the SW ourselves (App.jsx, via
+    // virtual:pwa-register) so a new version surfaces as an in-app
+    // notice instead, and — per product requirement — only ever shows
+    // it while no workout is active, since a mid-workout reload should
+    // never be forced, even a well-intentioned one. injectRegister:
+    // null stops the plugin from also auto-injecting its own default
+    // registration script, which would otherwise register the SW a
+    // second time outside our control.
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
+      injectRegister: null,
       includeAssets: ["favicon.ico", "apple-touch-icon.png"],
       manifest: {
         name: "DeltaLog",

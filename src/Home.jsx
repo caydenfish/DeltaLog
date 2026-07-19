@@ -150,7 +150,7 @@ function buildLastWorkoutInsight(history, programDay) {
   return { daysSince, muscles, tip, status, programDay };
 }
 
-export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset, onProgramWorkoutStarted }) {
+export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset, onProgramWorkoutStarted, showUpdateNotice, onApplyUpdate }) {
   // Each chart that has a Training Range keeps its own independent
   // selection (e.g. Bodyweight pinned to 90 Days while Volume stays at
   // 30 Days) instead of one range controlling all of them -- see
@@ -759,6 +759,18 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               </button>
             </div>
           </div>
+
+          {showUpdateNotice && (
+            <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 12, padding: "12px 14px", marginTop: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 2 }}>A new version is ready</div>
+                <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.4 }}>Close DeltaLog completely and reopen it to update — or tap Reload now.</div>
+              </div>
+              <button onClick={onApplyUpdate} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                Reload now
+              </button>
+            </div>
+          )}
 
           {history === null ? (
             <InlineLoading label="Loading your history…" padding="40px 0" />
