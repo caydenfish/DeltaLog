@@ -73,6 +73,12 @@ const T = {
   green: "#3BA55D",
 };
 
+// Module-scope twin of the component-local `smallBtn` (defined further
+// down inside SetLogger itself) -- CompactSetRow is a module-level
+// function, declared and used before the component's local `smallBtn`
+// exists, so it needs its own copy rather than referencing that one.
+const SMALL_BTN = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" };
+
 // EQUIPMENT_LIST now lives in ./ExercisePicker (imported above), shared
 // with the template builder's picker.
 
@@ -284,9 +290,9 @@ function CompactSetRow({ label, lastSet, todaySet, unit, comparison, onCopyLast,
         )}
       </div>
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-        {!todaySet && lastSet && <button onClick={onCopyLast} style={smallBtn}>Copy</button>}
-        {todaySet && <button onClick={onEdit} style={smallBtn}>Edit</button>}
-        {todaySet && <button onClick={onDelete} aria-label="Delete set" style={{ ...smallBtn, color: T.accent, borderColor: T.accent }}>✕</button>}
+        {!todaySet && lastSet && <button onClick={onCopyLast} style={SMALL_BTN}>Copy</button>}
+        {todaySet && <button onClick={onEdit} style={SMALL_BTN}>Edit</button>}
+        {todaySet && <button onClick={onDelete} aria-label="Delete set" style={{ ...SMALL_BTN, color: T.accent, borderColor: T.accent }}>✕</button>}
       </div>
     </div>
   );
