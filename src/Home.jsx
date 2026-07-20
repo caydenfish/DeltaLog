@@ -733,7 +733,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   return (
     <div style={{ minHeight: "100vh", background: "#0A0B0D", display: "flex", justifyContent: "center" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap'); button { cursor: pointer; }`}</style>
-      <div style={{ width: "100%", maxWidth: 400, background: T.bg, height: "100vh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+      <div style={{ width: "100%", maxWidth: 400, background: T.bg, height: "100dvh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
 
         {/* Header — a fixed flex sibling above the scrolling content, same pattern as the Start Workout bar below, rather than sticky positioning inside the scroll container (which never reliably stuck: the content div's ancestors only had minHeight set, so the whole page scrolled at the window level instead of the div clipping/scrolling internally). */}
         <div style={{ padding: "16px 16px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", background: T.bg, borderBottom: `1px solid ${T.line}`, flexShrink: 0 }}>
