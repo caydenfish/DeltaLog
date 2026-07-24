@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { fetchMuscleDetailed } from "./lib/queries";
 import {
+  fetchMuscleGroupsList,
   fetchBodyMapShapeLabels,
   upsertBodyMapShapeLabel,
+  upsertBodyMapShapeCategory,
   excludeBodyMapShape,
   clearBodyMapShapeLabel,
 } from "./lib/bodyMapShapeQueries";
@@ -22,32 +24,36 @@ const T = {
 
 const VIEW_ORDER = ["male_front", "male_back", "female_front", "female_back"];
 
-const PALETTE = [
-  "#f4a6a6", "#f4d3a6", "#f4eea6", "#c9f4a6", "#a6f4c3", "#a6f4f0", "#a6d3f4", "#a6a6f4",
-  "#d3a6f4", "#f4a6e8", "#f47ab0", "#f4c27a", "#7af4d0", "#c2b280", "#8fd9a8", "#e0a6f4",
-  "#a6c8f4", "#f4b6a6", "#b6f4a6", "#f4e0a6", "#a6f4d3", "#d3f4a6", "#a6e8f4", "#f4a6c8",
-  "#e8f4a6", "#c8a6f4", "#a6f4e0", "#f4d3e0", "#d0f4a6", "#a6b6f4", "#f4c8a6", "#c2f4e6",
-];
-
 const btn = { padding: "7px 12px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12, cursor: "pointer" };
 const btnPrimary = { ...btn, background: T.accent, borderColor: T.accent, fontWeight: 700 };
 
 // Admin-only tool for turning the 620 anonymous closed shapes in the
-// LaserCutLace DXF asset (src/lib/dxfBodyMapData.js -- pure geometry,
-// no muscle names) into real muscle_detailed-keyed regions, persisted to
-// body_map_shape_labels (migration_070). This is a labeling exercise,
-// not a design tool: click shapes, assign the muscle an admin can see
-// with their own eyes against the reference art, save. The live body
-// map (BodyMap.jsx) keeps using the existing MIT-licensed asset until
-// this labeling pass is far enough along to be trustworthy -- swapping
-// happens as a separate, deliberate change once coverage looks real.
+// LaserCutLace DXF asset (src/lib/dxfBodyMapData.js -- pure geometry, no
+// muscle names) into real muscle_detailed-keyed regions.
+//
+// Two independent tiers, tracked separately in body_map_shape_labels:
+//   - Category (muscle_groups.key -- Chest/Back/Legs/...): fast, low-
+//     ambiguity first pass.
+//   - Region (muscle_detailed.key -- Upper Chest/Front Delts/...): the
+//     precise pass the live heatmap will actually use.
+// Region mode's dropdown narrows to the shape's already-assigned
+// category when every selected shape shares one, so the fast pass
+// actually speeds up the precise pass instead of being separate busywork.
+//
+// The shapes themselves render fully invisible over the reference art
+// (the real rendered muscle diagram, cropped per view into
+// public/body-map-reference/) -- they're click targets, not something
+// to look at. Only selected/already-labeled shapes get a visible tint,
+// so the picture stays clean and legible.
 export default function AdminBodyMapLabeler({ onClose }) {
   const [view, setView] = useState("male_front");
+  const [mode, setMode] = useState("category"); // "category" | "region"
   const [shapeData, setShapeData] = useState(null); // { [view]: { w, h, shapes } }, loaded lazily
-  const [labels, setLabels] = useState({}); // shapeId -> { muscleKey, excluded }
+  const [labels, setLabels] = useState({}); // shapeId -> { muscleKey, category, excluded }
+  const [muscleGroups, setMuscleGroups] = useState([]);
   const [muscleDetailed, setMuscleDetailed] = useState([]);
   const [selected, setSelected] = useState(() => new Set());
-  const [pendingMuscle, setPendingMuscle] = useState("");
+  const [pendingValue, setPendingValue] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -55,6 +61,12 @@ export default function AdminBodyMapLabeler({ onClose }) {
   const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 760);
   const canvasRef = useRef(null);
   const [canvasWidth, setCanvasWidth] = useState(600);
+
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 760);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -67,21 +79,8 @@ export default function AdminBodyMapLabeler({ onClose }) {
   }, []);
 
   useEffect(() => {
-    const onResize = () => setIsNarrow(window.innerWidth < 760);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  const colorFor = useMemo(() => {
-    const map = {};
-    muscleDetailed.forEach((m, i) => (map[m.key] = PALETTE[i % PALETTE.length]));
-    return map;
-  }, [muscleDetailed]);
-
-  useEffect(() => {
+    fetchMuscleGroupsList().then(setMuscleGroups).catch((e) => setError(e.message));
     fetchMuscleDetailed().then(setMuscleDetailed).catch((e) => setError(e.message));
-    // 252KB of raw shape geometry, only ever needed on this admin screen --
-    // dynamic import keeps it out of every regular user's initial bundle.
     import("./lib/dxfBodyMapData").then((mod) => setShapeData(mod.DXF_BODY_MAP_SHAPES));
   }, []);
 
@@ -95,10 +94,29 @@ export default function AdminBodyMapLabeler({ onClose }) {
   }, []);
 
   useEffect(() => { loadView(view); }, [view, loadView]);
+  useEffect(() => { setSelected(new Set()); setPendingValue(""); }, [mode]);
 
   const viewData = shapeData?.[view];
   const total = viewData?.shapes.length ?? 0;
-  const reviewed = Object.keys(labels).length;
+  const categorized = Object.values(labels).filter((r) => r.category).length;
+  const regioned = Object.values(labels).filter((r) => r.muscleKey).length;
+
+  // Region dropdown: if every selected shape already shares one category,
+  // narrow the list to that category's regions. Otherwise show everything,
+  // grouped by category for scannability.
+  const regionOptions = useMemo(() => {
+    if (mode !== "region") return [];
+    const selCats = new Set([...selected].map((id) => labels[id]?.category).filter(Boolean));
+    if (selCats.size === 1) {
+      const [onlyCat] = selCats;
+      return { grouped: false, items: muscleDetailed.filter((m) => m.generic_group === onlyCat) };
+    }
+    const byGroup = {};
+    for (const m of muscleDetailed) {
+      (byGroup[m.generic_group] ||= []).push(m);
+    }
+    return { grouped: true, items: byGroup };
+  }, [mode, selected, labels, muscleDetailed]);
 
   function toggleShape(id, additive) {
     setSelected((prev) => {
@@ -111,14 +129,14 @@ export default function AdminBodyMapLabeler({ onClose }) {
   }
 
   async function assignSelected() {
-    if (!pendingMuscle || selected.size === 0) return;
+    if (!pendingValue || selected.size === 0) return;
     setSaving(true);
     try {
       for (const id of selected) {
-        await upsertBodyMapShapeLabel(view, Number(id), pendingMuscle);
+        if (mode === "category") await upsertBodyMapShapeCategory(view, Number(id), pendingValue);
+        else await upsertBodyMapShapeLabel(view, Number(id), pendingValue);
       }
-      const fresh = await fetchBodyMapShapeLabels(view);
-      setLabels(fresh);
+      setLabels(await fetchBodyMapShapeLabels(view));
       setSelected(new Set());
     } catch (e) {
       setError(e.message);
@@ -132,8 +150,7 @@ export default function AdminBodyMapLabeler({ onClose }) {
     setSaving(true);
     try {
       for (const id of selected) await excludeBodyMapShape(view, Number(id));
-      const fresh = await fetchBodyMapShapeLabels(view);
-      setLabels(fresh);
+      setLabels(await fetchBodyMapShapeLabels(view));
       setSelected(new Set());
     } catch (e) {
       setError(e.message);
@@ -147,8 +164,7 @@ export default function AdminBodyMapLabeler({ onClose }) {
     setSaving(true);
     try {
       for (const id of selected) await clearBodyMapShapeLabel(view, Number(id));
-      const fresh = await fetchBodyMapShapeLabels(view);
-      setLabels(fresh);
+      setLabels(await fetchBodyMapShapeLabels(view));
       setSelected(new Set());
     } catch (e) {
       setError(e.message);
@@ -157,8 +173,6 @@ export default function AdminBodyMapLabeler({ onClose }) {
     }
   }
 
-  const labelOf = (key) => muscleDetailed.find((m) => m.key === key)?.label ?? key;
-
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 40, display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "14px 16px", borderBottom: `1px solid ${T.line}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -166,50 +180,63 @@ export default function AdminBodyMapLabeler({ onClose }) {
         <button onClick={onClose} style={{ background: "none", border: "none", color: T.dim }}><IconX size={20} /></button>
       </div>
 
-      <div style={{ display: "flex", gap: 6, padding: "10px 16px", borderBottom: `1px solid ${T.line}`, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 6, padding: "10px 16px", borderBottom: `1px solid ${T.line}`, flexWrap: "wrap", alignItems: "center" }}>
         {VIEW_ORDER.map((v) => (
           <button key={v} onClick={() => setView(v)} style={v === view ? btnPrimary : btn}>
             {v.replace("_", " ")}
           </button>
         ))}
-        <div style={{ marginLeft: "auto", color: T.dim, fontSize: 12, alignSelf: "center" }}>
-          {reviewed}/{total} reviewed in this view
+        <div style={{ width: 1, height: 20, background: T.line, margin: "0 6px" }} />
+        <button onClick={() => setMode("category")} style={mode === "category" ? btnPrimary : btn}>Category mode</button>
+        <button onClick={() => setMode("region")} style={mode === "region" ? btnPrimary : btn}>Region mode</button>
+        <div style={{ marginLeft: "auto", color: T.dim, fontSize: 12 }}>
+          {categorized}/{total} categorized · {regioned}/{total} regioned
         </div>
       </div>
 
       {error && <div style={{ color: T.accent, fontSize: 12, padding: "6px 16px" }}>{error}</div>}
 
       <div style={{ flex: 1, display: "flex", flexDirection: isNarrow ? "column" : "row", overflow: "hidden" }}>
-        <div ref={canvasRef} style={{ flex: isNarrow ? "0 0 48vh" : 1, overflow: "auto", background: "#f4f4f4", padding: 20 }}>
+        <div ref={canvasRef} style={{ flex: isNarrow ? "0 0 55vh" : 1, overflow: "auto", background: "#f4f4f4", padding: 20 }}>
           {loading || !viewData ? (
             <InlineLoading />
           ) : (
-            <svg
-              viewBox={`0 0 ${viewData.w} ${viewData.h}`}
-              width={(canvasWidth - 40) * zoom}
-              height={((canvasWidth - 40) * (viewData.h / viewData.w)) * zoom}
-              style={{ background: "white", border: "1px solid #ddd", display: "block" }}
-            >
-              {viewData.shapes.map((s) => {
-                const rec = labels[s.id];
-                const isSelected = selected.has(String(s.id));
-                let fill = "#d9d9d9";
-                if (rec?.excluded) fill = "#f0f0f0";
-                else if (rec?.muscleKey) fill = colorFor[rec.muscleKey] || "#a6d3f4";
-                if (isSelected) fill = "#ff6b6b";
-                return (
-                  <path
-                    key={s.id}
-                    d={s.d}
-                    fill={fill}
-                    stroke={isSelected ? "#b02a2a" : "#888"}
-                    strokeWidth={isSelected ? 2 : 1}
-                    style={{ cursor: "pointer" }}
-                    onClick={(e) => toggleShape(s.id, e.shiftKey)}
-                  />
-                );
-              })}
-            </svg>
+            <div style={{ position: "relative", width: (canvasWidth - 40) * zoom, height: ((canvasWidth - 40) * (viewData.h / viewData.w)) * zoom }}>
+              <img
+                src={`/body-map-reference/${view}.png`}
+                alt=""
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }}
+              />
+              <svg
+                viewBox={`0 0 ${viewData.w} ${viewData.h}`}
+                width={(canvasWidth - 40) * zoom}
+                height={((canvasWidth - 40) * (viewData.h / viewData.w)) * zoom}
+                style={{ position: "absolute", inset: 0, display: "block" }}
+              >
+                {viewData.shapes.map((s) => {
+                  const rec = labels[s.id];
+                  const isSelected = selected.has(String(s.id));
+                  const hasValueForMode = mode === "category" ? rec?.category : rec?.muscleKey;
+                  let fill = "transparent";
+                  let fillOpacity = 0;
+                  if (rec?.excluded) { fill = "#000"; fillOpacity = 0.25; }
+                  else if (isSelected) { fill = "#ff6b6b"; fillOpacity = 0.55; }
+                  else if (hasValueForMode) { fill = mode === "category" ? "#4E8DE8" : "#3BA55D"; fillOpacity = 0.35; }
+                  return (
+                    <path
+                      key={s.id}
+                      d={s.d}
+                      fill={fill}
+                      fillOpacity={fillOpacity}
+                      stroke={isSelected ? "#b02a2a" : "transparent"}
+                      strokeWidth={isSelected ? 2 : 0}
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => toggleShape(s.id, e.shiftKey)}
+                    />
+                  );
+                })}
+              </svg>
+            </div>
           )}
         </div>
 
@@ -221,7 +248,7 @@ export default function AdminBodyMapLabeler({ onClose }) {
           overflowY: "auto",
           background: T.surface,
         }}>
-          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             <button style={btn} onClick={() => setZoom((z) => Math.min(4, +(z * 1.25).toFixed(2)))}>Zoom in</button>
             <button style={btn} onClick={() => setZoom((z) => Math.max(0.4, +(z * 0.8).toFixed(2)))}>Zoom out</button>
             <button style={btn} onClick={() => setZoom(1)}>Reset</button>
@@ -232,21 +259,29 @@ export default function AdminBodyMapLabeler({ onClose }) {
             <b>{selected.size}</b> shape(s) selected
           </div>
           <div style={{ color: T.dim, fontSize: 11, marginBottom: 12, lineHeight: 1.5 }}>
-            Click to select, shift-click to add more. Select every piece of one muscle (e.g. all four ab blocks) before assigning.
+            {mode === "category"
+              ? "Fast pass: which broad category does this shape belong to? Click a muscle in the picture, shift-click to add more, assign."
+              : "Precise pass: exactly which region. Do Category mode first for a shape and this list narrows to just that category's regions."}
           </div>
 
           <select
-            value={pendingMuscle}
-            onChange={(e) => setPendingMuscle(e.target.value)}
+            value={pendingValue}
+            onChange={(e) => setPendingValue(e.target.value)}
             style={{ width: "100%", padding: 8, marginBottom: 8, background: T.surface2, color: T.text, border: `1px solid ${T.line}`, borderRadius: 8 }}
           >
-            <option value="">Choose a muscle…</option>
-            {muscleDetailed.map((m) => (
-              <option key={m.key} value={m.key}>{m.label}</option>
-            ))}
+            <option value="">Choose {mode === "category" ? "a category" : "a region"}…</option>
+            {mode === "category"
+              ? muscleGroups.map((g) => <option key={g.key} value={g.key}>{g.label}</option>)
+              : regionOptions.grouped
+                ? Object.entries(regionOptions.items).map(([group, items]) => (
+                    <optgroup key={group} label={group}>
+                      {items.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+                    </optgroup>
+                  ))
+                : regionOptions.items.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
           </select>
-          <button style={{ ...btnPrimary, width: "100%", marginBottom: 6, opacity: saving ? 0.6 : 1 }} disabled={saving || !pendingMuscle || selected.size === 0} onClick={assignSelected}>
-            {saving ? "Saving…" : "Assign label"}
+          <button style={{ ...btnPrimary, width: "100%", marginBottom: 6, opacity: saving ? 0.6 : 1 }} disabled={saving || !pendingValue || selected.size === 0} onClick={assignSelected}>
+            {saving ? "Saving…" : `Assign ${mode === "category" ? "category" : "region"}`}
           </button>
           <button style={{ ...btn, width: "100%", marginBottom: 6 }} disabled={saving || selected.size === 0} onClick={excludeSelected}>
             Mark as non-muscle (hand/foot/head)
@@ -255,20 +290,12 @@ export default function AdminBodyMapLabeler({ onClose }) {
             Clear selection's labels
           </button>
 
-          <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 12 }}>
-            <div style={{ color: T.text, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Legend</div>
-            {Object.entries(labels)
-              .reduce((acc, [id, rec]) => {
-                if (rec.muscleKey && !acc.includes(rec.muscleKey)) acc.push(rec.muscleKey);
-                return acc;
-              }, [])
-              .map((key) => (
-                <div key={key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: T.dim, marginBottom: 3 }}>
-                  <span style={{ width: 12, height: 12, background: colorFor[key], display: "inline-block", borderRadius: 2 }} />
-                  {labelOf(key)}
-                </div>
-              ))}
-          </div>
+          {selected.size === 1 && labels[[...selected][0]] && (
+            <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 12, fontSize: 12, color: T.dim }}>
+              <div><b style={{ color: T.text }}>Category:</b> {muscleGroups.find((g) => g.key === labels[[...selected][0]].category)?.label ?? "—"}</div>
+              <div><b style={{ color: T.text }}>Region:</b> {muscleDetailed.find((m) => m.key === labels[[...selected][0]].muscleKey)?.label ?? "—"}</div>
+            </div>
+          )}
         </div>
       </div>
     </div>
