@@ -226,7 +226,7 @@ export default function AdminBodyMapLabeler({ onClose }) {
                       d={s.d}
                       fill={fill}
                       stroke={isSelected ? "#b02a2a" : "#666"}
-                      strokeWidth={isSelected ? 2 : 1}
+                      strokeWidth={isSelected ? 0.025 : 0.01}
                       style={{ cursor: "pointer" }}
                       onClick={(e) => toggleShape(s.id, e.shiftKey)}
                     />
