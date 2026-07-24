@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { fetchExercises, fetchTemplates, saveWorkoutAsTemplate, deleteTemplate, fetchPerformedExerciseIds, fetchFavoriteExerciseIds, setFavoriteExercise, fetchTemplateForEdit, updateTemplate, reorderTemplates, setTemplateArchived, fetchArchivedTemplates, exportTemplate, fetchSharedTemplate, importSharedTemplate, createCustomExercise, uploadExerciseMedia, normalizeExercise } from "./lib/queries";
 import { computeMuscleSetCounts } from "./lib/volume";
 import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
+import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
 import { getPrefs } from "./lib/prefs";
 import BodyHeatmap from "./BodyHeatmap";
 import { InlineLoading } from "./LoadingSpinner";
@@ -32,6 +33,11 @@ export default function Templates({ user, onClose, initialPicks }) {
   // a label. Subscribing (matching Home.jsx's existing pattern) fixes it.
   const [taxonomyVersion, setTaxonomyVersion] = useState(getTaxonomyVersion);
   useEffect(() => subscribeTaxonomy(() => setTaxonomyVersion(getTaxonomyVersion())), []);
+  // Same race, for the admin-editable body-map region correlation
+  // (migration_070) the template builder's Coverage panel also reads
+  // synchronously via resolveRegions() -- see bodyMapRegions.js.
+  const [bodyMapRegionVersion, setBodyMapRegionVersion] = useState(getBodyMapRegionVersion);
+  useEffect(() => subscribeBodyMapRegions(() => setBodyMapRegionVersion(getBodyMapRegionVersion())), []);
 
   const [library, setLibrary] = useState(null);
   const [templates, setTemplates] = useState(null);

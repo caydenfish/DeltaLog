@@ -7,6 +7,7 @@ import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
 import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, summarizeWorkoutDuration, bucketWeightHistory, bucketDailyVolume, bucketSeries, groupWorkoutsByDate } from "./lib/volume";
 import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
+import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
 import { toDisplay } from "./lib/weight";
 import { InlineLoading } from "./LoadingSpinner";
 import { toLocalDateStr } from "./lib/time";
@@ -19,6 +20,7 @@ import { fetchActiveProgram, fetchProgramSessionCount } from "./lib/programQueri
 import { computeTodaysProgramDay } from "./lib/programEngine";
 import HomeModulesEditor from "./HomeModulesEditor";
 import AdminTaxonomyManager from "./AdminTaxonomyManager";
+import AdminBodyMapRegionEditor from "./AdminBodyMapRegionEditor";
 import MachineNamesManager from "./MachineNamesManager";
 import Logo from "./Logo";
 import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX } from "./Icons";
@@ -240,6 +242,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [showAdminUserActivity, setShowAdminUserActivity] = useState(false);
   const [showAdminReferralSources, setShowAdminReferralSources] = useState(false);
   const [showAdminTaxonomy, setShowAdminTaxonomy] = useState(false);
+  const [showAdminBodyMapRegions, setShowAdminBodyMapRegions] = useState(false);
   const [showSplitsManager, setShowSplitsManager] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -271,6 +274,11 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // stuck showing labels derived from the small hardcoded fallback.
   const [taxonomyVersion, setTaxonomyVersion] = useState(getTaxonomyVersion);
   useEffect(() => subscribeTaxonomy(() => setTaxonomyVersion(getTaxonomyVersion())), []);
+  // Same race as the taxonomy cache above, for the admin-editable
+  // body-map region correlation (migration_070) BodyMap.jsx's
+  // resolveRegions() reads synchronously -- see bodyMapRegions.js.
+  const [bodyMapRegionVersion, setBodyMapRegionVersion] = useState(getBodyMapRegionVersion);
+  useEffect(() => subscribeBodyMapRegions(() => setBodyMapRegionVersion(getBodyMapRegionVersion())), []);
   const [muscleDetail, setMuscleDetail] = useState(null); // { muscle } when the sets drill-down sheet is open
   const [scoreDisplay, setScoreDisplayState] = useState(() => getPrefs().scoreDisplay);
   const [weightEntryMode, setWeightEntryModeState] = useState(() => getPrefs().weightEntryMode);
@@ -1324,6 +1332,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           onOpenReferralSources={() => setShowAdminReferralSources(true)}
           onOpenSplits={() => setShowSplitsManager(true)}
           onOpenTaxonomy={() => setShowAdminTaxonomy(true)}
+          onOpenBodyMapRegions={() => setShowAdminBodyMapRegions(true)}
           onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
           adminViewMode={adminViewMode}
@@ -1332,6 +1341,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       )}
       {showAdmin && <AdminExercises user={user} onClose={() => setShowAdmin(false)} />}
       {showAdminTaxonomy && <AdminTaxonomyManager onClose={() => setShowAdminTaxonomy(false)} />}
+      {showAdminBodyMapRegions && <AdminBodyMapRegionEditor onClose={() => setShowAdminBodyMapRegions(false)} />}
       {showExerciseLibraryView && <ExerciseLibraryView muscleNameMode={muscleNameMode} isAdmin={effectiveIsAdmin} userId={user.id} onClose={() => setShowExerciseLibraryView(false)} />}
       {showMachineNames && <MachineNamesManager user={user} onClose={() => setShowMachineNames(false)} />}
       {muscleDetail && (

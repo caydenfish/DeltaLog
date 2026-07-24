@@ -258,6 +258,33 @@ export async function renameMuscleScientific(oldName, newName) {
   if (error) throw error;
 }
 
+// Admin-editable body-map region <-> muscle correlation (migration_070),
+// replacing what used to be a hardcoded JS map (lib/bodyMapRegions.js's
+// REGION_MAP) -- same "DB is the real source of truth, code is just the
+// seed/fallback" pattern already used for the muscle taxonomy tables.
+// Returns one row per (view, slug, muscle) association, with the
+// muscle's display label joined in so the admin tool doesn't need a
+// second lookup.
+export async function fetchBodyMapRegionMuscles() {
+  const { data, error } = await supabase
+    .from("body_map_region_muscles")
+    .select("view, slug, muscle_detailed_key, muscle_detailed(label)")
+    .order("view").order("slug");
+  if (error) throw error;
+  return data.map((r) => ({ view: r.view, slug: r.slug, muscleKey: r.muscle_detailed_key, muscleLabel: r.muscle_detailed?.label }));
+}
+
+export async function addBodyMapRegionMuscle(view, slug, muscleDetailedKey) {
+  const { error } = await supabase.from("body_map_region_muscles").insert({ view, slug, muscle_detailed_key: muscleDetailedKey });
+  if (error) throw error;
+}
+
+export async function removeBodyMapRegionMuscle(view, slug, muscleDetailedKey) {
+  const { error } = await supabase.from("body_map_region_muscles").delete()
+    .eq("view", view).eq("slug", slug).eq("muscle_detailed_key", muscleDetailedKey);
+  if (error) throw error;
+}
+
 // Admin-editable workout splits (migration_043) -- Push/Pull/Legs/etc,
 // each with a set of muscle_groups keys. Read by everyone (the generator,
 // exercise picker filters, and FAQ & Glossary all need this), writable

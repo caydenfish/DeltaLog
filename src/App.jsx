@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { registerSW } from "virtual:pwa-register";
 import { supabase } from "./lib/supabaseClient";
-import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits, fetchSplitExclusions, logAppOpen } from "./lib/queries";
+import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits, fetchSplitExclusions, fetchBodyMapRegionMuscles, logAppOpen } from "./lib/queries";
 import { setMuscleTaxonomyCache } from "./lib/muscleNomenclature";
+import { setBodyMapRegionCache } from "./lib/bodyMapRegions";
 import { setSplitsCache, setSplitExclusionsCache } from "./lib/splits";
 import { getPrefs } from "./lib/prefs";
 import Auth from "./Auth";
@@ -94,11 +95,16 @@ export default function App() {
   // the signed-out shared-workout view. Splits (Push/Pull/Legs/etc) are
   // the same story — also admin-editable, also read synchronously in
   // render code (the generator, exercise picker filters, FAQ), so also
-  // cached here rather than fetched per-component.
+  // cached here rather than fetched per-component. Body-map region
+  // correlations (which anatomical region each muscle lights up --
+  // resolveRegions, read synchronously by BodyMap.jsx everywhere it
+  // renders) are now admin-editable too (migration_070) and cached the
+  // same way.
   useEffect(() => {
     fetchMuscleTaxonomy().then(setMuscleTaxonomyCache).catch(() => {});
     fetchSplits().then(setSplitsCache).catch(() => {});
     fetchSplitExclusions().then(setSplitExclusionsCache).catch(() => {});
+    fetchBodyMapRegionMuscles().then(setBodyMapRegionCache).catch(() => {});
   }, []);
 
   useEffect(() => {

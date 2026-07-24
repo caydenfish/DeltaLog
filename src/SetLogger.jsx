@@ -15,6 +15,7 @@ import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome, IconDragHandle } from "./Icons";
 import { getSplits } from "./lib/splits";
 import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
+import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
 // "Full Body" and "Neck" are real generic buckets (used for coloring/
 // display elsewhere) but aren't meaningful things to target when
 // building a workout via the generator's muscle picker -- nobody picks
@@ -345,6 +346,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   // call downstream recomputes against the correct data.
   const [taxonomyVersion, setTaxonomyVersion] = useState(getTaxonomyVersion);
   useEffect(() => subscribeTaxonomy(() => setTaxonomyVersion(getTaxonomyVersion())), []);
+  // Same race, for the admin-editable body-map region correlation
+  // (migration_070) the live in-workout heatmap's BodyMap.jsx also reads
+  // synchronously via resolveRegions() -- see bodyMapRegions.js.
+  const [bodyMapRegionVersion, setBodyMapRegionVersion] = useState(getBodyMapRegionVersion);
+  useEffect(() => subscribeBodyMapRegions(() => setBodyMapRegionVersion(getBodyMapRegionVersion())), []);
 
   const [view, setView] = useState("workout");
   const [library, setLibrary] = useState([]);

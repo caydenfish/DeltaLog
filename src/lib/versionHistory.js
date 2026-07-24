@@ -5,6 +5,17 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.12.13",
+    date: "2026-07-24",
+    items: [
+      "New migration_070_body_map_region_muscles.sql: promotes the body-map region <-> muscle correlation (what anatomical silhouette region each muscle lights up) from a hardcoded JS map (lib/bodyMapRegions.js's REGION_MAP) into an admin-editable table, same 'DB is the real source of truth, code is just seed/fallback' pattern migration_034/040 already established for the muscle taxonomy itself. body_map_region_muscles is a many-to-many join (view, slug, muscle_detailed_key), RLS select-all/insert-admin/delete-admin matching muscle_detailed's own policies, seeded best-effort from the current REGION_MAP by matching muscle_detailed.label case-insensitively (anything in REGION_MAP with no corresponding muscle_detailed row yet is silently skipped, addable manually afterward).",
+      "queries.js: new fetchBodyMapRegionMuscles/addBodyMapRegionMuscle/removeBodyMapRegionMuscle.",
+      "lib/bodyMapRegions.js rewritten with the same in-memory-cache-plus-fallback shape as muscleNomenclature.js's dbTaxonomy: new setBodyMapRegionCache(rows)/subscribeBodyMapRegions(fn)/getBodyMapRegionVersion(), resolveRegions() now checks the DB cache first, falling back to the REGION_MAP seed and then KEYWORD_FALLBACKS regex list exactly as before when nothing's been explicitly set. App.jsx fetches body_map_region_muscles at boot (fetchBodyMapRegionMuscles().then(setBodyMapRegionCache)) alongside the existing muscle taxonomy/splits fetches. Home.jsx/SetLogger.jsx/Templates.jsx (the three places BodyMap.jsx renders, and the same three files that needed the taxonomy-cache subscription fix in 1.12.10) each gained a parallel subscribeBodyMapRegions hook, to avoid reintroducing that exact same boot-race bug class for this new cache.",
+      "New AdminBodyMapRegionEditor.jsx, reachable from the Admin menu ('Body Map Regions'): renders the actual FRONT_REGIONS/BACK_REGIONS silhouette (raw bodyMapData.js shapes, not routed through BodyMap.jsx's intensity/plan coloring) with each real region as a tappable path -- green if it currently has any muscles assigned, red if selected, gray otherwise. Selecting a region shows its assigned muscles as removable pills plus a searchable add-a-muscle list (any muscle_detailed entry not already assigned). Every add/remove re-fetches and calls setBodyMapRegionCache with the fresh rows, so the change is live across every body map in the app (Muscle breakdown, Weekly Set Goals, the live in-workout heatmap, Templates' Coverage panel) immediately, no reload needed -- same live-propagation fix already applied to AdminTaxonomyManager.jsx in 1.12.12.",
+      "AdminHome.jsx gained a new Row (onOpenBodyMapRegions, 'Body Map Regions') next to Muscle Taxonomy; Home.jsx wires a new showAdminBodyMapRegions state.",
+    ],
+  },
+  {
     version: "1.12.12",
     date: "2026-07-24",
     items: [
