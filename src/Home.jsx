@@ -27,6 +27,7 @@ import AdminExercises from "./AdminExercises";
 import AdminFeedback from "./AdminFeedback";
 import AdminHome from "./AdminHome";
 import SplitsManager from "./SplitsManager";
+import AdminBodyMapLabeler from "./AdminBodyMapLabeler";
 import ExerciseLibraryView from "./ExerciseLibraryView";
 import AdminRoles from "./AdminRoles";
 import AdminUserActivity from "./AdminUserActivity";
@@ -233,6 +234,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [showAdminUserActivity, setShowAdminUserActivity] = useState(false);
   const [showAdminReferralSources, setShowAdminReferralSources] = useState(false);
   const [showSplitsManager, setShowSplitsManager] = useState(false);
+  const [showBodyMapLabeler, setShowBodyMapLabeler] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [historyView, setHistoryView] = useState(null); // null | { initialWorkoutId? }
@@ -1313,6 +1315,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           onOpenUserActivity={() => setShowAdminUserActivity(true)}
           onOpenReferralSources={() => setShowAdminReferralSources(true)}
           onOpenSplits={() => setShowSplitsManager(true)}
+          onOpenBodyMapLabeler={() => setShowBodyMapLabeler(true)}
           onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
           adminViewMode={adminViewMode}
@@ -1338,6 +1341,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {showAdminUserActivity && isRealCreator && <AdminUserActivity onClose={() => setShowAdminUserActivity(false)} />}
       {showAdminReferralSources && <AdminReferralSources onClose={() => setShowAdminReferralSources(false)} />}
       {showSplitsManager && <SplitsManager onClose={() => setShowSplitsManager(false)} />}
+      {showBodyMapLabeler && <AdminBodyMapLabeler onClose={() => setShowBodyMapLabeler(false)} />}
       {showAdminFeedback && <AdminFeedback onClose={() => setShowAdminFeedback(false)} />}
       {showDangerZone && <DangerZone user={user} onClose={() => setShowDangerZone(false)} onDataReset={onDataReset} />}
       {showInstallGuide && (

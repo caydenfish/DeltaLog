@@ -51,6 +51,7 @@ export default function SetupWizard({ onComplete, onClose }) {
   const [scoreDisplay, setScoreDisplay] = useState(prefs.scoreDisplay);
   const [muscleNameMode, setMuscleNameMode] = useState(prefs.muscleNameMode);
   const [targetCalcMethod, setTargetCalcMethod] = useState(prefs.targetCalcMethod);
+  const [bodyModelSex, setBodyModelSex] = useState(prefs.bodyModelSex);
 
   const steps = [
     {
@@ -106,6 +107,17 @@ export default function SetupWizard({ onComplete, onClose }) {
       ),
     },
     {
+      title: "Body map model",
+      subtitle: "Which body you'll see on your muscle heatmap. Change anytime in Preferences.",
+      body: (
+        <PillRow
+          options={[{ key: "male", label: "Male" }, { key: "female", label: "Female" }]}
+          value={bodyModelSex}
+          onChange={setBodyModelSex}
+        />
+      ),
+    },
+    {
       title: "Muscle names",
       subtitle: "How muscle groups are labeled throughout the app.",
       body: (
@@ -126,6 +138,7 @@ export default function SetupWizard({ onComplete, onClose }) {
     setPref("scoreDisplay", scoreDisplay);
     setPref("targetCalcMethod", targetCalcMethod);
     setPref("muscleNameMode", muscleNameMode);
+    setPref("bodyModelSex", bodyModelSex);
     setPref("setupWizardSeen", true);
     onComplete();
   }

@@ -103,6 +103,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   const [local, setLocal] = useState(() => ({
     units: getPrefs().units,
     muscleNameMode: getPrefs().muscleNameMode,
+    bodyModelSex: getPrefs().bodyModelSex,
     scoreDisplay: getPrefs().scoreDisplay,
     weightEntryMode: getPrefs().weightEntryMode,
     restSeconds: getPrefs().restSeconds,
@@ -149,6 +150,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     units: "units weight display lb kg pounds kilograms",
     timeFormat: "time format 12h 24h clock hour am pm",
     scientificNames: "muscle names generic detailed scientific anatomy nomenclature",
+    bodyModelSex: "body map model male female heatmap silhouette",
     trainingIdeology: "training focus rep range hypertrophy strength endurance ideology methodology default",
     scoreDisplay: "strength score dots percentile deltalog",
     targetCalcMethod: "target calculation method progression double progression percent e1rm rir autoregulation",
@@ -178,7 +180,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     }
   }
 
-  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod } = state;
+  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod } = state;
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -416,6 +418,29 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
                 onClick={() => update("muscleNameMode", opt.key)}
                 aria-pressed={muscleNameMode === opt.key}
                 style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: muscleNameMode === opt.key ? T.accent : "transparent", color: muscleNameMode === opt.key ? "#fff" : T.dim }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        )}
+
+        {matches("bodyModelSex") && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div>
+              <div style={{ color: T.text, fontSize: 14 }}>Body map model</div>
+              <div style={{ color: T.dim, fontSize: 11 }}>Which body shows on your muscle heatmap</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
+            {[{ key: "male", label: "Male" }, { key: "female", label: "Female" }].map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => update("bodyModelSex", opt.key)}
+                aria-pressed={bodyModelSex === opt.key}
+                style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: bodyModelSex === opt.key ? T.accent : "transparent", color: bodyModelSex === opt.key ? "#fff" : T.dim }}
               >
                 {opt.label}
               </button>
