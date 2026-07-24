@@ -122,6 +122,71 @@ export default function AdminBodyMapLabeler({ onClose }) {
     return { grouped: true, items: byGroup };
   }, [mode, selected, labels, muscleDetailed]);
 
+  const [dragBox, setDragBox] = useState(null); // {x0,y0,x1,y1} in SVG user units, while dragging
+  const dragStartRef = useRef(null);
+  const svgRef = useRef(null);
+
+  // Approximate bbox per shape by scanning the numbers in its 'd' string --
+  // good enough for drag-select hit testing without a full curve parser,
+  // since these are smooth, non-overshooting Catmull-Rom curves.
+  const shapeBBoxes = useMemo(() => {
+    if (!viewData) return {};
+    const map = {};
+    for (const s of viewData.shapes) {
+      const nums = s.d.match(/-?\d+\.?\d*/g)?.map(Number) ?? [];
+      const xs = nums.filter((_, i) => i % 2 === 0);
+      const ys = nums.filter((_, i) => i % 2 === 1);
+      map[s.id] = { xmin: Math.min(...xs), xmax: Math.max(...xs), ymin: Math.min(...ys), ymax: Math.max(...ys) };
+    }
+    return map;
+  }, [viewData]);
+
+  function clientToSvgPoint(evt) {
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const loc = pt.matrixTransform(ctm.inverse());
+    return { x: loc.x, y: loc.y };
+  }
+
+  function onCanvasMouseDown(e) {
+    const p = clientToSvgPoint(e);
+    dragStartRef.current = { ...p, shift: e.shiftKey };
+    setDragBox({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
+  }
+
+  function onCanvasMouseMove(e) {
+    if (!dragStartRef.current) return;
+    const p = clientToSvgPoint(e);
+    setDragBox({ x0: dragStartRef.current.x, y0: dragStartRef.current.y, x1: p.x, y1: p.y });
+  }
+
+  function onCanvasMouseUp() {
+    if (!dragStartRef.current || !dragBox) { dragStartRef.current = null; setDragBox(null); return; }
+    const { x0, y0, x1, y1 } = dragBox;
+    const boxXmin = Math.min(x0, x1), boxXmax = Math.max(x0, x1);
+    const boxYmin = Math.min(y0, y1), boxYmax = Math.max(y0, y1);
+    const dragDistance = Math.hypot(x1 - x0, y1 - y0);
+    // treat a near-zero-movement drag as a plain click on the background (deselect),
+    // so this doesn't fight with the per-shape onClick handlers.
+    if (dragDistance > (viewData ? viewData.w * 0.01 : 0.02)) {
+      const hits = Object.entries(shapeBBoxes)
+        .filter(([, b]) => b.xmax >= boxXmin && b.xmin <= boxXmax && b.ymax >= boxYmin && b.ymin <= boxYmax)
+        .map(([id]) => id);
+      setSelected((prev) => {
+        const next = dragStartRef.current.shift ? new Set(prev) : new Set();
+        hits.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+    dragStartRef.current = null;
+    setDragBox(null);
+  }
+
   function toggleShape(id, additive) {
     setSelected((prev) => {
       const next = additive ? new Set(prev) : new Set();
@@ -207,10 +272,15 @@ export default function AdminBodyMapLabeler({ onClose }) {
           ) : (
             <div style={{ position: "relative", width: (canvasWidth - 40) * zoom, height: ((canvasWidth - 40) * (viewData.h / viewData.w)) * zoom }}>
               <svg
+                ref={svgRef}
                 viewBox={`0 0 ${viewData.w} ${viewData.h}`}
                 width={(canvasWidth - 40) * zoom}
                 height={((canvasWidth - 40) * (viewData.h / viewData.w)) * zoom}
                 style={{ position: "absolute", inset: 0, display: "block", background: "white", border: "1px solid #ddd" }}
+                onMouseDown={onCanvasMouseDown}
+                onMouseMove={onCanvasMouseMove}
+                onMouseUp={onCanvasMouseUp}
+                onMouseLeave={onCanvasMouseUp}
               >
                 {viewData.shapes.map((s) => {
                   const rec = labels[s.id];
@@ -232,6 +302,19 @@ export default function AdminBodyMapLabeler({ onClose }) {
                     />
                   );
                 })}
+                {dragBox && (
+                  <rect
+                    x={Math.min(dragBox.x0, dragBox.x1)}
+                    y={Math.min(dragBox.y0, dragBox.y1)}
+                    width={Math.abs(dragBox.x1 - dragBox.x0)}
+                    height={Math.abs(dragBox.y1 - dragBox.y0)}
+                    fill="#2a6ef0"
+                    fillOpacity={0.15}
+                    stroke="#2a6ef0"
+                    strokeWidth={0.015}
+                    pointerEvents="none"
+                  />
+                )}
               </svg>
             </div>
           )}
@@ -257,7 +340,7 @@ export default function AdminBodyMapLabeler({ onClose }) {
           </div>
           <div style={{ color: T.dim, fontSize: 11, marginBottom: 12, lineHeight: 1.5 }}>
             {mode === "category"
-              ? "Fast pass: which broad category does this shape belong to? Click a muscle in the picture, shift-click to add more, assign."
+              ? "Fast pass: which broad category does this shape belong to? Click a muscle, or drag a box over a cluster (e.g. all the ab blocks) to grab several at once. Shift adds to your selection."
               : "Precise pass: exactly which region. Do Category mode first for a shape and this list narrows to just that category's regions."}
           </div>
 
