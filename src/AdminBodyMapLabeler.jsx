@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { fetchMuscleDetailed } from "./lib/queries";
 import {
   fetchBodyMapShapeLabels,
@@ -52,6 +52,25 @@ export default function AdminBodyMapLabeler({ onClose }) {
   const [saving, setSaving] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [error, setError] = useState(null);
+  const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 760);
+  const canvasRef = useRef(null);
+  const [canvasWidth, setCanvasWidth] = useState(600);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const el = canvasRef.current;
+    const obs = new ResizeObserver((entries) => {
+      for (const entry of entries) setCanvasWidth(entry.contentRect.width);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 760);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const colorFor = useMemo(() => {
     const map = {};
@@ -160,16 +179,16 @@ export default function AdminBodyMapLabeler({ onClose }) {
 
       {error && <div style={{ color: T.accent, fontSize: 12, padding: "6px 16px" }}>{error}</div>}
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        <div style={{ flex: 1, overflow: "auto", background: "#f4f4f4", padding: 20 }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: isNarrow ? "column" : "row", overflow: "hidden" }}>
+        <div ref={canvasRef} style={{ flex: isNarrow ? "0 0 48vh" : 1, overflow: "auto", background: "#f4f4f4", padding: 20 }}>
           {loading || !viewData ? (
             <InlineLoading />
           ) : (
             <svg
               viewBox={`0 0 ${viewData.w} ${viewData.h}`}
-              width={viewData.w * 60 * zoom}
-              height={viewData.h * 60 * zoom}
-              style={{ background: "white", border: "1px solid #ddd" }}
+              width={(canvasWidth - 40) * zoom}
+              height={((canvasWidth - 40) * (viewData.h / viewData.w)) * zoom}
+              style={{ background: "white", border: "1px solid #ddd", display: "block" }}
             >
               {viewData.shapes.map((s) => {
                 const rec = labels[s.id];
@@ -194,7 +213,14 @@ export default function AdminBodyMapLabeler({ onClose }) {
           )}
         </div>
 
-        <div style={{ width: 320, borderLeft: `1px solid ${T.line}`, padding: 16, overflowY: "auto", background: T.surface }}>
+        <div style={{
+          width: isNarrow ? "100%" : 320,
+          borderLeft: isNarrow ? "none" : `1px solid ${T.line}`,
+          borderTop: isNarrow ? `1px solid ${T.line}` : "none",
+          padding: 16,
+          overflowY: "auto",
+          background: T.surface,
+        }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
             <button style={btn} onClick={() => setZoom((z) => z * 1.25)}>Zoom in</button>
             <button style={btn} onClick={() => setZoom((z) => z * 0.8)}>Zoom out</button>
