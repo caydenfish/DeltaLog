@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
 import { playRestTimerSound, triggerRestTimerVibration, showRestTimerNotification } from "./lib/restTimerCues";
 import BodyHeatmap from "./BodyHeatmap";
-import Preferences from "./Preferences";
 import { computeMuscleSetCounts } from "./lib/volume";
 import { computeDOTS, dotsBand } from "./lib/dots";
 import { getPrefs, setPref } from "./lib/prefs";
@@ -13,7 +12,7 @@ import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import ExportWorkoutModal from "./ExportWorkoutModal";
 import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
-import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome, IconDragHandle, IconChevronUp, IconChevronDown } from "./Icons";
+import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome, IconDragHandle } from "./Icons";
 import { getSplits } from "./lib/splits";
 import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
 // "Full Body" and "Neck" are real generic buckets (used for coloring/
@@ -460,7 +459,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [genSearch, setGenSearch] = useState("");
   const [genMuscleSearch, setGenMuscleSearch] = useState("");
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
-  const [showWorkoutPrefs, setShowWorkoutPrefs] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateIncludeDetails, setTemplateIncludeDetails] = useState(true);
@@ -541,7 +539,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       view, exIdx, showCalc, showMenu,
       wizardOpen, editIndex, weight, reps, rir,
       pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
-      showSetup, showMachineSetup, showWorkoutPrefs, showIdeology, showTargetInfo,
+      showSetup, showMachineSetup, showIdeology, showTargetInfo,
       editingNote, noteDraft,
       restEndsAt,
     });
@@ -549,7 +547,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     workoutId, booting, view, exIdx, showCalc, showMenu,
     wizardOpen, editIndex, weight, reps, rir,
     pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
-    showSetup, showMachineSetup, showWorkoutPrefs, showIdeology, showTargetInfo,
+    showSetup, showMachineSetup, showIdeology, showTargetInfo,
     editingNote, noteDraft,
     restEndsAt,
   ]);
@@ -566,7 +564,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         view, exIdx, showCalc, showMenu,
         wizardOpen, editIndex, weight, reps, rir,
         pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
-        showSetup, showMachineSetup, showWorkoutPrefs, showIdeology, showTargetInfo,
+        showSetup, showMachineSetup, showIdeology, showTargetInfo,
         editingNote, noteDraft,
         restEndsAt,
       });
@@ -588,7 +586,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     workoutId, booting, view, exIdx, showCalc, showMenu,
     wizardOpen, editIndex, weight, reps, rir,
     pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
-    showSetup, showMachineSetup, showWorkoutPrefs, showIdeology, showTargetInfo,
+    showSetup, showMachineSetup, showIdeology, showTargetInfo,
     editingNote, noteDraft,
     restEndsAt,
   ]);
@@ -687,7 +685,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             }
             if (saved.showSetup) setShowSetup(true);
             if (saved.showMachineSetup) setShowMachineSetup(true);
-            if (saved.showWorkoutPrefs) setShowWorkoutPrefs(true);
             if (saved.showIdeology) setShowIdeology(true);
             if (saved.showTargetInfo) setShowTargetInfo(true);
             if (saved.editingNote) { setEditingNote(true); setNoteDraft(saved.noteDraft || ""); }
@@ -2588,6 +2585,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 </div>
               )}
 
+              <button onClick={() => { setManageFromScratch(false); setView("manage"); }} style={{ width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Edit Workout</button>
+
               {!finishConfirm && (
                 isPaused ? (
                   <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
@@ -2623,20 +2622,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   <button onClick={handleConfirmFinish} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 700 }}>
                     Finish workout anyway
                   </button>
-                </div>
-              )}
-
-              <button onClick={() => { setManageFromScratch(false); setView("manage"); }} style={{ width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Edit Workout</button>
-
-              <button
-                onClick={() => setShowWorkoutPrefs(!showWorkoutPrefs)}
-                style={{ width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-              >
-                Preferences {showWorkoutPrefs ? <IconChevronUp size={13} /> : <IconChevronDown size={13} />}
-              </button>
-              {showWorkoutPrefs && (
-                <div style={{ marginTop: 10 }}>
-                  <Preferences fields={["units", "scientificNames", "weightEntryMode", "plateSizes"]} />
                 </div>
               )}
 

@@ -24,30 +24,40 @@ const ROLE_FILTER_OPTIONS = [
   { key: "both", label: "Both" },
 ];
 
-function segBtn(active) {
-  return {
-    flex: 1,
-    background: active ? T.accent : "none",
-    border: `1px solid ${active ? T.accent : T.line}`,
-    color: active ? "#fff" : T.dim,
-    borderRadius: 7,
-    padding: "5px 0",
-    fontSize: 11,
-    fontWeight: 600,
-    whiteSpace: "nowrap",
-  };
-}
-
 // One labeled row of 3 mutually-exclusive segmented buttons -- shared
 // shape for both the Sets and Muscles criteria pickers below, just fed
-// different option lists.
+// different option lists. Styled as a single bordered track (matching
+// the Individual/One-for-all switcher in WeeklySetGoals.jsx) rather than
+// 3 separate bordered buttons, so the group reads as one control instead
+// of 3 small disconnected pills -- and stretches to the module's full
+// width either way, via flex:1 on each segment.
 function FilterRow({ label, options, value, onChange }) {
   return (
-    <div>
-      <div style={{ fontSize: 9.5, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
-      <div style={{ display: "flex", gap: 4 }}>
+    <div style={{ width: "100%" }}>
+      <div style={{ fontSize: 9.5, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>{label}</div>
+      <div style={{ display: "flex", width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 9, padding: 3, gap: 3, boxSizing: "border-box" }}>
         {options.map((o) => (
-          <button key={o.key} onClick={() => onChange(o.key)} aria-pressed={value === o.key} style={segBtn(value === o.key)}>{o.label}</button>
+          <button
+            key={o.key}
+            onClick={() => onChange(o.key)}
+            aria-pressed={value === o.key}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              background: value === o.key ? T.accent : "transparent",
+              border: "none",
+              borderRadius: 7,
+              padding: "7px 0",
+              fontSize: 11.5,
+              fontWeight: 600,
+              color: value === o.key ? "#fff" : T.dim,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {o.label}
+          </button>
         ))}
       </div>
     </div>
@@ -170,7 +180,7 @@ export default function BodyHeatmap({
   return (
     <div>
       {showFilters && (
-        <div style={{ display: "flex", gap: 14, marginBottom: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
           <FilterRow label="Sets" options={SETS_FILTER_OPTIONS} value={setsFilter} onChange={onSetsFilterChange} />
           <FilterRow label="Muscles" options={ROLE_FILTER_OPTIONS} value={roleFilter} onChange={onRoleFilterChange} />
         </div>

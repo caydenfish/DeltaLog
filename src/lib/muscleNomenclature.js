@@ -1,4 +1,5 @@
 import { getPrefs } from "./prefs";
+import { MUSCLE_COLORS } from "./muscleColors";
 
 // Canonical bucket (the 8 values used for muscle_group / color-coding,
 // as of the exercise-library overhaul) -> a representative
@@ -247,4 +248,34 @@ export function normalizeMuscleList(rawList) {
     out.add(genericBucket(raw));
   }
   return [...out];
+}
+
+// The muscle-group keys Weekly Set Goals (and its matching plan-mode body
+// map) tracks an individual weekly target for, at whichever resolution
+// the person's Muscle Names preference (mode) already uses everywhere
+// else in the app -- Category mode gets the 8 fixed canonical buckets
+// (unchanged from before), Region/Anatomy mode gets the full granular
+// taxonomy list instead. This is what makes "20 sets/week" apply
+// separately to Lats and Traps in Region mode, rather than both being
+// silently lumped into one combined "Back" target regardless of the
+// person's naming preference. `color` resolves through each entry's own
+// generic bucket for granular modes, since MUSCLE_COLORS is only ever
+// keyed at the 8-bucket level. Full Body is always excluded -- never a
+// meaningful weekly-set-goal concept at any resolution.
+export function getMuscleGroupOptions(mode) {
+  if (mode !== "detailed" && mode !== "scientific") {
+    return Object.keys(MUSCLE_COLORS)
+      .filter((m) => m !== "Full Body")
+      .map((m) => ({ key: m, color: MUSCLE_COLORS[m] }));
+  }
+  const entries = mode === "scientific" ? getMuscleTaxonomyEntries() : getDetailedTaxonomyEntries();
+  const field = mode === "scientific" ? "scientific" : "detailed";
+  const seen = new Set();
+  const out = [];
+  for (const e of entries) {
+    if (seen.has(e[field])) continue;
+    seen.add(e[field]);
+    out.push({ key: e[field], color: MUSCLE_COLORS[e.generic] || "#8B919D" });
+  }
+  return out.sort((a, b) => a.key.localeCompare(b.key));
 }

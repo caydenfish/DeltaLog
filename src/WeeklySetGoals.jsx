@@ -3,7 +3,7 @@ import { fetchMuscleGroupTargets, saveMuscleGroupTarget } from "./lib/queries";
 import { fetchActiveProgram } from "./lib/programQueries";
 import { dayLabelsForSplit } from "./lib/programEngine";
 import { computeRollingWeeklyTotals } from "./lib/volume";
-import { MUSCLE_COLORS } from "./lib/muscleColors";
+import { getMuscleGroupOptions } from "./lib/muscleNomenclature";
 import { statusColorFor } from "./lib/planStatus";
 import { getPrefs, setPref } from "./lib/prefs";
 import { InlineLoading } from "./LoadingSpinner";
@@ -23,12 +23,6 @@ const T = {
 const DEFAULT_TARGET = 10;
 const MIN_TARGET = 0;
 const MAX_TARGET = 30;
-
-// Every muscle group gets a weekly set goal here, except Full Body --
-// Full Body tags are being phased out app-wide, and even before that,
-// a "weekly set goal" was never a meaningful concept for it the way it
-// is for a real muscle group.
-const MUSCLES = Object.keys(MUSCLE_COLORS).filter((m) => m !== "Full Body");
 
 // A +/- stepper with a typeable number field in the middle, used
 // instead of a drag slider anywhere a target is actually edited. Sliders
@@ -77,11 +71,27 @@ function Stepper({ value, onChange, min = MIN_TARGET, max = MAX_TARGET }) {
 // the Settings entry point works even if someone has removed the Home
 // widget entirely via Customize Home.
 //
+// `nameMode` ("generic" | "detailed" | "scientific") decides which
+// muscle-group keys get a target -- see getMuscleGroupOptions -- so
+// targets are tracked at whichever resolution the person's Muscle Names
+// preference already uses everywhere else (Category's fixed 8 buckets,
+// or the full Region/Anatomy taxonomy list). Falls back to reading the
+// live preference directly if a caller doesn't pass one. Switching
+// Muscle Names later shows a different set of rows (Region-tier targets
+// are separate from Category-tier ones, not reconciled/merged) -- that's
+// intentional, since "20 sets of Lats" and "20 sets of Back" are
+// genuinely different goals.
+//
 // Two edit modes: Individual (a stepper per muscle group) and "One for
 // all" (a single number applied to every muscle group at once) --
 // last-used mode remembered via prefs so reopening doesn't reset
 // whichever workflow someone prefers.
-export function WeeklySetGoalsEditor({ userId, onClose }) {
+export function WeeklySetGoalsEditor({ userId, onClose, nameMode }) {
+  const resolvedNameMode = nameMode || getPrefs().muscleNameMode;
+  const options = useMemo(() => getMuscleGroupOptions(resolvedNameMode), [resolvedNameMode]);
+  const muscles = useMemo(() => options.map((o) => o.key), [options]);
+  const colorOf = (m) => (options.find((o) => o.key === m) || {}).color || T.dim;
+
   const [targets, setTargets] = useState(null); // null = loading
   const [mode, setMode] = useState(() => getPrefs().weeklySetGoalsMode || "individual");
   const [uniformValue, setUniformValue] = useState(DEFAULT_TARGET);
@@ -93,7 +103,7 @@ export function WeeklySetGoalsEditor({ userId, onClose }) {
       .then((map) => {
         if (cancelled) return;
         const filled = {};
-        for (const m of MUSCLES) filled[m] = map[m] ?? DEFAULT_TARGET;
+        for (const m of muscles) filled[m] = map[m] ?? DEFAULT_TARGET;
         setTargets(filled);
         const vals = Object.values(filled);
         setUniformValue(Math.round(vals.reduce((a, b) => a + b, 0) / vals.length));
@@ -101,12 +111,13 @@ export function WeeklySetGoalsEditor({ userId, onClose }) {
       .catch(() => {
         if (cancelled) return;
         const filled = {};
-        for (const m of MUSCLES) filled[m] = DEFAULT_TARGET;
+        for (const m of muscles) filled[m] = DEFAULT_TARGET;
         setTargets(filled);
         setUniformValue(DEFAULT_TARGET);
       });
     return () => { cancelled = true; };
-  }, [userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, resolvedNameMode]);
 
   function switchMode(next) {
     setMode(next);
@@ -125,12 +136,12 @@ export function WeeklySetGoalsEditor({ userId, onClose }) {
     setUniformValue(value);
     setTargets((prev) => {
       const next = { ...prev };
-      for (const m of MUSCLES) next[m] = value;
+      for (const m of muscles) next[m] = value;
       return next;
     });
     clearTimeout(saveTimers.current.__uniform);
     saveTimers.current.__uniform = setTimeout(() => {
-      MUSCLES.forEach((m) => saveMuscleGroupTarget(userId, m, value).catch(() => {}));
+      muscles.forEach((m) => saveMuscleGroupTarget(userId, m, value).catch(() => {}));
     }, 500);
   }
 
@@ -169,7 +180,7 @@ export function WeeklySetGoalsEditor({ userId, onClose }) {
 
             {mode === "uniform" ? (
               <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 16, textAlign: "center" }}>
-                <div style={{ color: T.dim, fontSize: 12, marginBottom: 12 }}>Applies to all {MUSCLES.length} muscle groups</div>
+                <div style={{ color: T.dim, fontSize: 12, marginBottom: 12 }}>Applies to all {muscles.length} muscle groups</div>
                 <div style={{ display: "flex", justifyContent: "center" }}>
                   <Stepper value={uniformValue} onChange={updateUniform} />
                 </div>
@@ -177,13 +188,13 @@ export function WeeklySetGoalsEditor({ userId, onClose }) {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {MUSCLES.map((m) => (
+                {muscles.map((m) => (
                   <div key={m} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 9, height: 9, borderRadius: 3, background: MUSCLE_COLORS[m], display: "inline-block", flexShrink: 0 }} />
+                      <span style={{ width: 9, height: 9, borderRadius: 3, background: colorOf(m), display: "inline-block", flexShrink: 0 }} />
                       <span style={{ fontSize: 13.5, fontWeight: 600, color: T.text }}>{m}</span>
                     </div>
-                    <Stepper value={targets[m]} onChange={(v) => updateIndividual(m, v)} />
+                    <Stepper value={targets[m] ?? DEFAULT_TARGET} onChange={(v) => updateIndividual(m, v)} />
                   </div>
                 ))}
               </div>
@@ -205,7 +216,14 @@ export function WeeklySetGoalsEditor({ userId, onClose }) {
 // workout-history array Home.jsx already has loaded (all-time, not
 // range-filtered) -- this component does its own 7-day filtering
 // rather than depending on the Home dashboard's Training Range selector.
-export default function WeeklySetGoals({ userId, history }) {
+// `nameMode`, same as WeeklySetGoalsEditor above -- tracks/displays
+// targets at whichever tier the person's Muscle Names preference uses.
+export default function WeeklySetGoals({ userId, history, nameMode }) {
+  const resolvedNameMode = nameMode || getPrefs().muscleNameMode;
+  const options = useMemo(() => getMuscleGroupOptions(resolvedNameMode), [resolvedNameMode]);
+  const muscles = useMemo(() => options.map((o) => o.key), [options]);
+  const colorOf = (m) => (options.find((o) => o.key === m) || {}).color || T.dim;
+
   const [targets, setTargets] = useState(null); // null = loading
   const [suggestion, setSuggestion] = useState(null); // { programId, byMuscle: {muscle: sets} } | null
   const [dismissed, setDismissed] = useState(false);
@@ -218,23 +236,29 @@ export default function WeeklySetGoals({ userId, history }) {
       .then((map) => {
         if (cancelled) return;
         const filled = {};
-        for (const m of MUSCLES) filled[m] = map[m] ?? DEFAULT_TARGET;
+        for (const m of muscles) filled[m] = map[m] ?? DEFAULT_TARGET;
         setTargets(filled);
       })
       .catch(() => {
         if (cancelled) return;
         const filled = {};
-        for (const m of MUSCLES) filled[m] = DEFAULT_TARGET;
+        for (const m of muscles) filled[m] = DEFAULT_TARGET;
         setTargets(filled);
       });
     return () => { cancelled = true; };
-  }, [userId, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, refreshKey, resolvedNameMode]);
 
   // One-time suggestion when a program exists: the program suggests
   // weekly set goals, but never writes them automatically -- goals stay
   // user-editable, this is a single tap to accept, not a live sync.
+  // Program exercises only carry the Category-tier muscle bucket
+  // (pe.exercise.muscle), so this suggestion is only meaningful in
+  // Category mode -- Region/Anatomy mode skips it rather than guessing
+  // a Region-tier breakdown the program engine doesn't actually have.
   useEffect(() => {
     let cancelled = false;
+    if (resolvedNameMode !== "generic") { setSuggestion(null); return; }
     fetchActiveProgram(userId)
       .then((program) => {
         if (cancelled || !program) return;
@@ -253,7 +277,7 @@ export default function WeeklySetGoals({ userId, history }) {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [userId, refreshKey]);
+  }, [userId, refreshKey, resolvedNameMode]);
 
   function applySuggestion() {
     if (!suggestion) return;
@@ -270,7 +294,7 @@ export default function WeeklySetGoals({ userId, history }) {
     setDismissed(true);
   }
 
-  const rollingTotals = useMemo(() => computeRollingWeeklyTotals(history), [history]);
+  const rollingTotals = useMemo(() => computeRollingWeeklyTotals(history, resolvedNameMode), [history, resolvedNameMode]);
 
   if (targets === null) {
     return (
@@ -303,8 +327,8 @@ export default function WeeklySetGoals({ userId, history }) {
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {MUSCLES.map((m) => {
-          const target = targets[m];
+        {muscles.map((m) => {
+          const target = targets[m] ?? DEFAULT_TARGET;
           const total = rollingTotals[m] || 0;
           const color = statusColorFor(total, target);
           const pct = target > 0 ? Math.min(100, Math.round((total / target) * 100)) : 0;
@@ -312,7 +336,7 @@ export default function WeeklySetGoals({ userId, history }) {
             <div key={m}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <span style={{ width: 9, height: 9, borderRadius: 3, background: MUSCLE_COLORS[m], display: "inline-block", flexShrink: 0 }} />
+                  <span style={{ width: 9, height: 9, borderRadius: 3, background: colorOf(m), display: "inline-block", flexShrink: 0 }} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{m}</span>
                 </div>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color }}>
@@ -335,7 +359,7 @@ export default function WeeklySetGoals({ userId, history }) {
       </button>
 
       {showEditor && (
-        <WeeklySetGoalsEditor userId={userId} onClose={() => { setShowEditor(false); setRefreshKey((k) => k + 1); }} />
+        <WeeklySetGoalsEditor userId={userId} nameMode={resolvedNameMode} onClose={() => { setShowEditor(false); setRefreshKey((k) => k + 1); }} />
       )}
     </div>
   );

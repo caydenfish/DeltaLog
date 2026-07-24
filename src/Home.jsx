@@ -864,7 +864,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                         </div>
                       );
                     case "myPlan":
-                      return <WeeklySetGoals key={m.id} userId={user.id} history={history} />;
+                      return <WeeklySetGoals key={m.id} userId={user.id} history={history} nameMode={muscleNameMode} />;
                     case "volume":
                       return (
                         <HomeChartCard
@@ -938,7 +938,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                         </div>
                       );
                     case "weeklyGoalsMap":
-                      return <WeeklyGoalsBodyMap key={m.id} userId={user.id} history={history} />;
+                      return <WeeklyGoalsBodyMap key={m.id} userId={user.id} history={history} nameMode={muscleNameMode} />;
                     case "calendar":
                       return (
                         <div key={m.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
@@ -1288,7 +1288,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       )}
 
       {showTemplates && <Templates user={user} onClose={() => setShowTemplates(false)} />}
-      {showWeeklySetGoals && <WeeklySetGoalsEditor userId={user.id} onClose={() => setShowWeeklySetGoals(false)} />}
+      {showWeeklySetGoals && <WeeklySetGoalsEditor userId={user.id} nameMode={muscleNameMode} onClose={() => setShowWeeklySetGoals(false)} />}
       {showPreferencesScreen && (
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>

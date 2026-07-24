@@ -9,6 +9,15 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.11": {
+    title: "Independent per-muscle weekly goals, clearer heatmap breakdowns",
+    items: [
+      "Weekly Set Goals now tracks at whichever tier your Muscle Names setting uses. On Category (the default), Lats and Traps still share one \"Back\" goal like before. Switch Muscle Names to Region or Anatomy in Preferences and every muscle — Lats, Traps, Upper Back, Quads, etc. — gets its own independent weekly target and its own independent color on the Body Map, so hitting one doesn't make others look done too.",
+      "Heads up: switching to Region/Anatomy tracking starts everyone at the default 10 sets/week per muscle, separate from whatever you'd set at the Category tier. Open Edit Goals and use \"One for all\" to quickly reapply your usual number across every muscle at once.",
+      "Muscle breakdown map and the Weekly Set Goals body map: tapping or hovering a region now shows exactly which muscles are contributing to that number when more than one shares the same spot on the silhouette, instead of just an unexplained total.",
+      "Cleaned up the Sets/Muscles filter buttons on Muscle breakdown — now a single clean full-width control per row instead of the cramped side-by-side buttons.",
+    ],
+  },
   "1.12.10": {
     title: "Muscle breakdown rework, plus a Home ordering fix",
     items: [

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { fetchMuscleGroupTargets } from "./lib/queries";
 import { computeRollingWeeklyTotals } from "./lib/volume";
-import { MUSCLE_COLORS } from "./lib/muscleColors";
+import { getMuscleGroupOptions } from "./lib/muscleNomenclature";
+import { getPrefs } from "./lib/prefs";
 import { InlineLoading } from "./LoadingSpinner";
 import BodyMap from "./BodyMap";
 
@@ -24,6 +25,13 @@ const DEFAULT_TARGET = 10;
 // as its own card so both can be independently shown/hidden/reordered
 // via Customize Home.
 //
+// `nameMode`, same as WeeklySetGoals.jsx -- tracks/colors at whichever
+// tier the person's Muscle Names preference uses (getMuscleGroupOptions),
+// falling back to the live preference if a caller doesn't pass one, so
+// this always agrees with the "myPlan" bar-list module reading the exact
+// same targets rather than silently recombining Region-tier goals (e.g.
+// Lats, Traps) back down to one Category bucket ("Back").
+//
 // Deliberately self-gating on real data, not just the module on/off
 // toggle: fetchMuscleGroupTargets returns an empty map for anyone who's
 // never saved a goal (WeeklySetGoals' own steppers all just show the
@@ -33,7 +41,10 @@ const DEFAULT_TARGET = 10;
 // someone actually setting goals. Returns null in that case so the
 // module effectively stays invisible until they do, even if left
 // enabled in Customize Home.
-export default function WeeklyGoalsBodyMap({ userId, history }) {
+export default function WeeklyGoalsBodyMap({ userId, history, nameMode }) {
+  const resolvedNameMode = nameMode || getPrefs().muscleNameMode;
+  const options = useMemo(() => getMuscleGroupOptions(resolvedNameMode), [resolvedNameMode]);
+
   const [rawTargets, setRawTargets] = useState(null); // null = loading; {} = no goals saved yet
 
   useEffect(() => {
@@ -42,9 +53,9 @@ export default function WeeklyGoalsBodyMap({ userId, history }) {
       .then((map) => { if (!cancelled) setRawTargets(map); })
       .catch(() => { if (!cancelled) setRawTargets({}); });
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, resolvedNameMode]);
 
-  const rollingTotals = useMemo(() => computeRollingWeeklyTotals(history), [history]);
+  const rollingTotals = useMemo(() => computeRollingWeeklyTotals(history, resolvedNameMode), [history, resolvedNameMode]);
 
   if (rawTargets === null) {
     return (
@@ -57,12 +68,12 @@ export default function WeeklyGoalsBodyMap({ userId, history }) {
   if (Object.keys(rawTargets).length === 0) return null;
 
   const filledTargets = {};
-  for (const m of Object.keys(MUSCLE_COLORS)) filledTargets[m] = rawTargets[m] ?? DEFAULT_TARGET;
+  for (const { key } of options) filledTargets[key] = rawTargets[key] ?? DEFAULT_TARGET;
 
   return (
     <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
       <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Weekly Set Goals — Body Map</div>
-      <BodyMap mode="plan" targets={filledTargets} rollingTotals={rollingTotals} />
+      <BodyMap mode="plan" targets={filledTargets} rollingTotals={rollingTotals} planNameMode={resolvedNameMode} />
     </div>
   );
 }

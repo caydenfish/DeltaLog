@@ -330,17 +330,23 @@ export function summarizeWorkoutDuration(history) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// Per-generic-bucket set totals (primary+secondary combined, Full Body
+// Per-muscle-group set totals (primary+secondary combined, Full Body
 // tracked separately via its own set count) for the trailing 7 days —
 // today back 6 days, independent of whatever Training Range a chart
 // happens to be showing. Backs "My Plan" (the weekly-set-target module)
 // and its matching body-map coloring mode, both of which need "this
 // week" specifically, not "however many days is currently selected."
-export function computeRollingWeeklyTotals(history) {
+// `nameMode` ("generic" | "detailed" | "scientific", default "generic")
+// controls the granularity of the grouping itself, matching whichever
+// tier Weekly Set Goals is currently tracking targets at (see
+// getMuscleGroupOptions in muscleNomenclature.js) -- e.g. in "detailed"
+// mode, Lats and Traps come back as separate keys instead of both
+// collapsing into "Back".
+export function computeRollingWeeklyTotals(history, nameMode = "generic") {
   const cutoff = toLocalDateStr(new Date(Date.now() - 6 * 86400000));
   const { entries } = summarizeHistory(history || []);
   const rolling = entries.filter((e) => e.date >= cutoff);
-  const { primary, secondary, fullBodySets } = computeMuscleSetCounts(rolling, "generic");
+  const { primary, secondary, fullBodySets } = computeMuscleSetCounts(rolling, nameMode);
   const totals = {};
   for (const label of new Set([...Object.keys(primary), ...Object.keys(secondary)])) {
     totals[label] = (primary[label] || 0) + (secondary[label] || 0);
