@@ -9,7 +9,6 @@ import { toDisplay } from "./lib/weight";
 import { toLocalDateStr } from "./lib/time";
 import ExerciseThumb from "./ExerciseThumb";
 import { InlineLoading } from "./LoadingSpinner";
-import MuscleTaxonomyManager from "./MuscleTaxonomyManager";
 import CustomExerciseModal from "./CustomExerciseModal";
 import MyCustomExercises from "./MyCustomExercises";
 import { IconX, IconGear, IconPencil, IconCheck, IconSearch } from "./Icons";
@@ -394,7 +393,6 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [showTaxonomy, setShowTaxonomy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showMyCustom, setShowMyCustom] = useState(false);
 
@@ -552,10 +550,9 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: 420, minHeight: "100vh", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: isAdmin ? "auto 1fr auto auto" : "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
+        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={smallBtn}>&#8249;</button>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, textAlign: "center" }}>EXERCISE LIBRARY</div>
-          {isAdmin && <button onClick={() => setShowTaxonomy(true)} aria-label="Manage muscle taxonomy" style={smallBtn}>Taxonomy</button>}
           {isAdmin ? (
             <button onClick={() => setShowCreate(true)} aria-label="New shared exercise" style={{ ...smallBtn, color: T.accent, borderColor: T.accent }}>+ New</button>
           ) : (
@@ -753,16 +750,6 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
         <MyCustomExercises
           user={{ id: userId }}
           onClose={() => { setShowMyCustom(false); load(); }}
-        />
-      )}
-
-      {isAdmin && showTaxonomy && (
-        <MuscleTaxonomyManager
-          muscleGroups={muscleGroups}
-          muscleDetailed={muscleDetailed}
-          taxonomy={taxonomy}
-          onReload={reloadTaxonomyData}
-          onClose={() => setShowTaxonomy(false)}
         />
       )}
 

@@ -13,12 +13,12 @@ import { toLocalDateStr } from "./lib/time";
 import BodyHeatmap from "./BodyHeatmap";
 import MuscleSetsDetail from "./MuscleSetsDetail";
 import HomeChartCard, { RangeSwitcher } from "./HomeChartCard";
-import WeeklySetGoals, { WeeklySetGoalsEditor } from "./WeeklySetGoals";
 import WeeklyGoalsBodyMap from "./WeeklyGoalsBodyMap";
 import ProgramView from "./ProgramView";
 import { fetchActiveProgram, fetchProgramSessionCount } from "./lib/programQueries";
 import { computeTodaysProgramDay } from "./lib/programEngine";
 import HomeModulesEditor from "./HomeModulesEditor";
+import AdminTaxonomyManager from "./AdminTaxonomyManager";
 import MachineNamesManager from "./MachineNamesManager";
 import Logo from "./Logo";
 import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX } from "./Icons";
@@ -222,7 +222,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [settingsQuery, setSettingsQuery] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
   const [showProgramView, setShowProgramView] = useState(false);
-  const [showWeeklySetGoals, setShowWeeklySetGoals] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
@@ -240,6 +239,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [showAdminRoles, setShowAdminRoles] = useState(false);
   const [showAdminUserActivity, setShowAdminUserActivity] = useState(false);
   const [showAdminReferralSources, setShowAdminReferralSources] = useState(false);
+  const [showAdminTaxonomy, setShowAdminTaxonomy] = useState(false);
   const [showSplitsManager, setShowSplitsManager] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -863,8 +863,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           )}
                         </div>
                       );
-                    case "myPlan":
-                      return <WeeklySetGoals key={m.id} userId={user.id} history={history} nameMode={muscleNameMode} />;
                     case "volume":
                       return (
                         <HomeChartCard
@@ -1057,13 +1055,12 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
             <div style={{ padding: 16, flex: 1 }}>
               {/* Training Plan */}
-              {(settingsMatch("program generator training block multi-week progression deload science coach") || settingsMatch("weekly set goals my plan targets muscle group individual uniform one for all")) && (
+              {settingsMatch("program generator training block multi-week progression deload science coach") && (
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Training Plan</div>
-              {settingsMatch("program generator training block multi-week progression deload science coach") && (
               <button
                 onClick={() => setShowProgramView(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
+                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
               >
                 <div>
                   <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Program</div>
@@ -1071,19 +1068,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 </div>
                 <div style={{ color: T.dim, fontSize: 16 }}>›</div>
               </button>
-              )}
-              {settingsMatch("weekly set goals my plan targets muscle group individual uniform one for all") && (
-              <button
-                onClick={() => setShowWeeklySetGoals(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Weekly Set Goals</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Set a weekly target per muscle group, or one number for all of them</div>
-                </div>
-                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-              </button>
-              )}
               </>
               )}
 
@@ -1288,7 +1272,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       )}
 
       {showTemplates && <Templates user={user} onClose={() => setShowTemplates(false)} />}
-      {showWeeklySetGoals && <WeeklySetGoalsEditor userId={user.id} nameMode={muscleNameMode} onClose={() => setShowWeeklySetGoals(false)} />}
       {showPreferencesScreen && (
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -1340,6 +1323,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           onOpenUserActivity={() => setShowAdminUserActivity(true)}
           onOpenReferralSources={() => setShowAdminReferralSources(true)}
           onOpenSplits={() => setShowSplitsManager(true)}
+          onOpenTaxonomy={() => setShowAdminTaxonomy(true)}
           onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
           adminViewMode={adminViewMode}
@@ -1347,6 +1331,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
         />
       )}
       {showAdmin && <AdminExercises user={user} onClose={() => setShowAdmin(false)} />}
+      {showAdminTaxonomy && <AdminTaxonomyManager onClose={() => setShowAdminTaxonomy(false)} />}
       {showExerciseLibraryView && <ExerciseLibraryView muscleNameMode={muscleNameMode} isAdmin={effectiveIsAdmin} userId={user.id} onClose={() => setShowExerciseLibraryView(false)} />}
       {showMachineNames && <MachineNamesManager user={user} onClose={() => setShowMachineNames(false)} />}
       {muscleDetail && (

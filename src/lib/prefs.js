@@ -4,19 +4,21 @@ const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: tr
 // The home dashboard's modules, in their default order — every user
 // effectively starts with this until they customize it via the pencil
 // icon on Home. Keep in sync with the switch in Home.jsx's renderModule.
-// weeklyGoalsMap is additionally gated at render time (not just this
-// on/off toggle) on the person actually having saved weekly set goals --
-// see WeeklyGoalsBodyMap.jsx.
-export const DEFAULT_HOME_MODULE_IDS = ["insight", "myPlan", "volume", "weight", "workoutTime", "muscleBreakdown", "weeklyGoalsMap", "calendar"];
+// weeklyGoalsMap is the one home for Weekly Set Goals (the bars widget
+// that used to live under a separate "myPlan" id, and the standalone
+// Settings entry, are both rolled into it) -- it doesn't fully hide
+// itself even before any goal is saved, showing a setup prompt instead,
+// since removing the Settings entry means this module (once enabled) is
+// the only way in. See WeeklyGoalsBodyMap.jsx.
+export const DEFAULT_HOME_MODULE_IDS = ["insight", "volume", "weight", "workoutTime", "muscleBreakdown", "weeklyGoalsMap", "calendar"];
 
 export const HOME_MODULE_LABELS = {
   insight: "Last workout",
-  myPlan: "Weekly Set Goals",
   volume: "Volume over time",
   weight: "Bodyweight over time",
   workoutTime: "Workout time",
   muscleBreakdown: "Muscle breakdown",
-  weeklyGoalsMap: "Weekly Set Goals — Body Map",
+  weeklyGoalsMap: "Weekly Set Goals",
   calendar: "Calendar",
 };
 

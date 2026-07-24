@@ -1,7 +1,7 @@
 import { FRONT_REGIONS, BACK_REGIONS, OUTLINE_FRONT, OUTLINE_BACK, VIEWBOX_FRONT, VIEWBOX_BACK } from "./lib/bodyMapData";
 import { resolveRegions } from "./lib/bodyMapRegions";
 import { statusColorFor, PLAN_NEUTRAL } from "./lib/planStatus";
-import { getDetailedTaxonomyEntries, getMuscleTaxonomyEntries } from "./lib/muscleNomenclature";
+import { getDetailedTaxonomyEntries } from "./lib/muscleNomenclature";
 
 const T = {
   surface2: "#22262E",
@@ -44,25 +44,25 @@ const REGION_GENERIC = {
 };
 
 // Plan mode's equivalent of intensity mode's buildRegionTotals, for when
-// weekly-set-goal targets are tracked at Region/Anatomy resolution
-// instead of Category's 8 fixed buckets (see WeeklySetGoals.jsx's
-// getMuscleGroupOptions) -- REGION_GENERIC above only has one answer per
-// anatomical slug, which is right for Category mode but not for finer
-// tiers, where (same as intensity mode) a single visual patch can be
+// weekly-set-goal targets are tracked at Region resolution instead of
+// Category's 8 fixed buckets (see muscleNomenclature.js's
+// getMuscleGroupOptions, which -- same reasoning as there -- treats
+// Region and Anatomy identically, both at Region tier, never Anatomy's
+// finer scientific names). REGION_GENERIC above only has one answer per
+// anatomical slug, which is right for Category mode but not for Region
+// tier, where (same as intensity mode) a single visual patch can be
 // shared by more than one taxonomy entry: "Lats" and "Upper Back" both
 // shade the one back patch the SVG art has for it, so a Region-mode
 // silhouette needs to know both keys contribute there. Built once per
 // mode rather than per region -- cheap (a few dozen entries), and keeps
 // Silhouette itself from repeating the taxonomy walk per region rendered.
-function buildRegionKeyMap(nameMode) {
-  const entries = nameMode === "scientific" ? getMuscleTaxonomyEntries() : getDetailedTaxonomyEntries();
-  const field = nameMode === "scientific" ? "scientific" : "detailed";
+function buildRegionKeyMap() {
   const map = {};
-  for (const e of entries) {
+  for (const e of getDetailedTaxonomyEntries()) {
     for (const { view, slug } of resolveRegions(e.detailed)) {
       const key = `${view}:${slug}`;
       if (!map[key]) map[key] = new Set();
-      map[key].add(e[field]);
+      map[key].add(e.detailed);
     }
   }
   return map;
@@ -287,7 +287,7 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
 export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals, roleFilter = "both", planNameMode = "generic" }) {
   const totals = mode === "plan" ? {} : buildRegionTotals(primary, secondary);
   const maxTotal = mode === "plan" ? 1 : Math.max(1, ...Object.values(totals).map((t) => roleTotal(t, roleFilter)));
-  const regionKeyMap = mode === "plan" && planNameMode !== "generic" ? buildRegionKeyMap(planNameMode) : null;
+  const regionKeyMap = mode === "plan" && planNameMode !== "generic" ? buildRegionKeyMap() : null;
 
   return (
     <div>

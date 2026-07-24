@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.12": {
+    title: "Weekly Set Goals consolidated, Anatomy mode fixed",
+    items: [
+      "Fixed: switching Muscle Names to Anatomy was tracking Weekly Set Goals at the full scientific-name level instead of the same Region-level muscles (Lats, Traps, Quads, etc.) Region mode already uses — both now track identically at that level, so you don't need the exact anatomical name just to set a goal.",
+      "Weekly Set Goals now lives in one place: the Home dashboard's Weekly Set Goals card. It now includes a Goals breakdown you can expand to see every muscle's exact current/target numbers (same style as Muscle breakdown's Coverage breakdown), plus the Edit Goals button — the separate bars widget and the standalone Settings entry are gone, folded into this one card.",
+      "Muscle Taxonomy management moved from Exercise Library into the Admin menu.",
+    ],
+  },
   "1.12.11": {
     title: "Independent per-muscle weekly goals, clearer heatmap breakdowns",
     items: [
