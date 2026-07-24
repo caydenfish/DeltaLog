@@ -44,6 +44,63 @@
       }
     </style>
     <title>DeltaLog</title>
+    <script>
+      // Self-heals the exact "logo shows, then gray screen" failure: if
+      // this tab is holding a stale app shell (an old cached index.html
+      // and/or service-worker precache) from before a deploy that
+      // removed the JS/CSS files it references, the browser can't load
+      // them and the app never finishes booting -- previously the only
+      // fix was manually clearing site data. This runs before the app
+      // bundle itself (inline, in <head>, ahead of the module script
+      // tag below) specifically so it's already listening even in the
+      // worst case where the main bundle fails to load at all -- a
+      // handler defined inside that bundle would never run if the
+      // bundle itself is what's missing.
+      //
+      // Catches two failure shapes: (1) a <script>/<link> tag failing
+      // to load (capturing-phase 'error', which does fire for resource
+      // load failures even though they don't bubble), and (2) a
+      // dynamic-import/chunk-load rejection surfacing as an unhandled
+      // promise rejection, which is how Vite/Workbox module-loading
+      // failures typically present.
+      //
+      // On either, clears this origin's Cache Storage (dropping any
+      // stale service-worker precache) and does exactly one hard
+      // reload -- guarded by a sessionStorage flag so a genuine,
+      // reload-won't-fix-it error can't trap someone in a loop; it
+      // tries once per tab session, then gets out of the way and lets
+      // the real error surface normally.
+      (function () {
+        var FLAG = "dl_stale_asset_reload_attempted";
+        function isStaleAssetMessage(msg) {
+          if (!msg) return false;
+          return /Failed to fetch dynamically imported module|Loading chunk .* failed|error loading dynamically imported module|Importing a module script failed|Unable to preload CSS|MIME type/i.test(msg);
+        }
+        function reloadOnce() {
+          if (sessionStorage.getItem(FLAG)) return;
+          sessionStorage.setItem(FLAG, "1");
+          if (window.caches && caches.keys) {
+            caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            }).catch(function () {}).then(function () {
+              window.location.reload();
+            });
+          } else {
+            window.location.reload();
+          }
+        }
+        window.addEventListener("error", function (e) {
+          var tag = e && e.target && e.target.tagName;
+          if (tag === "SCRIPT" || tag === "LINK") { reloadOnce(); return; }
+          if (isStaleAssetMessage(e && e.message)) reloadOnce();
+        }, true);
+        window.addEventListener("unhandledrejection", function (e) {
+          var reason = e && e.reason;
+          var msg = (reason && reason.message) || String(reason || "");
+          if (isStaleAssetMessage(msg)) reloadOnce();
+        });
+      })();
+    </script>
   </head>
   <body style="margin:0; background:#101216; font-family: 'Barlow Condensed', sans-serif; overscroll-behavior-y: none;">
     <div id="root" data-html2canvas-ignore="true"></div>

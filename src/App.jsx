@@ -5,7 +5,7 @@ import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits, fet
 import { setMuscleTaxonomyCache } from "./lib/muscleNomenclature";
 import { setBodyMapRegionCache } from "./lib/bodyMapRegions";
 import { setSplitsCache, setSplitExclusionsCache } from "./lib/splits";
-import { getPrefs } from "./lib/prefs";
+import { getPrefs, initPrefsSync, clearPrefsSync } from "./lib/prefs";
 import Auth from "./Auth";
 import ResetPassword from "./ResetPassword";
 import Onboarding from "./Onboarding";
@@ -134,6 +134,20 @@ export default function App() {
   useEffect(() => {
     if (!session) return;
     logAppOpen().catch(() => {});
+  }, [session?.user?.id]);
+
+  // Pulls this person's server-backed preference backup down and merges
+  // it into localStorage once, right at sign-in (see initPrefsSync in
+  // lib/prefs.js) -- restores everything if this is a fresh/cleared
+  // browser, changes nothing if local prefs already exist. Cleared at
+  // sign-out so a different person signing in on the same device next
+  // (or this same person signing in again later) never has a stray
+  // debounced write land under the wrong user id.
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) { clearPrefsSync(); return; }
+    initPrefsSync(userId);
+    return () => clearPrefsSync();
   }, [session?.user?.id]);
 
   useEffect(() => {

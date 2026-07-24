@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.14": {
+    title: "Fixed a gray-screen loading bug, sign-in fix, and preferences now backed up",
+    items: [
+      "Fixed: after a run of quick updates, the app could get stuck showing the logo and then a blank gray screen instead of finishing loading, requiring you to manually clear site data to fix it. The app now catches this automatically and recovers on its own with a single reload — no more manual fix needed.",
+      "Fixed: the \"Continue with Google\" button on the sign-in screen could be completely unreachable on some phones — a layout issue meant it could end up scrolled out of reach with no way to get to it. It's now always reachable.",
+      "Your preferences (units, muscle names display, rest timer settings, Home dashboard layout, and everything else in Preferences) are now backed up to your account, not just kept on this device. If you ever have to clear your browser's cache or site data — including as a fix for the gray-screen issue above — your preferences will be restored automatically the next time you sign in, instead of resetting to defaults.",
+    ],
+  },
   "1.12.12": {
     title: "Weekly Set Goals consolidated, Anatomy mode fixed",
     items: [

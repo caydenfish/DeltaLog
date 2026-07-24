@@ -1,5 +1,74 @@
+import { supabase } from "./supabaseClient";
+
 const KEY = "deltalog_prefs";
 const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both" };
+
+// Backs up preferences to Supabase (migration_071's user_preferences,
+// one jsonb blob per user) so clearing browser data -- cookies, cache,
+// site data, the exact recovery step for the stale-service-worker
+// gray-screen bug fixed in 1.12.14 -- doesn't also wipe every
+// preference someone's set. Imports supabaseClient directly rather than
+// going through queries.js, specifically to avoid a circular import:
+// queries.js already imports getPrefs from this file (for unit
+// conversions), so this file importing queries.js back would create a
+// cycle. syncUserId is set once at sign-in (App.jsx) and cleared at
+// sign-out; setPref() debounces a full-snapshot push whenever it's set,
+// so call sites elsewhere in the app don't need to know sync exists at
+// all -- same as they never needed to know about localStorage directly.
+let syncUserId = null;
+let syncTimer = null;
+
+function pushPrefsSync() {
+  if (!syncUserId) return;
+  const uid = syncUserId;
+  supabase.from("user_preferences")
+    .upsert({ user_id: uid, prefs: getPrefs(), updated_at: new Date().toISOString() })
+    .then(() => {})
+    .catch(() => {});
+}
+
+function schedulePrefsSync() {
+  if (!syncUserId) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(pushPrefsSync, 1500);
+}
+
+// Called once at sign-in (App.jsx). Pulls the person's saved server
+// copy and merges it UNDER whatever's already in localStorage -- local
+// wins for any key it actually contains (so an in-progress local change
+// on this device never gets clobbered by a slightly-stale server copy),
+// server only fills in keys local doesn't have at all. On a genuinely
+// fresh/cleared browser, local has nothing, so this restores everything
+// from the server copy; on a normal browser with existing prefs, this
+// is a no-op merge that changes nothing they've already got locally.
+export async function initPrefsSync(userId) {
+  syncUserId = userId;
+  try {
+    const { data } = await supabase.from("user_preferences").select("prefs").eq("user_id", userId).maybeSingle();
+    const serverPrefs = data?.prefs || null;
+    if (!serverPrefs) return;
+    let localRaw = {};
+    try {
+      const raw = localStorage.getItem(KEY);
+      localRaw = raw ? JSON.parse(raw) : {};
+    } catch {
+      localRaw = {};
+    }
+    const merged = { ...serverPrefs, ...localRaw };
+    localStorage.setItem(KEY, JSON.stringify(merged));
+  } catch {
+    // Offline, or the table/row doesn't exist yet for this user --
+    // local prefs (whatever they are) still work exactly as before.
+  }
+}
+
+// Called at sign-out so a subsequent sign-in (possibly a different
+// person on a shared device) never has a stray debounced write land
+// under the wrong user_id.
+export function clearPrefsSync() {
+  syncUserId = null;
+  clearTimeout(syncTimer);
+}
 
 // The home dashboard's modules, in their default order — every user
 // effectively starts with this until they customize it via the pencil
@@ -74,6 +143,7 @@ export function setPref(key, value) {
   } catch {
     // ignore write failures (e.g. private browsing storage limits)
   }
+  schedulePrefsSync();
 }
 
 // Returns the home dashboard's modules as [{ id, enabled }], in the

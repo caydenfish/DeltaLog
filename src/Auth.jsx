@@ -109,7 +109,7 @@ export default function Auth() {
 
   return (
     <div style={{ height: "100dvh", background: T.bg, display: "flex", flexDirection: "column", padding: 24, boxSizing: "border-box", overflow: "hidden" }}>
-      <div style={{ flex: 1.3, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
         <Logo size={120} />
         <Wordmark size={40} />
         <div style={{ color: T.dim, fontSize: 13, fontWeight: 600, letterSpacing: 0.3, textAlign: "center", marginTop: -4 }}>
@@ -123,7 +123,7 @@ export default function Auth() {
         </button>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", width: "100%", maxWidth: 360, margin: "0 auto", overflowY: "auto" }}>
+      <div style={{ flex: 1.3, minHeight: 0, display: "flex", flexDirection: "column", width: "100%", maxWidth: 360, margin: "0 auto", overflowY: "auto" }}>
         <div style={{ color: T.dim, fontSize: 14, marginBottom: 20, textAlign: "center" }}>
           Sign in to sync your sets across sessions.
         </div>

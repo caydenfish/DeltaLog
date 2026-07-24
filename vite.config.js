@@ -37,7 +37,22 @@ export default defineConfig({
       },
       workbox: {
         // Precache the app shell so it opens even with zero signal at the gym.
-        globPatterns: ["**/*.{js,css,html,ico,png,svg}"]
+        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+        // cleanupOutdatedCaches: once a new service worker activates,
+        // delete any precache storage left over from older versions --
+        // without this, stale cache entries from several deploys back
+        // can accumulate and, in rare cases, get served instead of the
+        // current version. clientsClaim: once an update IS applied
+        // (still only ever via the explicit "Reload now" flow -- this
+        // doesn't change when that happens, see App.jsx's showUpdateNotice
+        // gating), the new worker takes control of every open tab
+        // immediately rather than requiring yet another navigation.
+        // navigateFallback: explicit, so any navigation request always
+        // resolves to the precached app shell rather than depending on
+        // generateSW's default inference.
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        navigateFallback: "/index.html"
       }
     })
   ],
