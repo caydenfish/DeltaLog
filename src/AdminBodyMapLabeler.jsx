@@ -40,11 +40,15 @@ const btnPrimary = { ...btn, background: T.accent, borderColor: T.accent, fontWe
 // category when every selected shape shares one, so the fast pass
 // actually speeds up the precise pass instead of being separate busywork.
 //
-// The shapes themselves render fully invisible over the reference art
-// (the real rendered muscle diagram, cropped per view into
-// public/body-map-reference/) -- they're click targets, not something
-// to look at. Only selected/already-labeled shapes get a visible tint,
-// so the picture stays clean and legible.
+// The shapes render with a neutral anatomical fill + stroke directly
+// (the real DXF art, confirmed to look correct on its own) rather than
+// against a separately-rendered reference image -- an external PNG
+// crop turned out not to share the same coordinate frame as this
+// geometry (different aspect ratio even after tight-cropping), so
+// overlaying it caused shapes to visually sit in the wrong place even
+// though the click targets themselves were correct. Same coordinate
+// system for the picture and the click targets means alignment is
+// guaranteed, not something to calibrate.
 export default function AdminBodyMapLabeler({ onClose }) {
   const [view, setView] = useState("male_front");
   const [mode, setMode] = useState("category"); // "category" | "region"
@@ -202,34 +206,27 @@ export default function AdminBodyMapLabeler({ onClose }) {
             <InlineLoading />
           ) : (
             <div style={{ position: "relative", width: (canvasWidth - 40) * zoom, height: ((canvasWidth - 40) * (viewData.h / viewData.w)) * zoom }}>
-              <img
-                src={`/body-map-reference/${view}.png`}
-                alt=""
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }}
-              />
               <svg
                 viewBox={`0 0 ${viewData.w} ${viewData.h}`}
                 width={(canvasWidth - 40) * zoom}
                 height={((canvasWidth - 40) * (viewData.h / viewData.w)) * zoom}
-                style={{ position: "absolute", inset: 0, display: "block" }}
+                style={{ position: "absolute", inset: 0, display: "block", background: "white", border: "1px solid #ddd" }}
               >
                 {viewData.shapes.map((s) => {
                   const rec = labels[s.id];
                   const isSelected = selected.has(String(s.id));
                   const hasValueForMode = mode === "category" ? rec?.category : rec?.muscleKey;
-                  let fill = "transparent";
-                  let fillOpacity = 0;
-                  if (rec?.excluded) { fill = "#000"; fillOpacity = 0.25; }
-                  else if (isSelected) { fill = "#ff6b6b"; fillOpacity = 0.55; }
-                  else if (hasValueForMode) { fill = mode === "category" ? "#4E8DE8" : "#3BA55D"; fillOpacity = 0.35; }
+                  let fill = "#d9d9d9"; // neutral anatomical fill -- this is the real DXF art, not a placeholder
+                  if (rec?.excluded) fill = "#f0f0f0";
+                  else if (isSelected) fill = "#ff6b6b";
+                  else if (hasValueForMode) fill = mode === "category" ? "#a6c8f4" : "#a6e0a6";
                   return (
                     <path
                       key={s.id}
                       d={s.d}
                       fill={fill}
-                      fillOpacity={fillOpacity}
-                      stroke={isSelected ? "#b02a2a" : "transparent"}
-                      strokeWidth={isSelected ? 2 : 0}
+                      stroke={isSelected ? "#b02a2a" : "#666"}
+                      strokeWidth={isSelected ? 2 : 1}
                       style={{ cursor: "pointer" }}
                       onClick={(e) => toggleShape(s.id, e.shiftKey)}
                     />
