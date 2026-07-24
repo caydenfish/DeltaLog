@@ -15,7 +15,7 @@ import ExportWorkoutModal from "./ExportWorkoutModal";
 import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome, IconDragHandle, IconChevronUp, IconChevronDown } from "./Icons";
 import { getSplits } from "./lib/splits";
-import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf } from "./lib/muscleNomenclature";
+import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
 // "Full Body" and "Neck" are real generic buckets (used for coloring/
 // display elsewhere) but aren't meaningful things to target when
 // building a workout via the generator's muscle picker -- nobody picks
@@ -332,6 +332,21 @@ function SessionSetRow({ label, set, unit, interactive, deleteMode, selected, on
 }
 
 export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, savedWorkout }) {
+  // The muscle taxonomy fetch (App.jsx) and this screen's own boot chain
+  // both kick off at app start, and either can win the race -- someone
+  // resuming a workout right after opening the app can easily start
+  // logging before the real DB taxonomy has loaded. Every muscle-label
+  // lookup below falls back to the static ALIASES table until then, and
+  // with nothing forcing a re-render, an exercise using an admin-added
+  // taxonomy entry that ALIASES doesn't know about would keep rendering
+  // with the wrong (or unmapped) region on the live heatmap for the rest
+  // of the session, even after the real data arrives. Subscribing here
+  // (same pattern Home.jsx already uses) means once setMuscleTaxonomyCache
+  // fires, this component re-renders and every muscleLabel/resolveRegions
+  // call downstream recomputes against the correct data.
+  const [taxonomyVersion, setTaxonomyVersion] = useState(getTaxonomyVersion);
+  useEffect(() => subscribeTaxonomy(() => setTaxonomyVersion(getTaxonomyVersion())), []);
+
   const [view, setView] = useState("workout");
   const [library, setLibrary] = useState([]);
   const [workoutId, setWorkoutId] = useState(null);

@@ -1,6 +1,15 @@
 import { muscleLabel, isRealMuscle } from "./muscleNomenclature";
 import { toLocalDateStr } from "./time";
 
+// Sets arrive from two different shapes depending on caller: raw DB rows
+// (workout_exercises.sets, snake_case is_warmup -- summarizeHistory) and
+// SetLogger's own live in-workout state (camelCase isWarmup). Checking
+// both once here means every consumer of a set's warmup status agrees,
+// rather than each call site guessing which shape it was handed.
+function isWarmupSet(s) {
+  return !!(s.is_warmup ?? s.isWarmup);
+}
+
 // Computes total working volume (weight × reps, summed across sets) per
 // muscle group from a list of { muscle, secondaryMuscles, sets } entries,
 // keeping primary-mover volume and secondary-mover volume separate so the
@@ -57,13 +66,25 @@ export function computeMuscleVolumes(entries) {
 // grouping prefers each exercise's tagged `primaryMuscles` (real
 // per-exercise granularity from the muscle taxonomy) and falls back to
 // the broad `muscle` bucket for exercises that predate that tagging.
-export function computeMuscleSetCounts(entries, nameMode = "generic") {
+// `setsFilter` ("working" | "warmup" | "both") decides which of an
+// entry's sets get counted -- "working" (the default, matching every
+// existing call site's prior behavior) excludes warmup sets, "warmup"
+// counts only warmup sets, "both" counts everything. Callers whose sets
+// were already pre-filtered before reaching here (SetLogger's live
+// heatmap, Templates' synthetic planning entries) are unaffected either
+// way since there's nothing to filter out.
+export function computeMuscleSetCounts(entries, nameMode = "generic", setsFilter = "working") {
   const primary = {};
   const secondary = {};
   let fullBodySets = 0;
 
   for (const entry of entries) {
-    const count = (entry.sets || []).length;
+    const rawSets = entry.sets || [];
+    const filteredSets =
+      setsFilter === "both" ? rawSets
+      : setsFilter === "warmup" ? rawSets.filter(isWarmupSet)
+      : rawSets.filter((s) => !isWarmupSet(s));
+    const count = filteredSets.length;
     if (count <= 0) continue;
 
     if (entry.muscle === "Full Body") {
@@ -329,7 +350,14 @@ export function computeRollingWeeklyTotals(history) {
 }
 
 // entries suitable for computeMuscleVolumes, and a parallel list of
-// { date, volume } points for the volume-over-time chart.
+// { date, volume } points for the volume-over-time chart. `entries[].sets`
+// carries every logged set (working and warmup both, is_warmup intact)
+// rather than pre-filtering warmup out -- computeMuscleSetCounts' own
+// setsFilter decides which ones count for a given caller, so the same
+// entries serve the volume chart (always working-set volume, computed
+// below regardless of what a caller later does with entries) and the
+// muscle breakdown heatmap (whose Sets criteria toggle needs both kinds
+// available to filter between).
 export function summarizeHistory(history) {
   const entries = [];
   const byDate = {};
@@ -340,10 +368,10 @@ export function summarizeHistory(history) {
     for (const we of w.workout_exercises || []) {
       const ex = we.exercises;
       if (!ex) continue;
-      const workingSets = (we.sets || []).filter((s) => !s.is_warmup);
-      const vol = workingSets.reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
-      byDate[date] += vol;
-      entries.push({ muscle: ex.muscle_group, primaryMuscles: ex.primary_muscles || [], secondaryMuscles: ex.secondary_muscles || [], sets: workingSets, exerciseName: ex.name, date });
+      const allSets = we.sets || [];
+      const workingVol = allSets.filter((s) => !s.is_warmup).reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
+      byDate[date] += workingVol;
+      entries.push({ muscle: ex.muscle_group, primaryMuscles: ex.primary_muscles || [], secondaryMuscles: ex.secondary_muscles || [], sets: allSets, exerciseName: ex.name, date });
     }
   }
 

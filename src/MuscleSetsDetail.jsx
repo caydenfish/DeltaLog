@@ -2,6 +2,10 @@ import { useState } from "react";
 import { muscleLabel, isRealMuscle } from "./lib/muscleNomenclature";
 import { formatWeight } from "./lib/weight";
 
+function isWarmupSet(s) {
+  return !!(s.is_warmup ?? s.isWarmup);
+}
+
 const T = {
   bg: "#101216",
   surface: "#1A1D23",
@@ -42,8 +46,19 @@ function roleTag(role) {
 // already-labeled name at the caller's selected naming mode (as produced
 // by computeMuscleSetCounts), so matching re-derives each entry's label
 // at that same mode rather than comparing raw muscle values directly.
-export default function MuscleSetsDetail({ muscle, entries, nameMode, units, onClose }) {
+export default function MuscleSetsDetail({ muscle, entries, nameMode, units, onClose, setsFilter = "working" }) {
   const [openIdx, setOpenIdx] = useState(null);
+
+  // entries[].sets now carries every logged set, working and warmup both
+  // (see volume.js summarizeHistory) -- filter to whichever the heatmap
+  // this was opened from is currently showing, so the drill-in's set
+  // list and totals always match what's colored on the body map.
+  function filteredSetsOf(e) {
+    const raw = e.sets || [];
+    if (setsFilter === "both") return raw;
+    if (setsFilter === "warmup") return raw.filter(isWarmupSet);
+    return raw.filter((s) => !isWarmupSet(s));
+  }
 
   function buildRows(role) {
     return (entries || [])
@@ -55,7 +70,8 @@ export default function MuscleSetsDetail({ muscle, entries, nameMode, units, onC
         }
         return (e.secondaryMuscles || []).some((sec) => isRealMuscle(sec) && sec !== "Full Body" && muscleLabel(sec, nameMode) === muscle);
       })
-      .map((e) => ({ exerciseName: e.exerciseName, date: e.date, sets: e.sets, role }));
+      .map((e) => ({ exerciseName: e.exerciseName, date: e.date, sets: filteredSetsOf(e), role }))
+      .filter((r) => r.sets.length > 0);
   }
 
   const rows = [...buildRows("primary"), ...buildRows("secondary")]

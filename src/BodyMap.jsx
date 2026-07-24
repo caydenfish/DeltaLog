@@ -58,6 +58,26 @@ const TIERS = [
   { key: "high", label: "High", color: T.accent, max: Infinity },
 ];
 
+// Turns TIERS' fixed fractional cutoffs (1/3, 2/3, above) into the
+// current data's actual set-count boundaries, so the legend reads real
+// numbers ("1-4", "9-12") instead of the qualitative "Low/Moderate/High"
+// words it used to -- maxTotal is the exact same value already driving
+// tierFor()'s bucketing below, so the legend always matches precisely
+// what's coloring the silhouette: the highest tier's top number is
+// always the actual busiest region's real set count, and the lowest
+// tier's numbers are always the smallest logged counts.
+function intensityTierLegend(maxTotal) {
+  const lowMax = Math.max(1, Math.floor(maxTotal / 3));
+  const modMax = Math.max(lowMax + 1, Math.floor((maxTotal * 2) / 3));
+  const hiMin = Math.min(maxTotal, modMax + 1);
+  return [
+    { key: "none", color: NEUTRAL, label: "0" },
+    { key: "low", color: "#C9A227", label: lowMax === 1 ? "1" : `1–${lowMax}` },
+    { key: "moderate", color: "#E8752E", label: modMax === lowMax + 1 ? `${modMax}` : `${lowMax + 1}–${modMax}` },
+    { key: "high", color: T.accent, label: hiMin === maxTotal ? `${maxTotal}` : `${hiMin}–${maxTotal}` },
+  ];
+}
+
 const PLAN_TIERS = [
   { key: "none", label: "Not started", color: PLAN_NEUTRAL },
   { key: "under", label: "Under target", color: "#E8752E" },
@@ -117,7 +137,18 @@ function buildRegionTotals(primary, secondary) {
   return totals;
 }
 
-function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, targets, rollingTotals }) {
+// Collapses a region's { primary, secondary } split down to the single
+// number intensity mode colors and sizes tiers against, per the Muscles
+// criteria (Primary only / Secondary only / both combined -- the
+// default, matching prior behavior for any caller that doesn't pass one,
+// e.g. SetLogger's live heatmap and Templates' Coverage panel).
+function roleTotal(t, roleFilter) {
+  if (roleFilter === "primary") return t.primary;
+  if (roleFilter === "secondary") return t.secondary;
+  return t.primary + t.secondary;
+}
+
+function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, targets, rollingTotals, roleFilter }) {
   return (
     <svg viewBox={viewBox} width="100%" style={{ maxWidth: 150, display: "block", margin: "0 auto" }}>
       <path d={outline} fill="none" stroke={OUTLINE_STROKE} strokeWidth={2} vectorEffect="non-scaling-stroke" />
@@ -140,7 +171,7 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
         }
         const key = `${view}:${region.slug}`;
         const t = totals[key] || { primary: 0, secondary: 0 };
-        const total = t.primary + t.secondary;
+        const total = roleTotal(t, roleFilter);
         const tier = tierFor(total, maxTotal);
         return (
           <g key={region.slug}>
@@ -171,18 +202,18 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
 // adaptation notes); plan mode instead resolves each region to its
 // generic-tier bucket via REGION_GENERIC, since that's the level My
 // Plan's targets are set at.
-export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals }) {
+export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals, roleFilter = "both" }) {
   const totals = mode === "plan" ? {} : buildRegionTotals(primary, secondary);
-  const maxTotal = mode === "plan" ? 1 : Math.max(1, ...Object.values(totals).map((t) => t.primary + t.secondary));
+  const maxTotal = mode === "plan" ? 1 : Math.max(1, ...Object.values(totals).map((t) => roleTotal(t, roleFilter)));
 
   return (
     <div>
       <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} />
-        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} />
+        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} />
+        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} />
       </div>
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
-        {(mode === "plan" ? PLAN_TIERS : TIERS).map((t) => (
+        {(mode === "plan" ? PLAN_TIERS : intensityTierLegend(maxTotal)).map((t) => (
           <div key={t.key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ width: 9, height: 9, borderRadius: 3, background: t.color, display: "inline-block", flexShrink: 0 }} />
             <span style={{ fontSize: 10.5, color: T.dim }}>{t.label}</span>

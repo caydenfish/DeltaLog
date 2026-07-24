@@ -1,10 +1,13 @@
 const KEY = "deltalog_prefs";
-const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, muscleBreakdownChartType: "bodymap", homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", bodyModelSex: "male" };
+const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both" };
 
 // The home dashboard's modules, in their default order — every user
 // effectively starts with this until they customize it via the pencil
 // icon on Home. Keep in sync with the switch in Home.jsx's renderModule.
-export const DEFAULT_HOME_MODULE_IDS = ["insight", "myPlan", "volume", "weight", "workoutTime", "muscleBreakdown", "calendar"];
+// weeklyGoalsMap is additionally gated at render time (not just this
+// on/off toggle) on the person actually having saved weekly set goals --
+// see WeeklyGoalsBodyMap.jsx.
+export const DEFAULT_HOME_MODULE_IDS = ["insight", "myPlan", "volume", "weight", "workoutTime", "muscleBreakdown", "weeklyGoalsMap", "calendar"];
 
 export const HOME_MODULE_LABELS = {
   insight: "Last workout",
@@ -13,6 +16,7 @@ export const HOME_MODULE_LABELS = {
   weight: "Bodyweight over time",
   workoutTime: "Workout time",
   muscleBreakdown: "Muscle breakdown",
+  weeklyGoalsMap: "Weekly Set Goals — Body Map",
   calendar: "Calendar",
 };
 

@@ -14,6 +14,7 @@ import BodyHeatmap from "./BodyHeatmap";
 import MuscleSetsDetail from "./MuscleSetsDetail";
 import HomeChartCard, { RangeSwitcher } from "./HomeChartCard";
 import WeeklySetGoals, { WeeklySetGoalsEditor } from "./WeeklySetGoals";
+import WeeklyGoalsBodyMap from "./WeeklyGoalsBodyMap";
 import ProgramView from "./ProgramView";
 import { fetchActiveProgram, fetchProgramSessionCount } from "./lib/programQueries";
 import { computeTodaysProgramDay } from "./lib/programEngine";
@@ -27,7 +28,6 @@ import AdminExercises from "./AdminExercises";
 import AdminFeedback from "./AdminFeedback";
 import AdminHome from "./AdminHome";
 import SplitsManager from "./SplitsManager";
-import AdminBodyMapLabeler from "./AdminBodyMapLabeler";
 import ExerciseLibraryView from "./ExerciseLibraryView";
 import AdminRoles from "./AdminRoles";
 import AdminUserActivity from "./AdminUserActivity";
@@ -168,6 +168,13 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [weightRange, setWeightRange] = useModuleRange("weight");
   const [workoutTimeRange, setWorkoutTimeRange] = useModuleRange("workoutTime");
   const [muscleRange, setMuscleRange] = useModuleRange("muscleBreakdown");
+  // Which sets/muscle-role the Muscle breakdown heatmap counts -- persisted
+  // the same way every other Home preference is, independent of Training
+  // Range so switching ranges doesn't reset a chosen criteria.
+  const [muscleSetsFilter, setMuscleSetsFilterState] = useState(() => getPrefs().muscleBreakdownSetsFilter);
+  const [muscleRoleFilter, setMuscleRoleFilterState] = useState(() => getPrefs().muscleBreakdownRoleFilter);
+  function setMuscleSetsFilter(key) { setMuscleSetsFilterState(key); setPref("muscleBreakdownSetsFilter", key); }
+  function setMuscleRoleFilter(key) { setMuscleRoleFilterState(key); setPref("muscleBreakdownRoleFilter", key); }
   // Reorderable/toggleable home dashboard modules (pencil icon, top left).
   const [homeModules, setHomeModulesState] = useState(() => getHomeModules());
   const [showHomeModulesEditor, setShowHomeModulesEditor] = useState(false);
@@ -234,7 +241,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [showAdminUserActivity, setShowAdminUserActivity] = useState(false);
   const [showAdminReferralSources, setShowAdminReferralSources] = useState(false);
   const [showSplitsManager, setShowSplitsManager] = useState(false);
-  const [showBodyMapLabeler, setShowBodyMapLabeler] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [historyView, setHistoryView] = useState(null); // null | { initialWorkoutId? }
@@ -678,17 +684,28 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     () => bucketDailyVolume(volumeDailyVolumeLb.map((d) => ({ ...d, volume: Math.round(toDisplay(d.volume, units)) })), volumeRange),
     [volumeDailyVolumeLb, units, volumeRange]
   );
-  const { primary, secondary, fullBodySets } = useMemo(() => computeMuscleSetCounts(entries, muscleNameMode), [entries, muscleNameMode, taxonomyVersion]);
+  const { primary, secondary, fullBodySets } = useMemo(
+    () => computeMuscleSetCounts(entries, muscleNameMode, muscleSetsFilter),
+    [entries, muscleNameMode, taxonomyVersion, muscleSetsFilter]
+  );
   // Computed directly from the raw workout data for the selected range,
   // not derived from the muscle-group breakdown above — that path silently
   // drops sets from any exercise it can't categorize (e.g. a deleted
-  // custom exercise), which would quietly undercount the total.
+  // custom exercise), which would quietly undercount the total. Respects
+  // the same Sets criteria (working/warmup/both) as the heatmap itself,
+  // so the count above the map always matches what's coloring it.
   const totalSetsInRange = useMemo(
     () => muscleFilteredHistory.reduce(
-      (total, w) => total + (w.workout_exercises || []).reduce((s, we) => s + (we.sets || []).filter((set) => !set.is_warmup).length, 0),
+      (total, w) => total + (w.workout_exercises || []).reduce((s, we) => {
+        const sets = we.sets || [];
+        const counted = muscleSetsFilter === "both" ? sets
+          : muscleSetsFilter === "warmup" ? sets.filter((set) => set.is_warmup)
+          : sets.filter((set) => !set.is_warmup);
+        return s + counted.length;
+      }, 0),
       0
     ),
-    [muscleFilteredHistory]
+    [muscleFilteredHistory, muscleSetsFilter]
   );
   const weightHistory = useMemo(
     () => bucketWeightHistory(summarizeWeightHistory(weightFilteredHistory), weightRange),
@@ -780,38 +797,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
             <InlineLoading label="Loading your history…" padding="40px 0" />
           ) : (
             <>
-              {homeModules.find((m) => m.id === "insight")?.enabled && (
-                <div style={{
-                  background: T.surface, border: `1px solid ${T.line}`, borderLeft: `3px solid ${insight.status === "overdue" ? T.accent : insight.status === "today" || insight.status === "ready" ? T.green : T.line}`,
-                  borderRadius: 12, padding: "12px 14px", marginTop: 8, marginBottom: 8,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1, color: insight.status === "overdue" ? T.accent : T.text }}>
-                        {insight.daysSince === null ? "—" : insight.daysSince}
-                      </div>
-                      <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>day{insight.daysSince === 1 ? "" : "s"} ago</div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0, borderLeft: `1px solid ${T.line}`, paddingLeft: 12 }}>
-                      {insight.muscles.length > 0 && (
-                        <div style={{ fontSize: 12, color: T.text, fontWeight: 600, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {insight.muscles.map((m) => muscleLabel(m, muscleNameMode)).join(" · ")}
-                        </div>
-                      )}
-                      <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.4 }}>{insight.tip}</div>
-                    </div>
-                  </div>
-                  {programDay && (
-                    <button
-                      onClick={() => setShowProgramView(true)}
-                      style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                    >
-                      Open Program — {programDay.dayLabel}{programDay.deload ? " (deload)" : ""} <span style={{ color: T.dim }}>›</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
               <div>
                 {lockedTs != null && (() => {
                   const volPoint = dailyVolume.find((d) => d.ts === lockedTs);
@@ -846,6 +831,38 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
                 {homeModules.filter((m) => m.enabled).map((m) => {
                   switch (m.id) {
+                    case "insight":
+                      return (
+                        <div key={m.id} style={{
+                          background: T.surface, border: `1px solid ${T.line}`, borderLeft: `3px solid ${insight.status === "overdue" ? T.accent : insight.status === "today" || insight.status === "ready" ? T.green : T.line}`,
+                          borderRadius: 12, padding: "12px 14px", marginBottom: 16,
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
+                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1, color: insight.status === "overdue" ? T.accent : T.text }}>
+                                {insight.daysSince === null ? "—" : insight.daysSince}
+                              </div>
+                              <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>day{insight.daysSince === 1 ? "" : "s"} ago</div>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0, borderLeft: `1px solid ${T.line}`, paddingLeft: 12 }}>
+                              {insight.muscles.length > 0 && (
+                                <div style={{ fontSize: 12, color: T.text, fontWeight: 600, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {insight.muscles.map((mus) => muscleLabel(mus, muscleNameMode)).join(" · ")}
+                                </div>
+                              )}
+                              <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.4 }}>{insight.tip}</div>
+                            </div>
+                          </div>
+                          {programDay && (
+                            <button
+                              onClick={() => setShowProgramView(true)}
+                              style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                            >
+                              Open Program — {programDay.dayLabel}{programDay.deload ? " (deload)" : ""} <span style={{ color: T.dim }}>›</span>
+                            </button>
+                          )}
+                        </div>
+                      );
                     case "myPlan":
                       return <WeeklySetGoals key={m.id} userId={user.id} history={history} />;
                     case "volume":
@@ -907,13 +924,21 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                             <RangeSwitcher range={muscleRange} onChange={setMuscleRange} />
                           </div>
                           <div style={{ textAlign: "right", fontSize: 11, color: T.dim, marginBottom: 8 }}>{totalSetsInRange} set{totalSetsInRange === 1 ? "" : "s"}</div>
-                          {Object.keys(primary).length === 0 && Object.keys(secondary).length === 0 ? (
-                            <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Nothing logged in this range yet.</div>
-                          ) : (
-                          <BodyHeatmap primary={primary} secondary={secondary} fullBodySets={fullBodySets} entries={entries} onSelectMuscle={(muscle) => setMuscleDetail({ muscle })} userId={user.id} fullHistory={history} />
-                          )}
+                          <BodyHeatmap
+                            primary={primary}
+                            secondary={secondary}
+                            fullBodySets={fullBodySets}
+                            entries={entries}
+                            onSelectMuscle={(muscle) => setMuscleDetail({ muscle })}
+                            setsFilter={muscleSetsFilter}
+                            roleFilter={muscleRoleFilter}
+                            onSetsFilterChange={setMuscleSetsFilter}
+                            onRoleFilterChange={setMuscleRoleFilter}
+                          />
                         </div>
                       );
+                    case "weeklyGoalsMap":
+                      return <WeeklyGoalsBodyMap key={m.id} userId={user.id} history={history} />;
                     case "calendar":
                       return (
                         <div key={m.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
@@ -1315,7 +1340,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           onOpenUserActivity={() => setShowAdminUserActivity(true)}
           onOpenReferralSources={() => setShowAdminReferralSources(true)}
           onOpenSplits={() => setShowSplitsManager(true)}
-          onOpenBodyMapLabeler={() => setShowBodyMapLabeler(true)}
           onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
           adminViewMode={adminViewMode}
@@ -1332,6 +1356,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           nameMode="detailed"
           units={units}
           onClose={() => setMuscleDetail(null)}
+          setsFilter={muscleSetsFilter}
         />
       )}
       {showHomeModulesEditor && (
@@ -1341,7 +1366,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {showAdminUserActivity && isRealCreator && <AdminUserActivity onClose={() => setShowAdminUserActivity(false)} />}
       {showAdminReferralSources && <AdminReferralSources onClose={() => setShowAdminReferralSources(false)} />}
       {showSplitsManager && <SplitsManager onClose={() => setShowSplitsManager(false)} />}
-      {showBodyMapLabeler && <AdminBodyMapLabeler onClose={() => setShowBodyMapLabeler(false)} />}
       {showAdminFeedback && <AdminFeedback onClose={() => setShowAdminFeedback(false)} />}
       {showDangerZone && <DangerZone user={user} onClose={() => setShowDangerZone(false)} onDataReset={onDataReset} />}
       {showInstallGuide && (

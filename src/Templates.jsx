@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { fetchExercises, fetchTemplates, saveWorkoutAsTemplate, deleteTemplate, fetchPerformedExerciseIds, fetchFavoriteExerciseIds, setFavoriteExercise, fetchTemplateForEdit, updateTemplate, reorderTemplates, setTemplateArchived, fetchArchivedTemplates, exportTemplate, fetchSharedTemplate, importSharedTemplate, createCustomExercise, uploadExerciseMedia, normalizeExercise } from "./lib/queries";
 import { computeMuscleSetCounts } from "./lib/volume";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
 import { getPrefs } from "./lib/prefs";
 import BodyHeatmap from "./BodyHeatmap";
 import { InlineLoading } from "./LoadingSpinner";
@@ -25,6 +25,14 @@ const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.d
 const shareIconBtn = { width: 34, height: 34, border: "none", background: "none", color: T.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
 
 export default function Templates({ user, onClose, initialPicks }) {
+  // Same race as SetLogger's live heatmap: the muscle taxonomy fetch and
+  // this screen's own boot can resolve in either order, and nothing
+  // previously forced a re-render here once the real DB taxonomy landed
+  // after the static ALIASES fallback had already been used to compute
+  // a label. Subscribing (matching Home.jsx's existing pattern) fixes it.
+  const [taxonomyVersion, setTaxonomyVersion] = useState(getTaxonomyVersion);
+  useEffect(() => subscribeTaxonomy(() => setTaxonomyVersion(getTaxonomyVersion())), []);
+
   const [library, setLibrary] = useState(null);
   const [templates, setTemplates] = useState(null);
   const [mode, setMode] = useState("list"); // "list" | "build"

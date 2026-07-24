@@ -9,6 +9,17 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.10": {
+    title: "Muscle breakdown rework, plus a Home ordering fix",
+    items: [
+      "Fixed: the mid-workout muscle heatmap (and the template builder's Coverage panel) could show the wrong muscle for an exercise, depending on how recently you'd opened the app.",
+      "The Muscle breakdown map now lets you choose exactly what counts: Working sets, Warm-up sets, or Both, and Primary muscles, Secondary muscles, or Both — pick any combination and the map recolors to match.",
+      "The map's legend now shows the actual set-count ranges for each shading level instead of the words None/Low/Moderate/High.",
+      "Removed the Radar view from Muscle breakdown.",
+      "Weekly Set Goals now has its own body-map view as a separate Home card (only appears once you've actually saved a weekly goal), split out from the main Muscle breakdown map.",
+      "Fixed: the Last workout card on Home ignored your Customize Home ordering and always showed up first, no matter where you'd dragged it.",
+    ],
+  },
   "1.12.8": {
     title: "Set list no longer scrolls unless it needs to",
     items: [

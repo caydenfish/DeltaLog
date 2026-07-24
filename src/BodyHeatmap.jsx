@@ -1,10 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { getPrefs, setPref } from "./lib/prefs";
-import { computeMuscleSetCounts, computeRollingWeeklyTotals } from "./lib/volume";
+import { useState } from "react";
+import { computeMuscleSetCounts } from "./lib/volume";
 import { getDetailedTaxonomyEntries } from "./lib/muscleNomenclature";
-import { fetchMuscleGroupTargets } from "./lib/queries";
-import { MUSCLE_COLORS } from "./lib/muscleColors";
 import { IconChevronUp, IconChevronDown } from "./Icons";
 import BodyMap from "./BodyMap";
 
@@ -16,85 +12,44 @@ const T = {
   accent: "#E8442E",
 };
 
-const BASE_CHART_TYPES = [
-  { key: "bodymap", label: "Body map" },
-  { key: "radar", label: "Radar" },
-  { key: "myplan", label: "Weekly Set Goals" },
+const SETS_FILTER_OPTIONS = [
+  { key: "working", label: "Working" },
+  { key: "warmup", label: "Warm-up" },
+  { key: "both", label: "Both" },
 ];
 
-const DEFAULT_TARGET = 10;
+const ROLE_FILTER_OPTIONS = [
+  { key: "primary", label: "Primary" },
+  { key: "secondary", label: "Secondary" },
+  { key: "both", label: "Both" },
+];
 
-// Cap the radar to the top N muscles by volume — showing every trained
-// muscle at once (sometimes 15-20 in Detailed/Scientific mode) is exactly
-// what made it feel crowded and hard to read.
-const RADAR_MAX_SPOKES = 8;
-
-function toggleBtn(active) {
+function segBtn(active) {
   return {
-    background: active ? "rgba(232,68,46,0.12)" : "none",
+    flex: 1,
+    background: active ? T.accent : "none",
     border: `1px solid ${active ? T.accent : T.line}`,
-    color: active ? T.text : T.dim,
+    color: active ? "#fff" : T.dim,
     borderRadius: 7,
-    padding: "3px 10px",
+    padding: "5px 0",
     fontSize: 11,
     fontWeight: 600,
+    whiteSpace: "nowrap",
   };
 }
 
-function truncateLabel(v) {
-  return v.length > 13 ? `${v.slice(0, 12)}…` : v;
-}
-
-// Picks a clean, consistent tick interval (always a multiple of 5) so the
-// radar's scale reads 5/10/15... rather than recharts' default even-split
-// of whatever the raw max happens to be (e.g. 0/5.67/11.33/17). Steps up
-// to 10/15/20... as the max grows, so someone with much higher volume
-// still gets ~4-6 gridlines instead of a cluttered dozen-plus at a fixed
-// step of 5.
-const RADAR_STEP_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100];
-function niceRadarTicks(maxTotal) {
-  const targetTickCount = 4;
-  const rawStep = maxTotal / targetTickCount;
-  const step = RADAR_STEP_OPTIONS.find((s) => s >= rawStep) || Math.ceil(rawStep / 5) * 5;
-  const niceMax = Math.ceil(maxTotal / step) * step || step;
-  const ticks = [];
-  for (let t = 0; t <= niceMax; t += step) ticks.push(t);
-  return { niceMax, ticks };
-}
-
-function RadarView({ data }) {
-  const radarData = data
-    .slice(0, RADAR_MAX_SPOKES)
-    .map((d) => ({ muscle: truncateLabel(d.muscle), total: d.total }));
-  const maxTotal = Math.max(1, ...radarData.map((d) => d.total));
-  const { niceMax, ticks } = niceRadarTicks(maxTotal);
+// One labeled row of 3 mutually-exclusive segmented buttons -- shared
+// shape for both the Sets and Muscles criteria pickers below, just fed
+// different option lists.
+function FilterRow({ label, options, value, onChange }) {
   return (
-    <div style={{ position: "relative" }}>
-      <ResponsiveContainer width="100%" height={250}>
-        <RadarChart data={radarData} outerRadius="66%">
-          <PolarGrid stroke={T.line} />
-          <PolarAngleAxis dataKey="muscle" tick={{ fill: T.dim, fontSize: 10 }} />
-          {/* One subtle number per grid ring, at the 12-o'clock position,
-              instead of a value stamped at every muscle's spoke — a
-              scale to read the shape against rather than a label at
-              every point. Explicit `ticks` (always a clean multiple of
-              5/10/15...) instead of tickCount, which just even-splits
-              whatever the raw max happens to be into fractional values. */}
-          <PolarRadiusAxis angle={90} domain={[0, niceMax]} ticks={ticks} axisLine={false} tickLine={false} tick={{ fill: T.dim, fontSize: 9 }} />
-          <Radar dataKey="total" stroke={T.accent} fill={T.accent} fillOpacity={0.3} />
-          <Tooltip
-            contentStyle={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8 }}
-            labelStyle={{ color: T.text, fontWeight: 700 }}
-            itemStyle={{ color: T.dim, fontSize: 12 }}
-            formatter={(value) => [`${value} set${value === 1 ? "" : "s"}`, "Total"]}
-          />
-        </RadarChart>
-      </ResponsiveContainer>
-      {data.length > RADAR_MAX_SPOKES && (
-        <div style={{ textAlign: "center", fontSize: 10.5, color: T.dim, marginTop: -6 }}>
-          Showing top {RADAR_MAX_SPOKES} of {data.length} muscles — see Coverage breakdown below for the rest
-        </div>
-      )}
+    <div>
+      <div style={{ fontSize: 9.5, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
+      <div style={{ display: "flex", gap: 4 }}>
+        {options.map((o) => (
+          <button key={o.key} onClick={() => onChange(o.key)} aria-pressed={value === o.key} style={segBtn(value === o.key)}>{o.label}</button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -105,7 +60,11 @@ function RadarView({ data }) {
 // sets, specifically so a muscle group that's gotten nothing in this
 // range still shows up (as "Not trained yet") instead of just silently
 // not appearing anywhere. Tapping a trained row opens the same
-// MuscleSetsDetail drill-in the body map used to.
+// MuscleSetsDetail drill-in the body map used to. Always shows both the
+// primary and secondary count regardless of the heatmap's own Muscles
+// filter above -- this is the detailed reference view, so it stays
+// unfiltered on that axis; the Sets criteria (working/warmup/both) still
+// applies, since that genuinely changes what counts as a logged set.
 function CoverageBreakdown({ primary, secondary, onSelectMuscle }) {
   const [open, setOpen] = useState(false);
 
@@ -173,96 +132,57 @@ function CoverageBreakdown({ primary, secondary, onSelectMuscle }) {
   );
 }
 
-// Reports which muscles were trained, with a choice of three views that
-// persists across every screen this renders on (Home, live workout,
-// template builder) until changed again: an anatomical Body map (front +
-// back silhouette, purely visual — see BodyMap.jsx), a Radar shape
-// (quick "is my training balanced" read), or My Plan (weekly set targets
-// vs. this rolling week — only offered when `userId`+`fullHistory` are
-// passed, since it needs your targets from Supabase and your all-time
-// history rather than whatever range-filtered `entries` the caller built
-// for the other two views). Below the chart, a Coverage breakdown
-// disclosure lists every muscle with its exact primary/secondary counts,
-// including muscles with zero sets so it's obvious what's lacking — this
-// is also the only place tapping a muscle still opens the
-// MuscleSetsDetail drill-in, now that the body map itself is view-only.
-// `primary`/`secondary` are maps of muscle name -> set count at the
-// caller's selected naming mode (generic/detailed/scientific), used by
-// Radar and the breakdown list. `entries` is the same raw volume-entry
-// array the caller fed into computeMuscleSetCounts to produce those —
-// Body map needs its own pass at a fixed "detailed" tier regardless of
-// the naming-mode preference, since that's the resolution the underlying
-// anatomical art is actually drawn at (see BodyMap.jsx). `fullBodySets`,
-// if present, is shown separately since "Full Body" exercises (carries,
-// complexes) don't map to one muscle region. `onSelectMuscle(muscle)`,
-// if passed, wires the Coverage breakdown's rows to a drill-in sheet.
-export default function BodyHeatmap({ primary = {}, secondary = {}, fullBodySets = 0, entries, onSelectMuscle, userId, fullHistory }) {
-  const myPlanAvailable = !!(userId && fullHistory);
-
-  const [chartType, setChartType] = useState(() => {
-    const saved = getPrefs().muscleBreakdownChartType;
-    const types = myPlanAvailable ? BASE_CHART_TYPES : BASE_CHART_TYPES.filter((c) => c.key !== "myplan");
-    return types.some((c) => c.key === saved) ? saved : "bodymap";
-  });
-
-  function handleChartTypeChange(type) {
-    setChartType(type);
-    setPref("muscleBreakdownChartType", type);
-  }
-
-  const [planTargets, setPlanTargets] = useState(null);
-  useEffect(() => {
-    if (!myPlanAvailable) return;
-    let cancelled = false;
-    fetchMuscleGroupTargets(userId)
-      .then((map) => {
-        if (cancelled) return;
-        const filled = {};
-        for (const m of Object.keys(MUSCLE_COLORS)) filled[m] = map[m] ?? DEFAULT_TARGET;
-        setPlanTargets(filled);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [userId, myPlanAvailable]);
-
-  const planRollingTotals = useMemo(() => (myPlanAvailable ? computeRollingWeeklyTotals(fullHistory) : {}), [fullHistory, myPlanAvailable]);
+// Reports which muscles were trained: an anatomical Body map (front +
+// back silhouette, purely visual — see BodyMap.jsx) plus, below it, a
+// Coverage breakdown disclosure listing every muscle with its exact
+// primary/secondary counts (including untrained muscles, so it's obvious
+// what's lacking) -- the only place tapping a muscle opens the
+// MuscleSetsDetail drill-in, since the body map itself is view-only.
+// `primary`/`secondary` (at the caller's naming mode) back the "nothing
+// logged" empty-state check and the Coverage list's default totals.
+// `entries` is the same raw volume-entry array the caller fed into
+// computeMuscleSetCounts -- Body map needs its own pass at a fixed
+// "detailed" tier regardless of the naming-mode preference, since that's
+// the resolution the underlying anatomical art is drawn at.
+// `fullBodySets`, if present, is shown separately since "Full Body"
+// exercises (carries, complexes) don't map to one muscle region.
+// `onSelectMuscle(muscle)`, if passed, wires the Coverage breakdown's
+// rows to a drill-in sheet.
+// `setsFilter`/`roleFilter` + their onChange callbacks are optional --
+// when both onChange callbacks are supplied (currently only Home's
+// dashboard module does), a Sets (Working/Warm-up/Both) and Muscles
+// (Primary/Secondary/Both) picker renders above the map and both feed
+// straight into the heatmap's coloring; omitted entirely otherwise (the
+// in-workout live heatmap and the template builder's Coverage panel),
+// which keeps their existing working-sets/both-roles behavior with no
+// extra chrome.
+export default function BodyHeatmap({
+  primary = {}, secondary = {}, fullBodySets = 0, entries, onSelectMuscle,
+  setsFilter = "working", roleFilter = "both", onSetsFilterChange, onRoleFilterChange,
+}) {
+  const showFilters = !!(onSetsFilterChange && onRoleFilterChange);
 
   const names = new Set([...Object.keys(primary), ...Object.keys(secondary)]);
-  const combined = [...names]
-    .map((m) => ({ muscle: m, primary: primary[m] || 0, secondary: secondary[m] || 0, total: (primary[m] || 0) + (secondary[m] || 0) }))
-    .sort((a, b) => b.total - a.total);
+  const hasAnyData = names.size > 0 || fullBodySets > 0;
 
-  const hasAnyData = combined.length > 0 || fullBodySets > 0;
-  if (!hasAnyData && !myPlanAvailable) {
-    return <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Nothing logged yet.</div>;
-  }
-
-  const detailed = entries ? computeMuscleSetCounts(entries, "detailed") : { primary: {}, secondary: {} };
-  const types = myPlanAvailable ? BASE_CHART_TYPES : BASE_CHART_TYPES.filter((c) => c.key !== "myplan");
+  const detailed = entries ? computeMuscleSetCounts(entries, "detailed", setsFilter) : { primary: {}, secondary: {} };
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 5, marginBottom: 8 }}>
-        {types.map((c) => (
-          <button key={c.key} onClick={() => handleChartTypeChange(c.key)} style={toggleBtn(chartType === c.key)}>{c.label}</button>
-        ))}
-      </div>
-
-      {chartType === "myplan" ? (
-        planTargets ? (
-          <BodyMap mode="plan" targets={planTargets} rollingTotals={planRollingTotals} />
-        ) : (
-          <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Loading your plan…</div>
-        )
-      ) : !hasAnyData ? (
-        <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Nothing logged in this range yet.</div>
-      ) : chartType === "bodymap" ? (
-        <BodyMap primary={detailed.primary} secondary={detailed.secondary} />
-      ) : (
-        <RadarView data={combined} />
+      {showFilters && (
+        <div style={{ display: "flex", gap: 14, marginBottom: 12 }}>
+          <FilterRow label="Sets" options={SETS_FILTER_OPTIONS} value={setsFilter} onChange={onSetsFilterChange} />
+          <FilterRow label="Muscles" options={ROLE_FILTER_OPTIONS} value={roleFilter} onChange={onRoleFilterChange} />
+        </div>
       )}
 
-      {fullBodySets > 0 && chartType !== "myplan" && (
+      {!hasAnyData ? (
+        <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Nothing logged in this range yet.</div>
+      ) : (
+        <BodyMap primary={detailed.primary} secondary={detailed.secondary} roleFilter={roleFilter} />
+      )}
+
+      {fullBodySets > 0 && (
         <div style={{ textAlign: "center", marginTop: 8, fontSize: 12, color: T.dim }}>
           + Full-body work: <span style={{ color: T.text, fontWeight: 700 }}>{fullBodySets}</span> set{fullBodySets === 1 ? "" : "s"}
         </div>
