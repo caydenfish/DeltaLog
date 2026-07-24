@@ -222,9 +222,10 @@ export default function AdminBodyMapLabeler({ onClose }) {
           background: T.surface,
         }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            <button style={btn} onClick={() => setZoom((z) => z * 1.25)}>Zoom in</button>
-            <button style={btn} onClick={() => setZoom((z) => z * 0.8)}>Zoom out</button>
+            <button style={btn} onClick={() => setZoom((z) => Math.min(4, +(z * 1.25).toFixed(2)))}>Zoom in</button>
+            <button style={btn} onClick={() => setZoom((z) => Math.max(0.4, +(z * 0.8).toFixed(2)))}>Zoom out</button>
             <button style={btn} onClick={() => setZoom(1)}>Reset</button>
+            <span style={{ alignSelf: "center", color: T.dim, fontSize: 12, marginLeft: 4 }}>{Math.round(zoom * 100)}%</span>
           </div>
 
           <div style={{ color: T.text, fontSize: 13, marginBottom: 8 }}>
