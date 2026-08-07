@@ -27,7 +27,13 @@
 
 import { IDEOLOGIES } from "./ideologies";
 
-const WEIGHT_STEP = { lbs: 5, kg: 2.5 };
+// Keyed on the actual unit values used throughout the app ("lb"/"kg" --
+// see lib/prefs.js DEFAULTS.units) -- this previously read "lbs", which
+// never matched, so every lookup silently fell through to the "|| 5"
+// fallback below. That fallback happened to equal the correct lb step
+// anyway, so lb rounding worked by accident; fixed here for clarity and
+// so this stays correct if the fallback default ever changes.
+const WEIGHT_STEP = { lb: 5, kg: 2.5 };
 
 export const PROGRESSION_MODELS = {
   double_progression: "Double Progression",

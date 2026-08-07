@@ -16,9 +16,18 @@ export function kgToLb(kg) {
 }
 
 // Canonical (lb, as stored) -> whatever unit the user has selected.
+// Rounded at this single conversion boundary (whole lb / one decimal
+// kg -- see roundDisplay below) rather than left at full float
+// precision, since LB_PER_KG is irrational and every unrounded kg
+// conversion was surfacing long decimal tails (e.g. 61.68539...) any
+// place this ran through a plain toDisplay call instead of the
+// formatWeight helper. Rounding once here means every call site gets a
+// realistic, loadable-looking number automatically, including the ones
+// that were displaying or persisting the raw conversion directly.
 export function toDisplay(lbValue, unit) {
   if (lbValue == null || isNaN(lbValue)) return lbValue;
-  return unit === "kg" ? lbToKg(lbValue) : lbValue;
+  const raw = unit === "kg" ? lbToKg(lbValue) : lbValue;
+  return roundDisplay(raw, unit);
 }
 
 // Typed/display value (in `unit`) -> canonical lb, for writing to the database.

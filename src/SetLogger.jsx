@@ -23,6 +23,7 @@ import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapR
 const GENERATOR_EXCLUDED_GENERIC = ["Full Body", "Neck"];
 import { toLocalDateStr } from "./lib/time";
 import { toDisplay, toCanonical, roundDisplay, formatWeight, platesFor, plateByValue, BAR_PRESETS, BIG_PLATE, bigPlateAllowed } from "./lib/weight";
+import { warmupWeightFor } from "./lib/warmup";
 import {
   fetchExercises,
   normalizeExercise,
@@ -1440,9 +1441,19 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
   function openWizard(prefill, editIdx = null) {
     const draft = editIdx === null ? drafts[ex.dbId] : null;
+    // A brand-new set that falls within this exercise's planned warmup
+    // count (same rule logSet uses to flag isWarmup, further down) should
+    // be prefilled at its scaled percentage of the upcoming top set, not
+    // at the top set's own weight -- previously every warmup set opened
+    // showing the full working weight, since none of the branches below
+    // knew or cared whether the next set was a warmup.
+    const nextIsWarmup = editIdx === null && !prefill && !draft && sets.length < (ex.plannedWarmup || 0);
     if (prefill) { setWeight(String(prefill.weight)); setReps(String(prefill.reps)); setRir(prefill.rir !== undefined ? prefill.rir : null); }
     else if (draft) { setWeight(draft.weight); setReps(draft.reps); setRir(draft.rir); }
-    else if (lastLogged) {
+    else if (nextIsWarmup) {
+      const wWeight = warmupWeightFor(target.weight, ex.plannedWarmup, sets.length, unit, getPrefs().warmupPercentSchemes);
+      setWeight(String(wWeight)); setReps(String(target.reps)); setRir(null);
+    } else if (lastLogged) {
       const lw = lastWeek[Math.min(sets.length, lastWeek.length - 1)];
       setWeight(String(lastLogged.weight)); setReps(String(lw ? lw.reps : target.reps)); setRir(null);
     } else { setWeight(String(target.weight)); setReps(String(target.reps)); setRir(null); }

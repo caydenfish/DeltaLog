@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 
 const KEY = "deltalog_prefs";
-const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both" };
+const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both", warmupPercentSchemes: {} };
 
 // Backs up preferences to Supabase (migration_071's user_preferences,
 // one jsonb blob per user) so clearing browser data -- cookies, cache,

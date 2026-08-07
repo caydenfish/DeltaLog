@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getPrefs, setPref } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
 import { PROGRESSION_MODELS, PROGRESSION_MODEL_DESCRIPTIONS } from "./lib/programEngine";
+import { defaultWarmupPercents, getWarmupPercents } from "./lib/warmup";
 import { REST_TIMER_SOUNDS, REST_TIMER_VIBRATIONS, playRestTimerSound, triggerRestTimerVibration, notificationsSupported, getNotificationPermission, requestNotificationPermission, showRestTimerNotification } from "./lib/restTimerCues";
 import { IconChevronUp, IconChevronDown } from "./Icons";
 
@@ -118,6 +119,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     trainingIdeology: getPrefs().trainingIdeology,
     targetCalcMethod: getPrefs().targetCalcMethod,
     timeFormat: getPrefs().timeFormat,
+    warmupPercentSchemes: getPrefs().warmupPercentSchemes,
   }));
   const [showScoreInfo, setShowScoreInfo] = useState(false);
   const [showIdeologyInfo, setShowIdeologyInfo] = useState(false);
@@ -127,7 +129,8 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // "Units" and "Training Preferences" are real full-screen destinations
   // (SubScreen) rather than inline-expanding sections.
   const [screen, setScreen] = useState(null); // null | "units" | "training"
-  const [openTrainingSection, setOpenTrainingSection] = useState(null); // null | "focus" | "restTimer"
+  const [openTrainingSection, setOpenTrainingSection] = useState(null); // null | "focus" | "restTimer" | "warmupWeights"
+  const [warmupSchemeCount, setWarmupSchemeCount] = useState(2); // which warmup-count's percentages are shown in the editor
   const [notifPermission, setNotifPermission] = useState(() => getNotificationPermission());
 
   async function handleToggleRestTimerNotification(v) {
@@ -162,6 +165,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     restTimerSoundEnabled: "rest timer sound audio chime bell beep digital end alert cue",
     restTimerVibrationEnabled: "rest timer vibration vibrate haptic pulse buzz end alert cue",
     restTimerNotificationEnabled: "rest timer notification push alert end cue",
+    warmupPercentSchemes: "warmup set weight percent percentage top set ramp science",
   };
   const matches = (key) => !filterQuery || KEYWORDS[key].includes(filterQuery.trim().toLowerCase());
   const searchActive = !!filterQuery;
@@ -169,7 +173,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // findable by search without requiring a tap into that sub-screen —
   // shown inline, right in the settings list, while a search is active.
   const unitsSearchMatch = searchActive && ["units", "timeFormat"].some(matches);
-  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "targetCalcMethod", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled"].some(matches);
+  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "targetCalcMethod", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled", "warmupPercentSchemes"].some(matches);
 
   function update(key, val) {
     if (controlled) {
@@ -180,7 +184,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     }
   }
 
-  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod } = state;
+  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod, warmupPercentSchemes } = state;
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -584,6 +588,70 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
         </>
         )}
         </>
+        )}
+      </>
+    );
+  }
+
+  // Warmup set weight percentages -- what % of the upcoming top set
+  // each warmup set loads, scaled to however many warmup sets are
+  // planned for that exercise (see lib/warmup.js for the recommended
+  // ramps and the science note behind them). Only one count's row of
+  // percentages is shown/edited at a time via the stepper below; every
+  // count keeps its own saved scheme independently.
+  function renderWarmupWeightFields() {
+    if (!matches("warmupPercentSchemes")) return null;
+    const percents = getWarmupPercents(warmupSchemeCount, warmupPercentSchemes);
+    const isCustomized = Array.isArray(warmupPercentSchemes && warmupPercentSchemes[warmupSchemeCount]);
+
+    function updatePercent(idx, val) {
+      const clamped = Math.max(10, Math.min(100, val));
+      const current = getWarmupPercents(warmupSchemeCount, warmupPercentSchemes);
+      const next = current.map((p, i) => (i === idx ? clamped : p));
+      update("warmupPercentSchemes", { ...(warmupPercentSchemes || {}), [warmupSchemeCount]: next });
+    }
+    function resetToRecommended() {
+      const next = { ...(warmupPercentSchemes || {}) };
+      delete next[warmupSchemeCount];
+      update("warmupPercentSchemes", next);
+    }
+
+    return (
+      <>
+        <div style={{ color: T.dim, fontSize: 11, lineHeight: 1.4, marginBottom: 14 }}>
+          Each warmup set is loaded as a percentage of the upcoming top set, ramping up so the last warmup lands close to working weight. The recommended percentages follow standard progressive-warmup ramps used in strength coaching -- adjust any of them to fit how you like to warm up.
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div>
+            <div style={{ color: T.text, fontSize: 14 }}>Number of warmup sets</div>
+            <div style={{ color: T.dim, fontSize: 11 }}>Edit percentages for this count</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setWarmupSchemeCount((c) => Math.max(1, c - 1))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 20, textAlign: "center" }}>{warmupSchemeCount}</div>
+            <button onClick={() => setWarmupSchemeCount((c) => Math.min(6, c + 1))} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+          </div>
+        </div>
+
+        {percents.map((p, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ color: T.text, fontSize: 14 }}>Warmup {i + 1}{i === percents.length - 1 ? " (last before top set)" : ""}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => updatePercent(i, p - 5)} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>{p}%</div>
+              <button onClick={() => updatePercent(i, p + 5)} style={{ width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+            </div>
+          </div>
+        ))}
+
+        {isCustomized && (
+          <button
+            onClick={resetToRecommended}
+            style={{ marginTop: 8, padding: "8px 0", width: "100%", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12, fontWeight: 600 }}
+          >
+            Reset to recommended ({defaultWarmupPercents(warmupSchemeCount).join("/")}%)
+          </button>
         )}
       </>
     );

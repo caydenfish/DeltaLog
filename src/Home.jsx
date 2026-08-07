@@ -286,6 +286,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [trainingIdeology, setTrainingIdeologyState] = useState(() => getPrefs().trainingIdeology);
   const [targetCalcMethod, setTargetCalcMethodState] = useState(() => getPrefs().targetCalcMethod);
   const [timeFormat, setTimeFormatState] = useState(() => getPrefs().timeFormat);
+  const [warmupPercentSchemes, setWarmupPercentSchemesState] = useState(() => getPrefs().warmupPercentSchemes);
   const [adminViewMode, setAdminViewModeState] = useState(() => getPrefs().adminViewMode);
   function setAdminViewMode(mode) {
     setAdminViewModeState(mode);
@@ -299,7 +300,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     return !q || keywords.toLowerCase().includes(q);
   }
 
-  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, targetCalcMethod, timeFormat };
+  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, targetCalcMethod, timeFormat, warmupPercentSchemes };
   function handlePreferencesChange(key, val) {
     if (key === "units") setUnits(val);
     else if (key === "muscleNameMode") setMuscleNameMode(val);
@@ -317,6 +318,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     else if (key === "trainingIdeology") setTrainingIdeology(val);
     else if (key === "targetCalcMethod") { setTargetCalcMethodState(val); setPref("targetCalcMethod", val); }
     else if (key === "timeFormat") setTimeFormat(val);
+    else if (key === "warmupPercentSchemes") setWarmupPercentSchemes(val);
   }
 
   // Greets the person once per calendar day, on whichever login happens
@@ -371,6 +373,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   function setWeightEntryMode(v) { setWeightEntryModeState(v); setPref("weightEntryMode", v); }
   function setPlate55Scope(v) { setPlate55ScopeState(v); setPref("plate55Scope", v); }
   function setTrainingIdeology(v) { setTrainingIdeologyState(v); setPref("trainingIdeology", v); }
+  function setWarmupPercentSchemes(v) { setWarmupPercentSchemesState(v); setPref("warmupPercentSchemes", v); }
   function setTimeFormat(v) { setTimeFormatState(v); setPref("timeFormat", v); }
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date(); d.setDate(1); return d;

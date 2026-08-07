@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.15": {
+    title: "Fixed kg weights showing extra decimals, warmup sets now scale their own weight, new Warmup Set Weights setting",
+    items: [
+      "Fixed: logging weight in kg could show long, unrealistic decimal numbers (e.g. 61.68539...) instead of a clean one-decimal value almost everywhere a weight was displayed or pre-filled — history, targets, program-generated weights, and more. All kg weights are now rounded to one decimal place throughout the app.",
+      "Fixed: opening a warmup set used to pre-fill it with the same weight as your top (working) set, instead of a lighter warmup weight. Warmup sets now default to a percentage of your top set, scaled to how many warmup sets you've planned for that exercise.",
+      "New: Warmup Set Weights, under Settings > Training Preferences. Set what percentage of your top set each warmup set should load, with recommended percentages already filled in based on standard progressive-warmup ramps used in strength coaching. Percentages ramp up automatically depending on how many warmup sets you use for an exercise (e.g. 3 warmup sets default to 40%/60%/80%), and every value is fully adjustable to fit how you like to warm up.",
+    ],
+  },
   "1.12.14": {
     title: "Fixed a gray-screen loading bug, sign-in fix, and preferences now backed up",
     items: [
