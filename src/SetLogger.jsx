@@ -23,7 +23,7 @@ import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapR
 const GENERATOR_EXCLUDED_GENERIC = ["Full Body", "Neck"];
 import { toLocalDateStr } from "./lib/time";
 import { toDisplay, toCanonical, roundDisplay, formatWeight, platesFor, plateByValue, BAR_PRESETS, BIG_PLATE, bigPlateAllowed } from "./lib/weight";
-import { warmupWeightFor } from "./lib/warmup";
+import { warmupWeightFor, getWarmupPercents } from "./lib/warmup";
 import {
   fetchExercises,
   normalizeExercise,
@@ -747,6 +747,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const stackSum = loaded.reduce((a, b) => a + b, 0);
   const exDone = ex ? sets.filter((s) => !s.isWarmup).length >= planned : false;
   const workoutDone = workout.length > 0 && allSets.every((s, i) => s.filter((x) => !x.isWarmup).length >= workout[i].planned);
+  // Single source of truth for "the next set to be logged is a warmup"
+  // -- same rule logSet uses to flag isWarmup (sets.length < plannedWarmup),
+  // computed once here so the Target header display and openWizard's
+  // prefill (below) never disagree about which set is coming up next.
+  const nextWarmupIndex = ex && sets.length < (ex.plannedWarmup || 0) ? sets.length : null;
+  const nextWarmupWeight = ex && nextWarmupIndex != null && target
+    ? warmupWeightFor(target.weight, ex.plannedWarmup, nextWarmupIndex, unit, getPrefs().warmupPercentSchemes)
+    : null;
 
   const note = (msg, type = "e1rm", ms = 4000) => { setFlash({ type, msg }); setTimeout(() => setFlash(null), ms); };
 
@@ -1447,11 +1455,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     // at the top set's own weight -- previously every warmup set opened
     // showing the full working weight, since none of the branches below
     // knew or cared whether the next set was a warmup.
-    const nextIsWarmup = editIdx === null && !prefill && !draft && sets.length < (ex.plannedWarmup || 0);
+    const nextIsWarmup = editIdx === null && !prefill && !draft && nextWarmupIndex != null;
     if (prefill) { setWeight(String(prefill.weight)); setReps(String(prefill.reps)); setRir(prefill.rir !== undefined ? prefill.rir : null); }
     else if (draft) { setWeight(draft.weight); setReps(draft.reps); setRir(draft.rir); }
     else if (nextIsWarmup) {
-      const wWeight = warmupWeightFor(target.weight, ex.plannedWarmup, sets.length, unit, getPrefs().warmupPercentSchemes);
+      const wWeight = warmupWeightFor(target.weight, ex.plannedWarmup, nextWarmupIndex, unit, getPrefs().warmupPercentSchemes);
       setWeight(String(wWeight)); setReps(String(target.reps)); setRir(null);
     } else if (lastLogged) {
       const lw = lastWeek[Math.min(sets.length, lastWeek.length - 1)];
@@ -2740,11 +2748,18 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           <>
           <button
             onClick={() => setShowTargetInfo(!showTargetInfo)}
-            style={{ width: "100%", marginTop: 10, padding: "10px 14px", borderRadius: 12, border: `1px solid ${showTargetInfo ? T.accent : T.line}`, background: "rgba(232,68,46,0.08)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            style={{
+              width: "100%", marginTop: 10, padding: "10px 14px", borderRadius: 12,
+              border: `1px solid ${nextWarmupIndex != null ? "#E8A82E" : showTargetInfo ? T.accent : T.line}`,
+              background: nextWarmupIndex != null ? "rgba(232,168,46,0.12)" : "rgba(232,68,46,0.08)",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}
           >
-            <span style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>Target</span>
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: 0.3 }}>
-              {target.weight} {unit} <span style={{ color: T.dim, fontWeight: 500 }}>×</span> {target.reps}
+            <span style={{ fontSize: 11, color: nextWarmupIndex != null ? "#E8A82E" : T.dim, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: nextWarmupIndex != null ? 700 : 400 }}>
+              {nextWarmupIndex != null ? `Warmup ${nextWarmupIndex + 1} of ${ex.plannedWarmup}` : "Target"}
+            </span>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: nextWarmupIndex != null ? "#E8A82E" : T.text, letterSpacing: 0.3 }}>
+              {nextWarmupIndex != null ? nextWarmupWeight : target.weight} {unit} <span style={{ color: T.dim, fontWeight: 500 }}>×</span> {target.reps}
             </span>
             <span style={{ fontSize: 11, color: T.dim }}>ⓘ</span>
           </button>
@@ -2759,7 +2774,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
           {showTargetInfo && (
             <div style={{ marginTop: 10, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 12px", fontSize: 12, color: T.dim, lineHeight: 1.5 }}>
-              {target.fromProgram ? (
+              {nextWarmupIndex != null ? (
+                <>This is warmup set <b style={{ color: T.text }}>{nextWarmupIndex + 1} of {ex.plannedWarmup}</b> for this exercise, set at <b style={{ color: T.text }}>{getWarmupPercents(ex.plannedWarmup, getPrefs().warmupPercentSchemes)[nextWarmupIndex]}%</b> of your {target.weight} {unit} working target, rounded to the nearest loadable increment. Adjust these percentages anytime in Settings → Training Preferences → Warmup Set Weights.</>
+              ) : target.fromProgram ? (
                 <><b style={{ color: T.text }}>Program coach:</b> {target.reasonText}</>
               ) : target.anchored && target.fromToday ? (
                 <>Updated from what you just logged today: {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir}, estimated 1RM <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps.</>

@@ -966,7 +966,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
             <button onClick={() => setScreen("training")} style={navRowBtn}>
               <div>
                 <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Training Preferences</div>
-                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Training focus, strength score, set entry, big plates, muscle names, rest timer</div>
+                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Training focus, strength score, set entry, big plates, muscle names, rest timer, warmup weights</div>
               </div>
               <div style={{ color: T.dim, fontSize: 16 }}>›</div>
             </button>
@@ -978,6 +978,12 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
                 <>
                   <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "4px 0 10px" }}>Rest Timer</div>
                   {renderRestTimerFields()}
+                </>
+              )}
+              {matches("warmupPercentSchemes") && (
+                <>
+                  <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "4px 0 10px" }}>Warmup Set Weights</div>
+                  {renderWarmupWeightFields()}
                 </>
               )}
             </div>
@@ -1008,6 +1014,14 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
             onToggle={() => setOpenTrainingSection((s) => (s === "restTimer" ? null : "restTimer"))}
           >
             {renderRestTimerFields()}
+          </Section>
+          <Section
+            title="Warmup Set Weights"
+            subtitle="Percentage of top set per warmup set, by warmup count"
+            open={openTrainingSection === "warmupWeights"}
+            onToggle={() => setOpenTrainingSection((s) => (s === "warmupWeights" ? null : "warmupWeights"))}
+          >
+            {renderWarmupWeightFields()}
           </Section>
         </SubScreen>
       )}

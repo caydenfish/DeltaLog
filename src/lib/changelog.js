@@ -14,6 +14,7 @@ export const CHANGELOG = {
     items: [
       "Fixed: logging weight in kg could show long, unrealistic decimal numbers (e.g. 61.68539...) instead of a clean one-decimal value almost everywhere a weight was displayed or pre-filled — history, targets, program-generated weights, and more. All kg weights are now rounded to one decimal place throughout the app.",
       "Fixed: opening a warmup set used to pre-fill it with the same weight as your top (working) set, instead of a lighter warmup weight. Warmup sets now default to a percentage of your top set, scaled to how many warmup sets you've planned for that exercise.",
+      "The Target display now recognizes when your next set is a warmup: it turns yellow, relabels itself \"Warmup 1 of 3\" (etc.), and shows the scaled warmup weight instead of your working weight, so it's always clear at a glance which kind of set is coming up next.",
       "New: Warmup Set Weights, under Settings > Training Preferences. Set what percentage of your top set each warmup set should load, with recommended percentages already filled in based on standard progressive-warmup ramps used in strength coaching. Percentages ramp up automatically depending on how many warmup sets you use for an exercise (e.g. 3 warmup sets default to 40%/60%/80%), and every value is fully adjustable to fit how you like to warm up.",
     ],
   },
