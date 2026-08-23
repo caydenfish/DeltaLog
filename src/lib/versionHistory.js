@@ -5,6 +5,22 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.12.20",
+    date: "2026-08-23",
+    items: [
+      "ExportWorkoutModal.jsx: new Position option (Centered / Corner) for the Card and Detailed layouts, mirroring the existing Format picker pattern. Not offered for Story, which already has its own dedicated centered/full-bleed treatment built around the photo-background use case. Selection stored in new position state, persisted in exportImagePrefs.",
+      "New compact derived flag (layout !== 'story' && position === 'corner') drives a parallel set of sizing/alignment values through the existing preview JSX rather than a separate render branch: content wrapper switches to justifyContent: flex-end / alignItems: flex-start (anchors to bottom-left instead of the default top-start flow), the Logo+Wordmark lockup switches from stacked-and-centered to inline-row at roughly 60% size, and every stat/date/bodyweight/exercise-list font size drops proportionally (e.g. stat numbers 20px -> 17px, labels 9px -> 7.5px, exercise names 13px -> 11px). Card/Detailed's outer preview box previously sized height to fit its content exactly (height: undefined, i.e. auto) -- with Corner's smaller content that meant no visible room to actually sit in a corner, so previewRef also gained minHeight: 320 (compact only), giving the card a squarer canvas for the smaller block to anchor into rather than just shrinking text at the same tightly-wrapped size.",
+    ],
+  },
+  {
+    version: "1.12.19",
+    date: "2026-08-23",
+    items: [
+      "ExportWorkoutModal.jsx: fixed preview/export mismatch for any Story-layout format with a photo background. Root cause: html2canvas doesn't reliably honor CSS object-fit -- the live preview correctly cropped the photo via object-fit: cover, but the captured canvas often stretched/squished the same <img> to fill its box instead of cropping it, so the saved PNG could look visibly different from what was shown. Split the existing single-step photo pipeline into two: step 1 (unchanged in spirit from prior versions) fetches the photo once, decodes it, and downscales it to a same-origin Image capped at MAX_PHOTO_DIM, stored in new rawPhotoImg state rather than immediately finalized as a data URL. Step 2, a new effect keyed on [rawPhotoImg, formatRatio], re-crops rawPhotoImg to the exact target box aspect ratio (1/formatRatio) using the same scale-to-cover-then-crop-centered-overflow math CSS object-fit: cover performs, and bakes that into the photoDataUrl the <img> renders -- so there is no CSS cropping left for html2canvas to get wrong; the pixels already are the correctly-cropped image. Runs on canvas only (no network), so switching Format (Story/Post/Square) re-crops near-instantly.",
+      "ExportWorkoutModal.jsx: fixed the photo-background flicker. Root cause was two-fold: the <img> briefly rendered the live remote data.photoUrl (necessarily with crossOrigin=\"anonymous\" to avoid tainting the eventual canvas) before swapping to the local cropped data URL once ready, and the crossOrigin attribute itself changing between renders (present, then undefined) forces the browser to reload the image a second time under a different cache/CORS mode -- together, a visible flash on every open. The remote URL is no longer rendered at all; the photo background only renders once photoDataUrl (the local, cropped version) is ready (photoBgActive && photoDataUrl), so there's exactly one clean image paint instead of a remote-then-local swap.",
+    ],
+  },
+  {
     version: "1.12.18",
     date: "2026-08-23",
     items: [

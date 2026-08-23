@@ -31,6 +31,11 @@ const FORMATS = [
   { key: "square", label: "Square", sub: "1:1", heightOverWidth: 1 },
 ];
 
+const POSITIONS = [
+  { key: "center", label: "Centered" },
+  { key: "corner", label: "Corner" },
+];
+
 const LAYOUTS = [
   { key: "card", label: "Card" },
   { key: "detailed", label: "Detailed" },
@@ -45,6 +50,8 @@ export default function ExportWorkoutModal({ data, onClose }) {
   const remembered = getPrefs().exportImagePrefs;
   const [layout, setLayout] = useState(remembered?.layout || "card");
   const [format, setFormat] = useState(remembered?.format || "story");
+  const formatRatio = FORMATS.find((f) => f.key === format)?.heightOverWidth ?? 16 / 9;
+  const [position, setPosition] = useState(remembered?.position || "center");
   const [showSets, setShowSets] = useState(remembered ? remembered.showSets : true);
   const [showVolume, setShowVolume] = useState(remembered ? remembered.showVolume : true);
   const [showDuration, setShowDuration] = useState(remembered ? remembered.showDuration : true);
@@ -53,34 +60,23 @@ export default function ExportWorkoutModal({ data, onClose }) {
   const [usePhotoBg, setUsePhotoBg] = useState(remembered ? remembered.usePhotoBg : !!data.photoUrl);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [rawPhotoImg, setRawPhotoImg] = useState(null);
   const [photoDataUrl, setPhotoDataUrl] = useState(null);
   const previewRef = useRef(null);
   const containerRef = useRef(null);
 
-  // The progress photo is a Supabase signed URL, fetched cross-origin.
-  // html2canvas has to load it with crossOrigin="anonymous" so the
-  // capture doesn't taint the canvas, and when that cross-origin request
-  // hangs or stalls -- flaky network, CORS quirk on the signed URL,
-  // whatever -- html2canvas sits there waiting up to its imageTimeout
-  // before giving up, which is exactly the ~10 second stall reported
-  // ("only on Save Image, then it fixes itself"). Converting it to a
-  // same-origin data URL up front, well before Save Image is tapped,
-  // means the capture never needs a live network fetch at all -- nothing
-  // left to hang on.
-  //
-  // That data URL is also downscaled here rather than passed through at
-  // full camera resolution. A progress photo straight off a phone camera
-  // can be several megapixels; decoding and painting that at full size
-  // during html2canvas's capture pass is real, synchronous main-thread
-  // work, and is what was still showing up as a visible flicker/stutter
-  // specifically with a photo background, worst on mid-range Android
-  // devices (see prior investigation notes) even though the preview only
-  // ever displays it at 260-320px wide. Capping the longest edge and
-  // re-encoding as JPEG cuts both the decode cost and the data URL's own
-  // size substantially, with no visible quality loss at export size.
+  // Step 1: fetch the (possibly cross-origin, possibly several-megapixel)
+  // progress photo exactly once per photoUrl, and reduce it to a
+  // same-origin, downscaled <img> we can read pixels from freely from here
+  // on. Same reasoning as before (avoids a live network fetch stalling
+  // html2canvas's capture, and avoids decoding a full camera-resolution
+  // image on every re-crop below) -- this step just stops one image short
+  // of a final data URL, so step 2 can re-crop it instantly whenever the
+  // target aspect ratio (Format) changes, with no network and no re-decode
+  // of the original.
   const MAX_PHOTO_DIM = 1200;
   useEffect(() => {
-    if (!data.photoUrl) { setPhotoDataUrl(null); return; }
+    if (!data.photoUrl) { setRawPhotoImg(null); return; }
     let cancelled = false;
     fetch(data.photoUrl)
       .then((r) => r.blob())
@@ -91,7 +87,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
         img.onerror = (e) => { URL.revokeObjectURL(objectUrl); reject(e); };
         img.src = objectUrl;
       }))
-      .then((img) => {
+      .then((img) => new Promise((resolve, reject) => {
         const scale = Math.min(1, MAX_PHOTO_DIM / Math.max(img.naturalWidth, img.naturalHeight));
         const w = Math.max(1, Math.round(img.naturalWidth * scale));
         const h = Math.max(1, Math.round(img.naturalHeight * scale));
@@ -99,12 +95,60 @@ export default function ExportWorkoutModal({ data, onClose }) {
         canvas.width = w;
         canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        return canvas.toDataURL("image/jpeg", 0.85);
-      })
-      .then((dataUrl) => { if (!cancelled) setPhotoDataUrl(dataUrl); })
-      .catch(() => { if (!cancelled) setPhotoDataUrl(null); }); // falls back to the remote URL below
+        const downscaled = new Image();
+        downscaled.onload = () => resolve(downscaled);
+        downscaled.onerror = reject;
+        downscaled.src = canvas.toDataURL("image/jpeg", 0.85);
+      }))
+      .then((downscaled) => { if (!cancelled) setRawPhotoImg(downscaled); })
+      .catch(() => { if (!cancelled) setRawPhotoImg(null); });
     return () => { cancelled = true; };
   }, [data.photoUrl]);
+
+  // Step 2: re-crop rawPhotoImg to exactly the current target box's aspect
+  // ratio -- the same math CSS object-fit: cover does (scale to cover,
+  // crop centered overflow) -- and bake that into the data URL the <img>
+  // actually renders. This is what makes the saved PNG match the preview:
+  // html2canvas doesn't reliably honor object-fit, so previously the live
+  // preview (CSS-cropped, correct) and the captured canvas (html2canvas
+  // ignoring object-fit, often stretching/squishing the source instead of
+  // cropping it) could show visibly different results. Pre-cropping here
+  // means there's no CSS cropping left for html2canvas to get wrong --
+  // the pixels in the data URL already are the correctly-cropped image.
+  // This also removes the flicker: previously the <img> briefly rendered
+  // the live remote data.photoUrl (with crossOrigin="anonymous") before
+  // swapping to the local data URL once ready, and that crossOrigin
+  // attribute changing between renders forces a second image load --
+  // together, a visible flash every time. Now the remote URL is never
+  // rendered at all; nothing shows until the cropped local version is
+  // ready, then it appears once, cleanly. Runs on a canvas (no network),
+  // so switching Format (Story/Post/Square) re-crops instantly too.
+  useEffect(() => {
+    if (!rawPhotoImg) { setPhotoDataUrl(null); return; }
+    const targetAspect = 1 / formatRatio; // width / height
+    const nw = rawPhotoImg.naturalWidth;
+    const nh = rawPhotoImg.naturalHeight;
+    const srcAspect = nw / nh;
+    let sx, sy, sw, sh;
+    if (srcAspect > targetAspect) {
+      sh = nh;
+      sw = Math.round(nh * targetAspect);
+      sx = Math.round((nw - sw) / 2);
+      sy = 0;
+    } else {
+      sw = nw;
+      sh = Math.round(nw / targetAspect);
+      sx = 0;
+      sy = Math.round((nh - sh) / 2);
+    }
+    const outW = Math.min(900, sw);
+    const outH = Math.max(1, Math.round(outW / targetAspect));
+    const canvas = document.createElement("canvas");
+    canvas.width = outW;
+    canvas.height = outH;
+    canvas.getContext("2d").drawImage(rawPhotoImg, sx, sy, sw, sh, 0, 0, outW, outH);
+    setPhotoDataUrl(canvas.toDataURL("image/jpeg", 0.85));
+  }, [rawPhotoImg, formatRatio]);
 
   const toggles = [
     { key: "sets", label: "Set-by-set detail", value: showSets, set: setShowSets, hideOn: ["story"] },
@@ -159,7 +203,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setPref("exportImagePrefs", { layout, format, showSets, showVolume, showDuration, showBodyweight, showDate, usePhotoBg });
+      setPref("exportImagePrefs", { layout, format, position, showSets, showVolume, showDuration, showBodyweight, showDate, usePhotoBg });
     } catch (err) {
       setSaveError("Couldn't generate the image. Try again.");
     }
@@ -167,7 +211,11 @@ export default function ExportWorkoutModal({ data, onClose }) {
   }
 
   const showSetsEffective = showSets && layout !== "story";
-  const formatRatio = FORMATS.find((f) => f.key === format)?.heightOverWidth ?? 16 / 9;
+  // Corner is only offered for Card/Detailed -- Story already has its own
+  // dedicated, centered full-bleed treatment and a competing "smaller,
+  // different spot" option there would just fight the photo-background
+  // framing that layout is built around.
+  const compact = layout !== "story" && position === "corner";
 
   return createPortal(
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.85)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
@@ -212,6 +260,25 @@ export default function ExportWorkoutModal({ data, onClose }) {
             </>
           )}
 
+          {/* Position picker — Card/Detailed only; Story has its own framing */}
+          {layout !== "story" && (
+            <>
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Position</div>
+              <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
+                {POSITIONS.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => setPosition(p.key)}
+                    aria-pressed={position === p.key}
+                    style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: position === p.key ? T.accent : "transparent", color: position === p.key ? "#fff" : T.dim }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           {/* Toggles */}
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Include</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
@@ -245,6 +312,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
               style={{
                 width: layout === "story" ? 260 : 320,
                 height: layout === "story" ? Math.round(260 * formatRatio) : undefined,
+                minHeight: compact ? 320 : undefined,
                 background: T.bg,
                 border: `1px solid ${T.line}`,
                 borderRadius: 16,
@@ -258,66 +326,65 @@ export default function ExportWorkoutModal({ data, onClose }) {
                 overflow: "hidden",
               }}
             >
-              {photoBgActive && (
+              {photoBgActive && photoDataUrl && (
                 <>
                   <img
-                    src={photoDataUrl || data.photoUrl}
+                    src={photoDataUrl}
                     alt=""
-                    crossOrigin={photoDataUrl ? undefined : "anonymous"}
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
                   />
                   <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,11,13,0.55) 0%, rgba(10,11,13,0.35) 45%, rgba(10,11,13,0.75) 100%)", zIndex: 1 }} />
                 </>
               )}
-              <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: layout === "story" ? 20 : 12, height: "100%", justifyContent: layout === "story" ? "center" : "flex-start" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginBottom: layout === "story" ? 8 : 4 }}>
-                <Logo size={layout === "story" ? 60 : 44} />
-                <Wordmark size={layout === "story" ? 22 : 17} />
+              <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: layout === "story" ? 20 : compact ? 8 : 12, height: "100%", justifyContent: layout === "story" ? "center" : compact ? "flex-end" : "flex-start", alignItems: compact ? "flex-start" : "stretch" }}>
+              <div style={{ display: "flex", flexDirection: compact ? "row" : "column", alignItems: "center", gap: compact ? 6 : 4, marginBottom: layout === "story" ? 8 : compact ? 2 : 4 }}>
+                <Logo size={layout === "story" ? 60 : compact ? 26 : 44} />
+                <Wordmark size={layout === "story" ? 22 : compact ? 12 : 17} />
               </div>
 
               {showDate && (
-                <div style={{ textAlign: "center", fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 20 : 16, fontWeight: 700, color: T.text }}>
+                <div style={{ textAlign: compact ? "left" : "center", fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 20 : compact ? 12 : 16, fontWeight: 700, color: T.text }}>
                   {data.dateLabel}
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                <div style={{ flex: layout === "story" ? "0 1 auto" : 1, textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 30 : 20, fontWeight: 700, color: T.text }}>{data.totalSets}</div>
-                  <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Sets</div>
+              <div style={{ display: "flex", gap: compact ? 14 : 8, justifyContent: compact ? "flex-start" : "center" }}>
+                <div style={{ flex: layout === "story" ? "0 1 auto" : compact ? "0 1 auto" : 1, textAlign: compact ? "left" : "center" }}>
+                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 30 : compact ? 17 : 20, fontWeight: 700, color: T.text }}>{data.totalSets}</div>
+                  <div style={{ fontSize: compact ? 7.5 : 9, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Sets</div>
                 </div>
                 {showVolume && (
-                  <div style={{ flex: layout === "story" ? "0 1 auto" : 1, textAlign: "center", padding: layout === "story" ? "0 16px" : 0 }}>
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 30 : 20, fontWeight: 700, color: T.text }}>{data.totalVolume.toLocaleString()}</div>
-                    <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Volume ({data.unit})</div>
+                  <div style={{ flex: layout === "story" ? "0 1 auto" : compact ? "0 1 auto" : 1, textAlign: compact ? "left" : "center", padding: layout === "story" ? "0 16px" : 0 }}>
+                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 30 : compact ? 17 : 20, fontWeight: 700, color: T.text }}>{data.totalVolume.toLocaleString()}</div>
+                    <div style={{ fontSize: compact ? 7.5 : 9, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Volume ({data.unit})</div>
                   </div>
                 )}
                 {showDuration && data.durationMin != null && (
-                  <div style={{ flex: layout === "story" ? "0 1 auto" : 1, textAlign: "center" }}>
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 30 : 20, fontWeight: 700, color: T.text }}>{data.durationMin}</div>
-                    <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Minutes</div>
+                  <div style={{ flex: layout === "story" ? "0 1 auto" : compact ? "0 1 auto" : 1, textAlign: compact ? "left" : "center" }}>
+                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 30 : compact ? 17 : 20, fontWeight: 700, color: T.text }}>{data.durationMin}</div>
+                    <div style={{ fontSize: compact ? 7.5 : 9, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Minutes</div>
                   </div>
                 )}
               </div>
 
               {showBodyweight && data.bodyWeight != null && (
-                <div style={{ textAlign: "center", fontSize: layout === "story" ? 15 : 12, color: T.dim }}>Bodyweight: <span style={{ color: T.text, fontWeight: 600 }}>{data.bodyWeight} {data.unit}</span></div>
+                <div style={{ textAlign: compact ? "left" : "center", fontSize: layout === "story" ? 15 : compact ? 10 : 12, color: T.dim }}>Bodyweight: <span style={{ color: T.text, fontWeight: 600 }}>{data.bodyWeight} {data.unit}</span></div>
               )}
 
               {showSetsEffective && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: compact ? 5 : 8, marginTop: compact ? 2 : 4 }}>
                   {(data.exercises || []).slice(0, layout === "detailed" ? 12 : 6).map((ex, i) => (
                     <div key={i}>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 13, fontWeight: 700, color: T.text, marginBottom: layout === "detailed" ? 3 : 0 }}>{ex.name}</div>
+                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: compact ? 11 : 13, fontWeight: 700, color: T.text, marginBottom: layout === "detailed" ? 3 : 0 }}>{ex.name}</div>
                       {layout === "detailed" ? (
                         (ex.sets || []).map((s, j) => (
-                          <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                          <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: compact ? 9.5 : 11 }}>
                             <span style={{ color: s.isWarmup ? "#E8A82E" : T.dim }}>{s.label}</span>
                             <span style={{ color: T.text }}>{s.weight} {data.unit} × {s.reps}</span>
                           </div>
                         ))
                       ) : (
-                        <div style={{ fontSize: 11, color: T.dim }}>{(ex.sets || []).length} set{(ex.sets || []).length === 1 ? "" : "s"}</div>
+                        <div style={{ fontSize: compact ? 9.5 : 11, color: T.dim }}>{(ex.sets || []).length} set{(ex.sets || []).length === 1 ? "" : "s"}</div>
                       )}
                     </div>
                   ))}

@@ -9,6 +9,19 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.20": {
+    title: "New Position option for Card/Detailed: Centered or Corner",
+    items: [
+      "Save as Image's Card and Detailed layouts now have a Position option: Centered (the original layout) or Corner, a smaller version of the same info tucked into the bottom-left instead of taking over the whole card.",
+    ],
+  },
+  "1.12.19": {
+    title: "Fixed Story export not matching the preview, and photo-background flicker",
+    items: [
+      "Fixed: a photo background on a Story/Post/Square export could look stretched or squished compared to the preview. The photo is now cropped to the exact export shape before it's captured, so what you see is what gets saved.",
+      "Fixed: a visible flicker when a photo background loads on the Save as Image screen.",
+    ],
+  },
   "1.12.18": {
     title: "New Format picker for Story exports: Story, Post, or Square",
     items: [
