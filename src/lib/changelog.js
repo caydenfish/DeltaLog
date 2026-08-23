@@ -9,6 +9,12 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.18": {
+    title: "New Format picker for Story exports: Story, Post, or Square",
+    items: [
+      "The Story layout now has a Format picker: Story (9:16), Post (4:5), or Square (1:1) — Instagram's own standard sizes, so your export always matches exactly what Instagram expects for that surface, regardless of which format you're posting to. Replaces the previous approach of matching your phone's screen shape, which wasn't consistent across devices.",
+    ],
+  },
   "1.12.17": {
     title: "Story image export now matches your phone's actual screen shape",
     items: [

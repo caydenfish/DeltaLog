@@ -5,6 +5,15 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.12.18",
+    date: "2026-08-23",
+    items: [
+      "ExportWorkoutModal.jsx: reverted the 1.12.17 device-viewport-matching approach (getStoryAspect() reading window.innerHeight/innerWidth) per user decision -- there's no way to guarantee the export matches the *destination* Instagram is opened on if that destination is a different device than the one used to export (e.g. exporting on one phone, someone else viewing/reposting on another), and it added a runtime dependency on viewport quirks for a value that should just be a fixed, known-good constant. Replaced with a new FORMATS constant: three fixed, Instagram-documented aspect ratios -- Story (9:16), Post (5:4 i.e. 4:5 portrait), Square (1:1) -- selected explicitly by the user rather than inferred from the device.",
+      "New Format sub-picker, rendered only when layout === 'story' (Card/Detailed have their own natural sizing and aren't tied to a social-platform frame), same segmented-control pattern as the existing Layout picker. Selection stored in new format state, read from/written to exportImagePrefs alongside the existing layout/toggle prefs so the last-used format is remembered per-user.",
+      "New formatRatio derived value (FORMATS lookup by format key, heightOverWidth, fallback 16/9) replaces the previous storyAspect state as the source for the Story preview box's height (Math.round(260 * formatRatio)) -- same single point of truth that feeds both the on-screen preview and the html2canvas capture (unchanged since 1.12.16: capture still uses previewRef's own real rendered box, no explicit width/height override).",
+    ],
+  },
+  {
     version: "1.12.17",
     date: "2026-08-23",
     items: [

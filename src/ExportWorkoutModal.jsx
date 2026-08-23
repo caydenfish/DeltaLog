@@ -16,24 +16,20 @@ const T = {
   green: "#3BA55D",
 };
 
-// Instagram Stories don't have one fixed ratio to design for -- there's
-// no such thing as "the" phone screen anymore (9:16, 9:19.5, 9:20, 9:21
-// all ship today). A photo taken on-device fills the Story composer
-// edge-to-edge because it was captured at that exact device's ratio.
-// Hardcoding 16:9 for the Story export meant it only filled the screen
-// on devices that happen to be 16:9 -- everywhere taller (most current
-// phones), Instagram has nothing to match it to and letterboxes it down
-// to fit, which shows up as the whole image looking shrunk/"compressed".
-// Reading the live viewport at render/export time and matching the
-// preview frame to it means the exported frame always matches whatever
-// screen it's about to be opened on.
-function getStoryAspect() {
-  if (typeof window === "undefined" || !window.innerWidth || !window.innerHeight) return 16 / 9;
-  const ratio = window.innerHeight / window.innerWidth;
-  // Sanity-clamp: guards against a landscape window (e.g. desktop testing)
-  // producing a squat/unusable "Story" frame.
-  return Math.min(Math.max(ratio, 1.5), 2.5);
-}
+// Instagram's own documented export sizes for each surface. These are
+// fixed, known-good targets -- unlike device viewport dimensions (tried
+// and reverted in 1.12.17), these don't vary by phone, so a "Story"
+// export is exactly the ratio Instagram's Story composer is designed for
+// on any device. Instagram's composer will still center/pinch-to-fill on
+// screens taller than 9:16 (there is no dimension that avoids that on
+// every physical screen), but this is the same tradeoff every export
+// tool -- Canva, Later, etc. -- ships with, and it's a small pinch vs.
+// the previous letterboxed-and-shrunk result.
+const FORMATS = [
+  { key: "story", label: "Story", sub: "9:16", heightOverWidth: 16 / 9 },
+  { key: "post", label: "Post", sub: "4:5", heightOverWidth: 5 / 4 },
+  { key: "square", label: "Square", sub: "1:1", heightOverWidth: 1 },
+];
 
 const LAYOUTS = [
   { key: "card", label: "Card" },
@@ -48,6 +44,7 @@ const LAYOUTS = [
 export default function ExportWorkoutModal({ data, onClose }) {
   const remembered = getPrefs().exportImagePrefs;
   const [layout, setLayout] = useState(remembered?.layout || "card");
+  const [format, setFormat] = useState(remembered?.format || "story");
   const [showSets, setShowSets] = useState(remembered ? remembered.showSets : true);
   const [showVolume, setShowVolume] = useState(remembered ? remembered.showVolume : true);
   const [showDuration, setShowDuration] = useState(remembered ? remembered.showDuration : true);
@@ -59,7 +56,6 @@ export default function ExportWorkoutModal({ data, onClose }) {
   const [photoDataUrl, setPhotoDataUrl] = useState(null);
   const previewRef = useRef(null);
   const containerRef = useRef(null);
-  const [storyAspect] = useState(getStoryAspect);
 
   // The progress photo is a Supabase signed URL, fetched cross-origin.
   // html2canvas has to load it with crossOrigin="anonymous" so the
@@ -163,7 +159,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setPref("exportImagePrefs", { layout, showSets, showVolume, showDuration, showBodyweight, showDate, usePhotoBg });
+      setPref("exportImagePrefs", { layout, format, showSets, showVolume, showDuration, showBodyweight, showDate, usePhotoBg });
     } catch (err) {
       setSaveError("Couldn't generate the image. Try again.");
     }
@@ -171,6 +167,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
   }
 
   const showSetsEffective = showSets && layout !== "story";
+  const formatRatio = FORMATS.find((f) => f.key === format)?.heightOverWidth ?? 16 / 9;
 
   return createPortal(
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.85)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
@@ -195,6 +192,25 @@ export default function ExportWorkoutModal({ data, onClose }) {
               </button>
             ))}
           </div>
+
+          {/* Format picker — only meaningful once Story's fixed-frame path is active */}
+          {layout === "story" && (
+            <>
+              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Format</div>
+              <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
+                {FORMATS.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFormat(f.key)}
+                    aria-pressed={format === f.key}
+                    style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: format === f.key ? T.accent : "transparent", color: format === f.key ? "#fff" : T.dim }}
+                  >
+                    {f.label} <span style={{ opacity: 0.7, fontWeight: 500 }}>{f.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Toggles */}
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Include</div>
@@ -228,7 +244,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
               ref={previewRef}
               style={{
                 width: layout === "story" ? 260 : 320,
-                height: layout === "story" ? Math.round(260 * storyAspect) : undefined,
+                height: layout === "story" ? Math.round(260 * formatRatio) : undefined,
                 background: T.bg,
                 border: `1px solid ${T.line}`,
                 borderRadius: 16,
