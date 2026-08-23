@@ -5,6 +5,14 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.12.21",
+    date: "2026-08-23",
+    items: [
+      "ExportWorkoutModal.jsx: fixed low-resolution output across every layout/format. handleSaveImage's html2canvas call used a flat scale: 2 against a previewRef that's deliberately small on screen (260-320 CSS px, so the sheet fits comfortably) -- that produced a ~520-640px wide PNG, well under the 1080px width Instagram (and most platforms) treat as baseline, so the file got upscaled again downstream and came out visibly soft on both the photo layer and the text/logo layer (both are rasterized together in one capture, so neither could be sharp while the canvas itself was undersized). New EXPORT_TARGET_WIDTH constant (1080) and exportScale computed as EXPORT_TARGET_WIDTH / previewRef.getBoundingClientRect().width at save time, so the output is always full resolution regardless of the on-screen preview's necessarily-small CSS size. Also raised the photo crop pipeline's own resolution ceilings to match: MAX_PHOTO_DIM (initial downscale in the fetch step) 1200 -> 1600, and the cover-crop output width cap (previously a flat 900) now uses EXPORT_TARGET_WIDTH too, plus bumped JPEG re-encode quality 0.85 -> 0.9/0.92 at the two re-encode points -- so the pre-cropped photo data URL that feeds html2canvas is itself high enough resolution to not be the bottleneck once the capture scale was fixed.",
+      "ExportWorkoutModal.jsx: root-caused the remaining repeated flicker (previous fix in 1.12.19 addressed the initial remote-to-local image swap, but a further, recurring flicker was still reported). The progress photo lives in a private Supabase bucket, so lib/queries.js's fetchProgressPhoto always resolves it through storage.createSignedUrl -- which mints a brand-new token and expiry on every single call, even for the exact same file. Anything upstream that re-runs that fetch (a re-render, a realtime sync tick, anything) therefore hands this component a data.photoUrl that's textually different from the last one despite pointing at the identical photo, and the fetch-decode-crop pipeline (added in 1.12.16/1.12.19) was keyed directly on data.photoUrl, so it treated every one of those re-signs as a brand new photo and reloaded/reflickered the image each time. Fixed by keying the fetch effect on a new photoUrlKey (data.photoUrl with its query string, i.e. the token+expiry, stripped off) instead of the raw URL -- the storage path portion is stable for the same photo, so a re-sign no longer re-triggers the pipeline at all; the full signed data.photoUrl (valid at the time) is still what's actually fetched whenever the effect does legitimately fire for a new photo.",
+    ],
+  },
+  {
     version: "1.12.20",
     date: "2026-08-23",
     items: [

@@ -25,6 +25,14 @@ const T = {
 // every physical screen), but this is the same tradeoff every export
 // tool -- Canva, Later, etc. -- ships with, and it's a small pinch vs.
 // the previous letterboxed-and-shrunk result.
+// Instagram's documented baseline export width across Story/Post/Square
+// alike (only the height varies by format -- see FORMATS below). Used to
+// compute how much html2canvas needs to upscale the on-screen preview
+// (which is deliberately small, 260-320 CSS px, to fit the modal sheet)
+// so the actual saved file is full resolution rather than a low-res
+// upscale target for Instagram to blow up further.
+const EXPORT_TARGET_WIDTH = 1080;
+
 const FORMATS = [
   { key: "story", label: "Story", sub: "9:16", heightOverWidth: 16 / 9 },
   { key: "post", label: "Post", sub: "4:5", heightOverWidth: 5 / 4 },
@@ -66,7 +74,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
   const containerRef = useRef(null);
 
   // Step 1: fetch the (possibly cross-origin, possibly several-megapixel)
-  // progress photo exactly once per photoUrl, and reduce it to a
+  // progress photo exactly once per underlying photo, and reduce it to a
   // same-origin, downscaled <img> we can read pixels from freely from here
   // on. Same reasoning as before (avoids a live network fetch stalling
   // html2canvas's capture, and avoids decoding a full camera-resolution
@@ -74,7 +82,22 @@ export default function ExportWorkoutModal({ data, onClose }) {
   // of a final data URL, so step 2 can re-crop it instantly whenever the
   // target aspect ratio (Format) changes, with no network and no re-decode
   // of the original.
-  const MAX_PHOTO_DIM = 1200;
+  //
+  // Keyed on photoUrlKey (the URL's path, stripped of its query string)
+  // rather than data.photoUrl itself. The progress photo bucket is
+  // private, so its URL is a signed URL, and fetchProgressPhoto calls
+  // createSignedUrl fresh on every read -- same photo, brand new token
+  // and expiry each time. Any upstream re-fetch (a re-render, a realtime
+  // sync tick, whatever) therefore hands this component a "new" photoUrl
+  // for a photo that hasn't actually changed. Keying on data.photoUrl
+  // directly meant every one of those re-signs re-ran the entire
+  // fetch-decode-crop pipeline and reloaded the visible image -- the
+  // repeated flicker reported. The storage path portion of the URL is
+  // stable for the same photo, so keying on that skips the reload
+  // entirely when nothing actually changed; the full data.photoUrl (with
+  // a valid token at the time this fires) is still what's fetched.
+  const MAX_PHOTO_DIM = 1600;
+  const photoUrlKey = data.photoUrl ? data.photoUrl.split("?")[0] : null;
   useEffect(() => {
     if (!data.photoUrl) { setRawPhotoImg(null); return; }
     let cancelled = false;
@@ -98,12 +121,13 @@ export default function ExportWorkoutModal({ data, onClose }) {
         const downscaled = new Image();
         downscaled.onload = () => resolve(downscaled);
         downscaled.onerror = reject;
-        downscaled.src = canvas.toDataURL("image/jpeg", 0.85);
+        downscaled.src = canvas.toDataURL("image/jpeg", 0.9);
       }))
       .then((downscaled) => { if (!cancelled) setRawPhotoImg(downscaled); })
       .catch(() => { if (!cancelled) setRawPhotoImg(null); });
     return () => { cancelled = true; };
-  }, [data.photoUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only photoUrlKey (the stable path) should re-trigger a refetch, not every re-signed token for the same photo. data.photoUrl is still read fresh from the closure when this does fire.
+  }, [photoUrlKey]);
 
   // Step 2: re-crop rawPhotoImg to exactly the current target box's aspect
   // ratio -- the same math CSS object-fit: cover does (scale to cover,
@@ -141,13 +165,13 @@ export default function ExportWorkoutModal({ data, onClose }) {
       sx = 0;
       sy = Math.round((nh - sh) / 2);
     }
-    const outW = Math.min(900, sw);
+    const outW = Math.min(EXPORT_TARGET_WIDTH, sw);
     const outH = Math.max(1, Math.round(outW / targetAspect));
     const canvas = document.createElement("canvas");
     canvas.width = outW;
     canvas.height = outH;
     canvas.getContext("2d").drawImage(rawPhotoImg, sx, sy, sw, sh, 0, 0, outW, outH);
-    setPhotoDataUrl(canvas.toDataURL("image/jpeg", 0.85));
+    setPhotoDataUrl(canvas.toDataURL("image/jpeg", 0.92));
   }, [rawPhotoImg, formatRatio]);
 
   const toggles = [
@@ -178,23 +202,25 @@ export default function ExportWorkoutModal({ data, onClose }) {
       // keeps the live and cloned layouts in sync so there's nothing
       // to visibly snap into place.
       if (containerRef.current) containerRef.current.scrollTop = 0;
-      // Previous attempt pinned width/height/windowWidth/windowHeight to
-      // force the Story frame to 260x462. But windowWidth/windowHeight
-      // don't just crop -- they resize the simulated window html2canvas
-      // renders the clone inside. This modal sheet is width:100% with a
-      // maxWidth, in a fixed flex container, so shrinking the simulated
-      // window to 260px makes the whole sheet reflow differently than on
-      // the real device. html2canvas's crop offset is computed against
-      // the real on-screen layout, so it ends up grabbing the wrong
-      // region against that reflowed clone -- canvas is still ~9:16, but
-      // the content inside is shifted/cropped wrong, which reads as a
-      // blown aspect ratio once it lands in Instagram.
       // previewRef already carries explicit CSS width/height (260x462 for
       // Story), so leaving width/height/window* unset lets html2canvas
       // fall back to its default: measure and capture the element's own
       // real rendered box, matching exactly what's on screen.
+      //
+      // scale is computed rather than a flat 2, because a flat 2 against
+      // a 260-320 CSS px preview box (deliberately small so it fits the
+      // modal sheet) only produced a ~520-640px wide PNG -- well under
+      // the 1080px width Instagram and most platforms expect, so the
+      // output got upscaled again on the other end and came out soft,
+      // for both the photo and the text/logo layer since both are
+      // rasterized together in the same capture. Solving for scale such
+      // that boxWidth * scale === EXPORT_TARGET_WIDTH (1080) means the
+      // saved file is always full resolution regardless of how small the
+      // on-screen preview needs to be.
+      const boxWidth = previewRef.current.getBoundingClientRect().width || (layout === "story" ? 260 : 320);
+      const exportScale = EXPORT_TARGET_WIDTH / boxWidth;
       const canvas = await html2canvas(previewRef.current, {
-        backgroundColor: T.bg, scale: 2, useCORS: true, scrollX: 0, scrollY: 0, imageTimeout: 3000,
+        backgroundColor: T.bg, scale: exportScale, useCORS: true, scrollX: 0, scrollY: 0, imageTimeout: 3000,
       });
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");

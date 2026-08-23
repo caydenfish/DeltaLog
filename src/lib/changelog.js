@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.21": {
+    title: "Save as Image is now full resolution, and the photo-background flicker is gone for good",
+    items: [
+      "Fixed: saved images (all layouts, all formats) were noticeably softer than they should be, both the photo and the text/logo on top of it. Exports are now rendered at full 1080px-wide resolution instead of a low-res copy that got stretched afterward.",
+      "Fixed: a photo background could still flicker repeatedly while sitting on the Save as Image screen, not just once. Root cause was outside this screen: the progress photo comes from a short-lived signed link that gets silently refreshed with a new link for the exact same photo, and this screen was treating each refresh as a brand new photo to reload. It now recognizes those refreshes as the same photo and leaves the image alone.",
+    ],
+  },
   "1.12.20": {
     title: "New Position option for Card/Detailed: Centered or Corner",
     items: [
