@@ -9,6 +9,12 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.17": {
+    title: "Story image export now matches your phone's actual screen shape",
+    items: [
+      "Fixed: the Story-layout image export was built for an older, shorter phone screen shape. On today's taller phones, that mismatch made Instagram shrink the whole image down to fit instead of filling the Story edge to edge. The export now automatically matches your device's actual screen shape.",
+    ],
+  },
   "1.12.16": {
     title: "Fixed Story image export coming out cropped wrong for Instagram",
     items: [

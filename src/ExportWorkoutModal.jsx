@@ -16,6 +16,25 @@ const T = {
   green: "#3BA55D",
 };
 
+// Instagram Stories don't have one fixed ratio to design for -- there's
+// no such thing as "the" phone screen anymore (9:16, 9:19.5, 9:20, 9:21
+// all ship today). A photo taken on-device fills the Story composer
+// edge-to-edge because it was captured at that exact device's ratio.
+// Hardcoding 16:9 for the Story export meant it only filled the screen
+// on devices that happen to be 16:9 -- everywhere taller (most current
+// phones), Instagram has nothing to match it to and letterboxes it down
+// to fit, which shows up as the whole image looking shrunk/"compressed".
+// Reading the live viewport at render/export time and matching the
+// preview frame to it means the exported frame always matches whatever
+// screen it's about to be opened on.
+function getStoryAspect() {
+  if (typeof window === "undefined" || !window.innerWidth || !window.innerHeight) return 16 / 9;
+  const ratio = window.innerHeight / window.innerWidth;
+  // Sanity-clamp: guards against a landscape window (e.g. desktop testing)
+  // producing a squat/unusable "Story" frame.
+  return Math.min(Math.max(ratio, 1.5), 2.5);
+}
+
 const LAYOUTS = [
   { key: "card", label: "Card" },
   { key: "detailed", label: "Detailed" },
@@ -40,6 +59,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
   const [photoDataUrl, setPhotoDataUrl] = useState(null);
   const previewRef = useRef(null);
   const containerRef = useRef(null);
+  const [storyAspect] = useState(getStoryAspect);
 
   // The progress photo is a Supabase signed URL, fetched cross-origin.
   // html2canvas has to load it with crossOrigin="anonymous" so the
@@ -208,7 +228,7 @@ export default function ExportWorkoutModal({ data, onClose }) {
               ref={previewRef}
               style={{
                 width: layout === "story" ? 260 : 320,
-                height: layout === "story" ? Math.round(260 * 16 / 9) : undefined,
+                height: layout === "story" ? Math.round(260 * storyAspect) : undefined,
                 background: T.bg,
                 border: `1px solid ${T.line}`,
                 borderRadius: 16,

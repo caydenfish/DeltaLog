@@ -5,6 +5,14 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.12.17",
+    date: "2026-08-23",
+    items: [
+      "ExportWorkoutModal.jsx: root-caused the remaining Story export mismatch after 1.12.16. The Story frame's height was still hardcoded via a fixed 16:9 (Math.round(260 * 16 / 9)) ratio. Confirmed via user-supplied screenshots that the actual device screen was 1440x3120 (~9:19.5), not 9:16 -- a raw camera photo shared straight to Instagram filled the composer edge-to-edge because it was captured at the device's real 9:19.5 ratio, while the DeltaLog export, built to a fixed 16:9 canvas, didn't match that ratio, so Instagram letterboxed/shrank it down to fit inside the frame -- visually 'compressed'. There is no single fixed ratio that fills every device's Story composer; modern phones ship at 9:16, 9:19.5, 9:20, 9:21, etc., and IG can only fill the screen when the shared image already matches the device it's opened on.",
+      "New getStoryAspect() helper: reads window.innerHeight/window.innerWidth at export time (clamped to a sane 1.5-2.5 range, guarding against a landscape/desktop testing window producing a squat, unusable frame) and uses that as the Story frame's live aspect ratio, computed once per modal open via useState(getStoryAspect). previewRef's height for the Story layout now derives from this instead of the fixed 16/9, so the preview the user sees and the exported PNG both match whatever screen they're actually going to open it on. Falls back to 16/9 only if window dimensions are unavailable.",
+    ],
+  },
+  {
     version: "1.12.16",
     date: "2026-08-23",
     items: [
