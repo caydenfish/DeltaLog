@@ -118,20 +118,23 @@ export default function ExportWorkoutModal({ data, onClose }) {
       // keeps the live and cloned layouts in sync so there's nothing
       // to visibly snap into place.
       if (containerRef.current) containerRef.current.scrollTop = 0;
-      // html2canvas measures the cloned node's natural content size, which
-      // for the Story layout could run taller than the fixed 260x~462
-      // frame (overflow: hidden clips what's rendered on screen, but
-      // html2canvas's clone doesn't always respect that the same way) --
-      // producing a PNG taller/narrower than true 9:16. Instagram then has
-      // to squeeze that into its actual Story frame, which is exactly the
-      // visible extra compression/cropping reported. Pinning width/height
-      // explicitly forces the capture to the same box the preview shows,
-      // regardless of what the cloned content would naturally measure.
-      const captureWidth = layout === "story" ? 260 : 320;
-      const captureHeight = layout === "story" ? Math.round(260 * 16 / 9) : previewRef.current.offsetHeight;
+      // Previous attempt pinned width/height/windowWidth/windowHeight to
+      // force the Story frame to 260x462. But windowWidth/windowHeight
+      // don't just crop -- they resize the simulated window html2canvas
+      // renders the clone inside. This modal sheet is width:100% with a
+      // maxWidth, in a fixed flex container, so shrinking the simulated
+      // window to 260px makes the whole sheet reflow differently than on
+      // the real device. html2canvas's crop offset is computed against
+      // the real on-screen layout, so it ends up grabbing the wrong
+      // region against that reflowed clone -- canvas is still ~9:16, but
+      // the content inside is shifted/cropped wrong, which reads as a
+      // blown aspect ratio once it lands in Instagram.
+      // previewRef already carries explicit CSS width/height (260x462 for
+      // Story), so leaving width/height/window* unset lets html2canvas
+      // fall back to its default: measure and capture the element's own
+      // real rendered box, matching exactly what's on screen.
       const canvas = await html2canvas(previewRef.current, {
         backgroundColor: T.bg, scale: 2, useCORS: true, scrollX: 0, scrollY: 0, imageTimeout: 3000,
-        width: captureWidth, height: captureHeight, windowWidth: captureWidth, windowHeight: captureHeight,
       });
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");

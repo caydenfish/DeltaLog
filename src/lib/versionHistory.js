@@ -5,6 +5,14 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.12.16",
+    date: "2026-08-23",
+    items: [
+      "ExportWorkoutModal.jsx: root-caused the Story export aspect-ratio bug. The 1.12.x fix for the flicker/stall issue had pinned width/height/windowWidth/windowHeight on the html2canvas call to force the output to the 260x462 Story frame. But windowWidth/windowHeight don't just crop the output -- they resize the simulated browser window html2canvas renders the DOM clone inside. The modal sheet is width:100% with a maxWidth, in a position:fixed flex container, so shrinking the simulated window to 260px wide made the sheet reflow completely differently than on the real device (different wrapping, different effective padding contribution at that width). html2canvas's crop offset for the target element is computed against the real on-screen layout, so once the clone reflowed under the shrunk window, the crop rectangle no longer lined up with where the preview box actually rendered inside that clone -- canvas dimensions were still technically ~9:16, but the content inside was shifted/cropped incorrectly, which is what surfaced as a blown aspect ratio once posted to an Instagram Story.",
+      "Fix: removed the explicit width/height/windowWidth/windowHeight overrides entirely. previewRef already carries explicit CSS width/height (260x462 for Story, 320 x auto for Card/Detailed), so html2canvas's default behavior -- measure and capture the target element's own real rendered bounding box, no window resize -- produces the correct crop every time. Kept the pre-existing scrollTop-to-0 fix (unrelated: addresses a real clone/live scroll-position mismatch, not the aspect-ratio bug) and the photo-downscaling logic, both untouched.",
+    ],
+  },
+  {
     version: "1.12.15",
     date: "2026-08-06",
     items: [

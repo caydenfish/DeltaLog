@@ -9,6 +9,12 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.16": {
+    title: "Fixed Story image export coming out cropped wrong for Instagram",
+    items: [
+      "Fixed: saving a workout summary as a Story-layout image and posting it to an Instagram Story could come out cropped or distorted instead of filling the frame cleanly. The image export now always matches exactly what's shown in the preview.",
+    ],
+  },
   "1.12.15": {
     title: "Fixed kg weights showing extra decimals, warmup sets now scale their own weight, new Warmup Set Weights setting",
     items: [
