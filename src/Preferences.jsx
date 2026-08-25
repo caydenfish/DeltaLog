@@ -118,6 +118,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     plate55Scope: getPrefs().plate55Scope,
     trainingIdeology: getPrefs().trainingIdeology,
     targetCalcMethod: getPrefs().targetCalcMethod,
+    defaultPlannedSets: getPrefs().defaultPlannedSets,
     timeFormat: getPrefs().timeFormat,
     warmupPercentSchemes: getPrefs().warmupPercentSchemes,
   }));
@@ -157,6 +158,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     trainingIdeology: "training focus rep range hypertrophy strength endurance ideology methodology default",
     scoreDisplay: "strength score dots percentile deltalog",
     targetCalcMethod: "target calculation method progression double progression percent e1rm rir autoregulation",
+    defaultPlannedSets: "default sets per exercise planned sets working sets setup",
     weightEntryMode: "default set entry manual plate calculator logging type",
     plateSizes: "big plates 55 lb 25 kg bumpers squats deadlifts",
     restSeconds: "rest timer default seconds",
@@ -173,7 +175,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // findable by search without requiring a tap into that sub-screen —
   // shown inline, right in the settings list, while a search is active.
   const unitsSearchMatch = searchActive && ["units", "timeFormat"].some(matches);
-  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "targetCalcMethod", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled", "warmupPercentSchemes"].some(matches);
+  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "targetCalcMethod", "defaultPlannedSets", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled", "warmupPercentSchemes"].some(matches);
 
   function update(key, val) {
     if (controlled) {
@@ -184,7 +186,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     }
   }
 
-  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod, warmupPercentSchemes } = state;
+  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod, defaultPlannedSets, warmupPercentSchemes } = state;
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -276,6 +278,18 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
                 {name}
               </button>
             ))}
+          </div>
+        </div>
+        )}
+
+        {matches("defaultPlannedSets") && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ color: T.text, fontSize: 14, marginBottom: 4 }}>Sets per exercise</div>
+          <div style={{ color: T.dim, fontSize: 11, marginBottom: 8 }}>Default working sets when you add an exercise — adjustable per exercise anytime</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <button onClick={() => update("defaultPlannedSets", Math.max(1, defaultPlannedSets - 1))} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 16, fontWeight: 700 }}>&minus;</button>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, minWidth: 20, textAlign: "center" }}>{defaultPlannedSets}</div>
+            <button onClick={() => update("defaultPlannedSets", Math.min(12, defaultPlannedSets + 1))} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 16, fontWeight: 700 }}>+</button>
           </div>
         </div>
         )}

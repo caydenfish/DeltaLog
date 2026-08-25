@@ -11,6 +11,7 @@ import ResetPassword from "./ResetPassword";
 import Onboarding from "./Onboarding";
 import TermsGate from "./TermsGate";
 import SetupWizard from "./SetupWizard";
+import Welcome from "./Welcome";
 import Home from "./Home";
 import SetLogger from "./SetLogger";
 import AppSplash from "./AppSplash";
@@ -24,6 +25,11 @@ export default function App() {
   const [resumeWorkout, setResumeWorkout] = useState(undefined); // undefined = not checked, null = none, object = found
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [setupSeen, setSetupSeen] = useState(() => getPrefs().setupWizardSeen);
+  // Shown once before a brand-new signup's profile form -- not persisted,
+  // since it's only ever relevant for the single session someone is
+  // actually completing onboarding in. Anyone reloading mid-onboarding
+  // just taps through it again, which is harmless.
+  const [welcomeAcked, setWelcomeAcked] = useState(false);
   // A ?shared=CODE link should render the read-only shared-workout view
   // immediately, before any auth check — the whole point is that someone
   // without an account (or logged into a different one) can open it.
@@ -202,11 +208,13 @@ export default function App() {
   } else if (profile === undefined) {
     content = null; loadingGate = true;
   } else if (!profileComplete) {
-    content = <Onboarding user={session.user} profile={profile} onComplete={() => fetchProfile(session.user.id).then(setProfile)} />;
+    content = !welcomeAcked
+      ? <Welcome onContinue={() => setWelcomeAcked(true)} />
+      : <Onboarding user={session.user} profile={profile} onComplete={() => fetchProfile(session.user.id).then(setProfile)} />;
   } else if (!profile.terms_accepted_at) {
-    content = <TermsGate user={session.user} onAccepted={() => fetchProfile(session.user.id).then(setProfile)} />;
+    content = <TermsGate user={session.user} onboarding={!setupSeen} onAccepted={() => fetchProfile(session.user.id).then(setProfile)} />;
   } else if (!setupSeen) {
-    content = <SetupWizard onComplete={() => setSetupSeen(true)} />;
+    content = <SetupWizard profile={profile} onComplete={() => setSetupSeen(true)} />;
   } else if (resumeWorkout === undefined || mode === null) {
     content = <LoadingScreen />;
   } else {

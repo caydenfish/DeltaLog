@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { acceptTerms } from "./lib/queries";
 import { TermsBody } from "./lib/termsContent";
+import OnboardingProgress from "./OnboardingProgress";
 import Logo from "./Logo";
 
 const T = {
@@ -13,7 +14,7 @@ const T = {
   accent: "#E8442E",
 };
 
-export default function TermsGate({ user, onAccepted }) {
+export default function TermsGate({ user, onAccepted, onboarding }) {
   const [checked, setChecked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -37,6 +38,7 @@ export default function TermsGate({ user, onAccepted }) {
         <Logo size={56} />
       </div>
       <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", flex: 1 }}>
+        {onboarding && <OnboardingProgress step={2} total={6} />}
         <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
           Terms & Conditions
         </div>

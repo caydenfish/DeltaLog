@@ -135,7 +135,7 @@ export default function Templates({ user, onClose, initialPicks }) {
   // on mount only — initialPicks is a one-time seed, not a controlled prop.
   useEffect(() => {
     if (initialPicks && initialPicks.length > 0) {
-      setPicks(initialPicks.map((ex) => ({ id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: 3, plannedWarmup: 0 })));
+      setPicks(initialPicks.map((ex) => ({ id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: getPrefs().defaultPlannedSets, plannedWarmup: 0 })));
       setMode("build");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -184,7 +184,7 @@ export default function Templates({ user, onClose, initialPicks }) {
 
   function addPick(ex) {
     if (picks.some((p) => p.id === ex.id)) return;
-    setPicks([...picks, { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: 3, plannedWarmup: 0 }]);
+    setPicks([...picks, { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: getPrefs().defaultPlannedSets, plannedWarmup: 0 }]);
     setSearch("");
   }
   function removePick(id) { setPicks(picks.filter((p) => p.id !== id)); }

@@ -9,6 +9,19 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.12.22": {
+    title: "A smoother first run, a mid-workout muscle map, and several logging fixes",
+    items: [
+      "Onboarding is now one continuous flow with a proper welcome screen and a single progress bar, instead of several disconnected forms back to back. Fewer questions upfront (the rest default sensibly and stay changeable anytime in Preferences), and the \"add to home screen\" prompt is now the last step instead of a surprise popup right after you land on Home.",
+      "New: the mid-workout muscle map (Workout menu > Muscles) now toggles between \"Hit so far\" (what you've actually logged) and \"Full workout\" (a projection of every muscle your loaded workout will hit once every planned set is done, including ones you haven't logged yet) — useful for adjusting a workout on the fly.",
+      "You can now edit a workout's start time, finish time, and duration directly from History. Change any one and the other two recalculate automatically.",
+      "Adding an exercise to a workout now starts with however many sets you actually did last time you performed it, instead of resetting to the default.",
+      "New preference: set your own default number of sets per exercise (previously fixed at 3) — during setup or anytime in Preferences.",
+      "Multi-line exercise notes now display cleanly separated by \" | \" during a workout instead of running together.",
+      "Fixed: missing the bottom of your rep range at true failure (0-1 RIR left) no longer left your target weight unchanged for next time — it now scales down so your next session lands back in your target range.",
+      "The \"add to home screen\" reminder now reappears on future opens until you dismiss it for good, rather than only ever showing once.",
+    ],
+  },
   "1.12.21": {
     title: "Save as Image is now full resolution, and the photo-background flicker is gone for good",
     items: [

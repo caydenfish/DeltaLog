@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 
 const KEY = "deltalog_prefs";
-const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both", warmupPercentSchemes: {} };
+const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both", warmupPercentSchemes: {}, defaultPlannedSets: 3 };
 
 // Backs up preferences to Supabase (migration_071's user_preferences,
 // one jsonb blob per user) so clearing browser data -- cookies, cache,
@@ -17,6 +17,21 @@ const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: tr
 // all -- same as they never needed to know about localStorage directly.
 let syncUserId = null;
 let syncTimer = null;
+
+// In-memory only (not persisted): true once the install-to-home-screen
+// prompt has been offered during this page load, whether from the
+// onboarding finish step or Home's own auto-popup. Home's popup effect
+// re-runs every time Home remounts (it unmounts whenever a workout is
+// active), so without this guard someone finishing a workout and
+// returning to Home would get the popup again on every single return
+// trip rather than once per real app open.
+let installPromptShownFlag = false;
+export function markInstallPromptShownThisLoad() {
+  installPromptShownFlag = true;
+}
+export function wasInstallPromptShownThisLoad() {
+  return installPromptShownFlag;
+}
 
 function pushPrefsSync() {
   if (!syncUserId) return;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
-import { getPrefs, setPref, getHomeModules, setHomeModules, getChartRange, setChartRange } from "./lib/prefs";
+import { getPrefs, setPref, getHomeModules, setHomeModules, getChartRange, setChartRange, markInstallPromptShownThisLoad, wasInstallPromptShownThisLoad } from "./lib/prefs";
 import { RANGES } from "./lib/ranges";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
@@ -352,10 +352,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   }
 
   useEffect(() => {
-    if (getPrefs().installPromptSeen || !getPrefs().setupWizardSeen) return;
+    if (getPrefs().installPromptSeen || !getPrefs().setupWizardSeen || wasInstallPromptShownThisLoad()) return;
     const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
     if (standalone) { setPref("installPromptSeen", true); return; }
-    const t = setTimeout(() => setShowInstallGuide(true), 500);
+    const t = setTimeout(() => { setShowInstallGuide(true); markInstallPromptShownThisLoad(); }, 500);
     return () => clearTimeout(t);
   }, []);
 
@@ -1368,7 +1368,8 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {showDangerZone && <DangerZone user={user} onClose={() => setShowDangerZone(false)} onDataReset={onDataReset} />}
       {showInstallGuide && (
         <InstallGuide
-          onClose={() => {
+          onClose={() => setShowInstallGuide(false)}
+          onDismissForever={() => {
             setShowInstallGuide(false);
             setPref("installPromptSeen", true);
           }}
@@ -1611,6 +1612,11 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               }
               return updated;
             })
+          }
+          onTimesUpdated={(workoutId, startedAt, completedAt) =>
+            setHistory((prev) => (prev || []).map((w) => (
+              w.id !== workoutId ? w : { ...w, started_at: startedAt, completed_at: completedAt }
+            )))
           }
         />
       )}

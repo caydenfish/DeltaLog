@@ -1152,6 +1152,18 @@ export async function saveWorkoutSummary(workoutId, bodyWeight, sessionNotes) {
   if (error) throw error;
 }
 
+// Edits a completed workout's started_at/completed_at directly (History's
+// duration editor). Both are full ISO timestamps -- the two-way start/
+// duration/finish math lives client-side (see WorkoutHistory.jsx's
+// DurationEditor), this just persists whatever pair it lands on.
+export async function updateWorkoutTimes(workoutId, startedAt, completedAt) {
+  const { error } = await supabase
+    .from("workouts")
+    .update({ started_at: startedAt, completed_at: completedAt })
+    .eq("id", workoutId);
+  if (error) throw error;
+}
+
 // Saves the current workout as a reusable template. When includeDetails is
 // false, only the exercise list and set count are saved (notes/setup reset
 // to defaults) — a blank-slate template. When true, current notes/setup are

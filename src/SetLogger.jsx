@@ -136,10 +136,30 @@ function targetFor(ex, ideologyName, unit, todaysWorkingSets = [], method = "rir
   if (method === "double_progression" && lastWorkingSets.length > 0) {
     const lastSet = lastWorkingSets[lastWorkingSets.length - 1];
     const hitTop = lastWorkingSets.every((s) => s.reps >= high);
-    const weight = hitTop ? Math.round((lastSet.weight + step) / step) * step : lastSet.weight;
-    const reps = hitTop ? low : high;
+    // A below-range miss at or near true failure (RIR ≤ 1) means the
+    // weight is too heavy for this rep range altogether -- holding it
+    // flat and asking for more reps assumes room to climb that isn't
+    // there. Scale down off this set's own e1RM instead.
+    const missedRange = !hitTop && lastSet.reps < low && (lastSet.rir ?? 0) <= 1;
+    let weight, reps;
+    if (hitTop) {
+      weight = Math.round((lastSet.weight + step) / step) * step;
+      reps = low;
+    } else if (missedRange) {
+      const missedE1RM = e1RM(lastSet.weight, lastSet.reps, lastSet.rir ?? 0);
+      // Floor rather than round-to-nearest: a near-miss can compute a
+      // raw value just under the old weight, which round-to-nearest
+      // would snap right back up to, silently undoing the backoff.
+      weight = Math.floor(weightForReps(missedE1RM, low) / step) * step;
+      if (weight >= lastSet.weight) weight = lastSet.weight - step;
+      weight = Math.max(weight, step);
+      reps = low;
+    } else {
+      weight = lastSet.weight;
+      reps = high;
+    }
     const baseE1RM = e1RM(weight, reps, lastSet.rir ?? 2);
-    return { weight, reps, anchored: true, baseE1RM: Math.round(baseE1RM), source: lastSet, fromToday: false, method };
+    return { weight, reps, anchored: true, baseE1RM: Math.round(baseE1RM), source: lastSet, fromToday: false, method, missedRange };
   }
 
   const reps = Math.round((low + high) / 2);
@@ -178,7 +198,7 @@ function greedyPerSide(total, bar, unit, muscleGroup) {
 // newItem builds a workout slot from a hydrated library exercise (already
 // carrying lastWeek/sessions/savedNotes/savedSetup from hydrateExercise)
 // plus the id of the workout_exercises row that was just created for it.
-const newItem = (hydrated, dbId, planned = 3, plannedWarmup = 0) => ({
+const newItem = (hydrated, dbId, planned = getPrefs().defaultPlannedSets, plannedWarmup = 0) => ({
   ...hydrated,
   dbId,
   planned,
@@ -229,6 +249,26 @@ function setLabels(sets) {
   let working = 0;
   let warmup = 0;
   return (sets || []).map((s) => (s.isWarmup ? `W${++warmup}` : `${++working}`));
+}
+
+// Exercise notes are stored/edited as free-form multi-line text (the
+// notes textarea), but the normal workout view shows them inline as a
+// single line -- each line break becomes " | " so multiple cues/lines
+// stay visually separated without wrapping the note across rows. Blank
+// lines are dropped rather than producing an empty " |  | " segment.
+function formatNotesInline(notes) {
+  return (notes || "").split("\n").map((line) => line.trim()).filter(Boolean).join(" | ");
+}
+
+// How many sets a freshly-added exercise should start with: the number
+// of working sets actually logged last time this exercise was performed
+// (hydrateExercise's lastWeek), so re-adding an exercise remembers what
+// you actually did rather than resetting to the global default. Falls
+// back to the defaultPlannedSets preference for an exercise with no
+// logged history yet.
+function plannedSetsFor(hydrated) {
+  const workingCount = (hydrated.lastWeek || []).filter((s) => !s.isWarmup).length;
+  return workingCount > 0 ? workingCount : getPrefs().defaultPlannedSets;
 }
 
 
@@ -363,6 +403,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [allSets, setAllSets] = useState([]);
   const [globalIdeology, setGlobalIdeology] = useState(() => getPrefs().trainingIdeology || "Hypertrophy");
   const [showMenu, setShowMenu] = useState(false);
+  const [muscleMapView, setMuscleMapView] = useState("hit"); // "hit" | "planned"
   const [finishConfirm, setFinishConfirm] = useState(false);
   const [outlierReview, setOutlierReview] = useState(null); // null | array of flagged sets pending review
   const [showExportImage, setShowExportImage] = useState(false);
@@ -939,9 +980,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     addingExercisesRef.current = true;
     setAddingExercises(true);
     try {
-      const dbId = await addWorkoutExercise(workoutId, libItem.id, workout.length, 3);
       const hydrated = await hydrateExercise(user.id, libItem);
-      const item = newItem(hydrated, dbId, 3);
+      const plannedSets = plannedSetsFor(hydrated);
+      const dbId = await addWorkoutExercise(workoutId, libItem.id, workout.length, plannedSets);
+      const item = newItem(hydrated, dbId, plannedSets);
       setWorkout([...workout, item]);
       setAllSets([...allSets, []]);
     } catch (err) {
@@ -1011,9 +1053,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       let nextWorkout = workout;
       let nextAllSets = allSets;
       for (const libItem of picks) {
-        const dbId = await addWorkoutExercise(workoutId, libItem.id, nextWorkout.length, 3);
         const hydrated = await hydrateExercise(user.id, libItem);
-        const item = newItem(hydrated, dbId, 3);
+        const plannedSets = plannedSetsFor(hydrated);
+        const dbId = await addWorkoutExercise(workoutId, libItem.id, nextWorkout.length, plannedSets);
+        const item = newItem(hydrated, dbId, plannedSets);
         nextWorkout = [...nextWorkout, item];
         nextAllSets = [...nextAllSets, []];
       }
@@ -1572,6 +1615,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const liveVolumeEntries = workout.map((w, i) => ({ muscle: w.muscle, primaryMuscles: w.rawPrimaryMuscles, secondaryMuscles: w.rawSecondaryMuscles, sets: (allSets[i] || []).filter((s) => !s.isWarmup) }));
   const { primary: livePrimary, secondary: liveSecondary, fullBodySets: liveFullBodySets } = computeMuscleSetCounts(liveVolumeEntries, muscleNameMode);
 
+  // Same shape as liveVolumeEntries, but sized off each exercise's planned
+  // set count instead of what's actually been logged -- a projection of
+  // what the whole loaded workout will hit once every set is done,
+  // regardless of how many are logged yet. Sets are empty placeholders;
+  // computeMuscleSetCounts only cares about count and warmup status (both
+  // absent here, so every slot counts as working), not weight/reps.
+  const plannedVolumeEntries = workout.map((w) => ({ muscle: w.muscle, primaryMuscles: w.rawPrimaryMuscles, secondaryMuscles: w.rawSecondaryMuscles, sets: Array.from({ length: w.planned || 0 }, () => ({})) }));
+  const { primary: plannedPrimary, secondary: plannedSecondary, fullBodySets: plannedFullBodySets } = computeMuscleSetCounts(plannedVolumeEntries, muscleNameMode);
+
   // Flags sets that look like a typo or wrong-plate mistake rather than a
   // real effort: way outside both what else got logged this session for
   // the same exercise AND what was logged last time. Small swings are
@@ -2067,7 +2119,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     </div>
                   </div>
                 )}
-                {w.notes && <div style={{ fontSize: 12, color: T.dim, marginTop: 8, fontStyle: "italic" }}>Note: {w.notes}</div>}
+                {w.notes && <div style={{ fontSize: 12, color: T.dim, marginTop: 8, fontStyle: "italic" }}>Note: {formatNotesInline(w.notes)}</div>}
               </div>
             ))}
           </div>
@@ -2317,7 +2369,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     {hasHistory && <span style={{ color: delta > 0.5 ? T.green : delta < -0.5 ? T.accent : T.dim }}> ({delta > 0 ? "+" : ""}{Math.round(delta)} vs last session)</span>}
                     {!hasHistory && <span> · first session on record</span>}
                   </div>
-                  {w.notes && <div style={{ fontSize: 12, color: T.dim, fontStyle: "italic", marginTop: 4 }}>Note: {w.notes}</div>}
+                  {w.notes && <div style={{ fontSize: 12, color: T.dim, fontStyle: "italic", marginTop: 4 }}>Note: {formatNotesInline(w.notes)}</div>}
                   <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                     {exSets.map((s, j) => (
                       <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: T.text }}>
@@ -2587,11 +2639,37 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               </div>
 
               <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Muscles worked, this session</div>
-                {Object.keys(livePrimary).length === 0 && Object.keys(liveSecondary).length === 0 ? (
-                  <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Log a set to see it light up here.</div>
+                <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 10 }}>
+                  {[{ key: "hit", label: "Hit so far" }, { key: "planned", label: "Full workout" }].map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => setMuscleMapView(opt.key)}
+                      aria-pressed={muscleMapView === opt.key}
+                      style={{
+                        flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none",
+                        background: muscleMapView === opt.key ? T.accent : "transparent",
+                        color: muscleMapView === opt.key ? "#fff" : T.dim,
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                  {muscleMapView === "hit" ? "Muscles worked, this session" : "Muscles this workout will hit, once complete"}
+                </div>
+                {muscleMapView === "hit" ? (
+                  Object.keys(livePrimary).length === 0 && Object.keys(liveSecondary).length === 0 ? (
+                    <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Log a set to see it light up here.</div>
+                  ) : (
+                    <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} entries={liveVolumeEntries} />
+                  )
                 ) : (
-                  <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} entries={liveVolumeEntries} />
+                  Object.keys(plannedPrimary).length === 0 && Object.keys(plannedSecondary).length === 0 ? (
+                    <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Add an exercise to see its planned muscles here.</div>
+                  ) : (
+                    <BodyHeatmap primary={plannedPrimary} secondary={plannedSecondary} fullBodySets={plannedFullBodySets} entries={plannedVolumeEntries} />
+                  )
                 )}
               </div>
 
@@ -2780,6 +2858,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 <><b style={{ color: T.text }}>Program coach:</b> {target.reasonText}</>
               ) : target.anchored && target.fromToday ? (
                 <>Updated from what you just logged today: {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir}, estimated 1RM <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps.</>
+              ) : target.missedRange ? (
+                <>Missed the bottom of your rep range at true failure last time ({target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir}), so weight is scaled down off that set's estimated 1RM of <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b> to land back in {effIdeology}'s {ideo.low}-{ideo.high} rep range.</>
               ) : target.anchored ? (
                 <>Based on your best estimated 1RM of <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>, from {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir} last session. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps as the working target.</>
               ) : (
@@ -2939,7 +3019,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           {!editingNote ? (
             <div style={{ marginTop: 6, textAlign: "center", display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
               <button onClick={() => { setNoteDraft(ex.notes); setEditingNote(true); }} style={{ background: "none", border: "none", color: T.dim, fontSize: 12, fontStyle: ex.notes ? "italic" : "normal", padding: 0 }}>
-                {ex.notes ? <>"{ex.notes}" <IconPencil size={11} /></> : "+ Add note"}
+                {ex.notes ? <>"{formatNotesInline(ex.notes)}" <IconPencil size={11} /></> : "+ Add note"}
               </button>
             </div>
           ) : (

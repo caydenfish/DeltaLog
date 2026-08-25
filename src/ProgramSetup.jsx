@@ -124,9 +124,9 @@ function DaySection({ dayIndex, label, picks, onReorder, onRemove, onAdjustSets,
               <button onClick={() => onRemove(p.id)} aria-label={`Remove ${p.name}`} title="Remove" style={{ ...smallBtn, color: T.accent, borderColor: T.accent, fontSize: 15, padding: "3px 10px", flexShrink: 0 }}>&minus;</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-              <button onClick={() => onAdjustSets(p.id, Math.max(1, (p.plannedSets ?? 3) - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>&minus;</button>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, minWidth: 16, textAlign: "center" }}>{p.plannedSets ?? 3}</div>
-              <button onClick={() => onAdjustSets(p.id, Math.min(12, (p.plannedSets ?? 3) + 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
+              <button onClick={() => onAdjustSets(p.id, Math.max(1, (p.plannedSets ?? getPrefs().defaultPlannedSets) - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>&minus;</button>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, minWidth: 16, textAlign: "center" }}>{p.plannedSets ?? getPrefs().defaultPlannedSets}</div>
+              <button onClick={() => onAdjustSets(p.id, Math.min(12, (p.plannedSets ?? getPrefs().defaultPlannedSets) + 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
               <div style={{ fontSize: 11, color: T.dim, marginLeft: 2 }}>sets</div>
             </div>
           </div>
@@ -229,7 +229,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
       const buckets = getSplits()[label] || [];
       const excluded = getSplitExclusions(label);
       const perBucket = perBucketForDay(experienceLevel || "Beginner", buckets.length);
-      const picks = autoPickExercisesForDay(library, buckets, performedIds, perBucket, excluded, cycle, usedIds);
+      const picks = autoPickExercisesForDay(library, buckets, performedIds, perBucket, excluded, cycle, usedIds, getPrefs().defaultPlannedSets);
       picks.forEach((p) => usedIds.add(p.id));
       next[i] = picks;
     });
@@ -249,7 +249,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
   }
 
   function addPick(dayIndex, ex) {
-    setPicksByDay((prev) => ({ ...prev, [dayIndex]: [...(prev[dayIndex] || []), { ...ex, plannedSets: 3 }] }));
+    setPicksByDay((prev) => ({ ...prev, [dayIndex]: [...(prev[dayIndex] || []), { ...ex, plannedSets: getPrefs().defaultPlannedSets }] }));
   }
 
   function replacePick(dayIndex, exerciseId, ex) {
@@ -293,7 +293,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
       let position = 0;
       expanded.forEach((_, dayIndex) => {
         (picksByDay[dayIndex] || []).forEach((ex) => {
-          rows.push({ exerciseId: ex.id, position: position++, dayIndex, plannedSets: ex.plannedSets ?? 3, plannedWarmupSets: ex.plannedWarmupSets ?? 0, progressionModel: customize ? progressionOverride : null });
+          rows.push({ exerciseId: ex.id, position: position++, dayIndex, plannedSets: ex.plannedSets ?? getPrefs().defaultPlannedSets, plannedWarmupSets: ex.plannedWarmupSets ?? 0, progressionModel: customize ? progressionOverride : null });
         });
       });
       if (rows.length > 0) await addProgramExercises(programId, rows);
