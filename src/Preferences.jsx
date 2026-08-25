@@ -104,7 +104,6 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   const [local, setLocal] = useState(() => ({
     units: getPrefs().units,
     muscleNameMode: getPrefs().muscleNameMode,
-    bodyModelSex: getPrefs().bodyModelSex,
     scoreDisplay: getPrefs().scoreDisplay,
     weightEntryMode: getPrefs().weightEntryMode,
     restSeconds: getPrefs().restSeconds,
@@ -154,7 +153,6 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     units: "units weight display lb kg pounds kilograms",
     timeFormat: "time format 12h 24h clock hour am pm",
     scientificNames: "muscle names generic detailed scientific anatomy nomenclature",
-    bodyModelSex: "body map model male female heatmap silhouette",
     trainingIdeology: "training focus rep range hypertrophy strength endurance ideology methodology default",
     scoreDisplay: "strength score dots percentile deltalog",
     targetCalcMethod: "target calculation method progression double progression percent e1rm rir autoregulation",
@@ -186,7 +184,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     }
   }
 
-  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod, defaultPlannedSets, warmupPercentSchemes } = state;
+  const { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod, defaultPlannedSets, warmupPercentSchemes } = state;
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -287,9 +285,9 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
           <div style={{ color: T.text, fontSize: 14, marginBottom: 4 }}>Sets per exercise</div>
           <div style={{ color: T.dim, fontSize: 11, marginBottom: 8 }}>Default working sets when you add an exercise — adjustable per exercise anytime</div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <button onClick={() => update("defaultPlannedSets", Math.max(1, defaultPlannedSets - 1))} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 16, fontWeight: 700 }}>&minus;</button>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, minWidth: 20, textAlign: "center" }}>{defaultPlannedSets}</div>
-            <button onClick={() => update("defaultPlannedSets", Math.min(12, defaultPlannedSets + 1))} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 16, fontWeight: 700 }}>+</button>
+            <button onClick={() => update("defaultPlannedSets", Math.max(1, (defaultPlannedSets ?? 3) - 1))} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 16, fontWeight: 700, flexShrink: 0 }}>&minus;</button>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, minWidth: 28, textAlign: "center", flexShrink: 0, display: "inline-block" }}>{defaultPlannedSets ?? 3}</div>
+            <button onClick={() => update("defaultPlannedSets", Math.min(12, (defaultPlannedSets ?? 3) + 1))} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 16, fontWeight: 700, flexShrink: 0 }}>+</button>
           </div>
         </div>
         )}
@@ -436,29 +434,6 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
                 onClick={() => update("muscleNameMode", opt.key)}
                 aria-pressed={muscleNameMode === opt.key}
                 style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: muscleNameMode === opt.key ? T.accent : "transparent", color: muscleNameMode === opt.key ? "#fff" : T.dim }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        )}
-
-        {matches("bodyModelSex") && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div>
-              <div style={{ color: T.text, fontSize: 14 }}>Body map model</div>
-              <div style={{ color: T.dim, fontSize: 11 }}>Which body shows on your muscle heatmap</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3 }}>
-            {[{ key: "male", label: "Male" }, { key: "female", label: "Female" }].map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => update("bodyModelSex", opt.key)}
-                aria-pressed={bodyModelSex === opt.key}
-                style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: bodyModelSex === opt.key ? T.accent : "transparent", color: bodyModelSex === opt.key ? "#fff" : T.dim }}
               >
                 {opt.label}
               </button>

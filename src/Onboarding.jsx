@@ -60,7 +60,7 @@ export default function Onboarding({ user, profile, onComplete }) {
         <Logo size={64} />
       </div>
       <div style={{ width: "100%", maxWidth: 360 }}>
-        <OnboardingProgress step={1} total={6} />
+        <OnboardingProgress step={1} total={7} />
         <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
           A few quick details
         </div>

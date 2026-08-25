@@ -231,6 +231,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [autoWhatsNewEntries, setAutoWhatsNewEntries] = useState(null);
   const [showHelpSupport, setShowHelpSupport] = useState(false);
   const [showSetupReplay, setShowSetupReplay] = useState(false);
+  const [showSimulateNewUser, setShowSimulateNewUser] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -285,6 +286,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [plate55Scope, setPlate55ScopeState] = useState(() => getPrefs().plate55Scope);
   const [trainingIdeology, setTrainingIdeologyState] = useState(() => getPrefs().trainingIdeology);
   const [targetCalcMethod, setTargetCalcMethodState] = useState(() => getPrefs().targetCalcMethod);
+  const [defaultPlannedSets, setDefaultPlannedSetsState] = useState(() => getPrefs().defaultPlannedSets);
   const [timeFormat, setTimeFormatState] = useState(() => getPrefs().timeFormat);
   const [warmupPercentSchemes, setWarmupPercentSchemesState] = useState(() => getPrefs().warmupPercentSchemes);
   const [adminViewMode, setAdminViewModeState] = useState(() => getPrefs().adminViewMode);
@@ -300,7 +302,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     return !q || keywords.toLowerCase().includes(q);
   }
 
-  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, targetCalcMethod, timeFormat, warmupPercentSchemes };
+  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, targetCalcMethod, defaultPlannedSets, timeFormat, warmupPercentSchemes };
   function handlePreferencesChange(key, val) {
     if (key === "units") setUnits(val);
     else if (key === "muscleNameMode") setMuscleNameMode(val);
@@ -317,6 +319,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     else if (key === "plate55Scope") setPlate55Scope(val);
     else if (key === "trainingIdeology") setTrainingIdeology(val);
     else if (key === "targetCalcMethod") { setTargetCalcMethodState(val); setPref("targetCalcMethod", val); }
+    else if (key === "defaultPlannedSets") { setDefaultPlannedSetsState(val); setPref("defaultPlannedSets", val); }
     else if (key === "timeFormat") setTimeFormat(val);
     else if (key === "warmupPercentSchemes") setWarmupPercentSchemes(val);
   }
@@ -1321,6 +1324,9 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {showSetupReplay && (
         <SetupWizard onComplete={() => setShowSetupReplay(false)} onClose={() => setShowSetupReplay(false)} />
       )}
+      {showSimulateNewUser && (
+        <SetupWizard simulate onComplete={() => setShowSimulateNewUser(false)} />
+      )}
       {showVersionHistory && <VersionHistory onClose={() => setShowVersionHistory(false)} />}
       {showFAQ && <FAQ onClose={() => setShowFAQ(false)} />}
       {showAdminHome && (
@@ -1336,7 +1342,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           onOpenSplits={() => setShowSplitsManager(true)}
           onOpenTaxonomy={() => setShowAdminTaxonomy(true)}
           onOpenBodyMapRegions={() => setShowAdminBodyMapRegions(true)}
-          onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSetupReplay(true); }}
+          onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSimulateNewUser(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
           adminViewMode={adminViewMode}
           onSetAdminViewMode={setAdminViewMode}

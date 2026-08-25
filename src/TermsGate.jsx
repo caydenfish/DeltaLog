@@ -38,7 +38,7 @@ export default function TermsGate({ user, onAccepted, onboarding }) {
         <Logo size={56} />
       </div>
       <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", flex: 1 }}>
-        {onboarding && <OnboardingProgress step={2} total={6} />}
+        {onboarding && <OnboardingProgress step={2} total={7} />}
         <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
           Terms & Conditions
         </div>
