@@ -220,32 +220,6 @@ export function computePrescription({
         isDeload: false,
       };
     }
-    // A below-range miss at or near true failure (RIR ≤ 1) means the
-    // weight itself is too heavy for this rep range -- holding it flat
-    // and asking for "one more rep next time" assumes there's room to
-    // climb that a true-failure miss below the range says isn't there.
-    // Scale down off this set's own e1RM immediately rather than
-    // waiting on detectPlateau's two-session confirmation, which is
-    // meant to catch a longer stall, not a single all-out miss.
-    if (lastBest.reps < low && (lastBest.rir ?? 0) <= 1) {
-      const missedE1RM = e1RM(lastBest.weight, lastBest.reps, lastBest.rir ?? 0);
-      const step = WEIGHT_STEP[unit] || 5;
-      // Round DOWN, not to nearest -- a near-miss (e.g. 1 rep short) can
-      // land close enough to the old weight that round-to-nearest snaps
-      // it right back up, silently undoing the backoff. Floor guarantees
-      // a real decrease; if flooring still lands on the old weight
-      // (raw value barely under it), force one full step down instead.
-      let weight = Math.floor(weightForReps(missedE1RM, low) / step) * step;
-      if (weight >= lastBest.weight) weight = lastBest.weight - step;
-      weight = Math.max(weight, step);
-      return {
-        weight,
-        reps: low,
-        reasonCode: "dp_missed_range_backoff",
-        reasonText: `Missed the bottom of your rep range at true failure last time (${lastBest.reps} reps @ RIR ${lastBest.rir ?? 0}), scaling weight down to land back in range.`,
-        isDeload: false,
-      };
-    }
     if (plateau) {
       const weight = roundToStep(lastBest.weight * 0.9, unit);
       return {
@@ -458,7 +432,7 @@ const LEGS_PATTERN_FOCUS = {
 // default; everything after it gets none, on the assumption the first
 // exercise's warmup sets did the job of raising core temperature and
 // grooving the movement pattern for the rest of the session.
-export function autoPickExercisesForDay(library, muscleBuckets, performedIds, perBucket = 2, excludedRegions = new Set(), cycle = 0, usedIdsThisWeek = new Set(), defaultSets = 3) {
+export function autoPickExercisesForDay(library, muscleBuckets, performedIds, perBucket = 2, excludedRegions = new Set(), cycle = 0, usedIdsThisWeek = new Set()) {
   const picks = [];
   const usedIds = new Set();
   for (const bucket of muscleBuckets) {
@@ -471,7 +445,7 @@ export function autoPickExercisesForDay(library, muscleBuckets, performedIds, pe
         return scoreB - scoreA;
       });
     candidates.slice(0, perBucket).forEach((c) => {
-      picks.push({ ...c, plannedSets: defaultSets });
+      picks.push({ ...c, plannedSets: 3 });
       usedIds.add(c.id);
     });
   }

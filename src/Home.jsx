@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
-import { getPrefs, setPref, getHomeModules, setHomeModules, getChartRange, setChartRange, markInstallPromptShownThisLoad, wasInstallPromptShownThisLoad } from "./lib/prefs";
+import { getPrefs, setPref, getHomeModules, setHomeModules, getChartRange, setChartRange } from "./lib/prefs";
 import { RANGES } from "./lib/ranges";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
@@ -59,6 +59,39 @@ const T = {
   accent: "#E8442E",
   green: "#3BA55D",
 };
+
+// Settings screen's nav destination, as a tile rather than a full-width
+// row -- two per line via the grid the caller wraps these in. `wide`
+// spans both columns, used for sections with just one destination (or,
+// in search mode, for a single already-matched tile above an inline
+// field list) so a lone tile doesn't look stranded next to empty space.
+// No trailing chevron -- the tile shape itself reads as tappable, and
+// there's no room for one at this size without crowding the subtitle.
+function SettingsTile({ title, subtitle, onClick, badge, danger, wide }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        gridColumn: wide ? "1 / -1" : "auto",
+        background: T.surface,
+        border: `1px solid ${danger ? T.accent : T.line}`,
+        borderRadius: 12,
+        padding: 14,
+        textAlign: "left",
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        minHeight: 72,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ color: danger ? T.accent : T.text, fontSize: 14, fontWeight: 600 }}>{title}</span>
+        {badge}
+      </div>
+      {subtitle && <span style={{ color: danger ? T.accent : T.dim, fontSize: 11, lineHeight: 1.35 }}>{subtitle}</span>}
+    </button>
+  );
+}
 
 function isoDaysAgo(days) {
   const d = new Date();
@@ -175,8 +208,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // Range so switching ranges doesn't reset a chosen criteria.
   const [muscleSetsFilter, setMuscleSetsFilterState] = useState(() => getPrefs().muscleBreakdownSetsFilter);
   const [muscleRoleFilter, setMuscleRoleFilterState] = useState(() => getPrefs().muscleBreakdownRoleFilter);
+  const [coverageView, setCoverageViewState] = useState(() => getPrefs().coverageBreakdownView);
   function setMuscleSetsFilter(key) { setMuscleSetsFilterState(key); setPref("muscleBreakdownSetsFilter", key); }
   function setMuscleRoleFilter(key) { setMuscleRoleFilterState(key); setPref("muscleBreakdownRoleFilter", key); }
+  function setCoverageView(key) { setCoverageViewState(key); setPref("coverageBreakdownView", key); }
   // Reorderable/toggleable home dashboard modules (pencil icon, top left).
   const [homeModules, setHomeModulesState] = useState(() => getHomeModules());
   const [showHomeModulesEditor, setShowHomeModulesEditor] = useState(false);
@@ -231,7 +266,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [autoWhatsNewEntries, setAutoWhatsNewEntries] = useState(null);
   const [showHelpSupport, setShowHelpSupport] = useState(false);
   const [showSetupReplay, setShowSetupReplay] = useState(false);
-  const [showSimulateNewUser, setShowSimulateNewUser] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -286,7 +320,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [plate55Scope, setPlate55ScopeState] = useState(() => getPrefs().plate55Scope);
   const [trainingIdeology, setTrainingIdeologyState] = useState(() => getPrefs().trainingIdeology);
   const [targetCalcMethod, setTargetCalcMethodState] = useState(() => getPrefs().targetCalcMethod);
-  const [defaultPlannedSets, setDefaultPlannedSetsState] = useState(() => getPrefs().defaultPlannedSets);
   const [timeFormat, setTimeFormatState] = useState(() => getPrefs().timeFormat);
   const [warmupPercentSchemes, setWarmupPercentSchemesState] = useState(() => getPrefs().warmupPercentSchemes);
   const [adminViewMode, setAdminViewModeState] = useState(() => getPrefs().adminViewMode);
@@ -302,7 +335,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     return !q || keywords.toLowerCase().includes(q);
   }
 
-  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, targetCalcMethod, defaultPlannedSets, timeFormat, warmupPercentSchemes };
+  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, targetCalcMethod, timeFormat, warmupPercentSchemes };
   function handlePreferencesChange(key, val) {
     if (key === "units") setUnits(val);
     else if (key === "muscleNameMode") setMuscleNameMode(val);
@@ -319,7 +352,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     else if (key === "plate55Scope") setPlate55Scope(val);
     else if (key === "trainingIdeology") setTrainingIdeology(val);
     else if (key === "targetCalcMethod") { setTargetCalcMethodState(val); setPref("targetCalcMethod", val); }
-    else if (key === "defaultPlannedSets") { setDefaultPlannedSetsState(val); setPref("defaultPlannedSets", val); }
     else if (key === "timeFormat") setTimeFormat(val);
     else if (key === "warmupPercentSchemes") setWarmupPercentSchemes(val);
   }
@@ -355,10 +387,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   }
 
   useEffect(() => {
-    if (getPrefs().installPromptSeen || !getPrefs().setupWizardSeen || wasInstallPromptShownThisLoad()) return;
+    if (getPrefs().installPromptSeen || !getPrefs().setupWizardSeen) return;
     const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
     if (standalone) { setPref("installPromptSeen", true); return; }
-    const t = setTimeout(() => { setShowInstallGuide(true); markInstallPromptShownThisLoad(); }, 500);
+    const t = setTimeout(() => setShowInstallGuide(true), 500);
     return () => clearTimeout(t);
   }, []);
 
@@ -946,6 +978,8 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                             roleFilter={muscleRoleFilter}
                             onSetsFilterChange={setMuscleSetsFilter}
                             onRoleFilterChange={setMuscleRoleFilter}
+                            coverageView={coverageView}
+                            onCoverageViewChange={setCoverageView}
                           />
                         </div>
                       );
@@ -1072,16 +1106,14 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               {settingsMatch("program generator training block multi-week progression deload science coach") && (
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Training Plan</div>
-              <button
-                onClick={() => setShowProgramView(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Program</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Build a multi-week program with science-backed progression</div>
-                </div>
-                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-              </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+                <SettingsTile
+                  wide
+                  onClick={() => setShowProgramView(true)}
+                  title="Program"
+                  subtitle="Build a multi-week program with science-backed progression"
+                />
+              </div>
               </>
               )}
 
@@ -1089,43 +1121,30 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               {(settingsMatch("templates workouts reusable build manage") || settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") || settingsMatch("machine names hammer strength life fitness gym equipment rename delete setup")) && (
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Workout Library</div>
-              {settingsMatch("templates workouts reusable build manage") && (
-              <button
-                onClick={() => setShowTemplates(true)}
-               
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Templates</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Build or manage reusable workouts</div>
-                </div>
-                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-              </button>
-              )}
-              {settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") && (
-              <button
-                onClick={() => setShowExerciseLibraryView(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Exercise Library</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Browse every exercise, including your own custom ones</div>
-                </div>
-                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-              </button>
-              )}
-              {settingsMatch("machine names hammer strength life fitness gym equipment rename delete setup") && (
-              <button
-                onClick={() => setShowMachineNames(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Machine Names</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Rename or delete a custom machine everywhere it's used</div>
-                </div>
-                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-              </button>
-              )}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+                {settingsMatch("templates workouts reusable build manage") && (
+                <SettingsTile
+                  onClick={() => setShowTemplates(true)}
+                  title="Templates"
+                  subtitle="Build or manage reusable workouts"
+                />
+                )}
+                {settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") && (
+                <SettingsTile
+                  onClick={() => setShowExerciseLibraryView(true)}
+                  title="Exercise Library"
+                  subtitle="Browse every exercise, including your own custom ones"
+                />
+                )}
+                {settingsMatch("machine names hammer strength life fitness gym equipment rename delete setup") && (
+                <SettingsTile
+                  wide={!settingsMatch("templates workouts reusable build manage") && !settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete")}
+                  onClick={() => setShowMachineNames(true)}
+                  title="Machine Names"
+                  subtitle="Rename or delete a custom machine everywhere it's used"
+                />
+                )}
+              </div>
               </>
               )}
 
@@ -1134,40 +1153,42 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Profile & Preferences</div>
               <div style={{ marginBottom: 20 }}>
-                {settingsMatch("profile gender age date of birth weight height") && (
-                <button
-                  onClick={() => setShowProfileEditor(true)}
-                  style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-                >
-                  <div>
-                    <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Profile</div>
-                    <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Gender, age, weight, height — used for strength scoring and insights</div>
-                  </div>
-                  <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-                </button>
-                )}
                 {settingsQuery.trim() === "" ? (
-                  // Browse mode: a single consistent nav row, matching every
-                  // other Settings destination — clicking opens the full
-                  // Preferences screen rather than dumping the whole field
-                  // list inline here (the one place that used to break from
-                  // the rest of the menu's "everything is a tidy button"
-                  // pattern).
-                  <button
-                    onClick={() => setShowPreferencesScreen(true)}
-                    style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-                  >
-                    <div>
-                      <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Preferences</div>
-                      <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Units, training focus, rest timer, and more</div>
-                    </div>
-                    <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-                  </button>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    {settingsMatch("profile gender age date of birth weight height") && (
+                      <SettingsTile
+                        onClick={() => setShowProfileEditor(true)}
+                        title="Profile"
+                        subtitle="Gender, age, weight, height — used for strength scoring"
+                      />
+                    )}
+                    {/* Browse mode: a single consistent tile, matching every
+                        other Settings destination — clicking opens the full
+                        Preferences screen rather than dumping the whole
+                        field list inline here. */}
+                    <SettingsTile
+                      onClick={() => setShowPreferencesScreen(true)}
+                      title="Preferences"
+                      subtitle="Units, training focus, rest timer, and more"
+                    />
+                  </div>
                 ) : (
-                  // Search mode: surface the exact matching field(s) right
-                  // here instead of sending someone into a sub-screen to
-                  // find what they just typed.
-                  <Preferences value={preferencesValue} filterQuery={settingsQuery} onChange={handlePreferencesChange} />
+                  <>
+                    {settingsMatch("profile gender age date of birth weight height") && (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                        <SettingsTile
+                          wide
+                          onClick={() => setShowProfileEditor(true)}
+                          title="Profile"
+                          subtitle="Gender, age, weight, height — used for strength scoring and insights"
+                        />
+                      </div>
+                    )}
+                    {/* Search mode: surface the exact matching field(s) right
+                        here instead of sending someone into a sub-screen to
+                        find what they just typed. */}
+                    <Preferences value={preferencesValue} filterQuery={settingsQuery} onChange={handlePreferencesChange} />
+                  </>
                 )}
               </div>
               </>
@@ -1177,16 +1198,14 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               {settingsMatch("guides support faq community feedback splits push pull legs") && (
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Guides & Support</div>
-              <button
-                onClick={() => setShowHelpSupport(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Guides & Support</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>FAQ, community, and feedback</div>
-                </div>
-                <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-              </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+                <SettingsTile
+                  wide
+                  onClick={() => setShowHelpSupport(true)}
+                  title="Guides & Support"
+                  subtitle="FAQ, community, and feedback"
+                />
+              </div>
               </>
               )}
 
@@ -1194,21 +1213,15 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               {isRealAdmin && settingsMatch("admin custom exercises feedback bugs simulate new user version history changelog exercise library muscle groups roles permissions creator admin view normal user activity usage last opened last logged churn") && (
                 <>
                   <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Admin</div>
-                  <button
-                    onClick={() => setShowAdminHome(true)}
-                    style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-                  >
-                    <div>
-                      <div style={{ color: T.text, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-                        Admin
-                        {unseenFeedbackCount > 0 && (
-                          <span style={{ background: T.accent, color: "#fff", fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "1px 7px", lineHeight: 1.5 }}>{unseenFeedbackCount}</span>
-                        )}
-                      </div>
-                      <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Custom exercises, feedback, version history, and testing tools</div>
-                    </div>
-                    <div style={{ color: T.dim, fontSize: 16 }}>›</div>
-                  </button>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+                    <SettingsTile
+                      wide
+                      onClick={() => setShowAdminHome(true)}
+                      title="Admin"
+                      badge={unseenFeedbackCount > 0 ? <span style={{ background: T.accent, color: "#fff", fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "1px 7px", lineHeight: 1.5 }}>{unseenFeedbackCount}</span> : null}
+                      subtitle="Custom exercises, feedback, version history, and testing tools"
+                    />
+                  </div>
                 </>
               )}
 
@@ -1237,16 +1250,15 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               {settingsMatch("danger zone reset delete all data account") && (
               <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Danger zone</div>
-              <button
-                onClick={() => setShowDangerZone(true)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}
-              >
-                <div>
-                  <div style={{ color: T.accent, fontSize: 14, fontWeight: 600 }}>Danger Zone</div>
-                  <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Reset all data or delete your account</div>
-                </div>
-                <div style={{ color: T.accent, fontSize: 16 }}>›</div>
-              </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <SettingsTile
+                  wide
+                  danger
+                  onClick={() => setShowDangerZone(true)}
+                  title="Danger Zone"
+                  subtitle="Reset all data or delete your account"
+                />
+              </div>
               </>
               )}
 
@@ -1324,9 +1336,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {showSetupReplay && (
         <SetupWizard onComplete={() => setShowSetupReplay(false)} onClose={() => setShowSetupReplay(false)} />
       )}
-      {showSimulateNewUser && (
-        <SetupWizard simulate onComplete={() => setShowSimulateNewUser(false)} />
-      )}
       {showVersionHistory && <VersionHistory onClose={() => setShowVersionHistory(false)} />}
       {showFAQ && <FAQ onClose={() => setShowFAQ(false)} />}
       {showAdminHome && (
@@ -1342,7 +1351,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           onOpenSplits={() => setShowSplitsManager(true)}
           onOpenTaxonomy={() => setShowAdminTaxonomy(true)}
           onOpenBodyMapRegions={() => setShowAdminBodyMapRegions(true)}
-          onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSimulateNewUser(true); }}
+          onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSetupReplay(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
           adminViewMode={adminViewMode}
           onSetAdminViewMode={setAdminViewMode}
@@ -1374,8 +1383,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {showDangerZone && <DangerZone user={user} onClose={() => setShowDangerZone(false)} onDataReset={onDataReset} />}
       {showInstallGuide && (
         <InstallGuide
-          onClose={() => setShowInstallGuide(false)}
-          onDismissForever={() => {
+          onClose={() => {
             setShowInstallGuide(false);
             setPref("installPromptSeen", true);
           }}
@@ -1618,11 +1626,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               }
               return updated;
             })
-          }
-          onTimesUpdated={(workoutId, startedAt, completedAt) =>
-            setHistory((prev) => (prev || []).map((w) => (
-              w.id !== workoutId ? w : { ...w, started_at: startedAt, completed_at: completedAt }
-            )))
           }
         />
       )}

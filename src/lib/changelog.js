@@ -9,17 +9,22 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
-  "1.12.22": {
-    title: "A smoother first run, a mid-workout muscle map, and several logging fixes",
+  "1.12.23": {
+    title: "Smarter next-set recommendations",
     items: [
-      "Onboarding is now one continuous flow with a proper welcome screen and a single progress bar, instead of several disconnected forms back to back. Fewer questions upfront (the rest default sensibly and stay changeable anytime in Preferences), and the \"add to home screen\" prompt is now the last step instead of a surprise popup right after you land on Home.",
-      "New: the mid-workout muscle map (Workout menu > Muscles) now toggles between \"Hit so far\" (what you've actually logged) and \"Full workout\" (a projection of every muscle your loaded workout will hit once every planned set is done, including ones you haven't logged yet) — useful for adjusting a workout on the fly.",
-      "You can now edit a workout's start time, finish time, and duration directly from History. Change any one and the other two recalculate automatically.",
-      "Adding an exercise to a workout now starts with however many sets you actually did last time you performed it, instead of resetting to the default.",
-      "New preference: set your own default number of sets per exercise (previously fixed at 3) — during setup or anytime in Preferences.",
-      "Multi-line exercise notes now display cleanly separated by \" | \" during a workout instead of running together.",
-      "Fixed: missing the bottom of your rep range at true failure (0-1 RIR left) no longer left your target weight unchanged for next time — it now scales down so your next session lands back in your target range.",
-      "The \"add to home screen\" reminder now reappears on future opens until you dismiss it for good, rather than only ever showing once.",
+      "The weight/reps suggested for your next set now looks at your best effort across the last 30 days, not just your most recent session, so one rough or off day doesn't drag down the recommendation. Still falls back to your last session if you haven't trained that exercise in the last 30 days.",
+    ],
+  },
+  "1.12.22": {
+    title: "Faster set logging, gold PRs, a muscle chart, and tidier settings",
+    items: [
+      "Logging a set now works right from the set list itself: a + tile at the end of today's sets replaces the old \"Log next set\" button, and a small popup offers to jump to your next exercise once an exercise's planned sets are done (instead of a permanent button taking over the bottom of the screen).",
+      "Personal records now get a gold outline on their card in the post-workout summary, not just a small badge, so they're easier to spot at a glance.",
+      "Rest timer sounds are softer and now ring twice with a brief pause between chimes, instead of one abrupt tone.",
+      "The Muscle breakdown's Coverage breakdown now has a Chart view (colored bars per muscle, sorted by volume) alongside the original List view — Chart is the default, but it remembers whichever you used last.",
+      "The Settings screen is now laid out as two-column tiles instead of a single stacked list.",
+      "The in-workout menu's muscle heatmap is a bit smaller, with quick Units and Rest sound toggles next to it so you don't have to leave the workout to change them.",
+      "Save as Image's Detailed/Corner layout now shows a small per-exercise volume chart in the space that used to be empty.",
     ],
   },
   "1.12.21": {

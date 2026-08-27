@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { computeMuscleSetCounts } from "./lib/volume";
-import { getDetailedTaxonomyEntries } from "./lib/muscleNomenclature";
+import { getDetailedTaxonomyEntries, genericBucket } from "./lib/muscleNomenclature";
+import { MUSCLE_COLORS } from "./lib/muscleColors";
 import { IconChevronUp, IconChevronDown } from "./Icons";
 import BodyMap from "./BodyMap";
 
@@ -75,8 +76,19 @@ function FilterRow({ label, options, value, onChange }) {
 // filter above -- this is the detailed reference view, so it stays
 // unfiltered on that axis; the Sets criteria (working/warmup/both) still
 // applies, since that genuinely changes what counts as a logged set.
-function CoverageBreakdown({ primary, secondary, onSelectMuscle }) {
+//
+// Two tabs: Chart (a colored horizontal-bar view, sorted by volume, for
+// reading the whole breakdown at a glance) and List (the original
+// row-per-muscle disclosure with exact primary/secondary counts).
+// `view`/`onViewChange`, if passed, persist which tab was last used
+// (Home wires this to a pref, defaulting to "chart" the first time
+// there's nothing persisted yet) -- so a fresh install opens on Chart,
+// but switching to List sticks for next time.
+function CoverageBreakdown({ primary, secondary, onSelectMuscle, view, onViewChange }) {
   const [open, setOpen] = useState(false);
+  const [localTab, setLocalTab] = useState("chart");
+  const tab = view || localTab;
+  const setTab = onViewChange || setLocalTab;
 
   const known = new Set();
   const rows = [];
@@ -99,6 +111,7 @@ function CoverageBreakdown({ primary, secondary, onSelectMuscle }) {
 
   rows.sort((a, b) => b.total - a.total || a.muscle.localeCompare(b.muscle));
   const trainedCount = rows.filter((r) => r.total > 0).length;
+  const maxTotal = Math.max(1, ...rows.map((r) => r.total));
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -110,32 +123,76 @@ function CoverageBreakdown({ primary, secondary, onSelectMuscle }) {
         {open ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
       </button>
       {open && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-          {rows.map((r) => {
-            const clickable = r.total > 0 && !!onSelectMuscle;
-            return (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ display: "flex", width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 9, padding: 3, gap: 3, boxSizing: "border-box", marginBottom: 10 }}>
+            {[{ key: "chart", label: "Chart" }, { key: "list", label: "List" }].map((o) => (
               <button
-                key={r.muscle}
-                onClick={() => clickable && onSelectMuscle(r.muscle)}
-                disabled={!clickable}
+                key={o.key}
+                onClick={() => setTab(o.key)}
+                aria-pressed={tab === o.key}
                 style={{
-                  width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
-                  background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, padding: "8px 10px",
-                  textAlign: "left", cursor: clickable ? "pointer" : "default",
+                  flex: 1, background: tab === o.key ? T.accent : "transparent", border: "none", borderRadius: 7,
+                  padding: "6px 0", fontSize: 11.5, fontWeight: 600, color: tab === o.key ? "#fff" : T.dim,
                 }}
               >
-                <span style={{ fontSize: 13, color: r.total > 0 ? T.text : T.dim, fontWeight: r.total > 0 ? 600 : 500 }}>{r.muscle}</span>
-                {r.total > 0 ? (
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 12, color: T.text, fontWeight: 700 }}>{r.total} set{r.total === 1 ? "" : "s"}</div>
-                    <div style={{ fontSize: 10.5, color: T.dim, marginTop: 1 }}>{r.primary} primary &middot; {r.secondary} secondary</div>
-                  </div>
-                ) : (
-                  <span style={{ fontSize: 11.5, color: T.dim, fontStyle: "italic" }}>Not trained yet</span>
-                )}
+                {o.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
+
+          {tab === "chart" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              {rows.map((r) => {
+                const clickable = r.total > 0 && !!onSelectMuscle;
+                const color = MUSCLE_COLORS[genericBucket(r.muscle)] || T.accent;
+                const pct = Math.max(r.total > 0 ? 6 : 0, Math.round((r.total / maxTotal) * 100));
+                return (
+                  <button
+                    key={r.muscle}
+                    onClick={() => clickable && onSelectMuscle(r.muscle)}
+                    disabled={!clickable}
+                    style={{ width: "100%", background: "none", border: "none", padding: 0, textAlign: "left", cursor: clickable ? "pointer" : "default" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
+                      <span style={{ fontSize: 11.5, color: r.total > 0 ? T.text : T.dim, fontWeight: r.total > 0 ? 600 : 500 }}>{r.muscle}</span>
+                      <span style={{ fontSize: 10.5, color: T.dim, flexShrink: 0, marginLeft: 8 }}>{r.total > 0 ? `${r.total} set${r.total === 1 ? "" : "s"}` : "—"}</span>
+                    </div>
+                    <div style={{ width: "100%", height: 7, borderRadius: 4, background: T.surface2, overflow: "hidden" }}>
+                      {r.total > 0 && <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: color }} />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {rows.map((r) => {
+                const clickable = r.total > 0 && !!onSelectMuscle;
+                return (
+                  <button
+                    key={r.muscle}
+                    onClick={() => clickable && onSelectMuscle(r.muscle)}
+                    disabled={!clickable}
+                    style={{
+                      width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+                      background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, padding: "8px 10px",
+                      textAlign: "left", cursor: clickable ? "pointer" : "default",
+                    }}
+                  >
+                    <span style={{ fontSize: 13, color: r.total > 0 ? T.text : T.dim, fontWeight: r.total > 0 ? 600 : 500 }}>{r.muscle}</span>
+                    {r.total > 0 ? (
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: 12, color: T.text, fontWeight: 700 }}>{r.total} set{r.total === 1 ? "" : "s"}</div>
+                        <div style={{ fontSize: 10.5, color: T.dim, marginTop: 1 }}>{r.primary} primary &middot; {r.secondary} secondary</div>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 11.5, color: T.dim, fontStyle: "italic" }}>Not trained yet</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -169,6 +226,7 @@ function CoverageBreakdown({ primary, secondary, onSelectMuscle }) {
 export default function BodyHeatmap({
   primary = {}, secondary = {}, fullBodySets = 0, entries, onSelectMuscle,
   setsFilter = "working", roleFilter = "both", onSetsFilterChange, onRoleFilterChange,
+  coverageView, onCoverageViewChange, mapMaxWidth,
 }) {
   const showFilters = !!(onSetsFilterChange && onRoleFilterChange);
 
@@ -189,7 +247,7 @@ export default function BodyHeatmap({
       {!hasAnyData ? (
         <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Nothing logged in this range yet.</div>
       ) : (
-        <BodyMap primary={detailed.primary} secondary={detailed.secondary} roleFilter={roleFilter} />
+        <BodyMap primary={detailed.primary} secondary={detailed.secondary} roleFilter={roleFilter} maxWidth={mapMaxWidth} />
       )}
 
       {fullBodySets > 0 && (
@@ -198,7 +256,7 @@ export default function BodyHeatmap({
         </div>
       )}
 
-      {hasAnyData && <CoverageBreakdown primary={detailed.primary} secondary={detailed.secondary} onSelectMuscle={onSelectMuscle} />}
+      {hasAnyData && <CoverageBreakdown primary={detailed.primary} secondary={detailed.secondary} onSelectMuscle={onSelectMuscle} view={coverageView} onViewChange={onCoverageViewChange} />}
     </div>
   );
 }

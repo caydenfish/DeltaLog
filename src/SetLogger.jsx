@@ -125,49 +125,42 @@ function targetFor(ex, ideologyName, unit, todaysWorkingSets = [], method = "rir
   }
   const { low, high } = IDEOLOGIES[ideologyName];
   const lastWorkingSets = ex.lastWeek.filter((s) => !s.isWarmup);
+  // Best working set across the trailing 30 days (ex.recentSets, see
+  // fetchRecentSets), not just whatever the most recent session happened
+  // to produce -- so one rough session (bad sleep, a deload) doesn't
+  // drag the next recommendation down when a better lift from a week or
+  // two earlier is still a fair anchor. Falls back to lastWorkingSets
+  // when the 30-day window is empty (e.g. coming back from a longer
+  // break) rather than reaching further back for an all-time best, which
+  // could suggest a weight that's no longer realistic.
+  const recentWorkingSets = (ex.recentSets || []).filter((s) => !s.isWarmup);
   const step = unit === "kg" ? 2.5 : 5;
 
   // Double Progression: climb reps at the SAME weight session to session
   // until every working set hits the top of the rep range, then bump the
   // weight one step and restart at the bottom. Deliberately ignores
-  // today's own sets as an anchor (unlike the other two methods) --
-  // double progression is specifically about a stable weight across a
-  // whole session, not reacting mid-session.
+  // today's own sets AND the 30-day-best window (unlike the other two
+  // methods) -- double progression is specifically about a stable weight
+  // across consecutive sessions, not reacting to the best set in a
+  // window.
   if (method === "double_progression" && lastWorkingSets.length > 0) {
     const lastSet = lastWorkingSets[lastWorkingSets.length - 1];
     const hitTop = lastWorkingSets.every((s) => s.reps >= high);
-    // A below-range miss at or near true failure (RIR ≤ 1) means the
-    // weight is too heavy for this rep range altogether -- holding it
-    // flat and asking for more reps assumes room to climb that isn't
-    // there. Scale down off this set's own e1RM instead.
-    const missedRange = !hitTop && lastSet.reps < low && (lastSet.rir ?? 0) <= 1;
-    let weight, reps;
-    if (hitTop) {
-      weight = Math.round((lastSet.weight + step) / step) * step;
-      reps = low;
-    } else if (missedRange) {
-      const missedE1RM = e1RM(lastSet.weight, lastSet.reps, lastSet.rir ?? 0);
-      // Floor rather than round-to-nearest: a near-miss can compute a
-      // raw value just under the old weight, which round-to-nearest
-      // would snap right back up to, silently undoing the backoff.
-      weight = Math.floor(weightForReps(missedE1RM, low) / step) * step;
-      if (weight >= lastSet.weight) weight = lastSet.weight - step;
-      weight = Math.max(weight, step);
-      reps = low;
-    } else {
-      weight = lastSet.weight;
-      reps = high;
-    }
+    const weight = hitTop ? Math.round((lastSet.weight + step) / step) * step : lastSet.weight;
+    const reps = hitTop ? low : high;
     const baseE1RM = e1RM(weight, reps, lastSet.rir ?? 2);
-    return { weight, reps, anchored: true, baseE1RM: Math.round(baseE1RM), source: lastSet, fromToday: false, method, missedRange };
+    return { weight, reps, anchored: true, baseE1RM: Math.round(baseE1RM), source: lastSet, fromToday: false, method };
   }
 
   const reps = Math.round((low + high) / 2);
   // RIR Autoregulation reacts to whatever's already been logged THIS
   // session (140x10 @ RIR4 implies more in the tank than the target
-  // assumed); % of e1RM and the double-progression fallback above both
-  // stay anchored to last session's numbers only.
-  const candidateSets = method === "rir_autoregulation" && todaysWorkingSets.length > 0 ? todaysWorkingSets : lastWorkingSets;
+  // assumed) above everything else; % of e1RM always uses history. Once
+  // today's sets are ruled out, both fall back to the best working set
+  // in the trailing 30 days, then to last session if that window's empty.
+  const candidateSets = method === "rir_autoregulation" && todaysWorkingSets.length > 0
+    ? todaysWorkingSets
+    : recentWorkingSets.length > 0 ? recentWorkingSets : lastWorkingSets;
   const bestFromHistory = candidateSets.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
   let baseE1RM, anchored, source;
   if (bestFromHistory > 0) {
@@ -182,7 +175,12 @@ function targetFor(ex, ideologyName, unit, todaysWorkingSets = [], method = "rir
     source = { weight: ex.targetWeight, reps: hypReps, rir: 2 };
   }
   const weight = Math.round(weightForReps(baseE1RM, reps) / step) * step;
-  return { weight, reps, anchored, baseE1RM: Math.round(baseE1RM), source, fromToday: method === "rir_autoregulation" && todaysWorkingSets.length > 0, method };
+  // usedRecentWindow distinguishes "best set in the last 30 days" from
+  // the literal last-session fallback, purely for the reasoning text
+  // shown next to the target -- both are real history, this just keeps
+  // that copy honest about which one it's citing.
+  const usedRecentWindow = candidateSets === recentWorkingSets && recentWorkingSets.length > 0;
+  return { weight, reps, anchored, baseE1RM: Math.round(baseE1RM), source, fromToday: method === "rir_autoregulation" && todaysWorkingSets.length > 0, usedRecentWindow, method };
 }
 
 function greedyPerSide(total, bar, unit, muscleGroup) {
@@ -198,7 +196,7 @@ function greedyPerSide(total, bar, unit, muscleGroup) {
 // newItem builds a workout slot from a hydrated library exercise (already
 // carrying lastWeek/sessions/savedNotes/savedSetup from hydrateExercise)
 // plus the id of the workout_exercises row that was just created for it.
-const newItem = (hydrated, dbId, planned = getPrefs().defaultPlannedSets, plannedWarmup = 0) => ({
+const newItem = (hydrated, dbId, planned = 3, plannedWarmup = 0) => ({
   ...hydrated,
   dbId,
   planned,
@@ -249,26 +247,6 @@ function setLabels(sets) {
   let working = 0;
   let warmup = 0;
   return (sets || []).map((s) => (s.isWarmup ? `W${++warmup}` : `${++working}`));
-}
-
-// Exercise notes are stored/edited as free-form multi-line text (the
-// notes textarea), but the normal workout view shows them inline as a
-// single line -- each line break becomes " | " so multiple cues/lines
-// stay visually separated without wrapping the note across rows. Blank
-// lines are dropped rather than producing an empty " |  | " segment.
-function formatNotesInline(notes) {
-  return (notes || "").split("\n").map((line) => line.trim()).filter(Boolean).join(" | ");
-}
-
-// How many sets a freshly-added exercise should start with: the number
-// of working sets actually logged last time this exercise was performed
-// (hydrateExercise's lastWeek), so re-adding an exercise remembers what
-// you actually did rather than resetting to the global default. Falls
-// back to the defaultPlannedSets preference for an exercise with no
-// logged history yet.
-function plannedSetsFor(hydrated) {
-  const workingCount = (hydrated.lastWeek || []).filter((s) => !s.isWarmup).length;
-  return workingCount > 0 ? workingCount : getPrefs().defaultPlannedSets;
 }
 
 
@@ -372,6 +350,64 @@ function SessionSetRow({ label, set, unit, interactive, deleteMode, selected, on
   );
 }
 
+// Dashed-perimeter "+" tile that closes out the Today list -- replaces
+// the old standalone "Log next set" / "Add another set" buttons living
+// in the bottom bar. Logging the next set is now just tapping the next
+// slot in the list itself, the same way the list will look once that
+// set exists, rather than a separate action floating below two panels
+// of history. Same footprint as a real SessionSetRow so it drops into
+// the same grid/gap rhythm without any special-casing in the scroll math.
+function AddSetTile({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: ROW_HEIGHT,
+        flexShrink: 0,
+        borderRadius: 10,
+        border: `1.5px dashed ${T.line}`,
+        background: "none",
+        color: T.dim,
+        cursor: "pointer",
+      }}
+      aria-label="Log next set"
+    >
+      <span style={{ fontSize: 20, fontWeight: 400, lineHeight: 1 }}>+</span>
+    </button>
+  );
+}
+
+// Small 2-option settings tile for the Workout Menu's quick-settings
+// column beside the live heatmap -- same segmented-track pattern used
+// throughout Preferences/BodyHeatmap, just narrower and stacked instead
+// of full-width, since it only has ~92px to work with.
+function QuickSettingTile({ label, value, options, onChange }) {
+  return (
+    <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 8 }}>
+      <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5, textAlign: "center" }}>{label}</div>
+      <div style={{ display: "flex", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 7, padding: 2, gap: 2 }}>
+        {options.map((o) => (
+          <button
+            key={o.key}
+            onClick={() => onChange(o.key)}
+            aria-pressed={value === o.key}
+            style={{
+              flex: 1, minWidth: 0, background: value === o.key ? T.accent : "transparent", border: "none",
+              borderRadius: 5, padding: "5px 0", fontSize: 10.5, fontWeight: 600,
+              color: value === o.key ? "#fff" : T.dim,
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, savedWorkout }) {
   // The muscle taxonomy fetch (App.jsx) and this screen's own boot chain
   // both kick off at app start, and either can win the race -- someone
@@ -403,7 +439,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [allSets, setAllSets] = useState([]);
   const [globalIdeology, setGlobalIdeology] = useState(() => getPrefs().trainingIdeology || "Hypertrophy");
   const [showMenu, setShowMenu] = useState(false);
-  const [muscleMapView, setMuscleMapView] = useState("hit"); // "hit" | "planned"
   const [finishConfirm, setFinishConfirm] = useState(false);
   const [outlierReview, setOutlierReview] = useState(null); // null | array of flagged sets pending review
   const [showExportImage, setShowExportImage] = useState(false);
@@ -520,6 +555,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [expandedPR, setExpandedPR] = useState(null);
   const [deleteMode, setDeleteMode] = useState(false); // set-list select-to-delete mode, per exercise (reset on goTo)
   const [selectedForDelete, setSelectedForDelete] = useState(new Set()); // set indices checked while deleteMode is on
+  const [nextExPopupDismissed, setNextExPopupDismissed] = useState(false); // hides the "planned sets complete" popup once dismissed, until goTo changes exercise again
+  // Local mirrors of the two prefs the Workout Menu's quick-setting tiles
+  // expose, so tapping one repaints immediately (the rest of the app
+  // reads getPrefs().units etc fresh each render off of whatever state
+  // change triggered it -- these tiles are that trigger).
+  const [quickUnits, setQuickUnits] = useState(() => getPrefs().units);
+  const [quickRestSound, setQuickRestSound] = useState(() => getPrefs().restTimerSoundEnabled);
   const [confirmDeleteSets, setConfirmDeleteSets] = useState(false); // true once "Delete (n)" is tapped, awaiting the actual confirm
   const pendingCustomPick = useRef(null);
   const rowRefs = useRef([]);
@@ -886,6 +928,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     setWizardOpen(false); setShowCalc(false); setEditIndex(null); setLoaded([]);
     setEditingNote(false); setShowSetup(false); setShowIdeology(false); setShowTargetInfo(false);
     setDeleteMode(false); setSelectedForDelete(new Set()); setConfirmDeleteSets(false);
+    setNextExPopupDismissed(false);
     if (lastRowsRef.current) lastRowsRef.current.scrollTop = 0;
     if (todayRowsRef.current) todayRowsRef.current.scrollTop = 0;
   }
@@ -980,10 +1023,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     addingExercisesRef.current = true;
     setAddingExercises(true);
     try {
+      const dbId = await addWorkoutExercise(workoutId, libItem.id, workout.length, 3);
       const hydrated = await hydrateExercise(user.id, libItem);
-      const plannedSets = plannedSetsFor(hydrated);
-      const dbId = await addWorkoutExercise(workoutId, libItem.id, workout.length, plannedSets);
-      const item = newItem(hydrated, dbId, plannedSets);
+      const item = newItem(hydrated, dbId, 3);
       setWorkout([...workout, item]);
       setAllSets([...allSets, []]);
     } catch (err) {
@@ -1053,10 +1095,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       let nextWorkout = workout;
       let nextAllSets = allSets;
       for (const libItem of picks) {
+        const dbId = await addWorkoutExercise(workoutId, libItem.id, nextWorkout.length, 3);
         const hydrated = await hydrateExercise(user.id, libItem);
-        const plannedSets = plannedSetsFor(hydrated);
-        const dbId = await addWorkoutExercise(workoutId, libItem.id, nextWorkout.length, plannedSets);
-        const item = newItem(hydrated, dbId, plannedSets);
+        const item = newItem(hydrated, dbId, 3);
         nextWorkout = [...nextWorkout, item];
         nextAllSets = [...nextAllSets, []];
       }
@@ -1615,15 +1656,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const liveVolumeEntries = workout.map((w, i) => ({ muscle: w.muscle, primaryMuscles: w.rawPrimaryMuscles, secondaryMuscles: w.rawSecondaryMuscles, sets: (allSets[i] || []).filter((s) => !s.isWarmup) }));
   const { primary: livePrimary, secondary: liveSecondary, fullBodySets: liveFullBodySets } = computeMuscleSetCounts(liveVolumeEntries, muscleNameMode);
 
-  // Same shape as liveVolumeEntries, but sized off each exercise's planned
-  // set count instead of what's actually been logged -- a projection of
-  // what the whole loaded workout will hit once every set is done,
-  // regardless of how many are logged yet. Sets are empty placeholders;
-  // computeMuscleSetCounts only cares about count and warmup status (both
-  // absent here, so every slot counts as working), not weight/reps.
-  const plannedVolumeEntries = workout.map((w) => ({ muscle: w.muscle, primaryMuscles: w.rawPrimaryMuscles, secondaryMuscles: w.rawSecondaryMuscles, sets: Array.from({ length: w.planned || 0 }, () => ({})) }));
-  const { primary: plannedPrimary, secondary: plannedSecondary, fullBodySets: plannedFullBodySets } = computeMuscleSetCounts(plannedVolumeEntries, muscleNameMode);
-
   // Flags sets that look like a typo or wrong-plate mistake rather than a
   // real effort: way outside both what else got logged this session for
   // the same exercise AND what was logged last time. Small swings are
@@ -2119,7 +2151,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     </div>
                   </div>
                 )}
-                {w.notes && <div style={{ fontSize: 12, color: T.dim, marginTop: 8, fontStyle: "italic" }}>Note: {formatNotesInline(w.notes)}</div>}
+                {w.notes && <div style={{ fontSize: 12, color: T.dim, marginTop: 8, fontStyle: "italic" }}>Note: {w.notes}</div>}
               </div>
             ))}
           </div>
@@ -2356,7 +2388,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               if (!row) return null;
               const { w, i, exSets, bestToday, delta, hasHistory, isPR, twoForTwo } = row;
               return (
-                <div key={i} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
+                <div key={i} style={{ background: T.surface, border: `1px solid ${isPR ? "#FFD166" : T.line}`, boxShadow: isPR ? "0 0 0 1px rgba(255,209,102,0.35)" : "none", borderRadius: 12, padding: 12, marginBottom: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{w.name}</div>
                     <div style={{ display: "flex", gap: 6 }}>
@@ -2369,7 +2401,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     {hasHistory && <span style={{ color: delta > 0.5 ? T.green : delta < -0.5 ? T.accent : T.dim }}> ({delta > 0 ? "+" : ""}{Math.round(delta)} vs last session)</span>}
                     {!hasHistory && <span> · first session on record</span>}
                   </div>
-                  {w.notes && <div style={{ fontSize: 12, color: T.dim, fontStyle: "italic", marginTop: 4 }}>Note: {formatNotesInline(w.notes)}</div>}
+                  {w.notes && <div style={{ fontSize: 12, color: T.dim, fontStyle: "italic", marginTop: 4 }}>Note: {w.notes}</div>}
                   <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                     {exSets.map((s, j) => (
                       <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: T.text }}>
@@ -2639,37 +2671,36 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               </div>
 
               <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
-                <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 10 }}>
-                  {[{ key: "hit", label: "Hit so far" }, { key: "planned", label: "Full workout" }].map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => setMuscleMapView(opt.key)}
-                      aria-pressed={muscleMapView === opt.key}
-                      style={{
-                        flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none",
-                        background: muscleMapView === opt.key ? T.accent : "transparent",
-                        color: muscleMapView === opt.key ? "#fff" : T.dim,
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                  {muscleMapView === "hit" ? "Muscles worked, this session" : "Muscles this workout will hit, once complete"}
-                </div>
-                {muscleMapView === "hit" ? (
-                  Object.keys(livePrimary).length === 0 && Object.keys(liveSecondary).length === 0 ? (
-                    <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Log a set to see it light up here.</div>
-                  ) : (
-                    <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} entries={liveVolumeEntries} />
-                  )
+                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Muscles worked, this session</div>
+                {Object.keys(livePrimary).length === 0 && Object.keys(liveSecondary).length === 0 ? (
+                  <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Log a set to see it light up here.</div>
                 ) : (
-                  Object.keys(plannedPrimary).length === 0 && Object.keys(plannedSecondary).length === 0 ? (
-                    <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Add an exercise to see its planned muscles here.</div>
-                  ) : (
-                    <BodyHeatmap primary={plannedPrimary} secondary={plannedSecondary} fullBodySets={plannedFullBodySets} entries={plannedVolumeEntries} />
-                  )
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} entries={liveVolumeEntries} mapMaxWidth={112} />
+                    </div>
+                    {/* Small quick-toggle tiles -- the mid-workout menu's
+                        own settings surface (Preferences was already built
+                        to support this self-managed/fields-subset mode,
+                        just never wired anywhere). Kept to the two
+                        settings most worth touching without leaving the
+                        workout; everything else stays in the full Settings
+                        screen from Home. */}
+                    <div style={{ width: 92, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <QuickSettingTile
+                        label="Units"
+                        value={quickUnits}
+                        options={[{ key: "lb", label: "lb" }, { key: "kg", label: "kg" }]}
+                        onChange={(v) => { setPref("units", v); setQuickUnits(v); }}
+                      />
+                      <QuickSettingTile
+                        label="Rest sound"
+                        value={quickRestSound ? "on" : "off"}
+                        options={[{ key: "on", label: "On" }, { key: "off", label: "Off" }]}
+                        onChange={(v) => { const on = v === "on"; setPref("restTimerSoundEnabled", on); setQuickRestSound(on); }}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -2858,10 +2889,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 <><b style={{ color: T.text }}>Program coach:</b> {target.reasonText}</>
               ) : target.anchored && target.fromToday ? (
                 <>Updated from what you just logged today: {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir}, estimated 1RM <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps.</>
-              ) : target.missedRange ? (
-                <>Missed the bottom of your rep range at true failure last time ({target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir}), so weight is scaled down off that set's estimated 1RM of <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b> to land back in {effIdeology}'s {ideo.low}-{ideo.high} rep range.</>
               ) : target.anchored ? (
-                <>Based on your best estimated 1RM of <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>, from {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir} last session. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps as the working target.</>
+                <>Based on your best estimated 1RM of <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>, from {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir} {target.usedRecentWindow ? "in the last 30 days" : "last session"}. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps as the working target.</>
               ) : (
                 <>No session history yet, so this starts from the library default of {ex.targetWeight} {unit}, treated as a moderate hypertrophy effort (~{target.baseE1RM} {unit} estimated 1RM). Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range. Log a session and this becomes personalized.</>
               )}
@@ -3019,7 +3048,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           {!editingNote ? (
             <div style={{ marginTop: 6, textAlign: "center", display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
               <button onClick={() => { setNoteDraft(ex.notes); setEditingNote(true); }} style={{ background: "none", border: "none", color: T.dim, fontSize: 12, fontStyle: ex.notes ? "italic" : "normal", padding: 0 }}>
-                {ex.notes ? <>"{formatNotesInline(ex.notes)}" <IconPencil size={11} /></> : "+ Add note"}
+                {ex.notes ? <>"{ex.notes}" <IconPencil size={11} /></> : "+ Add note"}
               </button>
             </div>
           ) : (
@@ -3105,14 +3134,22 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             </div>
           </div>
 
+          {(() => {
+            // Today's column always carries one extra slot for the AddSetTile
+            // (unless mid-delete-selection, where adding would be a confusing
+            // action to offer) -- both columns size off the larger of the two
+            // so Last Session and Today keep scrolling in lockstep.
+            const todaySlots = sets.length + (deleteMode ? 0 : 1);
+            const totalRows = Math.max(lastWeek.length, todaySlots);
+            return (
           <div style={{ display: "flex", gap: 10, flex: 1, minHeight: 0 }}>
             <div style={{ flex: "0.92 1 0", minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
               {lastWeek.length === 0 ? (
                 <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>No history yet</div>
               ) : (
                 <>
-                  <div ref={lastRowsRef} onScroll={() => syncSetListScroll("last")} className="no-scrollbar" style={{ height: rowsContainerHeight(Math.max(lastWeek.length, sets.length)), overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
-                    {Array.from({ length: Math.max(lastWeek.length, sets.length) }).map((_, i) => {
+                  <div ref={lastRowsRef} onScroll={() => syncSetListScroll("last")} className="no-scrollbar" style={{ height: rowsContainerHeight(totalRows), overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
+                    {Array.from({ length: totalRows }).map((_, i) => {
                       const s = lastWeek[i];
                       return s ? (
                         <SessionSetRow key={i} label={setLabels(lastWeek)[i]} set={s} unit={unit} interactive={false} />
@@ -3135,70 +3172,89 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             </div>
 
             <div style={{ flex: "1.08 1 0", minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
-              {sets.length === 0 ? (
-                <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>Nothing logged yet</div>
-              ) : (
-                <>
-                  <div ref={todayRowsRef} onScroll={() => syncSetListScroll("today")} className="no-scrollbar" style={{ height: rowsContainerHeight(Math.max(lastWeek.length, sets.length)), overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
-                    {Array.from({ length: Math.max(lastWeek.length, sets.length) }).map((_, i) => {
-                      const s = sets[i];
-                      return s ? (
-                        <SessionSetRow
-                          key={i}
-                          label={setLabels(sets)[i]}
-                          set={s}
-                          unit={unit}
-                          interactive
-                          deleteMode={deleteMode}
-                          selected={selectedForDelete.has(i)}
-                          onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
-                          onRowTap={() => openWizard(s, i)}
-                          onToggleSelect={() => {
-                            setSelectedForDelete((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(i)) next.delete(i); else next.add(i);
-                              return next;
-                            });
-                          }}
-                        />
-                      ) : (
-                        <div key={i} style={{ height: ROW_HEIGHT, flexShrink: 0 }} />
-                      );
-                    })}
-                  </div>
-                  {(() => {
-                    const last = sessionStats(lastWeek);
-                    const today = sessionStats(sets);
+              <div ref={todayRowsRef} onScroll={() => syncSetListScroll("today")} className="no-scrollbar" style={{ height: rowsContainerHeight(totalRows), overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
+                {Array.from({ length: totalRows }).map((_, i) => {
+                  const s = sets[i];
+                  if (s) {
                     return (
-                      <div style={{ marginTop: "auto", borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
-                        <span>Volume <b style={{ color: T.text, fontWeight: 700 }}>{today.totalVolume} {unit}</b> {diffLabel(today.totalVolume - last.totalVolume)}</span>
-                        <span>e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(today.bestE1RM)} {unit}</b> {diffLabel(today.bestE1RM - last.bestE1RM)}</span>
-                      </div>
+                      <SessionSetRow
+                        key={i}
+                        label={setLabels(sets)[i]}
+                        set={s}
+                        unit={unit}
+                        interactive
+                        deleteMode={deleteMode}
+                        selected={selectedForDelete.has(i)}
+                        onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
+                        onRowTap={() => openWizard(s, i)}
+                        onToggleSelect={() => {
+                          setSelectedForDelete((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(i)) next.delete(i); else next.add(i);
+                            return next;
+                          });
+                        }}
+                      />
                     );
-                  })()}
-                </>
-              )}
+                  }
+                  if (i === sets.length && !deleteMode) {
+                    return <AddSetTile key={i} onClick={() => openWizard()} />;
+                  }
+                  return <div key={i} style={{ height: ROW_HEIGHT, flexShrink: 0 }} />;
+                })}
+              </div>
+              {sets.length > 0 && (() => {
+                const last = sessionStats(lastWeek);
+                const today = sessionStats(sets);
+                return (
+                  <div style={{ marginTop: "auto", borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
+                    <span>Volume <b style={{ color: T.text, fontWeight: 700 }}>{today.totalVolume} {unit}</b> {diffLabel(today.totalVolume - last.totalVolume)}</span>
+                    <span>e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(today.bestE1RM)} {unit}</b> {diffLabel(today.bestE1RM - last.bestE1RM)}</span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
+            );
+          })()}
         </div>
         )}
 
+        {/* Planned-sets-complete popup: replaces the old permanent "Next
+            exercise" bar so the bottom of the screen isn't occupied by a
+            nudge to move on the moment it's technically possible to --
+            it surfaces once, can be dismissed to keep adding sets here,
+            and comes back if you navigate away and back to this exercise. */}
+        {!wizardOpen && exDone && !workoutDone && !nextExPopupDismissed && (() => {
+          const nextIdx = workout.findIndex((w, i) => allSets[i].filter((s) => !s.isWarmup).length < w.planned);
+          if (nextIdx === -1) return null;
+          return (
+            <div style={{ margin: "0 16px 12px", padding: "12px 14px", borderRadius: 14, background: T.surface, border: `1px solid ${T.green}`, display: "flex", alignItems: "center", gap: 10, animation: "slideIn 0.18s ease" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: T.dim, marginBottom: 6 }}>Planned sets complete</div>
+                <button onClick={() => goTo(nextIdx)} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: T.green, color: "#fff", fontSize: 14.5, fontWeight: 700 }}>
+                  Next exercise: {workout[nextIdx].short} →
+                </button>
+              </div>
+              <button onClick={() => setNextExPopupDismissed(true)} aria-label="Dismiss" style={{ background: "none", border: "none", color: T.dim, fontSize: 18, lineHeight: 1, padding: 4, alignSelf: "flex-start" }}>×</button>
+            </div>
+          );
+        })()}
+
+        {(() => {
+          // Bottom bar only has two possible contents now that "add a set"
+          // lives in the list itself: the Finish button, and the best-e1RM
+          // stat line. With neither (fresh exercise, mid-set, no PR-worthy
+          // lift logged yet), skip the bar entirely rather than showing an
+          // empty bordered strip with nothing in it.
+          const hasBottomContent = wizardOpen || (exDone && workoutDone) || bestE1RM > 0;
+          if (!hasBottomContent) return null;
+          return (
         <div style={wizardOpen ? { borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16, flex: 1, overflowY: "auto", minHeight: 0 } : { borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
           {!wizardOpen ? (
             <>
-              {!exDone ? (
-                <button onClick={() => openWizard()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Log next set</button>
-              ) : (
-                <>
-                  {workoutDone ? (
-                    <button onClick={() => setShowMenu(true)} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Finish workout</button>
-                  ) : (
-                    <button onClick={() => goTo(workout.findIndex((w, i) => allSets[i].filter((s) => !s.isWarmup).length < w.planned))} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
-                      Next exercise: {workout[workout.findIndex((w, i) => allSets[i].filter((s) => !s.isWarmup).length < w.planned)].short} →
-                    </button>
-                  )}
-                  <button onClick={() => openWizard()} style={{ width: "100%", marginTop: 8, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>Add another set</button>
-                </>
+              {exDone && workoutDone && (
+                <button onClick={() => setShowMenu(true)} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Finish workout</button>
               )}
               {bestE1RM > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 13 }}>
@@ -3327,6 +3383,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             </div>
           )}
         </div>
+          );
+        })()}
       </div>
     </div>
   );

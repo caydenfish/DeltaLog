@@ -76,6 +76,7 @@ export function normalizeExercise(row) {
     aliases: row.aliases || [],
     sessions: 0, // filled in by hydrateExercise when the exercise enters a workout
     lastWeek: [],
+    recentSets: [], // working sets logged in the trailing 30 days, across all sessions -- filled in by hydrateExercise, see fetchRecentSets
   };
 }
 
@@ -459,6 +460,35 @@ export async function fetchLastSession(userId, exerciseId) {
   return (sets || []).map((s) => ({ weight: s.weight, reps: s.reps, rir: s.rir, set_number: s.set_number, isWarmup: !!s.is_warmup }));
 }
 
+// Fetches every set logged for this exercise across all completed
+// workouts in the trailing `days` days (default 30, matching the
+// recommended-weight window agreed on for targetFor's history fallback
+// in SetLogger.jsx) -- as opposed to fetchLastSession above, which is
+// pinned to just the single most recent session. Returns raw sets
+// (warmup included, same as fetchLastSession) rather than a reduced
+// "best" one, so the caller can score them with e1RM itself -- keeps
+// this file free of that formula, which lives with the rest of the
+// target-calculation logic in SetLogger.jsx. Single embedded-join query
+// (workouts!inner + sets(...) in one select), same shape as
+// programQueries.js's fetchRecentSessions, rather than two round trips.
+export async function fetchRecentSets(userId, exerciseId, days = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const { data: rows, error } = await supabase
+    .from("workout_exercises")
+    .select("workouts!inner(user_id, completed_at), sets (weight, reps, rir, set_number, is_warmup)")
+    .eq("exercise_id", exerciseId)
+    .eq("workouts.user_id", userId)
+    .not("workouts.completed_at", "is", null)
+    .gte("workouts.completed_at", since.toISOString());
+
+  if (error) throw error;
+  return (rows || []).flatMap((row) =>
+    (row.sets || []).map((s) => ({ weight: s.weight, reps: s.reps, rir: s.rir, set_number: s.set_number, isWarmup: !!s.is_warmup }))
+  );
+}
+
 // Counts how many completed workouts have included this exercise, ever.
 // Drives the "X sessions / Not performed" line in the exercise picker.
 export async function fetchSessionCount(userId, exerciseId) {
@@ -476,8 +506,9 @@ export async function fetchSessionCount(userId, exerciseId) {
 // workout: last session's sets, session count, and any saved notes/setup.
 // Called from addExercise / replaceExercise / generateWorkout / initial load.
 export async function hydrateExercise(userId, normalizedExercise) {
-  const [lastWeek, sessions, defaults] = await Promise.all([
+  const [lastWeek, recentSets, sessions, defaults] = await Promise.all([
     fetchLastSession(userId, normalizedExercise.id),
+    fetchRecentSets(userId, normalizedExercise.id),
     fetchSessionCount(userId, normalizedExercise.id),
     fetchExerciseDefaults(userId, normalizedExercise.id),
   ]);
@@ -486,6 +517,7 @@ export async function hydrateExercise(userId, normalizedExercise) {
     ...normalizedExercise,
     targetWeight: toDisplay(normalizedExercise.targetWeight, unit),
     lastWeek: lastWeek.map((s) => ({ ...s, weight: toDisplay(s.weight, unit) })),
+    recentSets: recentSets.map((s) => ({ ...s, weight: toDisplay(s.weight, unit) })),
     sessions,
     savedNotes: defaults.notes,
     savedSetup: defaults.setup,
@@ -1148,18 +1180,6 @@ export async function saveWorkoutSummary(workoutId, bodyWeight, sessionNotes) {
   const { error } = await supabase
     .from("workouts")
     .update({ body_weight: bodyWeight, session_notes: sessionNotes })
-    .eq("id", workoutId);
-  if (error) throw error;
-}
-
-// Edits a completed workout's started_at/completed_at directly (History's
-// duration editor). Both are full ISO timestamps -- the two-way start/
-// duration/finish math lives client-side (see WorkoutHistory.jsx's
-// DurationEditor), this just persists whatever pair it lands on.
-export async function updateWorkoutTimes(workoutId, startedAt, completedAt) {
-  const { error } = await supabase
-    .from("workouts")
-    .update({ started_at: startedAt, completed_at: completedAt })
     .eq("id", workoutId);
   if (error) throw error;
 }

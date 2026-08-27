@@ -20,29 +20,6 @@ export function formatClockTime(dateInput, timeFormat) {
 // highlighting, volume/weight charts, progress photos) for anyone west of
 // UTC, since a workout finished at 8pm Mountain is already "tomorrow" in
 // UTC.
-// Formats a Date (or timestamptz string) as a 24h "HH:MM" string in
-// local time -- the value shape <input type="time"> expects/emits,
-// independent of the person's 12h/24h display preference (that's a
-// formatting-only concern, handled separately by formatClockTime).
-export function toLocalTimeInputStr(dateInput) {
-  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
-  if (isNaN(d.getTime())) return "";
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-// Combines a local YYYY-MM-DD date with an <input type="time"> "HH:MM"
-// value into a real local Date. Used by the workout history duration
-// editor, which edits clock times against a fixed calendar day rather
-// than letting the person pick a date.
-export function combineLocalDateAndTime(dateStr, timeStr) {
-  const [y, mo, d] = (dateStr || "").split("-").map(Number);
-  const [h, mi] = (timeStr || "").split(":").map(Number);
-  if (!y || !mo || !d || isNaN(h) || isNaN(mi)) return null;
-  return new Date(y, mo - 1, d, h, mi, 0, 0);
-}
-
 export function toLocalDateStr(dateInput) {
   const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
   if (isNaN(d.getTime())) return "";

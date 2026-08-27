@@ -33,7 +33,7 @@ const STEPS = {
   ],
 };
 
-export default function InstallGuide({ onClose, onDismissForever }) {
+export default function InstallGuide({ onClose }) {
   const [platform, setPlatform] = useState(detectPlatform);
 
   return (
@@ -75,11 +75,6 @@ export default function InstallGuide({ onClose, onDismissForever }) {
         <button onClick={onClose} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 700 }}>
           Got it
         </button>
-        {onDismissForever && (
-          <button onClick={onDismissForever} style={{ width: "100%", padding: "12px 0", marginTop: 4, background: "none", border: "none", color: T.dim, fontSize: 12.5, textDecoration: "underline" }}>
-            Do Not Remind Me Again
-          </button>
-        )}
       </div>
     </div>
   );

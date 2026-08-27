@@ -4,11 +4,10 @@ import ExportWorkoutModal from "./ExportWorkoutModal";
 import { IconX, IconCamera, IconImage, IconTrash, IconCheck, IconShare } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
 import { formatWeight, toDisplay, toCanonical } from "./lib/weight";
-import { formatClockTime, toLocalDateStr, toLocalTimeInputStr, combineLocalDateAndTime } from "./lib/time";
+import { formatClockTime, toLocalDateStr } from "./lib/time";
 import {
   deleteWorkout, updateSet, deleteSet, logSet, addWorkoutExercise, removeWorkoutExercise,
   fetchExercises, uploadProgressPhoto, fetchProgressPhoto, deleteProgressPhoto, setSetWarmup, shareWorkout, saveWorkoutSummary,
-  updateWorkoutTimes,
 } from "./lib/queries";
 
 // Labels a sorted sets array for display: warmup sets count independently
@@ -145,7 +144,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
   );
 }
 
-function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated, onTimesUpdated }) {
+function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
   const dateStr = new Date(workout.completed_at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const startTimeStr = workout.started_at ? formatClockTime(workout.started_at, timeFormat) : null;
   const isoDate = toLocalDateStr(workout.completed_at);
@@ -175,68 +174,6 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
   const [bodyWeightDraft, setBodyWeightDraft] = useState("");
   const [savingBodyWeight, setSavingBodyWeight] = useState(false);
   const [bodyWeightError, setBodyWeightError] = useState(null);
-  const [editingDuration, setEditingDuration] = useState(false);
-  const [startDraft, setStartDraft] = useState(null); // Date | null
-  const [finishDraft, setFinishDraft] = useState(null); // Date | null
-  const [durationDraft, setDurationDraft] = useState(""); // minutes, string
-  const [savingDuration, setSavingDuration] = useState(false);
-  const [durationError, setDurationError] = useState(null);
-
-  function startEditDuration() {
-    const start = workout.started_at ? new Date(workout.started_at) : new Date(workout.completed_at);
-    const finish = workout.completed_at ? new Date(workout.completed_at) : start;
-    setStartDraft(start);
-    setFinishDraft(finish);
-    setDurationDraft(String(Math.max(1, Math.round((finish - start) / 60000))));
-    setDurationError(null);
-    setEditingDuration(true);
-  }
-
-  // Start is the anchor for all three fields: editing start shifts finish
-  // by the same amount so duration holds steady; editing finish or
-  // duration recomputes the other two directly off start. Finish rolling
-  // past midnight relative to start is treated as finishing the next day
-  // rather than a negative/invalid duration.
-  function onStartTimeChange(timeStr) {
-    const dateStr = toLocalDateStr(startDraft);
-    const next = combineLocalDateAndTime(dateStr, timeStr);
-    if (!next) return;
-    const durMin = parseInt(durationDraft, 10);
-    const newFinish = new Date(next.getTime() + (isNaN(durMin) ? Math.max(0, finishDraft - startDraft) : durMin * 60000));
-    setStartDraft(next);
-    setFinishDraft(newFinish);
-  }
-
-  function onFinishTimeChange(timeStr) {
-    const dateStr = toLocalDateStr(startDraft);
-    let next = combineLocalDateAndTime(dateStr, timeStr);
-    if (!next) return;
-    if (next < startDraft) next = new Date(next.getTime() + 24 * 60 * 60 * 1000);
-    setFinishDraft(next);
-    setDurationDraft(String(Math.max(1, Math.round((next - startDraft) / 60000))));
-  }
-
-  function onDurationChange(raw) {
-    const digits = raw.replace(/[^0-9]/g, "");
-    setDurationDraft(digits);
-    const n = parseInt(digits, 10);
-    if (!isNaN(n) && startDraft) setFinishDraft(new Date(startDraft.getTime() + n * 60000));
-  }
-
-  async function saveDurationEdit() {
-    const n = parseInt(durationDraft, 10);
-    if (!startDraft || !finishDraft || isNaN(n) || n < 1) { setDurationError("Enter a valid start, finish, and duration."); return; }
-    setSavingDuration(true);
-    setDurationError(null);
-    try {
-      await updateWorkoutTimes(workout.id, startDraft.toISOString(), finishDraft.toISOString());
-      onTimesUpdated && onTimesUpdated(workout.id, startDraft.toISOString(), finishDraft.toISOString());
-      setEditingDuration(false);
-    } catch (err) {
-      setDurationError(err.message);
-    }
-    setSavingDuration(false);
-  }
 
   function startEditBodyWeight() {
     setBodyWeightDraft(workout.body_weight != null ? String(workout.body_weight) : "");
@@ -441,53 +378,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
           </button>
         </div>
       </div>
-      {editMode ? (
-        <button onClick={startEditDuration} style={{ background: "none", border: "none", padding: 0, color: T.dim, fontSize: 12, marginTop: 2, textDecoration: "underline", textAlign: "left" }}>
-          {startTimeStr ? `Started ${startTimeStr}` : "Set start/finish time"}
-        </button>
-      ) : (
-        startTimeStr && <div style={{ color: T.dim, fontSize: 12, marginTop: 2 }}>Started {startTimeStr}</div>
-      )}
-
-      {editingDuration && (
-        <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10, marginTop: 8, marginBottom: 8 }}>
-          <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Start / finish / duration</div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: T.dim, marginBottom: 3 }}>Start</div>
-              <input
-                type="time"
-                value={startDraft ? toLocalTimeInputStr(startDraft) : ""}
-                onChange={(e) => onStartTimeChange(e.target.value)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 8px", outline: "none", boxSizing: "border-box" }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: T.dim, marginBottom: 3 }}>Finish</div>
-              <input
-                type="time"
-                value={finishDraft ? toLocalTimeInputStr(finishDraft) : ""}
-                onChange={(e) => onFinishTimeChange(e.target.value)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 8px", outline: "none", boxSizing: "border-box" }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: T.dim, marginBottom: 3 }}>Duration (min)</div>
-              <input
-                inputMode="numeric"
-                value={durationDraft}
-                onChange={(e) => onDurationChange(e.target.value)}
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 8px", outline: "none", boxSizing: "border-box" }}
-              />
-            </div>
-          </div>
-          {durationError && <div style={{ color: T.accent, fontSize: 12, marginBottom: 8 }}>{durationError}</div>}
-          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-            <button onClick={() => setEditingDuration(false)} disabled={savingDuration} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "8px 10px", fontSize: 12 }}>Cancel</button>
-            <button onClick={saveDurationEdit} disabled={savingDuration} style={{ background: T.accent, border: "none", color: "#fff", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 700 }}>{savingDuration ? "…" : "Save"}</button>
-          </div>
-        </div>
-      )}
+      {startTimeStr && <div style={{ color: T.dim, fontSize: 12, marginTop: 2 }}>Started {startTimeStr}</div>}
       <div style={{ color: T.dim, fontSize: 11.5, marginTop: 2, marginBottom: 8 }}>
         {editMode ? "Tap any set below to correct it — useful if a set got logged wrong or wasn't logged in the moment." : "Viewing only. Tap Edit above to correct a set, or add/remove sets and exercises."}
       </div>
@@ -728,7 +619,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
 // opened straight into a specific workout (e.g. from tapping a calendar
 // day) via `initialWorkoutId`, in which case the back arrow closes
 // directly instead of returning to the list.
-export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated, onTimesUpdated }) {
+export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
   const [selectedId, setSelectedId] = useState(initialWorkoutId || null);
   const [confirmDeleteIds, setConfirmDeleteIds] = useState(null); // null | array of workout ids pending delete confirmation
   const [deleting, setDeleting] = useState(false);
@@ -840,7 +731,6 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
             onExerciseAdded={onExerciseAdded}
             onExerciseRemoved={onExerciseRemoved}
             onBodyWeightUpdated={onBodyWeightUpdated}
-            onTimesUpdated={onTimesUpdated}
           />
         ) : (
           <div style={{ padding: 16, paddingBottom: selectMode ? 90 : 16, flex: 1 }}>

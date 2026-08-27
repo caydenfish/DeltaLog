@@ -26,29 +26,34 @@ function tone(ctx, { freq, start, duration, type = "sine", peakGain = 0.3 }) {
   gain.connect(ctx.destination);
   const t0 = ctx.currentTime + start;
   gain.gain.setValueAtTime(0, t0);
-  gain.gain.linearRampToValueAtTime(peakGain, t0 + 0.015);
+  gain.gain.linearRampToValueAtTime(peakGain, t0 + 0.03);
   gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
   osc.start(t0);
   osc.stop(t0 + duration + 0.02);
 }
 
+// Each sound takes a `base` time offset (seconds) so the same cue can be
+// scheduled twice in one go -- see REPEAT_GAP below. Softened across the
+// board from the original set: lower peak gains, rounder waveforms
+// (sine/triangle instead of square), slightly slower attack -- a rest
+// timer going off shouldn't startle you.
 const SOUNDS = {
-  chime: (ctx) => {
-    tone(ctx, { freq: 660, start: 0, duration: 0.32, type: "sine" });
-    tone(ctx, { freq: 880, start: 0.12, duration: 0.4, type: "sine" });
+  chime: (ctx, base = 0) => {
+    tone(ctx, { freq: 587, start: base, duration: 0.34, type: "sine", peakGain: 0.16 });
+    tone(ctx, { freq: 784, start: base + 0.14, duration: 0.42, type: "sine", peakGain: 0.14 });
   },
-  bell: (ctx) => {
-    tone(ctx, { freq: 523, start: 0, duration: 0.9, type: "triangle", peakGain: 0.28 });
-    tone(ctx, { freq: 1046, start: 0, duration: 0.6, type: "sine", peakGain: 0.12 });
+  bell: (ctx, base = 0) => {
+    tone(ctx, { freq: 523, start: base, duration: 0.8, type: "triangle", peakGain: 0.16 });
+    tone(ctx, { freq: 1046, start: base, duration: 0.55, type: "sine", peakGain: 0.06 });
   },
-  beep: (ctx) => {
-    tone(ctx, { freq: 880, start: 0, duration: 0.18, type: "square", peakGain: 0.2 });
-    tone(ctx, { freq: 880, start: 0.22, duration: 0.18, type: "square", peakGain: 0.2 });
+  beep: (ctx, base = 0) => {
+    tone(ctx, { freq: 740, start: base, duration: 0.16, type: "triangle", peakGain: 0.14 });
+    tone(ctx, { freq: 740, start: base + 0.2, duration: 0.16, type: "triangle", peakGain: 0.14 });
   },
-  digital: (ctx) => {
-    tone(ctx, { freq: 1200, start: 0, duration: 0.09, type: "square", peakGain: 0.18 });
-    tone(ctx, { freq: 1200, start: 0.13, duration: 0.09, type: "square", peakGain: 0.18 });
-    tone(ctx, { freq: 1200, start: 0.26, duration: 0.09, type: "square", peakGain: 0.18 });
+  digital: (ctx, base = 0) => {
+    tone(ctx, { freq: 880, start: base, duration: 0.08, type: "sine", peakGain: 0.13 });
+    tone(ctx, { freq: 880, start: base + 0.12, duration: 0.08, type: "sine", peakGain: 0.13 });
+    tone(ctx, { freq: 880, start: base + 0.24, duration: 0.08, type: "sine", peakGain: 0.13 });
   },
 };
 
@@ -59,12 +64,18 @@ export const REST_TIMER_SOUNDS = [
   { key: "digital", label: "Digital" },
 ];
 
+// Gap (seconds) between the two chimes -- long enough to read as two
+// distinct rings rather than one messy overlapping sound, short enough
+// to still feel like a single alert rather than two separate ones.
+const REPEAT_GAP = 0.9;
+
 export function playRestTimerSound(key) {
   const ctx = getAudioContext();
   if (!ctx) return;
   const play = SOUNDS[key] || SOUNDS.chime;
   try {
-    play(ctx);
+    play(ctx, 0);
+    play(ctx, REPEAT_GAP);
   } catch {
     // Audio is a nice-to-have here, never worth surfacing an error for.
   }

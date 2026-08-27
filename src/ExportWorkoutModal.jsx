@@ -50,6 +50,41 @@ const LAYOUTS = [
   { key: "story", label: "Story" },
 ];
 
+// Thin vertical bar-per-exercise volume chart, pinned to the right edge
+// of the Corner/Detailed card -- that layout anchors its text block to
+// the bottom-left, so the whole right side of the card is otherwise
+// dead space. Volume = sum(weight x reps) across working sets only, per
+// exercise, capped to the same 12 exercises the text block already
+// shows so the bars line up 1:1 with what's listed. html2canvas renders
+// plain DOM fine, so this is div bars rather than SVG.
+function VolumeSideChart({ exercises }) {
+  const bars = (exercises || []).slice(0, 12).map((ex) => ({
+    name: ex.name,
+    volume: (ex.sets || []).filter((s) => !s.isWarmup).reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0),
+  }));
+  const max = Math.max(1, ...bars.map((b) => b.volume));
+  if (bars.every((b) => b.volume === 0)) return null;
+  return (
+    <div style={{ position: "absolute", top: 16, right: 14, bottom: 16, width: 34, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ fontSize: 6.5, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, textAlign: "center" }}>Volume</div>
+      <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 2 }}>
+        {bars.map((b, i) => (
+          <div
+            key={i}
+            title={b.name}
+            style={{
+              width: Math.max(2, Math.floor(24 / bars.length) - 2),
+              height: `${Math.max(4, Math.round((b.volume / max) * 100))}%`,
+              borderRadius: 2,
+              background: b.volume === max && max > 0 ? T.accent : "rgba(232,68,46,0.45)",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Reusable "save workout summary as image" modal — used from both the
 // post-workout summary and the workout history detail view, since both
 // have the same shape of data to render. `data` is:
@@ -362,6 +397,15 @@ export default function ExportWorkoutModal({ data, onClose }) {
                   <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,11,13,0.55) 0%, rgba(10,11,13,0.35) 45%, rgba(10,11,13,0.75) 100%)", zIndex: 1 }} />
                 </>
               )}
+              {/* Corner's bottom-left-anchored content leaves the whole
+                  right side of the card empty -- fill it with a small
+                  per-exercise volume chart (Detailed only, since Card's
+                  layout doesn't list individual sets to draw volume from
+                  anyway). Purely derived from data already on `data`, no
+                  new fetch needed. */}
+              {compact && layout === "detailed" && showSetsEffective && (
+                <VolumeSideChart exercises={data.exercises} />
+              )}
               <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: layout === "story" ? 20 : compact ? 8 : 12, height: "100%", justifyContent: layout === "story" ? "center" : compact ? "flex-end" : "flex-start", alignItems: compact ? "flex-start" : "stretch" }}>
               <div style={{ display: "flex", flexDirection: compact ? "row" : "column", alignItems: "center", gap: compact ? 6 : 4, marginBottom: layout === "story" ? 8 : compact ? 2 : 4 }}>
                 <Logo size={layout === "story" ? 60 : compact ? 26 : 44} />
@@ -398,15 +442,15 @@ export default function ExportWorkoutModal({ data, onClose }) {
               )}
 
               {showSetsEffective && (
-                <div style={{ display: "flex", flexDirection: "column", gap: compact ? 5 : 8, marginTop: compact ? 2 : 4 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: compact ? 5 : 8, marginTop: compact ? 2 : 4, maxWidth: compact && layout === "detailed" ? "calc(100% - 40px)" : "100%", boxSizing: "border-box" }}>
                   {(data.exercises || []).slice(0, layout === "detailed" ? 12 : 6).map((ex, i) => (
-                    <div key={i}>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: compact ? 11 : 13, fontWeight: 700, color: T.text, marginBottom: layout === "detailed" ? 3 : 0 }}>{ex.name}</div>
+                    <div key={i} style={{ minWidth: 0 }}>
+                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: compact ? 11 : 13, fontWeight: 700, color: T.text, marginBottom: layout === "detailed" ? 3 : 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ex.name}</div>
                       {layout === "detailed" ? (
                         (ex.sets || []).map((s, j) => (
-                          <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: compact ? 9.5 : 11 }}>
-                            <span style={{ color: s.isWarmup ? "#E8A82E" : T.dim }}>{s.label}</span>
-                            <span style={{ color: T.text }}>{s.weight} {data.unit} × {s.reps}</span>
+                          <div key={j} style={{ display: "flex", justifyContent: "space-between", gap: 6, fontSize: compact ? 9.5 : 11 }}>
+                            <span style={{ color: s.isWarmup ? "#E8A82E" : T.dim, whiteSpace: "nowrap" }}>{s.label}</span>
+                            <span style={{ color: T.text, whiteSpace: "nowrap" }}>{s.weight} {data.unit} × {s.reps}</span>
                           </div>
                         ))
                       ) : (

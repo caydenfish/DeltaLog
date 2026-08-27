@@ -35,7 +35,7 @@ export async function addProgramExercises(programId, exercisesArr) {
     exercise_id: e.exerciseId,
     position: e.position,
     day_index: e.dayIndex ?? 0,
-    planned_sets: e.plannedSets ?? getPrefs().defaultPlannedSets,
+    planned_sets: e.plannedSets ?? 3,
     planned_warmup_sets: e.plannedWarmupSets ?? 0,
     progression_model: e.progressionModel || null,
   }));

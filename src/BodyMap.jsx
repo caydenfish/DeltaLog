@@ -194,9 +194,9 @@ function roleTotal(t, roleFilter) {
   return t.primary + t.secondary;
 }
 
-function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, targets, rollingTotals, roleFilter, planNameMode, regionKeyMap }) {
+function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, targets, rollingTotals, roleFilter, planNameMode, regionKeyMap, maxWidth }) {
   return (
-    <svg viewBox={viewBox} width="100%" style={{ maxWidth: 150, display: "block", margin: "0 auto" }}>
+    <svg viewBox={viewBox} width="100%" style={{ maxWidth: maxWidth || 150, display: "block", margin: "0 auto" }}>
       <path d={outline} fill="none" stroke={OUTLINE_STROKE} strokeWidth={2} vectorEffect="non-scaling-stroke" />
       {regions.map((region) => {
         if (mode === "plan") {
@@ -284,7 +284,7 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
 // Region/Anatomy-tier key sharing that region (buildRegionKeyMap), since
 // (same as intensity mode) the fixed SVG art has fewer shapes than the
 // finer tiers have labels.
-export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals, roleFilter = "both", planNameMode = "generic" }) {
+export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals, roleFilter = "both", planNameMode = "generic", maxWidth }) {
   const totals = mode === "plan" ? {} : buildRegionTotals(primary, secondary);
   const maxTotal = mode === "plan" ? 1 : Math.max(1, ...Object.values(totals).map((t) => roleTotal(t, roleFilter)));
   const regionKeyMap = mode === "plan" && planNameMode !== "generic" ? buildRegionKeyMap() : null;
@@ -292,8 +292,8 @@ export default function BodyMap({ primary = {}, secondary = {}, mode = "intensit
   return (
     <div>
       <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} />
-        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} />
+        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} maxWidth={maxWidth} />
+        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} maxWidth={maxWidth} />
       </div>
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
         {(mode === "plan" ? PLAN_TIERS : intensityTierLegend(maxTotal)).map((t) => (
