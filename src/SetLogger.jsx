@@ -597,7 +597,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           // a rest period that's long since over.
           if (-diff < 5) {
             const prefs = getPrefs();
-            if (prefs.restTimerSoundEnabled) playRestTimerSound(prefs.restTimerSound);
+            if (prefs.restTimerSoundEnabled) playRestTimerSound(prefs.restTimerSound, prefs.restTimerVolume);
             if (prefs.restTimerVibrationEnabled) triggerRestTimerVibration(prefs.restTimerVibration);
             if (prefs.restTimerNotificationEnabled && document.visibilityState !== "visible") showRestTimerNotification();
           }
@@ -3274,32 +3274,61 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   {editIndex === null && lastWeek[sets.length] && <button onClick={() => fillFrom(lastWeek[sets.length])} style={smallBtn}>Same as last session</button>}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Weight ({unit})</div>
-                  <input
-                    ref={weightRef}
-                    inputMode="decimal"
-                    value={weight}
-                    onChange={(e) => { setWeight(e.target.value.replace(/[^0-9.]/g, "")); setLoaded([]); }}
-                    onFocus={(e) => e.target.select()}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); repsRef.current && repsRef.current.focus(); } }}
-                    style={{ ...inputStyle, borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Reps</div>
-                  <input
-                    ref={repsRef}
-                    inputMode="numeric"
-                    value={reps}
-                    onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, ""))}
-                    onFocus={(e) => e.target.select()}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
-                    style={{ ...inputStyle, borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
-                  />
-                </div>
-              </div>
+              {(() => {
+                // Small/big step sizes per unit -- matches the plate sizes
+                // people actually load (2.5/5 lb, 1.25/2.5 kg), so a tap
+                // moves the number by an amount that corresponds to a real
+                // plate change rather than an arbitrary round number.
+                const weightSteps = unit === "kg" ? [1.25, 2.5] : [2.5, 5];
+                function bumpWeight(delta) {
+                  const cur = parseFloat(weight) || 0;
+                  setWeight(String(Math.max(0, cur + delta)));
+                  setLoaded([]);
+                }
+                function bumpReps(delta) {
+                  const cur = parseInt(reps, 10) || 0;
+                  setReps(String(Math.max(0, cur + delta)));
+                }
+                const stepBtn = { width: 40, flexShrink: 0, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12, fontWeight: 700, padding: "10px 0" };
+                return (
+                  <>
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Weight ({unit})</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button onClick={() => bumpWeight(-weightSteps[1])} style={stepBtn}>−{weightSteps[1]}</button>
+                        <button onClick={() => bumpWeight(-weightSteps[0])} style={stepBtn}>−{weightSteps[0]}</button>
+                        <input
+                          ref={weightRef}
+                          inputMode="decimal"
+                          value={weight}
+                          onChange={(e) => { setWeight(e.target.value.replace(/[^0-9.]/g, "")); setLoaded([]); }}
+                          onFocus={(e) => e.target.select()}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); repsRef.current && repsRef.current.focus(); } }}
+                          style={{ ...inputStyle, flex: 1, minWidth: 0, borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                        />
+                        <button onClick={() => bumpWeight(weightSteps[0])} style={stepBtn}>+{weightSteps[0]}</button>
+                        <button onClick={() => bumpWeight(weightSteps[1])} style={stepBtn}>+{weightSteps[1]}</button>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Reps</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button onClick={() => bumpReps(-1)} style={{ ...stepBtn, width: 48 }}>−1</button>
+                        <input
+                          ref={repsRef}
+                          inputMode="numeric"
+                          value={reps}
+                          onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, ""))}
+                          onFocus={(e) => e.target.select()}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
+                          style={{ ...inputStyle, flex: 1, minWidth: 0, borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                        />
+                        <button onClick={() => bumpReps(1)} style={{ ...stepBtn, width: 48 }}>+1</button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
               <button onClick={() => setShowCalc(!showCalc)} style={{ marginTop: 12, width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${showCalc ? T.accent : T.line}`, background: showCalc ? "rgba(232,68,46,0.1)" : T.surface2, color: T.text, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <IconBarbell size={15} /> {showCalc ? "Hide plate calculator" : "Plate calculator"}
               </button>
