@@ -524,6 +524,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rir, setRir] = useState(null);
+  // Which field (if any) the custom exact-entry keypad is open for, and
+  // its in-progress typed value. Weight/Reps are readOnly inputs now --
+  // tapping one opens this in-app keypad instead of the device keyboard,
+  // which is what the stepper buttons were added for in the first place
+  // (the OS keyboard was inconsistent across devices, iOS's Decimal Pad
+  // has no Enter key at all, and every keyboard eats a big chunk of the
+  // screen this list is trying to stay visible on).
+  const [exactEntryField, setExactEntryField] = useState(null); // null | "weight" | "reps"
+  const [exactEntryDraft, setExactEntryDraft] = useState("");
   const [highlightMissing, setHighlightMissing] = useState({ weight: false, reps: false, rir: false });
   const [showCalc, setShowCalc] = useState(false);
   const [loaded, setLoaded] = useState([]);
@@ -3299,12 +3308,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                         <button onClick={() => bumpWeight(-weightSteps[0])} style={stepBtn}>−{weightSteps[0]}</button>
                         <input
                           ref={weightRef}
-                          inputMode="decimal"
+                          readOnly
+                          inputMode="none"
                           value={weight}
-                          onChange={(e) => { setWeight(e.target.value.replace(/[^0-9.]/g, "")); setLoaded([]); }}
-                          onFocus={(e) => e.target.select()}
-                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); repsRef.current && repsRef.current.focus(); } }}
-                          style={{ ...inputStyle, flex: 1, minWidth: 0, borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                          onClick={(e) => { e.target.blur(); setExactEntryDraft(weight); setExactEntryField("weight"); }}
+                          style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
                         />
                         <button onClick={() => bumpWeight(weightSteps[0])} style={stepBtn}>+{weightSteps[0]}</button>
                         <button onClick={() => bumpWeight(weightSteps[1])} style={stepBtn}>+{weightSteps[1]}</button>
@@ -3316,17 +3324,56 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                         <button onClick={() => bumpReps(-1)} style={{ ...stepBtn, width: 48 }}>−1</button>
                         <input
                           ref={repsRef}
-                          inputMode="numeric"
+                          readOnly
+                          inputMode="none"
                           value={reps}
-                          onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, ""))}
-                          onFocus={(e) => e.target.select()}
-                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
-                          style={{ ...inputStyle, flex: 1, minWidth: 0, borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                          onClick={(e) => { e.target.blur(); setExactEntryDraft(reps); setExactEntryField("reps"); }}
+                          style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
                         />
                         <button onClick={() => bumpReps(1)} style={{ ...stepBtn, width: 48 }}>+1</button>
                       </div>
                     </div>
                   </>
+                );
+              })()}
+              {exactEntryField && (() => {
+                const isWeight = exactEntryField === "weight";
+                const commit = () => {
+                  if (isWeight) { setWeight(exactEntryDraft || "0"); setLoaded([]); }
+                  else setReps(exactEntryDraft || "0");
+                  setExactEntryField(null);
+                };
+                const digit = (d) => {
+                  if (d === "." && (exactEntryDraft.includes(".") || !isWeight)) return;
+                  setExactEntryDraft((prev) => (prev === "0" && d !== "." ? d : prev + d));
+                };
+                const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", isWeight ? "." : "", "0", "⌫"];
+                return (
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.85)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+                    <div style={{ width: "100%", maxWidth: 400, background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "16px 16px 0 0", padding: 16, boxSizing: "border-box" }}>
+                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{isWeight ? `Weight (${unit})` : "Reps"}</div>
+                      <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, textAlign: "center", padding: "8px 0", marginBottom: 10 }}>
+                        {exactEntryDraft || "0"}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
+                        {keys.map((k, i) => k === "" ? (
+                          <div key={i} />
+                        ) : (
+                          <button
+                            key={i}
+                            onClick={() => (k === "⌫" ? setExactEntryDraft((prev) => prev.slice(0, -1)) : digit(k))}
+                            style={{ padding: "13px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}
+                          >
+                            {k}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => setExactEntryField(null)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
+                        <button onClick={commit} style={{ flex: 2, padding: "12px 0", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Done</button>
+                      </div>
+                    </div>
+                  </div>
                 );
               })()}
               <button onClick={() => setShowCalc(!showCalc)} style={{ marginTop: 12, width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${showCalc ? T.accent : T.line}`, background: showCalc ? "rgba(232,68,46,0.1)" : T.surface2, color: T.text, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
