@@ -153,8 +153,32 @@ export default function App() {
   useEffect(() => {
     if (!session) { setProfile(undefined); return; }
     let cancelled = false;
+    // A null result here is ambiguous: it's the expected shape for a
+    // genuinely new user who hasn't completed Onboarding yet, but it's
+    // also what a row-level-security check silently returns if this
+    // query lands on an access token that hasn't fully propagated after
+    // a refresh -- which happens routinely on iOS when the app comes
+    // back from being backgrounded and this effect re-fires (it's keyed
+    // on the session object, and onAuthStateChange emits a new one on
+    // every token refresh). Previously that raced null straight into
+    // "not set up yet" and dropped an existing user back into
+    // Onboarding until they force-closed and reopened the app. One
+    // short-delay retry is enough to clear the race without meaningfully
+    // slowing down the real new-user path.
     fetchProfile(session.user.id)
-      .then((p) => { if (!cancelled) setProfile(p); })
+      .then((p) => {
+        if (cancelled) return;
+        if (p === null) {
+          setTimeout(() => {
+            if (cancelled) return;
+            fetchProfile(session.user.id)
+              .then((p2) => { if (!cancelled) setProfile(p2); })
+              .catch(() => { if (!cancelled) setProfile(null); });
+          }, 400);
+          return;
+        }
+        setProfile(p);
+      })
       .catch(() => { if (!cancelled) setProfile(null); });
     return () => { cancelled = true; };
   }, [session]);

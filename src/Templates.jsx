@@ -323,7 +323,7 @@ export default function Templates({ user, onClose, initialPicks }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflow: "hidden" }}>
       <style>{`button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>
-      <div style={{ width: "100%", maxWidth: 400, height: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "100%", maxWidth: 400, height: "100dvh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
           <button onClick={mode === "list" ? onClose : () => { setMode("list"); setEditingId(null); }} aria-label={mode === "list" ? "Close" : "Cancel"} style={smallBtn}>
             ‹
