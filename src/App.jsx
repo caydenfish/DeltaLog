@@ -146,39 +146,24 @@ export default function App() {
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) { clearPrefsSync(); return; }
-    initPrefsSync(userId);
+    // getPrefs() at the setupSeen useState initializer above runs
+    // synchronously at mount, before this sync has a chance to pull
+    // down the server-backed copy and merge it into localStorage. On
+    // a fresh/cleared browser or a new device, that first read finds
+    // no local setupWizardSeen and defaults to false, showing the
+    // wizard to an existing user even though the server has it marked
+    // seen -- and since setSetupSeen is otherwise only ever called
+    // from SetupWizard's onComplete, that stale false never gets
+    // corrected. Re-derive it here once the merge lands.
+    initPrefsSync(userId).then(() => setSetupSeen(getPrefs().setupWizardSeen));
     return () => clearPrefsSync();
   }, [session?.user?.id]);
 
   useEffect(() => {
     if (!session) { setProfile(undefined); return; }
     let cancelled = false;
-    // A null result here is ambiguous: it's the expected shape for a
-    // genuinely new user who hasn't completed Onboarding yet, but it's
-    // also what a row-level-security check silently returns if this
-    // query lands on an access token that hasn't fully propagated after
-    // a refresh -- which happens routinely on iOS when the app comes
-    // back from being backgrounded and this effect re-fires (it's keyed
-    // on the session object, and onAuthStateChange emits a new one on
-    // every token refresh). Previously that raced null straight into
-    // "not set up yet" and dropped an existing user back into
-    // Onboarding until they force-closed and reopened the app. One
-    // short-delay retry is enough to clear the race without meaningfully
-    // slowing down the real new-user path.
     fetchProfile(session.user.id)
-      .then((p) => {
-        if (cancelled) return;
-        if (p === null) {
-          setTimeout(() => {
-            if (cancelled) return;
-            fetchProfile(session.user.id)
-              .then((p2) => { if (!cancelled) setProfile(p2); })
-              .catch(() => { if (!cancelled) setProfile(null); });
-          }, 400);
-          return;
-        }
-        setProfile(p);
-      })
+      .then((p) => { if (!cancelled) setProfile(p); })
       .catch(() => { if (!cancelled) setProfile(null); });
     return () => { cancelled = true; };
   }, [session]);

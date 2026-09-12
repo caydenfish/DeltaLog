@@ -75,6 +75,7 @@ Favorite name = filename (minus `.sql`), description = the text here.
 | 058 | `migration_058_fix_muscle_group_sync.sql` | Fixes the (previously undocumented) `sync_exercise_muscle_group` trigger — removes the "3+ buckets = auto Full Body" rule and the invalid "X / Y" bucket string, backfills existing rows. |
 | 059 | `migration_059_drop_metrics_table.sql` | Drops the empty, unreferenced `Metrics` table found during the live reconciliation. |
 | 060 | `migration_060_advisor_followup.sql` | Follow-up from a second Advisor scan: pins search_path on `e1rm`/`dots_score`, stops the `exercise-media` bucket from allowing full file listing, re-applies migration_057's function grants explicitly by role (in case those didn't fully take effect). |
+| 072 | `migration_072_strava_integration.sql` | Strava integration: `strava_tokens` (service-role only), `strava_connections`, `strava_oauth_state`, `strava_link_status` tables, plus the pg_cron schedule that drives the delayed-retry check. Requires filling in `<PROJECT_REF>`/`<CRON_SECRET>` before running — see the file's own comments. |
 
 ## Tools (not part of the sequence — never run automatically, no number)
 

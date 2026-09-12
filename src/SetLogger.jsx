@@ -14,6 +14,7 @@ import ExportWorkoutModal from "./ExportWorkoutModal";
 import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome, IconDragHandle } from "./Icons";
 import { getSplits } from "./lib/splits";
+import { triggerStravaCheck } from "./lib/strava";
 import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
 import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
 // "Full Body" and "Neck" are real generic buckets (used for coloring/
@@ -251,24 +252,18 @@ function setLabels(sets) {
 
 
 
-// Fixed per-row height (not a min/max flex range anymore) -- sized so
-// exactly 4 rows fill the visible window before scrolling kicks in,
-// per the live preview round. ROWS_VISIBLE/ROW_GAP feed the container
-// height calc below so the "4 sets visible" math only lives in one
-// place.
+// Fixed per-row height, used for the blank filler rows that pad a
+// shorter column (Last Session vs Today) out to the same row count so
+// the two lists line up and scroll in lockstep -- not for capping how
+// many rows show before scrolling. That cap used to be hardcoded at 4
+// rows regardless of actual screen space (rowsContainerHeight below),
+// which meant a phone with room for 5+ rows still forced a scroll
+// after the 4th. The row list container now just flexes to fill
+// whatever vertical space is actually available (see its `flex: 1,
+// minHeight: 0` at the call sites) and only becomes scrollable once
+// content genuinely overflows that.
 const ROW_HEIGHT = 56;
 const ROW_GAP = 6;
-const ROWS_VISIBLE = 4;
-
-// Height for exactly `count` rows, capped at ROWS_VISIBLE -- below that
-// cap the container is sized to fit the actual rows with nothing to
-// scroll (overflowY:auto is a no-op when content fits); at or beyond
-// the cap it locks to the 4-row height and the rest becomes genuinely
-// scrollable.
-function rowsContainerHeight(count) {
-  const n = Math.min(Math.max(count, 0), ROWS_VISIBLE);
-  return n === 0 ? 0 : n * ROW_HEIGHT + (n - 1) * ROW_GAP;
-}
 
 // Today row's column template.
 const TODAY_ROW_TEMPLATE = (deleteMode) => `22px 1fr${deleteMode ? " 26px" : ""}`;
@@ -318,7 +313,6 @@ function SessionSetRow({ label, set, unit, interactive, deleteMode, selected, on
         alignItems: "center",
         gap: 6,
         height: ROW_HEIGHT,
-        boxSizing: "border-box",
         flexShrink: 0,
         padding: "0 8px",
         background: selected ? "rgba(232,90,90,0.10)" : interactive ? T.surface2 : T.surface,
@@ -367,7 +361,6 @@ function AddSetTile({ onClick }) {
         alignItems: "center",
         justifyContent: "center",
         height: ROW_HEIGHT,
-        boxSizing: "border-box",
         flexShrink: 0,
         borderRadius: 10,
         border: `1.5px dashed ${T.line}`,
@@ -524,15 +517,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rir, setRir] = useState(null);
-  // Which field (if any) the custom exact-entry keypad is open for, and
-  // its in-progress typed value. Weight/Reps are readOnly inputs now --
-  // tapping one opens this in-app keypad instead of the device keyboard,
-  // which is what the stepper buttons were added for in the first place
-  // (the OS keyboard was inconsistent across devices, iOS's Decimal Pad
-  // has no Enter key at all, and every keyboard eats a big chunk of the
-  // screen this list is trying to stay visible on).
-  const [exactEntryField, setExactEntryField] = useState(null); // null | "weight" | "reps"
-  const [exactEntryDraft, setExactEntryDraft] = useState("");
   const [highlightMissing, setHighlightMissing] = useState({ weight: false, reps: false, rir: false });
   const [showCalc, setShowCalc] = useState(false);
   const [loaded, setLoaded] = useState([]);
@@ -580,6 +564,23 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const noteAnchorRef = useRef(null);
   const weightRef = useRef(null);
   const repsRef = useRef(null);
+  // onFocus-only select() looks right but doesn't survive a tap/click:
+  // focus fires first (selecting the text), then the browser's default
+  // mouseup handler fires right after and repositions the caret to the
+  // click point, silently undoing the selection. Keyboard/tab focus
+  // never hits this since there's no mouseup involved, which is why it
+  // can look fine in a quick manual check. Fix: remember whether the
+  // field was already focused before this mousedown, and only on the
+  // click that actually causes the focus, preventDefault the mouseup so
+  // the selection sticks -- a second click while already focused still
+  // repositions the cursor normally instead of re-selecting everything.
+  const justFocusedRef = useRef(false);
+  function selectAllOnTap(e) {
+    justFocusedRef.current = document.activeElement !== e.currentTarget;
+  }
+  function keepSelection(e) {
+    if (justFocusedRef.current) e.preventDefault();
+  }
   const touch = useRef(null);
   const startTime = useRef(Date.now());
   const stripRef = useRef(null);
@@ -606,7 +607,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           // a rest period that's long since over.
           if (-diff < 5) {
             const prefs = getPrefs();
-            if (prefs.restTimerSoundEnabled) playRestTimerSound(prefs.restTimerSound, prefs.restTimerVolume);
+            if (prefs.restTimerSoundEnabled) playRestTimerSound(prefs.restTimerSound);
             if (prefs.restTimerVibrationEnabled) triggerRestTimerVibration(prefs.restTimerVibration);
             if (prefs.restTimerNotificationEnabled && document.visibilityState !== "visible") showRestTimerNotification();
           }
@@ -1753,6 +1754,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     }
     try {
       await completeWorkout(workoutId);
+      // Fire-and-forget -- never blocks finishing the workout on
+      // Strava being slow/unreachable, and silently no-ops server-side
+      // for anyone who hasn't connected Strava at all.
+      triggerStravaCheck(workoutId);
     } catch (err) {
       note(`Finished locally, but didn't sync: ${err.message}`);
     }
@@ -3154,12 +3159,12 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             const totalRows = Math.max(lastWeek.length, todaySlots);
             return (
           <div style={{ display: "flex", gap: 10, flex: 1, minHeight: 0 }}>
-            <div style={{ flex: "0.92 1 0", minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
+            <div style={{ flex: "0.92 1 0", minWidth: 0, minHeight: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
               {lastWeek.length === 0 ? (
                 <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>No history yet</div>
               ) : (
                 <>
-                  <div ref={lastRowsRef} onScroll={() => syncSetListScroll("last")} className="no-scrollbar" style={{ height: rowsContainerHeight(totalRows), overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
+                  <div ref={lastRowsRef} onScroll={() => syncSetListScroll("last")} className="no-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
                     {Array.from({ length: totalRows }).map((_, i) => {
                       const s = lastWeek[i];
                       return s ? (
@@ -3182,8 +3187,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               )}
             </div>
 
-            <div style={{ flex: "1.08 1 0", minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
-              <div ref={todayRowsRef} onScroll={() => syncSetListScroll("today")} className="no-scrollbar" style={{ height: rowsContainerHeight(totalRows), overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
+            <div style={{ flex: "1.08 1 0", minWidth: 0, minHeight: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
+              <div ref={todayRowsRef} onScroll={() => syncSetListScroll("today")} className="no-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
                 {Array.from({ length: totalRows }).map((_, i) => {
                   const s = sets[i];
                   if (s) {
@@ -3283,99 +3288,36 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   {editIndex === null && lastWeek[sets.length] && <button onClick={() => fillFrom(lastWeek[sets.length])} style={smallBtn}>Same as last session</button>}
                 </div>
               </div>
-              {(() => {
-                // Small/big step sizes per unit -- matches the plate sizes
-                // people actually load (2.5/5 lb, 1.25/2.5 kg), so a tap
-                // moves the number by an amount that corresponds to a real
-                // plate change rather than an arbitrary round number.
-                const weightSteps = unit === "kg" ? [1.25, 2.5] : [2.5, 5];
-                function bumpWeight(delta) {
-                  const cur = parseFloat(weight) || 0;
-                  setWeight(String(Math.max(0, cur + delta)));
-                  setLoaded([]);
-                }
-                function bumpReps(delta) {
-                  const cur = parseInt(reps, 10) || 0;
-                  setReps(String(Math.max(0, cur + delta)));
-                }
-                const stepBtn = { width: 40, flexShrink: 0, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12, fontWeight: 700, padding: "10px 0" };
-                return (
-                  <>
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Weight ({unit})</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <button onClick={() => bumpWeight(-weightSteps[1])} style={stepBtn}>−{weightSteps[1]}</button>
-                        <button onClick={() => bumpWeight(-weightSteps[0])} style={stepBtn}>−{weightSteps[0]}</button>
-                        <input
-                          ref={weightRef}
-                          readOnly
-                          inputMode="none"
-                          value={weight}
-                          onClick={(e) => { e.target.blur(); setExactEntryDraft(weight); setExactEntryField("weight"); }}
-                          style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
-                        />
-                        <button onClick={() => bumpWeight(weightSteps[0])} style={stepBtn}>+{weightSteps[0]}</button>
-                        <button onClick={() => bumpWeight(weightSteps[1])} style={stepBtn}>+{weightSteps[1]}</button>
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Reps</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <button onClick={() => bumpReps(-1)} style={{ ...stepBtn, width: 48 }}>−1</button>
-                        <input
-                          ref={repsRef}
-                          readOnly
-                          inputMode="none"
-                          value={reps}
-                          onClick={(e) => { e.target.blur(); setExactEntryDraft(reps); setExactEntryField("reps"); }}
-                          style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
-                        />
-                        <button onClick={() => bumpReps(1)} style={{ ...stepBtn, width: 48 }}>+1</button>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-              {exactEntryField && (() => {
-                const isWeight = exactEntryField === "weight";
-                const commit = () => {
-                  if (isWeight) { setWeight(exactEntryDraft || "0"); setLoaded([]); }
-                  else setReps(exactEntryDraft || "0");
-                  setExactEntryField(null);
-                };
-                const digit = (d) => {
-                  if (d === "." && (exactEntryDraft.includes(".") || !isWeight)) return;
-                  setExactEntryDraft((prev) => (prev === "0" && d !== "." ? d : prev + d));
-                };
-                const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", isWeight ? "." : "", "0", "⌫"];
-                return (
-                  <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.85)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-                    <div style={{ width: "100%", maxWidth: 400, background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "16px 16px 0 0", padding: 16, boxSizing: "border-box" }}>
-                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{isWeight ? `Weight (${unit})` : "Reps"}</div>
-                      <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, textAlign: "center", padding: "8px 0", marginBottom: 10 }}>
-                        {exactEntryDraft || "0"}
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
-                        {keys.map((k, i) => k === "" ? (
-                          <div key={i} />
-                        ) : (
-                          <button
-                            key={i}
-                            onClick={() => (k === "⌫" ? setExactEntryDraft((prev) => prev.slice(0, -1)) : digit(k))}
-                            style={{ padding: "13px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}
-                          >
-                            {k}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => setExactEntryField(null)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
-                        <button onClick={commit} style={{ flex: 2, padding: "12px 0", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Done</button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+              <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Weight ({unit})</div>
+                  <input
+                    ref={weightRef}
+                    inputMode="decimal"
+                    value={weight}
+                    onChange={(e) => { setWeight(e.target.value.replace(/[^0-9.]/g, "")); setLoaded([]); }}
+                    onFocus={(e) => e.target.select()}
+                    onMouseDown={selectAllOnTap}
+                    onMouseUp={keepSelection}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); repsRef.current && repsRef.current.focus(); } }}
+                    style={{ ...inputStyle, borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Reps</div>
+                  <input
+                    ref={repsRef}
+                    inputMode="numeric"
+                    value={reps}
+                    onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, ""))}
+                    onFocus={(e) => e.target.select()}
+                    onMouseDown={selectAllOnTap}
+                    onMouseUp={keepSelection}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
+                    style={{ ...inputStyle, borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                  />
+                </div>
+              </div>
               <button onClick={() => setShowCalc(!showCalc)} style={{ marginTop: 12, width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${showCalc ? T.accent : T.line}`, background: showCalc ? "rgba(232,68,46,0.1)" : T.surface2, color: T.text, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <IconBarbell size={15} /> {showCalc ? "Hide plate calculator" : "Plate calculator"}
               </button>

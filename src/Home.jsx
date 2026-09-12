@@ -25,6 +25,8 @@ import MachineNamesManager from "./MachineNamesManager";
 import Logo from "./Logo";
 import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX } from "./Icons";
 import Templates from "./Templates";
+import { fetchUnlinkedWorkouts } from "./lib/strava";
+import StravaManualLinkModal from "./StravaManualLinkModal";
 import FAQ from "./FAQ";
 import AdminExercises from "./AdminExercises";
 import AdminFeedback from "./AdminFeedback";
@@ -212,6 +214,26 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   function setMuscleSetsFilter(key) { setMuscleSetsFilterState(key); setPref("muscleBreakdownSetsFilter", key); }
   function setMuscleRoleFilter(key) { setMuscleRoleFilterState(key); setPref("muscleBreakdownRoleFilter", key); }
   function setCoverageView(key) { setCoverageViewState(key); setPref("coverageBreakdownView", key); }
+  // Workouts that came back "unlinked" from the Strava check (both the
+  // immediate check and the ~3-minute retry found nothing matching) --
+  // drives the "couldn't auto-link" banner and its manual-link modal.
+  // Refetched on mount and again whenever the tab regains focus, since
+  // the retry that flips a workout to "unlinked" runs server-side on a
+  // timer and may well land while this screen is just sitting open.
+  const [unlinkedStravaWorkouts, setUnlinkedStravaWorkouts] = useState([]);
+  const [stravaModalWorkoutId, setStravaModalWorkoutId] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    function refresh() {
+      fetchUnlinkedWorkouts(user.id).then((rows) => { if (!cancelled) setUnlinkedStravaWorkouts(rows); }).catch(() => {});
+    }
+    refresh();
+    function onVisible() {
+      if (document.visibilityState === "visible") refresh();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { cancelled = true; document.removeEventListener("visibilitychange", onVisible); };
+  }, [user.id]);
   // Reorderable/toggleable home dashboard modules (pencil icon, top left).
   const [homeModules, setHomeModulesState] = useState(() => getHomeModules());
   const [showHomeModulesEditor, setShowHomeModulesEditor] = useState(false);
@@ -839,6 +861,20 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
             </div>
           )}
 
+          {unlinkedStravaWorkouts.length > 0 && (
+            <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "12px 14px", marginTop: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 2 }}>
+                  Couldn't auto-link {unlinkedStravaWorkouts.length === 1 ? "a workout" : `${unlinkedStravaWorkouts.length} workouts`} to Strava
+                </div>
+                <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.4 }}>No matching activity was found automatically. Pick it manually, or dismiss.</div>
+              </div>
+              <button onClick={() => setStravaModalWorkoutId(unlinkedStravaWorkouts[0].workout_id)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                Link
+              </button>
+            </div>
+          )}
+
           {history === null ? (
             <InlineLoading label="Loading your history…" padding="40px 0" />
           ) : (
@@ -1187,7 +1223,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                     {/* Search mode: surface the exact matching field(s) right
                         here instead of sending someone into a sub-screen to
                         find what they just typed. */}
-                    <Preferences value={preferencesValue} filterQuery={settingsQuery} onChange={handlePreferencesChange} />
+                    <Preferences user={user} value={preferencesValue} filterQuery={settingsQuery} onChange={handlePreferencesChange} />
                   </>
                 )}
               </div>
@@ -1307,7 +1343,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               <div style={{ width: 26 }} />
             </div>
             <div style={{ padding: 16, flex: 1 }}>
-              <Preferences value={preferencesValue} onChange={handlePreferencesChange} />
+              <Preferences user={user} value={preferencesValue} onChange={handlePreferencesChange} />
             </div>
           </div>
         </div>
@@ -1399,6 +1435,16 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
         />
       )}
       {showFeedback && <FeedbackModal user={user} context="settings" onClose={() => setShowFeedback(false)} />}
+      {stravaModalWorkoutId && (
+        <StravaManualLinkModal
+          workoutId={stravaModalWorkoutId}
+          onClose={() => setStravaModalWorkoutId(null)}
+          onLinked={() => {
+            setStravaModalWorkoutId(null);
+            setUnlinkedStravaWorkouts((prev) => prev.filter((w) => w.workout_id !== stravaModalWorkoutId));
+          }}
+        />
+      )}
       {showAnnouncements && (
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>

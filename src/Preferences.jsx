@@ -5,6 +5,7 @@ import { PROGRESSION_MODELS, PROGRESSION_MODEL_DESCRIPTIONS } from "./lib/progra
 import { defaultWarmupPercents, getWarmupPercents } from "./lib/warmup";
 import { REST_TIMER_SOUNDS, REST_TIMER_VIBRATIONS, playRestTimerSound, triggerRestTimerVibration, notificationsSupported, getNotificationPermission, requestNotificationPermission, showRestTimerNotification } from "./lib/restTimerCues";
 import { IconChevronUp, IconChevronDown } from "./Icons";
+import StravaSettings from "./StravaSettings";
 
 const T = {
   bg: "#101216",
@@ -96,7 +97,7 @@ function SubScreen({ title, onBack, children }) {
 //  - self-managed state (omit both) — used in the in-workout menu, which
 //    has no equivalent cached copies and can just read/write lib/prefs.js
 //    directly.
-export default function Preferences({ value, onChange, fields, onApplyRestToAll, filterQuery }) {
+export default function Preferences({ user, value, onChange, fields, onApplyRestToAll, filterQuery }) {
   const show = (key) => !fields || fields.includes(key);
   const controlled = value !== undefined && onChange !== undefined;
   const [confirmApplyAll, setConfirmApplyAll] = useState(false);
@@ -112,7 +113,6 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     warmupRestEnabled: getPrefs().warmupRestEnabled,
     restTimerSoundEnabled: getPrefs().restTimerSoundEnabled,
     restTimerSound: getPrefs().restTimerSound,
-    restTimerVolume: getPrefs().restTimerVolume,
     restTimerVibrationEnabled: getPrefs().restTimerVibrationEnabled,
     restTimerVibration: getPrefs().restTimerVibration,
     restTimerNotificationEnabled: getPrefs().restTimerNotificationEnabled,
@@ -130,7 +130,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // "Units" and "Training Preferences" are real full-screen destinations
   // (SubScreen) rather than inline-expanding sections.
   const [screen, setScreen] = useState(null); // null | "units" | "training"
-  const [openTrainingSection, setOpenTrainingSection] = useState(null); // null | "focus" | "logging" | "restDurations" | "restAlerts" | "warmupWeights"
+  const [openTrainingSection, setOpenTrainingSection] = useState(null); // null | "focus" | "restTimer" | "warmupWeights"
   const [warmupSchemeCount, setWarmupSchemeCount] = useState(2); // which warmup-count's percentages are shown in the editor
   const [notifPermission, setNotifPermission] = useState(() => getNotificationPermission());
 
@@ -164,7 +164,6 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     warmupRestSeconds: "warmup rest timer default seconds",
     warmupRestEnabled: "rest timers separate warmup working sets toggle enable disable",
     restTimerSoundEnabled: "rest timer sound audio chime bell beep digital end alert cue",
-    restTimerVolume: "rest timer sound volume loudness",
     restTimerVibrationEnabled: "rest timer vibration vibrate haptic pulse buzz end alert cue",
     restTimerNotificationEnabled: "rest timer notification push alert end cue",
     warmupPercentSchemes: "warmup set weight percent percentage top set ramp science",
@@ -175,7 +174,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
   // findable by search without requiring a tap into that sub-screen —
   // shown inline, right in the settings list, while a search is active.
   const unitsSearchMatch = searchActive && ["units", "timeFormat"].some(matches);
-  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "targetCalcMethod", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVolume", "restTimerVibrationEnabled", "restTimerNotificationEnabled", "warmupPercentSchemes"].some(matches);
+  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "targetCalcMethod", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVibrationEnabled", "restTimerNotificationEnabled", "warmupPercentSchemes"].some(matches);
 
   function update(key, val) {
     if (controlled) {
@@ -186,7 +185,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     }
   }
 
-  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVolume, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod, warmupPercentSchemes } = state;
+  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod, warmupPercentSchemes } = state;
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -242,7 +241,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     );
   }
 
-  function renderTrainingFocusFields() {
+  function renderTrainingFields() {
     return (
       <>
         {matches("trainingIdeology") && (
@@ -356,13 +355,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
           </div>
         </div>
         )}
-      </>
-    );
-  }
 
-  function renderLoggingFields() {
-    return (
-      <>
         {matches("weightEntryMode") && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -465,7 +458,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
     );
   }
 
-  function renderRestTimerDurationFields() {
+  function renderRestTimerFields() {
     return (
       <>
         {(matches("restSeconds") || matches("warmupRestSeconds") || matches("warmupRestEnabled")) && (
@@ -519,13 +512,7 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
         )}
         </>
         )}
-      </>
-    );
-  }
 
-  function renderRestTimerAlertFields() {
-    return (
-      <>
         {(matches("restTimerSoundEnabled") || matches("restTimerVibrationEnabled") || matches("restTimerNotificationEnabled")) && (
         <>
         <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>When a rest timer ends</div>
@@ -538,12 +525,11 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
           <ToggleSwitch checked={restTimerSoundEnabled} onChange={(v) => update("restTimerSoundEnabled", v)} ariaLabel="Rest timer sound" />
         </div>
         {restTimerSoundEnabled && (
-        <>
         <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 14 }}>
           {REST_TIMER_SOUNDS.map((opt) => (
             <button
               key={opt.key}
-              onClick={() => { update("restTimerSound", opt.key); playRestTimerSound(opt.key, restTimerVolume); }}
+              onClick={() => { update("restTimerSound", opt.key); playRestTimerSound(opt.key); }}
               aria-pressed={restTimerSound === opt.key}
               style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: restTimerSound === opt.key ? T.accent : "transparent", color: restTimerSound === opt.key ? "#fff" : T.dim }}
             >
@@ -551,25 +537,6 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
             </button>
           ))}
         </div>
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ color: T.dim, fontSize: 12 }}>Volume</span>
-            <span style={{ color: T.text, fontSize: 12, fontWeight: 600 }}>{Math.round(restTimerVolume * 100)}%</span>
-          </div>
-          <input
-            type="range"
-            min={0.1}
-            max={1}
-            step={0.1}
-            value={restTimerVolume}
-            onChange={(e) => update("restTimerVolume", parseFloat(e.target.value))}
-            onMouseUp={(e) => playRestTimerSound(restTimerSound, parseFloat(e.target.value))}
-            onTouchEnd={(e) => playRestTimerSound(restTimerSound, parseFloat(e.target.value))}
-            aria-label="Rest timer sound volume"
-            style={{ width: "100%", accentColor: T.accent }}
-          />
-        </div>
-        </>
         )}
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: restTimerVibrationEnabled ? 10 : 20 }}>
@@ -1000,32 +967,18 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
             <button onClick={() => setScreen("training")} style={navRowBtn}>
               <div>
                 <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Training Preferences</div>
-                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Training focus, logging, rest timer, warmup weights</div>
+                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Training focus, strength score, set entry, big plates, muscle names, rest timer, warmup weights</div>
               </div>
               <div style={{ color: T.dim, fontSize: 16 }}>›</div>
             </button>
           )}
           {searchActive && trainingSearchMatch && (
             <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
-              {(matches("trainingIdeology") || matches("scoreDisplay") || matches("targetCalcMethod")) && (
-                <>{renderTrainingFocusFields()}</>
-              )}
-              {(matches("weightEntryMode") || matches("plateSizes") || matches("scientificNames") || matches("bodyModelSex")) && (
+              {renderTrainingFields()}
+              {(matches("restSeconds") || matches("warmupRestSeconds") || matches("warmupRestEnabled") || matches("restTimerSoundEnabled") || matches("restTimerVibrationEnabled") || matches("restTimerNotificationEnabled")) && (
                 <>
-                  <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "4px 0 10px" }}>Logging & Equipment</div>
-                  {renderLoggingFields()}
-                </>
-              )}
-              {(matches("restSeconds") || matches("warmupRestSeconds") || matches("warmupRestEnabled")) && (
-                <>
-                  <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "4px 0 10px" }}>Rest Timer Durations</div>
-                  {renderRestTimerDurationFields()}
-                </>
-              )}
-              {(matches("restTimerSoundEnabled") || matches("restTimerVolume") || matches("restTimerVibrationEnabled") || matches("restTimerNotificationEnabled")) && (
-                <>
-                  <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "4px 0 10px" }}>Rest Timer Alerts</div>
-                  {renderRestTimerAlertFields()}
+                  <div style={{ color: T.dim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "4px 0 10px" }}>Rest Timer</div>
+                  {renderRestTimerFields()}
                 </>
               )}
               {matches("warmupPercentSchemes") && (
@@ -1034,6 +987,23 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
                   {renderWarmupWeightFields()}
                 </>
               )}
+            </div>
+          )}
+          {!searchActive && grouped && (
+            // Locked, not a real nav row: the backend for this (edge
+            // functions, migration) isn't deployed yet, so this stays
+            // inert -- no onClick, no navigation into the SubScreen
+            // below -- until that's actually shipped. Swap the button
+            // back to `onClick={() => setScreen("strava")}` and drop
+            // the "Coming soon" pill once it's live.
+            <div style={{ ...navRowBtn, cursor: "default", opacity: 0.6 }}>
+              <div>
+                <div style={{ color: T.text, fontSize: 14, fontWeight: 600 }}>Strava</div>
+                <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>Push finished workouts to Strava</div>
+              </div>
+              <div style={{ color: T.dim, fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 8px" }}>
+                Coming soon
+              </div>
             </div>
           )}
         </>
@@ -1045,39 +1015,29 @@ export default function Preferences({ value, onChange, fields, onApplyRestToAll,
         </SubScreen>
       )}
 
+      {screen === "strava" && (
+        <SubScreen title="Strava" onBack={() => setScreen(null)}>
+          <StravaSettings user={user} />
+        </SubScreen>
+      )}
+
       {screen === "training" && (
         <SubScreen title="Training Preferences" onBack={() => setScreen(null)}>
           <Section
-            title="Training Focus"
-            subtitle="Rep range target, strength score, target calculation method"
+            title="Training Focus & Logging"
+            subtitle="Rep range, strength score, set entry, big plates, muscle names"
             open={openTrainingSection === "focus"}
             onToggle={() => setOpenTrainingSection((s) => (s === "focus" ? null : "focus"))}
           >
-            {renderTrainingFocusFields()}
+            {renderTrainingFields()}
           </Section>
           <Section
-            title="Logging & Equipment"
-            subtitle="Set entry method, big plates, muscle names, body map"
-            open={openTrainingSection === "logging"}
-            onToggle={() => setOpenTrainingSection((s) => (s === "logging" ? null : "logging"))}
+            title="Rest Timer"
+            subtitle="Default durations, warmup rest, and end-of-timer alerts"
+            open={openTrainingSection === "restTimer"}
+            onToggle={() => setOpenTrainingSection((s) => (s === "restTimer" ? null : "restTimer"))}
           >
-            {renderLoggingFields()}
-          </Section>
-          <Section
-            title="Rest Timer Durations"
-            subtitle="Default working and warmup set rest times"
-            open={openTrainingSection === "restDurations"}
-            onToggle={() => setOpenTrainingSection((s) => (s === "restDurations" ? null : "restDurations"))}
-          >
-            {renderRestTimerDurationFields()}
-          </Section>
-          <Section
-            title="Rest Timer Alerts"
-            subtitle="Sound, volume, vibration, and notifications when a timer ends"
-            open={openTrainingSection === "restAlerts"}
-            onToggle={() => setOpenTrainingSection((s) => (s === "restAlerts" ? null : "restAlerts"))}
-          >
-            {renderRestTimerAlertFields()}
+            {renderRestTimerFields()}
           </Section>
           <Section
             title="Warmup Set Weights"
