@@ -5,6 +5,19 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.13.3",
+    date: "2026-09-29",
+    items: [
+      "ExercisePicker.jsx rewritten (props API unchanged, plus optional replaceFor). Two browse layouts persisted in prefs.pickerLayout ('tiles' default | 'rail'): tile hub (Favorites hero, Recent, Muscle Group, Equipment, Movement, Splits, My Custom) -> value tiles -> results with refinement chips (Region/Anatomy chips inside a muscle group only when muscleNameMode != generic, plus equipment; Category chips elsewhere); rail = left entry rail + value grid + results. Search bypasses browsing. Results sectioned Favorites / Performed / Not yet performed, performed sorted by last done. Existing Filters panel kept behind a filter icon (caller filter state still applied upstream via filterLibrary). Multi-select 'Selected' section replaced by a bottom tray of removable chips (items cached in a ref so they survive search/browse changes).",
+      "ExerciseRow redesigned: 64px card, equipment code in the muscle color when no media, primary muscles at the user's tier, last top set + relative date. New compact variant for the rail.",
+      "Replace mode: replaceFor opens on 'Same movement' (same pattern + Category) and 'Same muscle' (shares a primary label at the user's tier), then 'Browse all'. Wired in SetLogger (replace sheet), Templates (replacing) and ProgramSetup (replace sheet).",
+      "queries.js: fetchExerciseUsage(userId) = one workout_exercises -> workouts!inner + sets query giving per-exercise count, last completed_at and that session's top working set (falls back to fetchPerformedExerciseIds on error); withPickerUsage(lib, usage, favIds) decorates the library (sessions, lastPerformedAt, lastTop in display units, isFavorite). Replaces the performed-ids mapping in SetLogger, Templates and ProgramSetup.",
+      "CustomExerciseModal: new library + onUseExisting props (SetLogger, Templates). Token-based name matching (stop words, plural trim; 'Same name' on exact/alias match, 'Similar' on >=2 shared tokens) shows up to 3 matches with Use this; muscle+equipment duplicate check once primaries are tagged; suggested primary/secondary tags from the closest match at the user's tier (dashed chips, per-chip reject, Accept all); submit reads 'Create anyway' when matches exist. MusclePickerSheet replaced for multi-select by MuscleTagSheet: tagged chips, 4-up Category tiles with per-category counts (tiles are the options in Category mode), checkbox rows grouped by Region when options are finer than Region, cross-group search. Single-select (equipment) keeps the old sheet.",
+      "muscleTaxonomy.js: Core color #E8B62E -> #F2853A (was indistinguishable from Favorites gold #F2C94C). prefs.js: pickerLayout default 'tiles'.",
+      "Not included: suggestions from an external exercise database (needs a Supabase import + muscle mapping table).",
+    ],
+  },
+  {
     version: "1.13.2",
     date: "2026-09-29",
     items: [

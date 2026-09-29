@@ -93,6 +93,54 @@ export async function fetchPerformedExerciseIds(userId) {
   return new Set(data.map((r) => r.exercise_id));
 }
 
+// Per-exercise usage for the exercise picker: how many completed
+// workouts included it, when it was last done, and that session's top
+// working set. One query (workout_exercises -> workouts + sets) instead
+// of hydrating every exercise. Drives the picker's Recent tile, its
+// "last set / when" row detail, and Performed vs Not yet performed.
+// Falls back to fetchPerformedExerciseIds (count 1, no dates) if the
+// nested select fails, so the picker never loses its sections.
+export async function fetchExerciseUsage(userId) {
+  const { data, error } = await supabase
+    .from("workout_exercises")
+    .select("exercise_id, workouts!inner(user_id, completed_at), sets(weight, reps, is_warmup)")
+    .eq("workouts.user_id", userId)
+    .not("workouts.completed_at", "is", null);
+  if (error) {
+    const ids = await fetchPerformedExerciseIds(userId);
+    return new Map([...ids].map((id) => [id, { count: 1, lastAt: null, lastTop: null }]));
+  }
+  const usage = new Map();
+  for (const row of data || []) {
+    const at = row.workouts?.completed_at || null;
+    const cur = usage.get(row.exercise_id) || { count: 0, lastAt: null, lastTop: null };
+    cur.count += 1;
+    if (at && (!cur.lastAt || at > cur.lastAt)) {
+      cur.lastAt = at;
+      const working = (row.sets || []).filter((s) => !s.is_warmup && Number(s.reps) > 0);
+      const top = working.reduce((best, s) => (!best || Number(s.weight) > Number(best.weight) || (Number(s.weight) === Number(best.weight) && Number(s.reps) > Number(best.reps)) ? s : best), null);
+      cur.lastTop = top ? { weight: Number(top.weight) || 0, reps: Number(top.reps) || 0 } : null;
+    }
+    usage.set(row.exercise_id, cur);
+  }
+  return usage;
+}
+
+// Decorates a normalized library with usage + favorites for the picker.
+export function withPickerUsage(lib, usage, favIds) {
+  const unit = getPrefs().units;
+  return lib.map((l) => {
+    const u = usage.get(l.id);
+    return {
+      ...l,
+      sessions: u ? u.count : 0,
+      lastPerformedAt: u?.lastAt || null,
+      lastTop: u?.lastTop ? { weight: toDisplay(u.lastTop.weight, unit), reps: u.lastTop.reps } : null,
+      isFavorite: favIds.has(l.id),
+    };
+  });
+}
+
 // Fetches the exercise library. Replaces the hardcoded LIBRARY constant.
 export async function fetchExercises() {
   const { data, error } = await supabase.from("exercises").select("*").eq("archived", false).order("name");

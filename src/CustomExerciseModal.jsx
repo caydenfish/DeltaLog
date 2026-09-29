@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { muscleLabel, genericBucket, muscleOptionsForMode } from "./lib/muscleTaxonomy";
+import { muscleLabel, muscleLabelsFor, genericBucket, detailedNameOf, muscleOptionsForMode, muscleColor, CATEGORIES } from "./lib/muscleTaxonomy";
 import { getPrefs } from "./lib/prefs";
 import { fetchMuscleTaxonomy, deriveEquipmentBucket } from "./lib/queries";
 import { EQUIPMENT_LIST } from "./ExercisePicker";
@@ -78,7 +78,7 @@ function MusclePicker({ label, values, onAdd, onRemove, options, renderLabel, gr
       </button>
 
       {showSheet && (
-        <MusclePickerSheet
+        <MuscleTagSheet
           title={label}
           options={options}
           values={values}
@@ -89,6 +89,99 @@ function MusclePicker({ label, values, onAdd, onRemove, options, renderLabel, gr
         />
       )}
     </>
+  );
+}
+
+// Muscle tagging sheet (v1.13.3), matching the exercise picker: tagged
+// muscles as removable chips on top, the muscle groups as a 4-up tile
+// grid with a count badge for what's tagged in each, and the open
+// group's options below as checkbox rows (grouped by Region when the
+// options are finer than Region). In Category mode the tiles themselves
+// are the options. Search spans every group.
+const CONDENSED = "'Barlow Condensed', sans-serif";
+const ONE_LINE = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+function MuscleTagSheet({ title, options, values, onToggle, onClose, renderLabel, groupFn }) {
+  const [search, setSearch] = useState("");
+  const catOf = (m) => (groupFn ? groupFn(m) : genericBucket(m)) || "Other";
+  const categoryLevel = (options || []).length > 0 && (options || []).every((m) => catOf(m) === m);
+  const cats = CATEGORIES.filter((c) => (options || []).some((m) => catOf(m) === c.key));
+  const [openCat, setOpenCat] = useState(() => (values[0] ? catOf(values[0]) : cats[0]?.key || null));
+  const q = search.trim().toLowerCase();
+  const shown = (options || []).filter((m) => (q ? renderLabel(m).toLowerCase().includes(q) : catOf(m) === openCat));
+  // Sub-group by Region only when the options are finer than Region.
+  const regionOf = (m) => detailedNameOf(m);
+  const finer = shown.some((m) => regionOf(m) && regionOf(m) !== renderLabel(m) && regionOf(m) !== m);
+  const groups = [];
+  for (const m of [...shown].sort((a, b) => renderLabel(a).localeCompare(renderLabel(b)))) {
+    const g = q ? catOf(m) : finer ? regionOf(m) : "";
+    let grp = groups.find((x) => x.name === g);
+    if (!grp) { grp = { name: g, items: [] }; groups.push(grp); }
+    grp.items.push(m);
+  }
+  const countIn = (cat) => values.filter((v) => catOf(v) === cat).length;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, height: "88dvh", background: T.bg, borderTop: `1px solid ${T.line}`, borderTopLeftRadius: 20, borderTopRightRadius: 20, display: "flex", flexDirection: "column" }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: T.line, margin: "10px auto 6px", flexShrink: 0 }} />
+        <div style={{ padding: "4px 16px 10px", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, fontFamily: CONDENSED, fontSize: 22, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: T.text, ...ONE_LINE }}>{title}</div>
+          <button onClick={onClose} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "#C93A26", color: "#fff", fontFamily: CONDENSED, fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase" }}>Done</button>
+        </div>
+        {values.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 16px 10px", flexShrink: 0 }}>
+            {values.map((v) => (
+              <div key={v} style={{ display: "flex", alignItems: "center", gap: 4, height: 34, padding: "0 4px 0 12px", borderRadius: 999, background: `${muscleColor(v)}26`, border: `1px solid ${muscleColor(v)}`, fontSize: 13, color: T.text, whiteSpace: "nowrap" }}>
+                {renderLabel(v)}
+                <button onClick={() => onToggle(v)} aria-label={`Remove ${renderLabel(v)}`} style={{ width: 28, height: 28, border: "none", background: "none", color: T.text, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><IconX size={12} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, padding: "0 16px 12px", flexShrink: 0 }}>
+          {cats.map((c) => {
+            const n = countIn(c.key);
+            const on = categoryLevel ? values.includes(c.key) : openCat === c.key && !q;
+            return (
+              <button key={c.key} onClick={() => (categoryLevel ? onToggle(c.key) : (setOpenCat(c.key), setSearch("")))} aria-pressed={on} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "space-between", height: 64, padding: "8px 9px", borderRadius: 12, background: on ? `${c.color}2E` : T.surface, border: `1px solid ${on ? c.color : T.line}`, minWidth: 0, textAlign: "left", boxSizing: "border-box" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 4, background: c.color }} />
+                  {n > 0 && !categoryLevel && <span style={{ minWidth: 18, height: 18, borderRadius: 9, background: c.color, color: T.bg, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{n}</span>}
+                  {categoryLevel && on && <IconCheck size={13} style={{ color: T.text }} />}
+                </div>
+                <span style={{ fontFamily: CONDENSED, fontSize: 15, fontWeight: 600, textTransform: "uppercase", color: on ? T.text : "#B8BDC7", width: "100%", ...ONE_LINE }}>{c.key}</span>
+              </button>
+            );
+          })}
+        </div>
+        {!categoryLevel && (
+          <>
+            <div style={{ padding: "0 16px 10px", flexShrink: 0 }}>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search all muscles" aria-label="Search all muscles" style={{ width: "100%", height: 44, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, color: T.text, fontSize: 16, padding: "0 12px", outline: "none", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px", display: "flex", flexDirection: "column", gap: 6, borderTop: `1px solid ${T.line}`, paddingTop: 10 }}>
+              {groups.length === 0 && <div style={{ color: T.dim, fontSize: 14, textAlign: "center", padding: "24px 0" }}>No muscles match.</div>}
+              {groups.map((g) => (
+                <div key={g.name || "all"} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {g.name && <div style={{ fontFamily: CONDENSED, fontSize: 14, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: "#B8BDC7", padding: "6px 4px 0" }}>{g.name}</div>}
+                  {g.items.map((m) => {
+                    const on = values.includes(m);
+                    const c = muscleColor(m);
+                    return (
+                      <button key={m} onClick={() => onToggle(m)} aria-pressed={on} style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 52, padding: "8px 12px", borderRadius: 12, background: on ? `${c}14` : T.surface, border: `1px solid ${on ? `${c}80` : T.line}`, textAlign: "left" }}>
+                        <span style={{ width: 24, height: 24, borderRadius: 7, boxSizing: "border-box", border: `2px solid ${on ? c : "#4A505B"}`, background: on ? c : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: T.bg, flexShrink: 0 }}>{on && <IconCheck size={13} />}</span>
+                        <span style={{ fontSize: 15, color: T.text, ...ONE_LINE }}>{renderLabel(m)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {categoryLevel && <div style={{ flex: 1 }} />}
+      </div>
+    </div>
   );
 }
 
@@ -200,7 +293,57 @@ function SingleSelectPicker({ label, value, onChange, options, renderLabel, grou
 }
 
 
-export default function CustomExerciseModal({ onClose, onCreate, onSave, initialExercise, initialName, scientificMode = false }) {
+// ---- library matching (v1.13.3) --------------------------------------
+// Catches duplicates before they're created: by name as it's typed, and
+// by muscles + equipment once tagged. Also the source of the suggested
+// muscle tags (from the closest library match, at the person's tier).
+const STOP_WORDS = new Set(["the", "a", "an", "with", "and", "on", "of", "to", "for"]);
+function nameTokens(str) {
+  return String(str || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/)
+    .filter((t) => t && !STOP_WORDS.has(t))
+    .map((t) => (t.length > 3 && t.endsWith("s") ? t.slice(0, -1) : t));
+}
+function nameMatch(typed, ex) {
+  const a = nameTokens(typed);
+  if (a.length === 0) return null;
+  let best = null;
+  for (const candidate of [ex.name, ...(ex.aliases || [])]) {
+    const b = nameTokens(candidate);
+    if (b.length === 0) continue;
+    if (a.join(" ") === b.join(" ")) return { kind: "same", score: 2 };
+    const inter = a.filter((t) => b.includes(t)).length;
+    const ratio = inter / Math.max(a.length, b.length);
+    const contained = inter === Math.min(a.length, b.length) && Math.min(a.length, b.length) >= 2;
+    if ((inter >= 2 && ratio >= 0.5) || contained) {
+      if (!best || ratio > best.score) best = { kind: "similar", score: ratio };
+    }
+  }
+  return best;
+}
+
+function MatchPanel({ title, items, onUse }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 14, background: "#4E8DE814", border: "1px solid #4E8DE866", marginBottom: 18 }}>
+      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: T.text }}>{title}</div>
+      {items.map(({ ex, tag, strong }) => (
+        <div key={ex.id} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 56, padding: "8px 8px 8px 12px", borderRadius: 12, background: T.surface, border: `1px solid ${T.line}` }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 600, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ex.name}</span>
+              {tag && <span style={{ flexShrink: 0, padding: "2px 6px", borderRadius: 6, background: strong ? "#4E8DE840" : T.surface2, color: strong ? "#CFE0FB" : "#B8BDC7", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{tag}</span>}
+            </div>
+            <div style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {muscleLabelsFor(ex.rawPrimaryMuscles, getPrefs().muscleNameMode).slice(0, 2).join(", ") || muscleLabel(ex.muscle, "generic")} · {ex.equipment}{ex.sessions > 0 ? " · Performed" : ""}
+            </div>
+          </div>
+          {onUse && <button onClick={() => onUse(ex)} style={{ flexShrink: 0, height: 40, padding: "0 12px", borderRadius: 10, background: T.surface2, border: "1px solid #4A505B", color: T.text, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Use this</button>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function CustomExerciseModal({ onClose, onCreate, onSave, initialExercise, initialName, scientificMode = false, library, onUseExisting }) {
   const isEdit = Boolean(initialExercise);
   const [name, setName] = useState(initialExercise?.name || initialName || "");
   const [muscle, setMuscle] = useState(initialExercise?.muscle_group || "Chest");
@@ -213,6 +356,8 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
   const [error, setError] = useState(null);
   const [allMuscles, setAllMuscles] = useState(null); // flat list of every known muscle-group key, for the pickers
   const [taxonomy, setTaxonomy] = useState(null); // scientificMode only: [{scientific_name, detailed_name, generic_group}]
+  const [rejected, setRejected] = useState(() => new Set()); // suggested tags the person dismissed
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
 
   useEffect(() => {
     if (scientificMode) {
@@ -276,6 +421,35 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
     return genericBucket(m) || "Other";
   }
 
+  // ---- duplicate checks + suggestions -----------------------------------
+  const nameMode = getPrefs().muscleNameMode;
+  const lib = !isEdit && Array.isArray(library) ? library : [];
+  const nameMatches = name.trim().length >= 3
+    ? lib.map((ex) => ({ ex, m: nameMatch(name, ex) })).filter((x) => x.m)
+        .sort((a, b) => b.m.score - a.m.score || (b.ex.sessions || 0) - (a.ex.sessions || 0))
+        .slice(0, 3)
+        .map(({ ex, m }) => ({ ex, tag: m.kind === "same" ? "Same name" : "Similar", strong: m.kind === "same" }))
+    : [];
+  const tagsFor = (raws) => (scientificMode ? (raws || []).filter((r) => (allMuscles || []).includes(r)) : muscleLabelsFor(raws, nameMode).filter((k) => (allMuscles || []).includes(k)));
+  const source = nameMatches.map((x) => x.ex).find((ex) => (ex.rawPrimaryMuscles || []).length > 0) || null;
+  const suggestedPrimary = source ? tagsFor(source.rawPrimaryMuscles).filter((k) => !rejected.has(k)) : [];
+  const suggestedSecondary = source ? tagsFor(source.rawSecondaryMuscles).filter((k) => !suggestedPrimary.includes(k) && !rejected.has(k)) : [];
+  const showSuggestion = !isEdit && !suggestionDismissed && primaryMuscles.length === 0 && suggestedPrimary.length > 0;
+  function acceptSuggestion() {
+    setPrimaryMuscles(suggestedPrimary);
+    setSecondaryMuscles(suggestedSecondary);
+    setSuggestionDismissed(true);
+  }
+  // Same primary muscles (at the person's tier) and equipment as an
+  // existing exercise: likely a renamed duplicate.
+  const tagKey = (arr) => [...new Set(arr)].sort().join("|");
+  const chosenKey = tagKey(scientificMode ? primaryMuscles : primaryMuscles.map((m) => muscleLabel(m, nameMode)));
+  const shownIds = new Set(nameMatches.map((x) => x.ex.id));
+  const muscleMatches = primaryMuscles.length > 0
+    ? lib.filter((ex) => !shownIds.has(ex.id) && ex.equipment === equipment && tagKey(scientificMode ? ex.rawPrimaryMuscles || [] : muscleLabelsFor(ex.rawPrimaryMuscles, nameMode)) === chosenKey).slice(0, 3).map((ex) => ({ ex, tag: "Same muscles" }))
+    : [];
+  const hasMatches = nameMatches.length > 0 || muscleMatches.length > 0;
+
   async function handleSubmit() {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -311,6 +485,37 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
         <div style={{ padding: 16, flex: 1 }}>
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Exercise name</div>
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Step-ups" style={inputStyle} />
+
+          {nameMatches.length > 0 && (
+            <MatchPanel title="Already in the library?" items={nameMatches} onUse={onUseExisting ? (ex) => { onUseExisting(ex); onClose(); } : null} />
+          )}
+
+          {showSuggestion && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12, borderRadius: 14, background: T.surface, border: `1px solid ${T.line}`, marginBottom: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: T.text }}>Suggested muscles</div>
+                  <div style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>From your library · {source.name}</div>
+                </div>
+                <button onClick={() => setSuggestionDismissed(true)} aria-label="Dismiss suggestion" style={{ width: 36, height: 36, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "center" }}><IconX size={13} /></button>
+                <button onClick={acceptSuggestion} style={{ flexShrink: 0, height: 40, padding: "0 14px", borderRadius: 10, background: T.text, color: T.bg, border: "none", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Accept all</button>
+              </div>
+              {[["Primary", suggestedPrimary], ["Secondary", suggestedSecondary]].filter(([, arr]) => arr.length > 0).map(([lbl, arr]) => (
+                <div key={lbl} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.dim }}>{lbl}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {arr.map((k) => (
+                      <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, height: 34, padding: "0 4px 0 12px", borderRadius: 999, border: `1px dashed ${muscleColor(k)}`, fontSize: 13, color: "#E4E3DE", whiteSpace: "nowrap" }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 4, background: muscleColor(k) }} />
+                        {scientificMode ? taxonomyLabel(k) : muscleLabel(k)}
+                        <button onClick={() => setRejected((prev) => new Set([...prev, k]))} aria-label="Reject suggestion" style={{ width: 28, height: 28, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><IconX size={12} /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {scientificMode ? (
             <>
@@ -381,6 +586,10 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
             <input type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files?.[0] || null)} style={{ display: "none" }} />
           </label>
 
+          {muscleMatches.length > 0 && (
+            <MatchPanel title="Same muscles and equipment" items={muscleMatches} onUse={onUseExisting ? (ex) => { onUseExisting(ex); onClose(); } : null} />
+          )}
+
           {error && <div style={{ color: T.accent, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
 
           {!isEdit && !scientificMode && (
@@ -401,7 +610,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
             disabled={!name.trim() || saving}
             style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: !name.trim() || saving ? T.surface2 : T.accent, color: !name.trim() || saving ? T.dim : "#fff", fontSize: 15, fontWeight: 700 }}
           >
-            {saving ? (isEdit ? "Saving…" : "Creating…") : (isEdit ? "Save changes" : "Create & Add")}
+            {saving ? (isEdit ? "Saving…" : "Creating…") : (isEdit ? "Save changes" : hasMatches ? "Create anyway" : "Create & Add")}
           </button>
         </div>
       </div>

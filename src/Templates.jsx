@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { T } from "./lib/theme";
-import { fetchExercises, fetchTemplates, saveWorkoutAsTemplate, deleteTemplate, duplicateTemplate, fetchPerformedExerciseIds, fetchFavoriteExerciseIds, setFavoriteExercise, fetchTemplateForEdit, updateTemplate, reorderTemplates, setTemplateArchived, fetchArchivedTemplates, exportTemplate, fetchSharedTemplate, importSharedTemplate, createCustomExercise, uploadExerciseMedia, normalizeExercise } from "./lib/queries";
+import { fetchExercises, fetchTemplates, saveWorkoutAsTemplate, deleteTemplate, duplicateTemplate, fetchPerformedExerciseIds, fetchExerciseUsage, withPickerUsage, fetchFavoriteExerciseIds, setFavoriteExercise, fetchTemplateForEdit, updateTemplate, reorderTemplates, setTemplateArchived, fetchArchivedTemplates, exportTemplate, fetchSharedTemplate, importSharedTemplate, createCustomExercise, uploadExerciseMedia, normalizeExercise } from "./lib/queries";
 import { computeMuscleSetCounts } from "./lib/volume";
 import { subscribeTaxonomy, getTaxonomyVersion, genericBucket, MUSCLE_COLORS, isFullBody, CATEGORY_KEYS } from "./lib/muscleTaxonomy";
 import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
@@ -160,9 +160,9 @@ export default function Templates({ user, onClose, initialPicks }) {
     let cancelled = false;
     (async () => {
       try {
-        const [lib, t, performedIds, favIds, archived] = await Promise.all([fetchExercises(), fetchTemplates(user.id), fetchPerformedExerciseIds(user.id), fetchFavoriteExerciseIds(user.id), fetchArchivedTemplates(user.id)]);
+        const [lib, t, usage, favIds, archived] = await Promise.all([fetchExercises(), fetchTemplates(user.id), fetchExerciseUsage(user.id), fetchFavoriteExerciseIds(user.id), fetchArchivedTemplates(user.id)]);
         if (cancelled) return;
-        setLibrary(lib.map((l) => ({ ...l, sessions: performedIds.has(l.id) ? 1 : 0, isFavorite: favIds.has(l.id) })));
+        setLibrary(withPickerUsage(lib, usage, favIds));
         setTemplates(t);
         setArchivedTemplates(archived);
       } catch (err) {
@@ -690,6 +690,7 @@ export default function Templates({ user, onClose, initialPicks }) {
                 showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
                 onPick={(l) => (replacing ? replaceWith(replacing.id, l) : toggleSelected(l))}
                 multiSelect={!replacing}
+                replaceFor={replacing ? (library || []).find((l) => l.id === replacing.id) || null : null}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelected}
                 onToggleFavorite={toggleFavorite}
@@ -794,7 +795,7 @@ export default function Templates({ user, onClose, initialPicks }) {
       )}
 
       {showCreateCustom && (
-        <CustomExerciseModal onClose={() => setShowCreateCustom(false)} onCreate={handleCreateCustomExercise} initialName={search} />
+        <CustomExerciseModal onClose={() => setShowCreateCustom(false)} onCreate={handleCreateCustomExercise} initialName={search} library={library || []} onUseExisting={(ex) => { if (pendingCustomPick.current) pendingCustomPick.current(ex); }} />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchExercises, fetchPerformedExerciseIds, fetchFavoriteExerciseIds, setFavoriteExercise } from "./lib/queries";
+import { fetchExercises, fetchExerciseUsage, withPickerUsage, fetchFavoriteExerciseIds, setFavoriteExercise } from "./lib/queries";
 import { getPrefs } from "./lib/prefs";
 import ExercisePicker, { filterLibrary, splitGroupFor } from "./ExercisePicker";
 import { useDragReorder, InsertionLine } from "./DragReorder";
@@ -176,15 +176,15 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
     let cancelled = false;
     (async () => {
       try {
-        const [lib, performed, favIds, totalSessions] = await Promise.all([
+        const [lib, usage, favIds, totalSessions] = await Promise.all([
           fetchExercises(),
-          fetchPerformedExerciseIds(user.id),
+          fetchExerciseUsage(user.id),
           fetchFavoriteExerciseIds(user.id),
           fetchTotalSessionCount(user.id),
         ]);
         if (cancelled) return;
-        setLibrary(lib.map((l) => ({ ...l, sessions: performed.has(l.id) ? 1 : 0, isFavorite: favIds.has(l.id) })));
-        setPerformedIds(performed);
+        setLibrary(withPickerUsage(lib, usage, favIds));
+        setPerformedIds(new Set(usage.keys()));
         const suggestion = suggestExperienceLevel(totalSessions);
         setSuggestedExperience(suggestion);
         setExperienceLevel(suggestion || "Beginner");
@@ -528,6 +528,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
                   sourceFilter={filters.sourceFilter} onSetSource={(v) => updateFilters(replacing.dayIndex, { sourceFilter: v })}
                   showFilters={filters.showFilters} onToggleFilters={() => updateFilters(replacing.dayIndex, { showFilters: !filters.showFilters })}
                   onPick={(ex) => replacePick(replacing.dayIndex, replacing.exerciseId, ex)}
+                  replaceFor={library.find((l) => l.id === replacing.exerciseId) || null}
                   onToggleFavorite={toggleFavorite}
                   fillHeight
                 />

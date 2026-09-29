@@ -9,6 +9,19 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.13.3": {
+    title: "A new way to pick exercises",
+    items: [
+      "Picking an exercise is now tile-based. Start from Favorites, Recent, Muscle Group, Equipment, Movement, Splits, or your custom exercises, then narrow down with chips instead of scrolling one long list.",
+      "Prefer everything on one screen? Tap the layout switch next to search for a side-rail view. DeltaLog remembers whichever you pick.",
+      "Every exercise now shows its main muscles, your last top set, and when you last did it.",
+      "Replacing an exercise now opens on the closest alternatives first: the same movement, then the same muscles.",
+      "When adding exercises to a template or workout, everything you've selected stays in a tray at the bottom, even as you browse between groups.",
+      "Creating a custom exercise now checks the library first. If it already exists, or something very close does, you can use that one instead. It also suggests muscles from the closest match.",
+      "Tagging muscles on a custom exercise uses the same tiles: pick a muscle group, then tick what it trains.",
+      "Core has a new orange color so it no longer looks like Favorites gold.",
+    ],
+  },
   "1.13.2": {
     title: "Muscle names that match your setting, and a cleaner Settings screen",
     items: [

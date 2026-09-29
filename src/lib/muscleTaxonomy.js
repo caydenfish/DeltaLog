@@ -48,7 +48,7 @@ export const CATEGORIES = [
   { key: "Shoulders", color: "#C77DFF", region: "Front Delts", anatomy: "Deltoid (Anterior)" },
   { key: "Arms", color: "#5ED1C7", region: "Biceps", anatomy: "Biceps Brachii" },
   { key: "Legs", color: "#3BA55D", region: "Quads", anatomy: "Rectus Femoris" },
-  { key: "Core", color: "#E8B62E", region: "Abs", anatomy: "Rectus Abdominis (Superior)" },
+  { key: "Core", color: "#F2853A", region: "Abs", anatomy: "Rectus Abdominis (Superior)" },
   { key: NECK, color: "#D4A574", region: NECK, anatomy: NECK },
   { key: FULL_BODY, color: "#B0B6C1", region: FULL_BODY, anatomy: FULL_BODY },
 ];

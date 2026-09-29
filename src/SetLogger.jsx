@@ -28,6 +28,8 @@ import {
   uploadExerciseMedia,
   setWorkoutExerciseSuperset,
   fetchPerformedExerciseIds,
+  fetchExerciseUsage,
+  withPickerUsage,
   fetchFavoriteExerciseIds,
   setFavoriteExercise,
   fetchExercisePRBaselines,
@@ -747,9 +749,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       try {
         const lib = await fetchExercises();
         if (cancelled) return;
-        const [performedIds, favIds] = await Promise.all([fetchPerformedExerciseIds(user.id), fetchFavoriteExerciseIds(user.id)]);
+        const [usage, favIds] = await Promise.all([fetchExerciseUsage(user.id), fetchFavoriteExerciseIds(user.id)]);
         if (cancelled) return;
-        setLibrary(lib.map((l) => ({ ...l, sessions: performedIds.has(l.id) ? 1 : 0, isFavorite: favIds.has(l.id) })));
+        setLibrary(withPickerUsage(lib, usage, favIds));
         setFavoriteIds(favIds);
 
         if (resumeWorkout) {
@@ -2193,6 +2195,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 sourceFilter={sourceFilter} onSetSource={setSourceFilter}
                 showFilters={showPickerFilters} onToggleFilters={() => setShowPickerFilters(!showPickerFilters)}
                 onPick={(l) => replaceExercise(pickerFor, l)}
+                replaceFor={library.find((l) => l.id === workout[pickerFor]?.id) || workout[pickerFor]}
                 fillHeight
                 onToggleFavorite={toggleFavorite}
                 footer={createCustomFooter((l) => replaceExercise(pickerFor, l))}
@@ -2259,6 +2262,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             onClose={() => setShowCreateCustom(false)}
             onCreate={handleCreateCustomExercise}
             initialName={pickerSearch}
+            library={library}
+            onUseExisting={(ex) => { if (pendingCustomPick.current) pendingCustomPick.current(ex); }}
           />
         )}
         {discardNewWorkoutConfirm && (
