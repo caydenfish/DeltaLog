@@ -23,7 +23,8 @@ import AdminTaxonomyManager from "./AdminTaxonomyManager";
 import AdminBodyMapRegionEditor from "./AdminBodyMapRegionEditor";
 import MachineNamesManager from "./MachineNamesManager";
 import Logo from "./Logo";
-import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX } from "./Icons";
+import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX, IconCalendar, IconList, IconBarbell, IconUser, IconSliders, IconInfo, IconLock, IconAlertTriangle } from "./Icons";
+import { SettingsTile, TileGrid, SettingsSectionLabel, ScreenHeader, SettingsSearch } from "./SettingsUI";
 import Templates from "./Templates";
 import { fetchUnlinkedWorkouts } from "./lib/strava";
 import StravaManualLinkModal from "./StravaManualLinkModal";
@@ -62,39 +63,6 @@ const T = {
   accent: "#E8442E",
   green: "#3BA55D",
 };
-
-// Settings screen's nav destination, as a tile rather than a full-width
-// row -- two per line via the grid the caller wraps these in. `wide`
-// spans both columns, used for sections with just one destination (or,
-// in search mode, for a single already-matched tile above an inline
-// field list) so a lone tile doesn't look stranded next to empty space.
-// No trailing chevron -- the tile shape itself reads as tappable, and
-// there's no room for one at this size without crowding the subtitle.
-function SettingsTile({ title, subtitle, onClick, badge, danger, wide }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        gridColumn: wide ? "1 / -1" : "auto",
-        background: T.surface,
-        border: `1px solid ${danger ? T.accent : T.line}`,
-        borderRadius: 12,
-        padding: 14,
-        textAlign: "left",
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        minHeight: 72,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ color: danger ? T.accent : T.text, fontSize: 14, fontWeight: 600 }}>{title}</span>
-        {badge}
-      </div>
-      {subtitle && <span style={{ color: danger ? T.accent : T.dim, fontSize: 11, lineHeight: 1.35 }}>{subtitle}</span>}
-    </button>
-  );
-}
 
 function isoDaysAgo(days) {
   const d = new Date();
@@ -1124,81 +1092,76 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {showMenu && (
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 20, display: "flex", justifyContent: "center", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
-              <button onClick={() => { setShowMenu(false); setSettingsQuery(""); }} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>SETTINGS</div>
-              <div style={{ width: 26 }} />
-            </div>
+            <ScreenHeader title="Settings" backLabel="Close" onBack={() => { setShowMenu(false); setSettingsQuery(""); }} />
 
-            <div style={{ padding: "12px 16px 0" }}>
-              <input
-                value={settingsQuery}
-                onChange={(e) => setSettingsQuery(e.target.value)}
-                placeholder="Search settings"
-                aria-label="Search settings"
-                style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box" }}
-              />
+            <div style={{ padding: "4px 16px 0" }}>
+              <SettingsSearch value={settingsQuery} onChange={setSettingsQuery} />
             </div>
 
             <div style={{ padding: 16, flex: 1 }}>
               {/* Training Plan */}
               {settingsMatch("program generator training block multi-week progression deload science coach") && (
               <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Training Plan</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+              <SettingsSectionLabel>Training Plan</SettingsSectionLabel>
+              <TileGrid style={{ marginBottom: 20 }}>
                 <SettingsTile
                   wide
+                  icon={<IconCalendar size={20} />}
                   onClick={() => setShowProgramView(true)}
                   title="Program"
-                  subtitle="Build a multi-week program with science-backed progression"
+                  subtitle="Multi-week plans with progression"
                 />
-              </div>
+              </TileGrid>
               </>
               )}
 
               {/* Workout Library */}
               {(settingsMatch("templates workouts reusable build manage") || settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") || settingsMatch("machine names hammer strength life fitness gym equipment rename delete setup")) && (
               <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Workout Library</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+              <SettingsSectionLabel>Workout Library</SettingsSectionLabel>
+              <TileGrid style={{ marginBottom: 20 }}>
                 {settingsMatch("templates workouts reusable build manage") && (
                 <SettingsTile
+                  icon={<IconList size={20} />}
                   onClick={() => setShowTemplates(true)}
                   title="Templates"
-                  subtitle="Build or manage reusable workouts"
+                  subtitle="Reusable workouts"
                 />
                 )}
                 {settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete") && (
                 <SettingsTile
+                  icon={<IconBarbell size={20} />}
                   onClick={() => setShowExerciseLibraryView(true)}
                   title="Exercise Library"
-                  subtitle="Browse every exercise, including your own custom ones"
+                  subtitle="Every exercise, plus yours"
                 />
                 )}
                 {settingsMatch("machine names hammer strength life fitness gym equipment rename delete setup") && (
                 <SettingsTile
                   wide={!settingsMatch("templates workouts reusable build manage") && !settingsMatch("exercise library browse muscle scientific detailed generic nicknames equipment pattern custom exercises edit delete")}
+                  icon={<IconPencil size={20} />}
                   onClick={() => setShowMachineNames(true)}
                   title="Machine Names"
-                  subtitle="Rename or delete a custom machine everywhere it's used"
+                  subtitle="Rename or remove machines"
                 />
                 )}
-              </div>
+              </TileGrid>
               </>
               )}
 
               {/* Profile & Preferences */}
               {settingsMatch("profile gender age date of birth weight height preferences units weight lb kg pounds kilograms time format 12h 24h clock muscle names generic detailed scientific training focus rep range hypertrophy strength endurance dots percentile deltalog default set entry manual plate calculator logging type big plates bumpers squats deadlifts rest timer seconds") && (
               <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Profile & Preferences</div>
+              <SettingsSectionLabel>Profile & Preferences</SettingsSectionLabel>
               <div style={{ marginBottom: 20 }}>
                 {settingsQuery.trim() === "" ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <TileGrid>
                     {settingsMatch("profile gender age date of birth weight height") && (
                       <SettingsTile
+                        icon={<IconUser size={20} />}
                         onClick={() => setShowProfileEditor(true)}
                         title="Profile"
-                        subtitle="Gender, age, weight, height — used for strength scoring"
+                        subtitle="Body stats for scoring"
                       />
                     )}
                     {/* Browse mode: a single consistent tile, matching every
@@ -1206,22 +1169,24 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                         Preferences screen rather than dumping the whole
                         field list inline here. */}
                     <SettingsTile
+                      icon={<IconSliders size={20} />}
                       onClick={() => setShowPreferencesScreen(true)}
                       title="Preferences"
-                      subtitle="Units, training focus, rest timer, and more"
+                      subtitle="Units, timers, muscles"
                     />
-                  </div>
+                  </TileGrid>
                 ) : (
                   <>
                     {settingsMatch("profile gender age date of birth weight height") && (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                      <TileGrid style={{ marginBottom: 10 }}>
                         <SettingsTile
                           wide
+                          icon={<IconUser size={20} />}
                           onClick={() => setShowProfileEditor(true)}
                           title="Profile"
-                          subtitle="Gender, age, weight, height — used for strength scoring and insights"
+                          subtitle="Gender, age, weight, height for scoring"
                         />
-                      </div>
+                      </TileGrid>
                     )}
                     {/* Search mode: surface the exact matching field(s) right
                         here instead of sending someone into a sub-screen to
@@ -1236,39 +1201,41 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               {/* Guides & Support */}
               {settingsMatch("guides support faq community feedback splits push pull legs") && (
               <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Guides & Support</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+              <SettingsSectionLabel>Guides & Support</SettingsSectionLabel>
+              <TileGrid style={{ marginBottom: 20 }}>
                 <SettingsTile
                   wide
+                  icon={<IconInfo size={20} />}
                   onClick={() => setShowHelpSupport(true)}
                   title="Guides & Support"
                   subtitle="FAQ, community, and feedback"
                 />
-              </div>
+              </TileGrid>
               </>
               )}
 
               {/* Admin */}
               {isRealAdmin && settingsMatch("admin custom exercises feedback bugs simulate new user version history changelog exercise library muscle groups roles permissions creator admin view normal user activity usage last opened last logged churn") && (
                 <>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Admin</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+                  <SettingsSectionLabel>Admin</SettingsSectionLabel>
+                  <TileGrid style={{ marginBottom: 20 }}>
                     <SettingsTile
                       wide
+                      icon={<IconLock size={20} />}
                       onClick={() => setShowAdminHome(true)}
                       title="Admin"
                       badge={unseenFeedbackCount > 0 ? <span style={{ background: T.accent, color: "#fff", fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "1px 7px", lineHeight: 1.5 }}>{unseenFeedbackCount}</span> : null}
-                      subtitle="Custom exercises, feedback, version history, and testing tools"
+                      subtitle="Customs, feedback, versions, testing"
                     />
-                  </div>
+                  </TileGrid>
                 </>
               )}
 
               {/* Account — kept at the bottom, away from the everyday controls */}
               {settingsMatch("account email sign out logout") && (
               <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Account</div>
-              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 20 }}>
+              <SettingsSectionLabel>Account</SettingsSectionLabel>
+              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 16, padding: 14, marginBottom: 20 }}>
                 <div style={{ color: T.text, fontSize: 14, marginBottom: 4 }}>{user.email}</div>
                 {user.app_metadata?.provider && user.app_metadata.provider !== "email" && (
                   <div style={{ color: T.dim, fontSize: 11, marginBottom: 12 }}>
@@ -1278,7 +1245,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 {(!user.app_metadata?.provider || user.app_metadata.provider === "email") && (
                   <div style={{ height: 8 }} />
                 )}
-                <button onClick={() => supabase.auth.signOut()} style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.1)", color: T.accent, fontSize: 14, fontWeight: 700 }}>
+                <button onClick={() => supabase.auth.signOut()} style={{ width: "100%", minHeight: 48, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.1)", color: T.accent, fontSize: 14, fontWeight: 700 }}>
                   Sign out
                 </button>
               </div>
@@ -1288,16 +1255,17 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               {/* Danger zone */}
               {settingsMatch("danger zone reset delete all data account") && (
               <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Danger zone</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <SettingsSectionLabel>Danger zone</SettingsSectionLabel>
+              <TileGrid>
                 <SettingsTile
                   wide
                   danger
+                  icon={<IconAlertTriangle size={20} />}
                   onClick={() => setShowDangerZone(true)}
                   title="Danger Zone"
-                  subtitle="Reset all data or delete your account"
+                  subtitle="Reset data or delete account"
                 />
-              </div>
+              </TileGrid>
               </>
               )}
 
@@ -1340,11 +1308,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {showPreferencesScreen && (
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
-              <button onClick={() => setShowPreferencesScreen(false)} aria-label="Back" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>PREFERENCES</div>
-              <div style={{ width: 26 }} />
-            </div>
+            <ScreenHeader title="Preferences" eyebrow="Settings" onBack={() => setShowPreferencesScreen(false)} />
             <div style={{ padding: 16, flex: 1 }}>
               <Preferences user={user} value={preferencesValue} onChange={handlePreferencesChange} />
             </div>

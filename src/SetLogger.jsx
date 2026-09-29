@@ -246,7 +246,7 @@ const newItem = (hydrated, dbId, planned = 3, plannedWarmup = 0) => ({
 
 // ---------- Reusable pieces (module scope so identity stays stable across renders) ----------
 
-import ExercisePicker, { ExerciseRow, EQUIPMENT_LIST, exerciseMatchesOption } from "./ExercisePicker";
+import ExercisePicker, { ExerciseRow, EQUIPMENT_LIST, exerciseMatchesOption, filterLibrary } from "./ExercisePicker";
 
 // A left/right arrow selector standing in for a <select>, used anywhere
 // someone steps through a short, ordered list of options.
@@ -1866,18 +1866,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const frame = { width: "100%", maxWidth: 400, background: T.bg, height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" };
   const outer = { height: "100dvh", background: "#0A0B0D", display: "flex", justifyContent: "center", overflow: "hidden" };
 
+  // Same filter as the template builder and program setup (lib lives in
+  // ExercisePicker), so search and muscle matching can't drift between
+  // the three pickers.
   function filteredLibrary(exclude) {
-    const q = pickerSearch.toLowerCase();
-    return library.filter((l) => {
-      if (exclude.has(l.name)) return false;
-      if (q && !(l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || (l.equipment || "").toLowerCase().includes(q))) return false;
-      if (muscleFilter.length && !muscleFilter.some((m) => exerciseMatchesOption(l, m, getPrefs().muscleNameMode))) return false;
-      if (equipFilter.length && !equipFilter.includes(l.equipment)) return false;
-      if (performedFilter === "performed" && l.sessions === 0) return false;
-      if (performedFilter === "not" && l.sessions > 0) return false;
-      if (sourceFilter === "custom" && !l.isCustom) return false;
-      return true;
-    });
+    return filterLibrary(library, { search: pickerSearch, muscleFilter, equipFilter, performedFilter, sourceFilter, exclude });
   }
 
   // ---------- Loading / error states ----------

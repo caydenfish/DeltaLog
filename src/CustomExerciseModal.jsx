@@ -343,7 +343,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
             <>
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Muscle group (auto)</div>
               <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: primaryMuscles.length ? T.text : T.dim, fontSize: 14, padding: "12px 14px", marginBottom: 18 }}>
-                {primaryMuscles.length ? muscleLabel(muscle) : "Add a primary muscle to derive this"}
+                {primaryMuscles.length ? muscleLabel(muscle, "generic") : "Add a primary muscle to derive this"}
               </div>
 
               <MusclePicker

@@ -532,3 +532,34 @@ export function IconFire({ size = 15, style }) {
   );
 }
 
+
+// --- Settings tile icons (v1.13.2) ---
+
+export function IconUser({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  );
+}
+
+// Simple stick figure, used wherever a muscle-group concept needs an icon.
+export function IconBody({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <circle cx="12" cy="5" r="2" />
+      <path d="M6 9h12M12 9v6M12 15l-4 6M12 15l4 6" />
+    </svg>
+  );
+}
+
+// Kettlebell-style weight, for units.
+export function IconWeight({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <path d="M9 8a3 3 0 1 1 6 0" />
+      <path d="M6.5 10h11l1.5 10H5z" />
+    </svg>
+  );
+}

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { fetchExercises } from "./lib/queries";
 import { getSplits } from "./lib/splits";
-import { muscleLabel, scientificNameOf, getMuscleTaxonomyEntries } from "./lib/muscleTaxonomy";
+import { muscleLabel, genericBucket, resolveMuscle } from "./lib/muscleTaxonomy";
+import { getPrefs } from "./lib/prefs";
 import { InlineLoading } from "./LoadingSpinner";
 
 const T = {
@@ -31,21 +32,23 @@ function SplitBreakdown() {
     fetchExercises()
       .then((lib) => {
         if (cancelled) return;
-        const taxonomy = getMuscleTaxonomyEntries();
-        const byScientific = new Map(taxonomy.map((e) => [e.scientific, e]));
-        const primaryOnly = new Map(); // scientific name -> {generic, detailed, scientific}
+        // Keyed by the label at the person's own tier, so Region mode
+        // lists "Upper Chest" once instead of once per anatomical head,
+        // and Category/Region mode never shows an Anatomy name.
+        const mode = getPrefs().muscleNameMode;
+        const byLabel = new Map(); // label -> { label, generic }
         for (const ex of lib) {
           for (const raw of ex.rawPrimaryMuscles || []) {
-            const sci = scientificNameOf(raw);
-            const entry = byScientific.get(sci);
-            if (entry && !primaryOnly.has(sci)) primaryOnly.set(sci, entry);
+            if (!resolveMuscle(raw)) continue;
+            const label = muscleLabel(raw, mode);
+            if (!byLabel.has(label)) byLabel.set(label, { label, generic: genericBucket(raw) });
           }
         }
         const result = {};
         for (const [name, buckets] of Object.entries(getSplits())) {
-          result[name] = [...primaryOnly.values()]
+          result[name] = [...byLabel.values()]
             .filter((e) => buckets.includes(e.generic))
-            .sort((a, b) => a.detailed.localeCompare(b.detailed));
+            .sort((a, b) => a.label.localeCompare(b.label));
         }
         setPerSplit(result);
       })
@@ -67,7 +70,7 @@ function SplitBreakdown() {
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 {entries.length === 0 && <span style={{ fontSize: 11, color: T.dim }}>No primary-muscle data yet.</span>}
                 {entries.map((e) => (
-                  <span key={e.scientific} style={{ fontSize: 11, fontWeight: 600, color: T.text, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 9px" }}>{muscleLabel(e.scientific)}</span>
+                  <span key={e.label} style={{ fontSize: 11, fontWeight: 600, color: T.text, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 9px" }}>{e.label}</span>
                 ))}
               </div>
             </div>

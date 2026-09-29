@@ -142,6 +142,15 @@ function displayName(view, slug) {
   return SLUG_NAMES[slug] || slug;
 }
 
+// The tooltip name for a patch at the person's Muscle Names tier. The art
+// itself is drawn at roughly Region resolution, so Region and Anatomy
+// both use the Region-style name (Anatomy can't go finer than the art);
+// Category mode shows the patch's Category instead, never a Region name.
+function regionTitle(view, slug, nameMode) {
+  if (nameMode === "generic") return REGION_GENERIC[slug] || displayName(view, slug);
+  return displayName(view, slug);
+}
+
 // Sums primary/secondary set-count maps (already at the Detailed taxonomy
 // tier -- see BodyHeatmap's call site) into per-region totals, keyed
 // "view:slug" since a few slugs (deltoids, trapezius, etc.) exist on
@@ -194,7 +203,7 @@ function roleTotal(t, roleFilter) {
   return t.primary + t.secondary;
 }
 
-function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, targets, rollingTotals, roleFilter, planNameMode, regionKeyMap, maxWidth }) {
+function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, targets, rollingTotals, roleFilter, planNameMode, regionKeyMap, nameMode, maxWidth }) {
   return (
     <svg viewBox={viewBox} width="100%" style={{ maxWidth: maxWidth || 150, display: "block", margin: "0 auto" }}>
       <path d={outline} fill="none" stroke={OUTLINE_STROKE} strokeWidth={2} vectorEffect="non-scaling-stroke" />
@@ -206,7 +215,7 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
             hasKeys = !!generic;
             target = generic ? (targets?.[generic] || 0) : 0;
             total = generic ? (rollingTotals?.[generic] || 0) : 0;
-            label = generic ? `${generic} — ${total}/${target} sets this week` : displayName(view, region.slug);
+            label = generic ? `${generic} — ${total}/${target} sets this week` : regionTitle(view, region.slug, "generic");
           } else {
             const keys = regionKeyMap?.[`${view}:${region.slug}`];
             hasKeys = !!(keys && keys.size > 0);
@@ -246,14 +255,15 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
         // Only worth spelling out when more than one label is actually
         // sharing this patch -- a region fed by just one muscle already
         // says everything the breakdown would, via displayName above.
-        const breakdownText = breakdownEntries.length > 1
+        // Category mode skips it: the contributing labels are Region-tier.
+        const breakdownText = nameMode !== "generic" && breakdownEntries.length > 1
           ? ` — ${breakdownEntries.map(([label, count]) => `${label} ${count}`).join(", ")}`
           : "";
         return (
           <g key={region.slug}>
             {region.paths.map((d, i) => (
               <path key={i} d={d} fill={tier.color} vectorEffect="non-scaling-stroke">
-                <title>{`${displayName(view, region.slug)} — ${total} set${total === 1 ? "" : "s"} (${tier.label})${breakdownText}`}</title>
+                <title>{`${regionTitle(view, region.slug, nameMode)} — ${total} set${total === 1 ? "" : "s"} (${tier.label})${breakdownText}`}</title>
               </path>
             ))}
           </g>
@@ -284,7 +294,7 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
 // Region/Anatomy-tier key sharing that region (buildRegionKeyMap), since
 // (same as intensity mode) the fixed SVG art has fewer shapes than the
 // finer tiers have labels.
-export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals, roleFilter = "both", planNameMode = "generic", maxWidth }) {
+export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals, roleFilter = "both", planNameMode = "generic", nameMode = planNameMode, maxWidth }) {
   const totals = mode === "plan" ? {} : buildRegionTotals(primary, secondary);
   const maxTotal = mode === "plan" ? 1 : Math.max(1, ...Object.values(totals).map((t) => roleTotal(t, roleFilter)));
   const regionKeyMap = mode === "plan" && planNameMode !== "generic" ? buildRegionKeyMap() : null;
@@ -292,8 +302,8 @@ export default function BodyMap({ primary = {}, secondary = {}, mode = "intensit
   return (
     <div>
       <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} maxWidth={maxWidth} />
-        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} maxWidth={maxWidth} />
+        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} nameMode={nameMode} maxWidth={maxWidth} />
+        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} nameMode={nameMode} maxWidth={maxWidth} />
       </div>
       <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
         {(mode === "plan" ? PLAN_TIERS : intensityTierLegend(maxTotal)).map((t) => (

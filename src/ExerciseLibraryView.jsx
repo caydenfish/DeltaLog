@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { muscleLabel, genericBucket, CATEGORY_KEYS, FULL_BODY } from "./lib/muscleTaxonomy";
+import { muscleLabel, muscleLabelsFor, genericBucket, CATEGORY_KEYS, FULL_BODY } from "./lib/muscleTaxonomy";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleTaxonomy, createSharedExercise, uploadExerciseMedia, fetchExerciseDefaults, saveExerciseDefaults, fetchExerciseHistory } from "./lib/queries";
 import { summarizeExerciseHistory, bucketSeries } from "./lib/volume";
@@ -373,8 +373,7 @@ function MusclePillPicker({ title, selected, taxonomy, onAdd, onRemove, taxonomy
 // otherwise a case like Cable Overhead Tricep Extension would show
 // "Triceps, Triceps, Triceps" instead of just "Triceps".
 function formatMuscleList(muscles, mode) {
-  const labels = (muscles || []).map((m) => muscleLabel(m, mode));
-  return [...new Set(labels)].join(", ");
+  return muscleLabelsFor(muscles, mode).join(", ");
 }
 
 
@@ -405,11 +404,12 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
     reloadTaxonomyData();
   }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Level 2 shows whichever granular level is currently selected —
-  // Region or Anatomy. Category is fully represented by the level 1
-  // buckets already, so anyone in Category mode still gets Region names
-  // one level down rather than an undefined state.
-  const level2Mode = muscleNameMode === "generic" ? "detailed" : muscleNameMode;
+  // Level 2 shows whichever granular level is currently selected --
+  // Region or Anatomy. Category mode has no finer level to show, so it
+  // skips level 2 entirely (pickGroup goes straight to the list) rather
+  // than borrowing Region names the person never opted into.
+  const hasLevel2 = muscleNameMode !== "generic";
+  const level2Mode = muscleNameMode;
 
   const q = search.trim().toLowerCase();
   const filtered = (exercises || []).filter((ex) => {
@@ -455,11 +455,12 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
 
   function pickGroup(m) {
     setBrowseGroup(m);
-    setBrowseDetail(null);
+    setBrowseDetail(hasLevel2 || m === "ALL" ? null : "ALL");
   }
   function backFromList() {
-    if (browseGroup === "ALL") {
+    if (browseGroup === "ALL" || !hasLevel2) {
       setBrowseGroup(null);
+      setBrowseDetail(null);
     } else {
       setBrowseDetail(null);
     }

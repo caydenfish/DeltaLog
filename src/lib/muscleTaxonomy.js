@@ -253,11 +253,19 @@ function resolveMode(mode) {
 
 // The label for a raw tag at a tier. Also the grouping key at that tier:
 // counts, filters, and goals are all keyed by this.
+//
+// A tag that can't be resolved at all is passed through verbatim only in
+// Anatomy mode. At Category/Region it becomes UNMAPPED_LABEL instead:
+// an unresolved tag is almost always an anatomical name the client-side
+// taxonomy doesn't know yet (DB cache still loading, or a tag an admin
+// hasn't mapped), and passing it through is exactly how Anatomy names
+// leaked into Region/Category screens.
+export const UNMAPPED_LABEL = "Other";
 export function muscleLabel(raw, mode) {
   if (!raw) return raw;
   const m = resolveMode(mode);
   const e = resolveMuscle(raw);
-  if (!e) return raw;
+  if (!e) return m === "scientific" ? raw : UNMAPPED_LABEL;
   if (m === "scientific") return e.scientific;
   if (m === "detailed") return e.detailed;
   return e.generic;
@@ -275,6 +283,19 @@ export function detailedNameOf(raw) {
 export function scientificNameOf(raw) {
   const e = resolveMuscle(raw);
   return e ? e.scientific : raw;
+}
+
+// Display list for a set of raw tags at a tier: resolved, deduped, and in
+// first-seen order ("Triceps, Triceps, Triceps" -> "Triceps" in Region
+// mode). The one helper every "list this exercise's muscles" surface uses.
+export function muscleLabelsFor(rawList, mode) {
+  const out = [];
+  for (const raw of rawList || []) {
+    if (!isRealMuscle(raw)) continue;
+    const label = muscleLabel(raw, mode);
+    if (label && !out.includes(label)) out.push(label);
+  }
+  return out;
 }
 
 export function muscleColor(raw) {
@@ -335,7 +356,9 @@ export function optionForKey(key, mode) {
   const m = resolveMode(mode);
   const e = resolveMuscle(key);
   if (!e) return { key, label: key, color: UNKNOWN_MUSCLE_COLOR };
-  const label = CATEGORY_BY_KEY.has(key) ? key : m === "scientific" ? e.scientific : e.detailed;
+  // A stored key picked at a finer tier than the current one is shown at
+  // the current tier (never finer): Category mode shows its Category.
+  const label = CATEGORY_BY_KEY.has(key) ? key : m === "scientific" ? e.scientific : m === "detailed" ? e.detailed : e.generic;
   return { key, label, color: MUSCLE_COLORS[e.generic] || UNKNOWN_MUSCLE_COLOR };
 }
 

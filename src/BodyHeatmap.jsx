@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { getDetailedTaxonomyEntries, genericBucket, muscleColor } from "./lib/muscleTaxonomy";
+import { getPrefs } from "./lib/prefs";
+import { muscleColor, muscleOptionsForMode, FULL_BODY } from "./lib/muscleTaxonomy";
 import { computeMuscleSetCounts } from "./lib/volume";
 import { IconChevronUp, IconChevronDown } from "./Icons";
 import BodyMap from "./BodyMap";
@@ -83,20 +84,25 @@ function FilterRow({ label, options, value, onChange }) {
 // (Home wires this to a pref, defaulting to "chart" the first time
 // there's nothing persisted yet) -- so a fresh install opens on Chart,
 // but switching to List sticks for next time.
-function CoverageBreakdown({ primary, secondary, onSelectMuscle, view, onViewChange }) {
+function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view, onViewChange }) {
   const [open, setOpen] = useState(false);
   const [localTab, setLocalTab] = useState("chart");
   const tab = view || localTab;
   const setTab = onViewChange || setLocalTab;
 
+  // Listed at the person's own Muscle Names tier (the caller's
+  // primary/secondary are already keyed at it), so Category mode never
+  // sees Region names here and Region mode never sees Anatomy names. It
+  // also keeps row labels identical to what MuscleSetsDetail matches on
+  // when a row is tapped.
   const known = new Set();
   const rows = [];
-  for (const entry of getDetailedTaxonomyEntries()) {
-    if (known.has(entry.detailed)) continue;
-    known.add(entry.detailed);
-    const p = primary[entry.detailed] || 0;
-    const s = secondary[entry.detailed] || 0;
-    rows.push({ muscle: entry.detailed, primary: p, secondary: s, total: p + s });
+  for (const opt of muscleOptionsForMode(nameMode, { excludeCategories: [FULL_BODY] })) {
+    if (known.has(opt.key)) continue;
+    known.add(opt.key);
+    const p = primary[opt.key] || 0;
+    const s = secondary[opt.key] || 0;
+    rows.push({ muscle: opt.key, primary: p, secondary: s, total: p + s });
   }
   // Anything present in the counts but not in the taxonomy list (e.g. a
   // custom/legacy label) still deserves a row.
@@ -228,6 +234,7 @@ export default function BodyHeatmap({
   coverageView, onCoverageViewChange, mapMaxWidth,
 }) {
   const showFilters = !!(onSetsFilterChange && onRoleFilterChange);
+  const nameMode = getPrefs().muscleNameMode;
 
   const names = new Set([...Object.keys(primary), ...Object.keys(secondary)]);
   const hasAnyData = names.size > 0 || fullBodySets > 0;
@@ -246,7 +253,7 @@ export default function BodyHeatmap({
       {!hasAnyData ? (
         <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>Nothing logged in this range yet.</div>
       ) : (
-        <BodyMap primary={detailed.primary} secondary={detailed.secondary} roleFilter={roleFilter} maxWidth={mapMaxWidth} />
+        <BodyMap primary={detailed.primary} secondary={detailed.secondary} roleFilter={roleFilter} nameMode={nameMode} maxWidth={mapMaxWidth} />
       )}
 
       {fullBodySets > 0 && (
@@ -255,7 +262,7 @@ export default function BodyHeatmap({
         </div>
       )}
 
-      {hasAnyData && <CoverageBreakdown primary={detailed.primary} secondary={detailed.secondary} onSelectMuscle={onSelectMuscle} view={coverageView} onViewChange={onCoverageViewChange} />}
+      {hasAnyData && <CoverageBreakdown primary={primary} secondary={secondary} nameMode={nameMode} onSelectMuscle={onSelectMuscle} view={coverageView} onViewChange={onCoverageViewChange} />}
     </div>
   );
 }

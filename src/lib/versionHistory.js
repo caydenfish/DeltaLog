@@ -5,6 +5,20 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.13.2",
+    date: "2026-09-29",
+    items: [
+      "Taxonomy tier enforcement: no surface may show a muscle name finer than the person's muscleNameMode. muscleTaxonomy.js: muscleLabel() returns UNMAPPED_LABEL (\"Other\") for unresolvable tags at Category/Region instead of passing the raw (usually scientific) string through; raw passthrough kept for Anatomy. optionForKey() in generic mode now returns e.generic (was e.detailed). New muscleLabelsFor(rawList, mode): resolved, deduped, first-seen-order labels.",
+      "BodyHeatmap: CoverageBreakdown rows now come from muscleOptionsForMode(nameMode, { excludeCategories: [FULL_BODY] }) and use the caller's tier-keyed primary/secondary instead of the detailed-tier pass. Fixes Category-mode drill-in: rows were Region labels while MuscleSetsDetail matched at Category, so tapping a row showed nothing. BodyMap still receives the detailed pass (art resolution).",
+      "BodyMap: new nameMode prop (defaults to planNameMode). regionTitle(view, slug, nameMode) returns REGION_GENERIC[slug] in Category mode; the Region-label breakdown in intensity tooltips is suppressed in Category mode. Region and Anatomy both use Region-style names (art can't go finer).",
+      "ExerciseLibraryView: Category mode skips the level-2 Region tiles (pickGroup sets browseDetail 'ALL'; backFromList returns to groups). formatMuscleList uses muscleLabelsFor.",
+      "ExercisePicker: row subtitle is primaryMuscleText(l), the rawPrimaryMuscles at the user's tier capped at 2 (+n), falling back to the Category. Previously muscleLabel(l.muscle) rendered a bare Category's placeholder Region/Anatomy (every chest lift read 'Mid Chest'). filterLibrary search also matches primary-muscle labels at the user's tier. SetLogger.filteredLibrary now delegates to filterLibrary (was a duplicated copy).",
+      "FAQ SplitBreakdown keyed by label at the user's tier (was by scientific name, producing duplicates in Region mode). CustomExerciseModal derived muscle group shown via muscleLabel(muscle, 'generic').",
+      "Settings UI: new src/SettingsUI.jsx (SettingsTile, TileGrid, SettingsSectionLabel, ScreenHeader, SettingsSearch, OptionTiles). Home.jsx local SettingsTile removed; hub, search, and Preferences screen header use the shared components, tiles get icons and one-line subtitles. Preferences.jsx: Section accordion and navRowBtn removed; top level is Units/Training/Strava tiles; Training is a 6-tile grid (new Muscle Names tile via renderMuscleNameFields + OptionTiles) with current values on tiles, each opening a layered SubScreen. Segmented controls, unit pills and steppers enlarged (40px+). Icons.jsx: IconUser, IconBody, IconWeight.",
+      "Known, left as-is: Weekly Set Goals and the body map operate at Region in Anatomy mode (coarser, by design). MyPlan.jsx and Splits.jsx are unreferenced dead files and still Category-only.",
+    ],
+  },
+  {
     version: "1.13.1",
     date: "2026-09-29",
     items: [

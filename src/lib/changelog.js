@@ -9,6 +9,17 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.13.2": {
+    title: "Muscle names that match your setting, and a cleaner Settings screen",
+    items: [
+      "Muscle names now follow your Muscle Names setting everywhere. In Category mode you'll only see groups like Chest, and in Region mode only areas like Upper Chest; the anatomical names stay out of sight unless you choose Anatomy.",
+      "Exercise lists now show each exercise's actual main muscles, and you can search by muscle name at your level (try \"upper chest\" in Region mode).",
+      "Settings and Preferences are now tiles, like the rest of the app. Training preferences show their current value right on the tile, so you can check a setting without opening it.",
+      "Muscle Names has its own tile, with an example of what each option looks like before you pick it.",
+      "Bigger buttons and easier-to-read text throughout Preferences.",
+      "Fixed: in Category mode, tapping a muscle in the Coverage breakdown could open an empty list.",
+    ],
+  },
   "1.13.1": {
     title: "A rebuilt exercise library",
     items: [

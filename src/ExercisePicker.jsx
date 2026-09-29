@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { muscleLabel, scientificNameOf, detailedNameOf, genericBucket, muscleOptionsForMode, expandSplit, isSplitActive } from "./lib/muscleTaxonomy";
+import { muscleLabel, muscleLabelsFor, scientificNameOf, detailedNameOf, genericBucket, muscleOptionsForMode, expandSplit, isSplitActive } from "./lib/muscleTaxonomy";
 import { T } from "./lib/theme";
 import { getPrefs } from "./lib/prefs";
 import { getSplits } from "./lib/splits";
@@ -47,7 +47,10 @@ export function filterLibrary(library, { search, muscleFilter, equipFilter, perf
   const mode = getPrefs().muscleNameMode;
   return (library || []).filter((l) => {
     if (ex.has(l.name)) return false;
-    if (q && !(l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || (l.equipment || "").toLowerCase().includes(q))) return false;
+    // Muscle text is matched at the person's own tier only, so a Region-
+    // mode search for "upper chest" finds incline presses, and an
+    // Anatomy name typed in Region mode doesn't match anything hidden.
+    if (q && !(l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q)) || (l.muscle || "").toLowerCase().includes(q) || muscleLabelsFor(l.rawPrimaryMuscles, mode).some((m) => m.toLowerCase().includes(q)) || (l.equipment || "").toLowerCase().includes(q))) return false;
     if (muscleFilter?.length && !muscleFilter.some((m) => exerciseMatchesOption(l, m, mode))) return false;
     if (equipFilter?.length && !equipFilter.includes(l.equipment)) return false;
     if (performedFilter === "performed" && l.sessions === 0) return false;
@@ -61,6 +64,17 @@ export function filterLibrary(library, { search, muscleFilter, equipFilter, perf
 // carve-outs. Thin re-export so existing callers keep working.
 export function splitGroupFor(splitName, mode) {
   return expandSplit(splitName, mode);
+}
+
+// Row subtitle: the exercise's primary muscles at the person's tier,
+// capped at two. l.muscle is a Category bucket, and muscleLabel() of a
+// bare Category at a finer tier returns that Category's placeholder
+// Region/Anatomy (every chest lift read "Mid Chest"), so it's only the
+// fallback when there are no primary tags, and shown as the Category.
+function primaryMuscleText(l) {
+  const labels = muscleLabelsFor(l.rawPrimaryMuscles, getPrefs().muscleNameMode);
+  if (labels.length === 0) return muscleLabel(l.muscle, "generic");
+  return labels.length > 2 ? `${labels.slice(0, 2).join(", ")} +${labels.length - 2}` : labels.join(", ");
 }
 
 export function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, selected }) {
@@ -82,7 +96,7 @@ export function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, s
         <ExerciseThumb muscle={l.muscle} mediaUrl={l.mediaUrl} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: T.text, fontSize: 14 }}>{l.name}</div>
-          <div style={{ color: T.dim, fontSize: 11 }}>{muscleLabel(l.muscle)} · {l.equipment}</div>
+          <div style={{ color: T.dim, fontSize: 11 }}>{primaryMuscleText(l)} · {l.equipment}</div>
         </div>
         <div style={{ color: T.dim, fontSize: 11, textAlign: "right", flexShrink: 0 }}>
           {l.sessions > 0 ? `${l.sessions} session${l.sessions > 1 ? "s" : ""}` : "Not performed"}
