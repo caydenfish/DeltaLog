@@ -45,8 +45,8 @@ export function getSplits() {
 // fallback the same way DEFAULT_SPLITS does, using the plain-slug keys
 // those labels would produce -- only used before the cache has loaded.
 const DEFAULT_SPLIT_EXCLUSIONS = {
-  Push: ["rear_delts", "biceps", "brachialis", "forearm_flexors"],
-  Pull: ["front_delts", "side_delts", "triceps", "forearm_extensors"],
+  Push: ["rear_delts", "biceps", "brachialis", "forearms"],
+  Pull: ["front_delts", "side_delts", "triceps"],
 };
 
 let exclusionCache = null; // null = not loaded yet -> callers fall back to DEFAULT_SPLIT_EXCLUSIONS

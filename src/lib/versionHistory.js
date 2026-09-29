@@ -5,6 +5,18 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.13.1",
+    date: "2026-09-29",
+    items: [
+      "SQL: migration_074_library_rebuild.sql, generated from the approved review sheet (no vetoes; default merges for the six 'Confirm' customs). Single transaction with a self-check that rolls back on failure. Backs up exercises, muscle_groups, muscle_detailed, muscle_taxonomy, body_map_region_muscles, split_muscle_exclusions, muscle_group_targets and muscle_group_full_body_override to _backup_074_*, and logs every merged reference row to _backup_074_merge_refs.",
+      "Taxonomy: 28 regions / 58 anatomy entries. Region keys triceps_lateral -> triceps, forearm_extensors -> forearms, neck_flexors -> neck; teres_major folded into lats; deep_stabilizer split into chest (Pectoralis Minor) and new serratus; new upper_traps (Trapezius Superior, Levator Scapulae); mid_traps relabeled 'Mid Traps'; hip_flexors moved Core -> Legs. New anatomy: Quadratus Lumborum, Supraspinatus, Subscapularis, Flexor Carpi Ulnaris, Extensor Carpi Radialis, Tensor Fasciae Latae. 'Full Body' added to muscle_groups. body_map_region_muscles and split_muscle_exclusions re-pointed; muscle_group_targets rows keyed by old region labels carried to the new labels (existing target on the new label wins).",
+      "Library: 126 exercises updated (tags, names, equipment vocabulary, aliases), 25 merged, 1 archived duplicate removed, 13 customs promoted to public, 2 customs retagged and left private, 44 added. Merges discover every single-column FK to exercises via pg_constraint and re-point row by row; a row that would violate a unique constraint on the target (e.g. a duplicate favorite) is dropped and logged. shared_templates jsonb exercise ids rewritten. mechanism and pattern re-added (dropped in migration_037, which silently disabled the Program generator's compound-first ordering and hinge/squat leg-day variants) and populated for every exercise. Legacy 'Primary/Secondary Muscle(s) Level 1-3' columns dropped. Full Body overrides set for 15 exercises, then all rows re-touched so the migration_058/064 triggers recompute muscle_group and muscle_region.",
+      "Dry-run: executed against a scratch Postgres 16 database loaded from the production CSV exports with the migration_058/064 triggers, synthetic workout_exercises/sets for every logged exercise, a conflicting favorite, template rows and a shared template. Result: 0 orphaned history rows, 747/747 workout_exercises and sets preserved, favorites de-duplicated, goals remapped, split exclusions and body map re-pointed, self-check passed; re-running is a no-op.",
+      "Code: muscleTaxonomy.js offline FALLBACK regenerated from the same taxonomy source as the migration, so fallback names now match muscle_taxonomy.scientific_name (e.g. 'Deltoid (Anterior)', not 'Anterior Deltoid') and carry muscle_detailed keys; category fallbacks and the Anatomy example aligned. splits.js DEFAULT_SPLIT_EXCLUSIONS uses the new keys (forearms, triceps). bodyMapRegions.js fallback: serratus on chest (matches DB), plus mid chest, rhomboids, shins.",
+      "Fix: Templates coverage heatmap counted Category-collapsed primaryMuscles, so in Region/Anatomy mode 'Arms' resolved to Biceps and every triceps exercise showed as biceps. Picks now carry rawPrimaryMuscles/rawSecondaryMuscles (newPick, fetchTemplateForEdit, fetchSharedTemplate) and the heatmap uses them.",
+    ],
+  },
+  {
     version: "1.13.0",
     date: "2026-09-28",
     items: [

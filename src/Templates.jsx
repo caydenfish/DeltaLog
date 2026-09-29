@@ -30,7 +30,7 @@ const display = "'Barlow Condensed', sans-serif";
 const iconBtn = { width: 36, height: 36, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
 const ellipsis = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 };
 
-const newPick = (ex) => ({ id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: 3, plannedWarmup: 0, supersetGroup: null, repScheme: null });
+const newPick = (ex) => ({ id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, rawPrimaryMuscles: ex.rawPrimaryMuscles, rawSecondaryMuscles: ex.rawSecondaryMuscles, planned: 3, plannedWarmup: 0, supersetGroup: null, repScheme: null });
 
 function Stepper({ label, value, min, max, onChange }) {
   const btn = (disabled) => ({ width: 34, height: 34, borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: disabled ? "#3A404B" : T.text, fontSize: 17, fontWeight: 700, padding: 0 });
@@ -413,7 +413,11 @@ export default function Templates({ user, onClose, initialPicks }) {
   // ---------------------------------------------------------------- derived
 
   const muscleNameMode = getPrefs().muscleNameMode;
-  const heatmapEntries = useMemo(() => picks.map((p) => ({ muscle: p.muscle, primaryMuscles: p.primaryMuscles, secondaryMuscles: p.secondaryMuscles, sets: Array(p.planned).fill({ weight: 1, reps: 1 }) })), [picks]);
+  // Coverage counts from the exercise's actual tagged muscles, not the
+  // Category-collapsed primaryMuscles: collapsed "Arms" resolves to the
+  // Biceps region, so every triceps exercise used to show as biceps in
+  // Region/Anatomy mode.
+  const heatmapEntries = useMemo(() => picks.map((p) => ({ muscle: p.muscle, primaryMuscles: p.rawPrimaryMuscles || p.primaryMuscles, secondaryMuscles: p.rawSecondaryMuscles || p.secondaryMuscles, sets: Array(p.planned).fill({ weight: 1, reps: 1 }) })), [picks]);
   const heat = computeMuscleSetCounts(heatmapEntries, muscleNameMode);
   const totalSets = picks.reduce((t, p) => t + p.planned, 0);
   const cats = categorySets(picks);

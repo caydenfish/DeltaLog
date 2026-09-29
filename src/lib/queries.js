@@ -1325,7 +1325,7 @@ export async function fetchTemplateForEdit(templateId) {
     name: template.name,
     picks: rows.map((row) => {
       const ex = normalizeExercise(row.exercises);
-      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: row.planned_sets, plannedWarmup: row.planned_warmup_sets || 0, supersetGroup: row.superset_group, repScheme: row.rep_scheme || null };
+      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, rawPrimaryMuscles: ex.rawPrimaryMuscles, rawSecondaryMuscles: ex.rawSecondaryMuscles, planned: row.planned_sets, plannedWarmup: row.planned_warmup_sets || 0, supersetGroup: row.superset_group, repScheme: row.rep_scheme || null };
     }),
   };
 }
@@ -1416,7 +1416,7 @@ export async function fetchSharedTemplate(code) {
     .filter((e) => byId.has(e.exercise_id))
     .map((e) => {
       const ex = normalizeExercise(byId.get(e.exercise_id));
-      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: e.planned_sets, plannedWarmup: e.planned_warmup_sets || 0, supersetGroup: e.superset_group ?? null, repScheme: e.rep_scheme || null };
+      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, rawPrimaryMuscles: ex.rawPrimaryMuscles, rawSecondaryMuscles: ex.rawSecondaryMuscles, planned: e.planned_sets, plannedWarmup: e.planned_warmup_sets || 0, supersetGroup: e.superset_group ?? null, repScheme: e.rep_scheme || null };
     });
 
   return { name: shared.name, picks, skippedCount: shared.exercises.length - picks.length };

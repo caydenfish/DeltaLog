@@ -9,6 +9,16 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.13.1": {
+    title: "A rebuilt exercise library",
+    items: [
+      "44 new exercises, filling gaps like rotator cuff and serratus work, mid and lower traps, adductors, and kettlebell movements (swings are now joined by cleans, snatches, rows, deadlifts, halos, and Turkish get-ups).",
+      "Every exercise's muscles were reviewed and cleaned up, so set counts, the body map, and Weekly Set Goals reflect what each lift actually trains. For example, incline presses no longer count triceps as a main muscle, and upper traps (shrugs) are now tracked separately from mid traps (rows and face pulls).",
+      "Duplicate exercises were merged. If you'd logged a duplicate, its history now lives under the main version, so your progress and recent weights are all in one place.",
+      "Some popular custom exercises are now part of the library for everyone, including Wide-Grip Pull-Up, Neutral-Grip Pull-Up, Low-Incline Dumbbell Press, and Machine Seated Dip.",
+      "Fixed: the muscle coverage map in the template builder showed triceps exercises as biceps when using Region or Anatomy muscle names.",
+    ],
+  },
   "1.13.0": {
     title: "A rebuilt template builder, per-set rep targets, and a training load meter",
     items: [
