@@ -108,7 +108,7 @@ export default function Auth() {
   }
 
   return (
-    <div style={{ height: "100dvh", background: T.bg, display: "flex", flexDirection: "column", padding: 24, boxSizing: "border-box", overflow: "hidden" }}>
+    <div style={{ height: "100dvh", background: T.bg, display: "flex", flexDirection: "column", padding: "calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))", boxSizing: "border-box", overflow: "hidden" }}>
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
         <Logo size={120} />
         <Wordmark size={40} />

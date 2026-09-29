@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, genericBucket } from "./lib/muscleNomenclature";
+import { muscleLabel, genericBucket, muscleOptionsForMode } from "./lib/muscleTaxonomy";
 import { getPrefs } from "./lib/prefs";
-import { fetchMuscleGroups, fetchMuscleTaxonomy, deriveEquipmentBucket } from "./lib/queries";
+import { fetchMuscleTaxonomy, deriveEquipmentBucket } from "./lib/queries";
+import { EQUIPMENT_LIST } from "./ExercisePicker";
 import { IconX, IconCheck, IconChevronDown } from "./Icons";
 
 const T = {
@@ -14,18 +15,7 @@ const T = {
   accent: "#E8442E",
 };
 
-// Groups the known muscles so the dropdown scans by region instead of one
-// long flat list. Any muscle group an admin has added that isn't in one
-// of these buckets yet falls into "Other" automatically, rather than
-// being left out of the picker.
-const KNOWN_CATEGORIES = [
-  { label: "Upper Body", muscles: ["Chest", "Back", "Shoulders", "Arms", "Neck"] },
-  { label: "Lower Body", muscles: ["Legs"] },
-  { label: "Core", muscles: ["Core"] },
-  { label: "Full Body", muscles: ["Full Body"] },
-];
 
-const EQUIPMENT_LIST = ["Barbell", "Dumbbell", "Cable", "Machine", "Kettlebell", "Bodyweight", "Other"];
 
 const selectStyle = {
   width: "100%",
@@ -241,15 +231,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
       // can never drift out of sync with what that setting actually
       // means elsewhere.
       const mode = getPrefs().muscleNameMode;
-      if (mode === "detailed") {
-        setAllMuscles(getDetailedTaxonomyEntries().map((e) => e.detailed));
-      } else if (mode === "scientific") {
-        setAllMuscles(getMuscleTaxonomyEntries().map((e) => e.scientific));
-      } else {
-        fetchMuscleGroups()
-          .then((rows) => setAllMuscles(rows.map((r) => r.key)))
-          .catch(() => setAllMuscles(KNOWN_CATEGORIES.flatMap((c) => c.muscles)));
-      }
+      setAllMuscles(muscleOptionsForMode(mode).map((o) => o.key));
     }
   }, [scientificMode]);
 
@@ -289,9 +271,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
   // of which precision they're actually at (Category/Region/Anatomy) —
   // genericBucket resolves any tier back to its bucket, so this works
   // the same whether options are "Legs" or "Quads" or "Quadriceps
-  // Femoris". Replaces the old KNOWN_CATEGORIES-based simpleGroup, which
-  // only grouped correctly when options were themselves Category-tier
-  // strings.
+  // Femoris".
   function groupByGeneric(m) {
     return genericBucket(m) || "Other";
   }

@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 
 const KEY = "deltalog_prefs";
-const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both", coverageBreakdownView: "chart", warmupPercentSchemes: {} };
+const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVolume: 0.8, restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both", coverageBreakdownView: "chart", warmupPercentSchemes: {} };
 
 // Backs up preferences to Supabase (migration_071's user_preferences,
 // one jsonb blob per user) so clearing browser data -- cookies, cache,
@@ -79,10 +79,11 @@ export function clearPrefsSync() {
 // itself even before any goal is saved, showing a setup prompt instead,
 // since removing the Settings entry means this module (once enabled) is
 // the only way in. See WeeklyGoalsBodyMap.jsx.
-export const DEFAULT_HOME_MODULE_IDS = ["insight", "volume", "weight", "workoutTime", "muscleBreakdown", "weeklyGoalsMap", "calendar"];
+export const DEFAULT_HOME_MODULE_IDS = ["insight", "trainingLoad", "volume", "weight", "workoutTime", "muscleBreakdown", "weeklyGoalsMap", "calendar"];
 
 export const HOME_MODULE_LABELS = {
   insight: "Last workout",
+  trainingLoad: "Training load",
   volume: "Volume over time",
   weight: "Bodyweight over time",
   workoutTime: "Workout time",
@@ -157,9 +158,20 @@ export function getHomeModules() {
   const known = new Set(DEFAULT_HOME_MODULE_IDS);
   const modules = Array.isArray(saved) ? saved.filter((m) => m && known.has(m.id)) : [];
   const present = new Set(modules.map((m) => m.id));
-  for (const id of DEFAULT_HOME_MODULE_IDS) {
-    if (!present.has(id)) modules.push({ id, enabled: true });
-  }
+  // A module that's new since the layout was saved goes in its default
+  // position (right after the nearest earlier default that's present),
+  // not the bottom, so e.g. Training load lands near the top for people
+  // who customized their dashboard before it existed.
+  DEFAULT_HOME_MODULE_IDS.forEach((id, defaultIdx) => {
+    if (present.has(id)) return;
+    let insertAt = 0;
+    for (let k = defaultIdx - 1; k >= 0; k--) {
+      const at = modules.findIndex((m) => m.id === DEFAULT_HOME_MODULE_IDS[k]);
+      if (at >= 0) { insertAt = at + 1; break; }
+    }
+    modules.splice(insertAt, 0, { id, enabled: true });
+    present.add(id);
+  });
   return modules;
 }
 

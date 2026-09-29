@@ -1,4 +1,5 @@
 import Logo from "./Logo";
+import IntroShell from "./IntroShell";
 
 const T = {
   bg: "#101216",
@@ -11,8 +12,8 @@ const T = {
 
 export default function Welcome({ onContinue }) {
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box" }}>
-      <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
+    <IntroShell maxWidth={360}>
+      <div style={{ width: "100%", textAlign: "center" }}>
         <div style={{ marginBottom: 22 }}>
           <Logo size={64} />
         </div>
@@ -35,6 +36,6 @@ export default function Welcome({ onContinue }) {
           Get started
         </button>
       </div>
-    </div>
+    </IntroShell>
   );
 }

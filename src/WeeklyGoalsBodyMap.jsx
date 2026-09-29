@@ -3,7 +3,7 @@ import { fetchMuscleGroupTargets, saveMuscleGroupTarget } from "./lib/queries";
 import { fetchActiveProgram } from "./lib/programQueries";
 import { dayLabelsForSplit } from "./lib/programEngine";
 import { computeRollingWeeklyTotals } from "./lib/volume";
-import { getMuscleGroupOptions } from "./lib/muscleNomenclature";
+import { getMuscleGroupOptions } from "./lib/muscleTaxonomy";
 import { statusColorFor } from "./lib/planStatus";
 import { getPrefs } from "./lib/prefs";
 import { InlineLoading } from "./LoadingSpinner";

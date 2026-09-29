@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion, muscleOptionsForMode, optionForKey, expandSplit, isSplitActive, NON_TARGET_CATEGORIES } from "./lib/muscleTaxonomy";
 import { flushSync } from "react-dom";
 import { playRestTimerSound, triggerRestTimerVibration, showRestTimerNotification } from "./lib/restTimerCues";
 import BodyHeatmap from "./BodyHeatmap";
@@ -7,7 +8,8 @@ import { computeDOTS, dotsBand } from "./lib/dots";
 import { getPrefs, setPref } from "./lib/prefs";
 import { saveSessionState, loadSessionState, clearSessionState } from "./lib/sessionState";
 import { IDEOLOGIES } from "./lib/ideologies";
-import { MUSCLE_COLORS } from "./lib/muscleColors";
+import { rangeForSet, isRangeChange, sanitizeScheme, resizeScheme, formatRange } from "./lib/repScheme";
+import RepSchemeEditor from "./RepSchemeEditor";
 import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import ExportWorkoutModal from "./ExportWorkoutModal";
@@ -15,13 +17,7 @@ import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome, IconDragHandle } from "./Icons";
 import { getSplits } from "./lib/splits";
 import { triggerStravaCheck } from "./lib/strava";
-import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
 import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
-// "Full Body" and "Neck" are real generic buckets (used for coloring/
-// display elsewhere) but aren't meaningful things to target when
-// building a workout via the generator's muscle picker -- nobody picks
-// "Full Body" as a target muscle group. Excluded from that picker only.
-const GENERATOR_EXCLUDED_GENERIC = ["Full Body", "Neck"];
 import { toLocalDateStr } from "./lib/time";
 import { toDisplay, toCanonical, roundDisplay, formatWeight, platesFor, plateByValue, BAR_PRESETS, BIG_PLATE, bigPlateAllowed } from "./lib/weight";
 import { warmupWeightFor, getWarmupPercents } from "./lib/warmup";
@@ -60,6 +56,7 @@ import {
   saveWorkoutAsTemplate,
   fetchTemplates,
   fetchTemplateExercises,
+  setWorkoutExerciseRepScheme,
   uploadProgressPhoto,
 } from "./lib/queries";
 
@@ -120,45 +117,74 @@ function weightForReps(oneRM, reps) {
 // until the next session. Once at least one working set is in, it takes
 // priority over history — today's real performance is a better signal
 // for what's next than a week-old data point.
-function targetFor(ex, ideologyName, unit, todaysWorkingSets = [], method = "rir_autoregulation") {
+// `range` is the rep range for the set about to be logged: the exercise's
+// custom rep scheme entry for this set if it has one (lib/repScheme.js),
+// otherwise the training-focus range. `setIdx` is that set's 0-based
+// working-set index.
+function targetFor(ex, range, unit, todaysWorkingSets = [], method = "rir_autoregulation", setIdx = 0) {
   if (ex.prescribedWeight != null && ex.prescribedReps != null) {
     return { weight: ex.prescribedWeight, reps: ex.prescribedReps, anchored: true, baseE1RM: null, source: null, reasonText: ex.progressionReason, fromProgram: true };
   }
-  const { low, high } = IDEOLOGIES[ideologyName];
+  const base = targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx);
+  return applyBackoffAdjustment(base, ex, range, unit, todaysWorkingSets, setIdx);
+}
+
+// Back-off / range-change sets (e.g. set 3 drops from 8-12 to 15-18):
+// whatever the normal method suggests is capped by what today's most
+// recent working set implies at the new rep target. That set already
+// carries today's fatigue and form, so if you usually hit 80x10 but only
+// got 80x6 today, the 15-18 set comes down to match instead of repeating
+// last session's back-off weight. Only ever lowers the target, never
+// raises it -- a strong day doesn't make a back-off set heavier than your
+// normal progression would.
+function applyBackoffAdjustment(base, ex, range, unit, todaysWorkingSets, setIdx) {
+  if (!base || !isRangeChange(ex.repScheme, setIdx, range) || todaysWorkingSets.length === 0) return base;
+  const step = unit === "kg" ? 2.5 : 5;
+  const latest = todaysWorkingSets[todaysWorkingSets.length - 1];
+  const todayE1RM = e1RM(latest.weight, latest.reps, latest.rir ?? 2);
+  if (!(todayE1RM > 0)) return base;
+  const adjusted = Math.max(0, Math.round(weightForReps(todayE1RM, base.reps) / step) * step);
+  if (adjusted >= base.weight) return { ...base, backoffChecked: true };
+  return { ...base, weight: adjusted, backoff: { from: base.weight, source: latest, e1rm: Math.round(todayE1RM) } };
+}
+
+function targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx) {
+  const { low, high } = range;
+  const hasScheme = Array.isArray(ex.repScheme) && ex.repScheme.length > 0;
   const lastWorkingSets = ex.lastWeek.filter((s) => !s.isWarmup);
   // Best working set across the trailing 30 days (ex.recentSets, see
-  // fetchRecentSets), not just whatever the most recent session happened
-  // to produce -- so one rough session (bad sleep, a deload) doesn't
-  // drag the next recommendation down when a better lift from a week or
-  // two earlier is still a fair anchor. Falls back to lastWorkingSets
-  // when the 30-day window is empty (e.g. coming back from a longer
-  // break) rather than reaching further back for an all-time best, which
-  // could suggest a weight that's no longer realistic.
+  // fetchRecentSets), not just the most recent session, so one rough
+  // session doesn't drag the next recommendation down. Falls back to
+  // lastWorkingSets when the window is empty.
   const recentWorkingSets = (ex.recentSets || []).filter((s) => !s.isWarmup);
   const step = unit === "kg" ? 2.5 : 5;
 
-  // Double Progression: climb reps at the SAME weight session to session
-  // until every working set hits the top of the rep range, then bump the
-  // weight one step and restart at the bottom. Deliberately ignores
-  // today's own sets AND the 30-day-best window (unlike the other two
-  // methods) -- double progression is specifically about a stable weight
-  // across consecutive sessions, not reacting to the best set in a
-  // window.
+  // Double Progression: same weight session to session until the top of
+  // the range is hit, then add one step and restart at the bottom. With a
+  // rep scheme, each set is compared against the SAME set last session
+  // (set 3 vs last session's set 3), since a 15-18 back-off and an 8-12
+  // working set progress independently.
   if (method === "double_progression" && lastWorkingSets.length > 0) {
-    const lastSet = lastWorkingSets[lastWorkingSets.length - 1];
-    const hitTop = lastWorkingSets.every((s) => s.reps >= high);
-    const weight = hitTop ? Math.round((lastSet.weight + step) / step) * step : lastSet.weight;
-    const reps = hitTop ? low : high;
-    const baseE1RM = e1RM(weight, reps, lastSet.rir ?? 2);
-    return { weight, reps, anchored: true, baseE1RM: Math.round(baseE1RM), source: lastSet, fromToday: false, method };
+    const ref = hasScheme ? lastWorkingSets[setIdx] : null;
+    if (hasScheme && ref) {
+      const hitTop = ref.reps >= high;
+      const weight = hitTop ? Math.round((ref.weight + step) / step) * step : ref.weight;
+      const reps = hitTop ? low : high;
+      return { weight, reps, anchored: true, baseE1RM: Math.round(e1RM(weight, reps, ref.rir ?? 2)), source: ref, fromToday: false, method, perSet: true };
+    }
+    if (!hasScheme) {
+      const lastSet = lastWorkingSets[lastWorkingSets.length - 1];
+      const hitTop = lastWorkingSets.every((s) => s.reps >= high);
+      const weight = hitTop ? Math.round((lastSet.weight + step) / step) * step : lastSet.weight;
+      const reps = hitTop ? low : high;
+      const baseE1RM = e1RM(weight, reps, lastSet.rir ?? 2);
+      return { weight, reps, anchored: true, baseE1RM: Math.round(baseE1RM), source: lastSet, fromToday: false, method };
+    }
+    // Scheme set with no matching set last session: fall through to the
+    // e1RM path below.
   }
 
   const reps = Math.round((low + high) / 2);
-  // RIR Autoregulation reacts to whatever's already been logged THIS
-  // session (140x10 @ RIR4 implies more in the tank than the target
-  // assumed) above everything else; % of e1RM always uses history. Once
-  // today's sets are ruled out, both fall back to the best working set
-  // in the trailing 30 days, then to last session if that window's empty.
   const candidateSets = method === "rir_autoregulation" && todaysWorkingSets.length > 0
     ? todaysWorkingSets
     : recentWorkingSets.length > 0 ? recentWorkingSets : lastWorkingSets;
@@ -176,10 +202,6 @@ function targetFor(ex, ideologyName, unit, todaysWorkingSets = [], method = "rir
     source = { weight: ex.targetWeight, reps: hypReps, rir: 2 };
   }
   const weight = Math.round(weightForReps(baseE1RM, reps) / step) * step;
-  // usedRecentWindow distinguishes "best set in the last 30 days" from
-  // the literal last-session fallback, purely for the reasoning text
-  // shown next to the target -- both are real history, this just keeps
-  // that copy honest about which one it's citing.
   const usedRecentWindow = candidateSets === recentWorkingSets && recentWorkingSets.length > 0;
   return { weight, reps, anchored, baseE1RM: Math.round(baseE1RM), source, fromToday: method === "rir_autoregulation" && todaysWorkingSets.length > 0, usedRecentWindow, method };
 }
@@ -208,6 +230,9 @@ const newItem = (hydrated, dbId, planned = 3, plannedWarmup = 0) => ({
   warmupRestSeconds: hydrated.savedWarmupRestSeconds || null, // null = use the global warmup default
   ideology: null,
   supersetGroup: null,
+  // Per-set rep targets (lib/repScheme.js), or null to follow the
+  // training focus range for every set.
+  repScheme: null,
   // Set (from resumeWorkout's exerciseRows) only when this slot was
   // generated from an active Program -- prescribedWeight/prescribedReps
   // are the program engine's precomputed target, already unit-adjusted,
@@ -313,6 +338,7 @@ function SessionSetRow({ label, set, unit, interactive, deleteMode, selected, on
         alignItems: "center",
         gap: 6,
         height: ROW_HEIGHT,
+        boxSizing: "border-box",
         flexShrink: 0,
         padding: "0 8px",
         background: selected ? "rgba(232,90,90,0.10)" : interactive ? T.surface2 : T.surface,
@@ -361,6 +387,7 @@ function AddSetTile({ onClick }) {
         alignItems: "center",
         justifyContent: "center",
         height: ROW_HEIGHT,
+        boxSizing: "border-box",
         flexShrink: 0,
         borderRadius: 10,
         border: `1.5px dashed ${T.line}`,
@@ -486,13 +513,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [muscleFilter, setMuscleFilter] = useState([]);
   function applyPickerSplit(splitName) {
     const mode = getPrefs().muscleNameMode;
-    const buckets = getSplits()[splitName];
-    const group = mode === "generic"
-      ? buckets
-      : mode === "detailed"
-        ? getDetailedTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.detailed)
-        : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
-    const isActive = group.length > 0 && group.length === muscleFilter.length && group.every((m) => muscleFilter.includes(m));
+    const group = expandSplit(splitName, mode);
+    const isActive = isSplitActive(splitName, muscleFilter, mode);
     setMuscleFilter(isActive ? [] : group);
   }
   const [equipFilter, setEquipFilter] = useState([]);
@@ -517,6 +539,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rir, setRir] = useState(null);
+  // Which field (if any) the custom exact-entry keypad is open for, and
+  // its in-progress typed value. Weight/Reps are readOnly inputs now --
+  // tapping one opens this in-app keypad instead of the device keyboard,
+  // which is what the stepper buttons were added for in the first place
+  // (the OS keyboard was inconsistent across devices, iOS's Decimal Pad
+  // has no Enter key at all, and every keyboard eats a big chunk of the
+  // screen this list is trying to stay visible on).
+  const [exactEntryField, setExactEntryField] = useState(null); // null | "weight" | "reps"
+  const [exactEntryDraft, setExactEntryDraft] = useState("");
   const [highlightMissing, setHighlightMissing] = useState({ weight: false, reps: false, rir: false });
   const [showCalc, setShowCalc] = useState(false);
   const [loaded, setLoaded] = useState([]);
@@ -607,7 +638,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           // a rest period that's long since over.
           if (-diff < 5) {
             const prefs = getPrefs();
-            if (prefs.restTimerSoundEnabled) playRestTimerSound(prefs.restTimerSound);
+            if (prefs.restTimerSoundEnabled) playRestTimerSound(prefs.restTimerSound, prefs.restTimerVolume);
             if (prefs.restTimerVibrationEnabled) triggerRestTimerVibration(prefs.restTimerVibration);
             if (prefs.restTimerNotificationEnabled && document.visibilityState !== "visible") showRestTimerNotification();
           }
@@ -729,6 +760,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             if (cancelled) return;
             const item = newItem(hydrated, row.weId, row.plannedSets, row.plannedWarmupSets || 0);
             item.supersetGroup = row.supersetGroup ?? null;
+        item.repScheme = row.repScheme ?? null;
+            item.repScheme = row.repScheme ?? null;
             item.prescribedWeight = row.prescribedWeight ?? null;
             item.prescribedReps = row.prescribedReps ?? null;
             item.progressionReason = row.progressionReason ?? null;
@@ -835,9 +868,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const planned = ex ? ex.planned : 0;
   const effIdeology = ex && ex.ideology ? ex.ideology : globalIdeology;
   const ideo = IDEOLOGIES[effIdeology];
-  const target = ex ? targetFor(ex, effIdeology, unit, sets.filter((s) => !s.isWarmup), getPrefs().targetCalcMethod) : null;
   const barWeight = barMode === "custom" ? parseFloat(customBar) || 0 : barMode;
   const setNum = sets.filter((s) => !s.isWarmup).length + 1;
+  const hasScheme = !!(ex && Array.isArray(ex.repScheme) && ex.repScheme.length > 0);
+  const setRange = ex ? rangeForSet(ex.repScheme, setNum - 1, ideo) : ideo;
+  const target = ex ? targetFor(ex, setRange, unit, sets.filter((s) => !s.isWarmup), getPrefs().targetCalcMethod, setNum - 1) : null;
+  // How the target explanation refers to the range it scaled to.
+  const rangeLabel = hasScheme ? `set ${setNum}'s ${formatRange(setRange)} rep target` : `${effIdeology}'s ${ideo.low}-${ideo.high} rep range`;
   const lastLogged = sets[sets.length - 1];
   const stackSum = loaded.reduce((a, b) => a + b, 0);
   const exDone = ex ? sets.filter((s) => !s.isWarmup).length >= planned : false;
@@ -907,6 +944,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         const hydrated = await hydrateExercise(user.id, row.exercise);
         const item = newItem(hydrated, row.weId, row.plannedSets, row.plannedWarmupSets || 0);
         item.supersetGroup = row.supersetGroup ?? null;
+        item.repScheme = row.repScheme ?? null;
         item.prescribedWeight = row.prescribedWeight ?? null;
         item.prescribedReps = row.prescribedReps ?? null;
         item.progressionReason = row.progressionReason ?? null;
@@ -1181,12 +1219,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         const row = rows[i];
         const libItem = library.find((l) => l.id === row.exercise_id);
         if (!libItem) continue; // exercise may have been removed from the library since
-        const dbId = await addWorkoutExercise(workoutId, libItem.id, i, row.planned_sets, "", row.superset_group ?? null, row.planned_warmup_sets || 0);
+        const dbId = await addWorkoutExercise(workoutId, libItem.id, i, row.planned_sets, "", row.superset_group ?? null, row.planned_warmup_sets || 0, row.rep_scheme || null);
         const hydrated = await hydrateExercise(user.id, libItem);
         const item = newItem(hydrated, dbId, row.planned_sets, row.planned_warmup_sets || 0);
         item.notes = row.notes || item.notes;
         item.setup = Object.keys(row.setup || {}).length > 0 ? { ...row.setup } : item.setup;
         item.supersetGroup = row.superset_group ?? null;
+        item.repScheme = row.rep_scheme || null;
         items.push(item);
       }
       setWorkout(items);
@@ -1463,6 +1502,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   }
 
 
+  // Edits the current exercise's per-set rep targets mid-workout and
+  // persists them to its workout_exercises row (survives a reload).
+  function setExerciseRepScheme(next) {
+    const clean = sanitizeScheme(next ? resizeScheme(next, ex.planned, ideo) : null, null);
+    setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, repScheme: clean } : w)));
+    if (ex.dbId) setWorkoutExerciseRepScheme(ex.dbId, clean).catch((err) => note(`Couldn't save rep targets: ${err.message}`));
+  }
+
   function setExerciseIdeology(name) {
     setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, ideology: name === globalIdeology ? null : name } : w)));
     setShowIdeology(false);
@@ -1479,24 +1526,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   }
   function applySplit(splitName) {
     const mode = getPrefs().muscleNameMode;
-    const buckets = getSplits()[splitName];
-    // Generic mode: the split's bucket names ARE the option keys. Scientific
-    // mode: expand each bucket into every granular taxonomy entry that
-    // rolls up to it, so "Push" still means something precise (Pectoralis
-    // Major, Anterior Deltoid, Triceps Brachii, ...) instead of collapsing
-    // back down to just "Chest, Shoulders, Arms". Detailed mode: same idea,
-    // but expand into deduped Region labels (getDetailedTaxonomyEntries)
-    // rather than raw scientific names, since that's what the option keys
-    // are at that precision -- otherwise a bucket with two scientific
-    // entries sharing one detailed label (e.g. both heads of Biceps
-    // Femoris under "Hamstrings") would count as two keys and the split
-    // would never show as fully active.
-    const group = mode === "generic"
-      ? buckets
-      : mode === "detailed"
-        ? getDetailedTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.detailed)
-        : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
-    const isActive = group.length > 0 && group.length === genMuscles.length && group.every((m) => genMuscles.includes(m));
+    // Option keys at the active tier, with the split's Region carve-outs
+    // (e.g. no Rear Delts on Push) applied -- see expandSplit.
+    const group = expandSplit(splitName, mode);
+    const isActive = isSplitActive(splitName, genMuscles, mode);
     if (isActive) {
       setGenMuscles([]);
       setGenPicks([]);
@@ -1872,30 +1905,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     const candidates = library.filter((l) => genMuscles.some((m) => exerciseMatchesOption(l, m, muscleNameMode)) && (
       !genQ || l.name.toLowerCase().includes(genQ) || (l.aliases || []).some((a) => a.toLowerCase().includes(genQ)) || l.equipment.toLowerCase().includes(genQ)
     ));
-    // Generic mode: the 6 real target buckets (Full Body/Neck excluded --
-    // nobody targets those from a generator). Detailed mode: every unique
-    // Region label that rolls up to one of those 6 buckets, deduped so
-    // e.g. both heads of Biceps Femoris surface as one "Hamstrings" button
-    // instead of two. Scientific mode: every granular taxonomy entry at
-    // full anatomical precision, one button each.
-    const muscleOptions = muscleNameMode === "generic"
-      ? Object.keys(MUSCLE_COLORS).filter((m) => !GENERATOR_EXCLUDED_GENERIC.includes(m)).map((m) => ({ key: m, label: m, color: MUSCLE_COLORS[m] }))
-      : muscleNameMode === "detailed"
-        ? getDetailedTaxonomyEntries().filter((e) => !GENERATOR_EXCLUDED_GENERIC.includes(e.generic)).map((e) => ({ key: e.detailed, label: e.detailed, color: MUSCLE_COLORS[e.generic] }))
-        : getMuscleTaxonomyEntries().filter((e) => !GENERATOR_EXCLUDED_GENERIC.includes(e.generic)).map((e) => ({ key: e.scientific, label: e.scientific, color: MUSCLE_COLORS[e.generic] }));
-    // Resolves a key from genMuscles to a display label/color even if it
-    // was picked under a different naming mode (e.g. picked a bucket in
-    // Generic, then switched to Scientific) rather than breaking silently.
-    const optionFor = (key) => {
-      const found = muscleOptions.find((o) => o.key === key);
-      if (found) return found;
-      if (MUSCLE_COLORS[key]) return { key, label: key, color: MUSCLE_COLORS[key] };
-      const bySci = getMuscleTaxonomyEntries().find((e) => e.scientific === key);
-      if (bySci) return { key, label: bySci[muscleNameMode] || bySci.detailed, color: MUSCLE_COLORS[bySci.generic] || T.dim };
-      const byDetailed = getDetailedTaxonomyEntries().find((e) => e.detailed === key);
-      if (byDetailed) return { key, label: byDetailed.detailed, color: MUSCLE_COLORS[byDetailed.generic] || T.dim };
-      return { key, label: key, color: T.dim };
-    };
+    // Targetable muscles at the active tier (Full Body/Neck excluded).
+    const muscleOptions = muscleOptionsForMode(muscleNameMode, { excludeCategories: NON_TARGET_CATEGORIES });
+    const optionFor = (key) => muscleOptions.find((o) => o.key === key) || optionForKey(key, muscleNameMode);
     return (
       <div style={outer}>
         <style>{`${fontImport} button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>
@@ -1909,11 +1921,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Split</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 16 }}>
               {Object.keys(getSplits()).map((splitName) => {
-                const buckets = getSplits()[splitName];
-                const group = muscleNameMode === "generic" ? buckets : muscleNameMode === "detailed"
-                  ? getDetailedTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.detailed)
-                  : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
-                const active = group.length > 0 && group.length === genMuscles.length && group.every((m) => genMuscles.includes(m));
+                const active = isSplitActive(splitName, genMuscles, muscleNameMode);
                 return (
                   <button key={splitName} onClick={() => applySplit(splitName)} style={{ padding: "9px 2px", borderRadius: 10, fontSize: 12, fontWeight: 700, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(232,68,46,0.15)" : T.surface, color: active ? T.text : T.dim }}>
                     {splitName}
@@ -2891,8 +2899,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
           <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "center" }}>
             <button onClick={() => { setShowIdeology(!showIdeology); setShowTargetInfo(false); }} style={{ fontSize: 12, color: T.text, background: T.surface2, border: `1px solid ${showIdeology ? T.accent : T.line}`, borderRadius: 999, padding: "3px 10px", display: "flex", alignItems: "center", gap: 5 }}>
-              {effIdeology} · {ideo.low}-{ideo.high} reps
-              {ex.ideology && <span style={{ width: 5, height: 5, borderRadius: 3, background: T.accent, display: "inline-block" }} title="Override for this exercise" />}
+              {hasScheme ? <>Set {setNum} · {formatRange(setRange)} reps</> : <>{effIdeology} · {ideo.low}-{ideo.high} reps</>}
+              {(ex.ideology || hasScheme) && <span style={{ width: 5, height: 5, borderRadius: 3, background: T.accent, display: "inline-block" }} title="Override for this exercise" />}
               <span style={{ fontSize: 9, color: T.dim }}>▾</span>
             </button>
           </div>
@@ -2903,12 +2911,16 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 <>This is warmup set <b style={{ color: T.text }}>{nextWarmupIndex + 1} of {ex.plannedWarmup}</b> for this exercise, set at <b style={{ color: T.text }}>{getWarmupPercents(ex.plannedWarmup, getPrefs().warmupPercentSchemes)[nextWarmupIndex]}%</b> of your {target.weight} {unit} working target, rounded to the nearest loadable increment. Adjust these percentages anytime in Settings → Training Preferences → Warmup Set Weights.</>
               ) : target.fromProgram ? (
                 <><b style={{ color: T.text }}>Program coach:</b> {target.reasonText}</>
+              ) : target.backoff ? (
+                <><b style={{ color: T.text }}>Adjusted for today.</b> Set {setNum} moves to a {formatRange(setRange)} rep target. Your normal suggestion would be {target.backoff.from} {unit}, but your last set today ({target.backoff.source.weight} {unit} x {target.backoff.source.reps} @ RIR {target.backoff.source.rir ?? "?"}) puts your estimated 1RM at {target.backoff.e1rm} {unit} right now, so this set comes down to <b style={{ color: T.text }}>{target.weight} {unit}</b> for {target.reps} reps.</>
+              ) : target.perSet ? (
+                <>Double progression for set {setNum}: last session you did {target.source.weight} {unit} x {target.source.reps} on this set. {target.source.reps >= setRange.high ? "You hit the top of the range, so the weight goes up and reps reset." : `Same weight, aim for ${setRange.high} reps.`}</>
               ) : target.anchored && target.fromToday ? (
-                <>Updated from what you just logged today: {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir}, estimated 1RM <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps.</>
+                <>Updated from what you just logged today: {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir}, estimated 1RM <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>. Scaled to {rangeLabel} using {target.reps} reps.</>
               ) : target.anchored ? (
-                <>Based on your best estimated 1RM of <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>, from {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir} {target.usedRecentWindow ? "in the last 30 days" : "last session"}. Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range using {target.reps} reps as the working target.</>
+                <>Based on your best estimated 1RM of <b style={{ color: T.text }}>{target.baseE1RM} {unit}</b>, from {target.source.weight} {unit} x {target.source.reps} @ RIR {target.source.rir} {target.usedRecentWindow ? "in the last 30 days" : "last session"}. Scaled to {rangeLabel} using {target.reps} reps as the working target.</>
               ) : (
-                <>No session history yet, so this starts from the library default of {ex.targetWeight} {unit}, treated as a moderate hypertrophy effort (~{target.baseE1RM} {unit} estimated 1RM). Scaled to {effIdeology}'s {ideo.low}-{ideo.high} rep range. Log a session and this becomes personalized.</>
+                <>No session history yet, so this starts from the library default of {ex.targetWeight} {unit}, treated as a moderate hypertrophy effort (~{target.baseE1RM} {unit} estimated 1RM). Scaled to {rangeLabel}. Log a session and this becomes personalized.</>
               )}
             </div>
           )}
@@ -2926,6 +2938,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               })}
               <div style={{ fontSize: 11, color: T.dim, padding: "4px 10px 2px", lineHeight: 1.4 }}>
                 Applies to {ex.short} only. App default stays {globalIdeology} — change that from the main Preferences menu. Targets recalculate from your estimated 1RM either way.
+              </div>
+              <div style={{ height: 1, background: T.line, margin: "10px 4px" }} />
+              <div style={{ padding: "0 6px 6px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 8 }}>Rep targets per set</div>
+                <RepSchemeEditor
+                  planned={ex.planned}
+                  scheme={ex.repScheme}
+                  fallback={{ low: ideo.low, high: ideo.high }}
+                  focusLabel={effIdeology}
+                  onChange={setExerciseRepScheme}
+                />
               </div>
             </div>
           )}
@@ -3288,36 +3311,99 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   {editIndex === null && lastWeek[sets.length] && <button onClick={() => fillFrom(lastWeek[sets.length])} style={smallBtn}>Same as last session</button>}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Weight ({unit})</div>
-                  <input
-                    ref={weightRef}
-                    inputMode="decimal"
-                    value={weight}
-                    onChange={(e) => { setWeight(e.target.value.replace(/[^0-9.]/g, "")); setLoaded([]); }}
-                    onFocus={(e) => e.target.select()}
-                    onMouseDown={selectAllOnTap}
-                    onMouseUp={keepSelection}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); repsRef.current && repsRef.current.focus(); } }}
-                    style={{ ...inputStyle, borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Reps</div>
-                  <input
-                    ref={repsRef}
-                    inputMode="numeric"
-                    value={reps}
-                    onChange={(e) => setReps(e.target.value.replace(/[^0-9]/g, ""))}
-                    onFocus={(e) => e.target.select()}
-                    onMouseDown={selectAllOnTap}
-                    onMouseUp={keepSelection}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
-                    style={{ ...inputStyle, borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
-                  />
-                </div>
-              </div>
+              {(() => {
+                // Small/big step sizes per unit -- matches the plate sizes
+                // people actually load (2.5/5 lb, 1.25/2.5 kg), so a tap
+                // moves the number by an amount that corresponds to a real
+                // plate change rather than an arbitrary round number.
+                const weightSteps = unit === "kg" ? [1.25, 2.5] : [2.5, 5];
+                function bumpWeight(delta) {
+                  const cur = parseFloat(weight) || 0;
+                  setWeight(String(Math.max(0, cur + delta)));
+                  setLoaded([]);
+                }
+                function bumpReps(delta) {
+                  const cur = parseInt(reps, 10) || 0;
+                  setReps(String(Math.max(0, cur + delta)));
+                }
+                const stepBtn = { width: 40, flexShrink: 0, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12, fontWeight: 700, padding: "10px 0" };
+                return (
+                  <>
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Weight ({unit})</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button onClick={() => bumpWeight(-weightSteps[1])} style={stepBtn}>−{weightSteps[1]}</button>
+                        <button onClick={() => bumpWeight(-weightSteps[0])} style={stepBtn}>−{weightSteps[0]}</button>
+                        <input
+                          ref={weightRef}
+                          readOnly
+                          inputMode="none"
+                          value={weight}
+                          onClick={(e) => { e.target.blur(); setExactEntryDraft(weight); setExactEntryField("weight"); }}
+                          style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                        />
+                        <button onClick={() => bumpWeight(weightSteps[0])} style={stepBtn}>+{weightSteps[0]}</button>
+                        <button onClick={() => bumpWeight(weightSteps[1])} style={stepBtn}>+{weightSteps[1]}</button>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Reps</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button onClick={() => bumpReps(-1)} style={{ ...stepBtn, width: 48 }}>−1</button>
+                        <input
+                          ref={repsRef}
+                          readOnly
+                          inputMode="none"
+                          value={reps}
+                          onClick={(e) => { e.target.blur(); setExactEntryDraft(reps); setExactEntryField("reps"); }}
+                          style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                        />
+                        <button onClick={() => bumpReps(1)} style={{ ...stepBtn, width: 48 }}>+1</button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+              {exactEntryField && (() => {
+                const isWeight = exactEntryField === "weight";
+                const commit = () => {
+                  if (isWeight) { setWeight(exactEntryDraft || "0"); setLoaded([]); }
+                  else setReps(exactEntryDraft || "0");
+                  setExactEntryField(null);
+                };
+                const digit = (d) => {
+                  if (d === "." && (exactEntryDraft.includes(".") || !isWeight)) return;
+                  setExactEntryDraft((prev) => (prev === "0" && d !== "." ? d : prev + d));
+                };
+                const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", isWeight ? "." : "", "0", "⌫"];
+                return (
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.85)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+                    <div style={{ width: "100%", maxWidth: 400, background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "16px 16px 0 0", padding: 16, boxSizing: "border-box" }}>
+                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{isWeight ? `Weight (${unit})` : "Reps"}</div>
+                      <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, textAlign: "center", padding: "8px 0", marginBottom: 10 }}>
+                        {exactEntryDraft || "0"}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
+                        {keys.map((k, i) => k === "" ? (
+                          <div key={i} />
+                        ) : (
+                          <button
+                            key={i}
+                            onClick={() => (k === "⌫" ? setExactEntryDraft((prev) => prev.slice(0, -1)) : digit(k))}
+                            style={{ padding: "13px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}
+                          >
+                            {k}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => setExactEntryField(null)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
+                        <button onClick={commit} style={{ flex: 2, padding: "12px 0", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Done</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               <button onClick={() => setShowCalc(!showCalc)} style={{ marginTop: 12, width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${showCalc ? T.accent : T.line}`, background: showCalc ? "rgba(232,68,46,0.1)" : T.surface2, color: T.text, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <IconBarbell size={15} /> {showCalc ? "Hide plate calculator" : "Plate calculator"}
               </button>

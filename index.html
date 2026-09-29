@@ -42,6 +42,21 @@
         height: 100%;
         overflow: hidden;
       }
+      /* iOS Safari renders <input type="date"> with its native control
+         width, ignoring width:100%, so it bleeds off the right edge of
+         any narrow form (the Onboarding date-of-birth field on iPhone).
+         Resetting appearance makes it respect the box like every other
+         input; the value text is re-aligned since iOS centers it. */
+      input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+        min-width: 0;
+        max-width: 100%;
+        display: block;
+      }
+      input[type="date"]::-webkit-date-and-time-value {
+        text-align: left;
+      }
     </style>
     <title>DeltaLog</title>
     <script>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { fetchMuscleGroupTargets, saveMuscleGroupTarget } from "./lib/queries";
-import { getMuscleGroupOptions } from "./lib/muscleNomenclature";
+import { getMuscleGroupOptions } from "./lib/muscleTaxonomy";
 import { getPrefs, setPref } from "./lib/prefs";
 import { InlineLoading } from "./LoadingSpinner";
 import { IconX } from "./Icons";

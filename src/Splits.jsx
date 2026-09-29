@@ -1,5 +1,5 @@
 import { SPLITS } from "./lib/splits";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel } from "./lib/muscleTaxonomy";
 
 const T = {
   bg: "#101216",

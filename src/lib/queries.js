@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { normalizeMuscleList } from "./muscleNomenclature";
+import { normalizeMuscleList } from "./muscleTaxonomy";
 import { getPrefs } from "./prefs";
 import { toDisplay } from "./weight";
 import { toLocalDateStr } from "./time";
@@ -538,14 +538,46 @@ export async function startWorkout(userId, ideology) {
 }
 
 // Adds an exercise slot to a workout (mirrors `newItem` in the prototype).
-export async function addWorkoutExercise(workoutId, exerciseId, position, plannedSets, notes = "", supersetGroup = null, plannedWarmupSets = 0) {
-  const { data, error } = await supabase
-    .from("workout_exercises")
-    .insert({ workout_id: workoutId, exercise_id: exerciseId, position, planned_sets: plannedSets, notes, superset_group: supersetGroup, planned_warmup_sets: plannedWarmupSets })
-    .select()
-    .single();
+// ---- rep_scheme (migration_073) compatibility --------------------------
+// The frontend can deploy before migration_073 has run. Rather than
+// breaking template loading and workout resume in that window, reads
+// retry without the column and writes drop it. Once the migration is in,
+// none of these fallbacks fire.
+function isMissingRepScheme(error) {
+  if (!error) return false;
+  const msg = `${error.message || ""} ${error.details || ""} ${error.hint || ""}`;
+  return /rep_scheme/.test(msg);
+}
+async function selectWithRepScheme(build, withCols, withoutCols) {
+  const res = await build(withCols);
+  if (res.error && isMissingRepScheme(res.error)) return build(withoutCols);
+  return res;
+}
+async function insertWithRepScheme(table, rows, selectSingle = false) {
+  const run = (payload) => {
+    const q = supabase.from(table).insert(payload);
+    return selectSingle ? q.select().single() : q;
+  };
+  const res = await run(rows);
+  if (res.error && isMissingRepScheme(res.error)) {
+    const strip = (r) => { const { rep_scheme, ...rest } = r; return rest; };
+    return run(Array.isArray(rows) ? rows.map(strip) : strip(rows));
+  }
+  return res;
+}
+
+export async function addWorkoutExercise(workoutId, exerciseId, position, plannedSets, notes = "", supersetGroup = null, plannedWarmupSets = 0, repScheme = null) {
+  const row = { workout_id: workoutId, exercise_id: exerciseId, position, planned_sets: plannedSets, notes, superset_group: supersetGroup, planned_warmup_sets: plannedWarmupSets };
+  if (repScheme) row.rep_scheme = repScheme;
+  const { data, error } = await insertWithRepScheme("workout_exercises", row, true);
   if (error) throw error;
   return data.id;
+}
+
+// Saves (or clears, with null) a live workout slot's per-set rep targets.
+export async function setWorkoutExerciseRepScheme(weId, repScheme) {
+  const { error } = await supabase.from("workout_exercises").update({ rep_scheme: repScheme }).eq("id", weId);
+  if (error && !isMissingRepScheme(error)) throw error;
 }
 
 // Sets (or clears, with null) which superset group a workout exercise
@@ -1214,8 +1246,9 @@ export async function saveWorkoutAsTemplate(userId, name, workoutItems, includeD
     notes: includeDetails ? w.notes || "" : "",
     setup: includeDetails ? w.setup || {} : {},
     superset_group: w.supersetGroup ?? null,
+    rep_scheme: w.repScheme || null,
   }));
-  const { error: rowsErr } = await supabase.from("template_exercises").insert(rows);
+  const { error: rowsErr } = await insertWithRepScheme("template_exercises", rows);
   if (rowsErr) throw rowsErr;
   return template.id;
 }
@@ -1260,11 +1293,11 @@ export async function reorderTemplates(orderedIds) {
 
 // Fetches a template's exercises in order, ready to be added to a new workout.
 export async function fetchTemplateExercises(templateId) {
-  const { data, error } = await supabase
-    .from("template_exercises")
-    .select("exercise_id, planned_sets, planned_warmup_sets, notes, setup, superset_group")
-    .eq("template_id", templateId)
-    .order("position");
+  const base = "exercise_id, planned_sets, planned_warmup_sets, notes, setup, superset_group";
+  const { data, error } = await selectWithRepScheme(
+    (cols) => supabase.from("template_exercises").select(cols).eq("template_id", templateId).order("position"),
+    `${base}, rep_scheme`, base,
+  );
   if (error) throw error;
   return data;
 }
@@ -1280,11 +1313,11 @@ export async function fetchTemplateForEdit(templateId) {
     .single();
   if (templateErr) throw templateErr;
 
-  const { data: rows, error: rowsErr } = await supabase
-    .from("template_exercises")
-    .select("planned_sets, planned_warmup_sets, superset_group, exercises (*)")
-    .eq("template_id", templateId)
-    .order("position");
+  const { data: rows, error: rowsErr } = await selectWithRepScheme(
+    (cols) => supabase.from("template_exercises").select(cols).eq("template_id", templateId).order("position"),
+    "planned_sets, planned_warmup_sets, superset_group, rep_scheme, exercises (*)",
+    "planned_sets, planned_warmup_sets, superset_group, exercises (*)",
+  );
   if (rowsErr) throw rowsErr;
 
   return {
@@ -1292,7 +1325,7 @@ export async function fetchTemplateForEdit(templateId) {
     name: template.name,
     picks: rows.map((row) => {
       const ex = normalizeExercise(row.exercises);
-      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: row.planned_sets, plannedWarmup: row.planned_warmup_sets || 0, supersetGroup: row.superset_group };
+      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: row.planned_sets, plannedWarmup: row.planned_warmup_sets || 0, supersetGroup: row.superset_group, repScheme: row.rep_scheme || null };
     }),
   };
 }
@@ -1305,9 +1338,16 @@ export async function updateTemplate(templateId, name, picks) {
   if (renameErr) throw renameErr;
   const { error: delErr } = await supabase.from("template_exercises").delete().eq("template_id", templateId);
   if (delErr) throw delErr;
-  const rows = picks.map((p, i) => ({ template_id: templateId, exercise_id: p.id, position: i, planned_sets: p.planned, planned_warmup_sets: p.plannedWarmup || 0, notes: "", setup: {}, superset_group: p.supersetGroup ?? null }));
-  const { error: insErr } = await supabase.from("template_exercises").insert(rows);
+  const rows = picks.map((p, i) => ({ template_id: templateId, exercise_id: p.id, position: i, planned_sets: p.planned, planned_warmup_sets: p.plannedWarmup || 0, notes: "", setup: {}, superset_group: p.supersetGroup ?? null, rep_scheme: p.repScheme || null }));
+  const { error: insErr } = await insertWithRepScheme("template_exercises", rows);
   if (insErr) throw insErr;
+}
+
+// Copies a template (exercises, set counts, supersets, rep schemes) under
+// a new name, appended to the end of the list.
+export async function duplicateTemplate(userId, templateId) {
+  const full = await fetchTemplateForEdit(templateId);
+  return saveWorkoutAsTemplate(userId, `${full.name} (copy)`, full.picks, false);
 }
 
 export async function deleteTemplate(templateId) {
@@ -1334,14 +1374,14 @@ export async function exportTemplate(userId, templateId) {
     .single();
   if (templateErr) throw templateErr;
 
-  const { data: rows, error: rowsErr } = await supabase
-    .from("template_exercises")
-    .select("exercise_id, planned_sets, planned_warmup_sets, position")
-    .eq("template_id", templateId)
-    .order("position");
+  const { data: rows, error: rowsErr } = await selectWithRepScheme(
+    (cols) => supabase.from("template_exercises").select(cols).eq("template_id", templateId).order("position"),
+    "exercise_id, planned_sets, planned_warmup_sets, superset_group, rep_scheme, position",
+    "exercise_id, planned_sets, planned_warmup_sets, superset_group, position",
+  );
   if (rowsErr) throw rowsErr;
 
-  const exercises = rows.map((r) => ({ exercise_id: r.exercise_id, planned_sets: r.planned_sets, planned_warmup_sets: r.planned_warmup_sets || 0 }));
+  const exercises = rows.map((r) => ({ exercise_id: r.exercise_id, planned_sets: r.planned_sets, planned_warmup_sets: r.planned_warmup_sets || 0, superset_group: r.superset_group ?? null, rep_scheme: r.rep_scheme || null }));
 
   // Retry on the unlikely chance of a code collision (unique constraint).
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -1376,7 +1416,7 @@ export async function fetchSharedTemplate(code) {
     .filter((e) => byId.has(e.exercise_id))
     .map((e) => {
       const ex = normalizeExercise(byId.get(e.exercise_id));
-      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: e.planned_sets, plannedWarmup: e.planned_warmup_sets || 0 };
+      return { id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, planned: e.planned_sets, plannedWarmup: e.planned_warmup_sets || 0, supersetGroup: e.superset_group ?? null, repScheme: e.rep_scheme || null };
     });
 
   return { name: shared.name, picks, skippedCount: shared.exercises.length - picks.length };
@@ -1402,8 +1442,8 @@ export async function importSharedTemplate(userId, name, picks) {
     .single();
   if (templateErr) throw templateErr;
 
-  const rows = picks.map((p, i) => ({ template_id: template.id, exercise_id: p.id, position: i, planned_sets: p.planned, planned_warmup_sets: p.plannedWarmup || 0 }));
-  const { error: insErr } = await supabase.from("template_exercises").insert(rows);
+  const rows = picks.map((p, i) => ({ template_id: template.id, exercise_id: p.id, position: i, planned_sets: p.planned, planned_warmup_sets: p.plannedWarmup || 0, superset_group: p.supersetGroup ?? null, rep_scheme: p.repScheme || null }));
+  const { error: insErr } = await insertWithRepScheme("template_exercises", rows);
   if (insErr) throw insErr;
   return template.id;
 }
@@ -1437,11 +1477,11 @@ export async function fetchActiveWorkout(userId) {
   if (error) throw error;
   if (!workout) return null;
 
-  const { data: exRows, error: exErr } = await supabase
-    .from("workout_exercises")
-    .select("id, position, planned_sets, planned_warmup_sets, superset_group, program_id, program_week, prescribed_weight, prescribed_reps, progression_reason, exercises (*), sets (set_number, weight, reps, rir, is_warmup)")
-    .eq("workout_id", workout.id)
-    .order("position");
+  const weBase = "id, position, planned_sets, planned_warmup_sets, superset_group, program_id, program_week, prescribed_weight, prescribed_reps, progression_reason, exercises (*), sets (set_number, weight, reps, rir, is_warmup)";
+  const { data: exRows, error: exErr } = await selectWithRepScheme(
+    (cols) => supabase.from("workout_exercises").select(cols).eq("workout_id", workout.id).order("position"),
+    `${weBase}, rep_scheme`, weBase,
+  );
   if (exErr) throw exErr;
 
   // An empty in-progress workout (e.g. someone backed out before adding
@@ -1460,6 +1500,7 @@ export async function fetchActiveWorkout(userId) {
       plannedSets: row.planned_sets,
       plannedWarmupSets: row.planned_warmup_sets,
       supersetGroup: row.superset_group,
+      repScheme: row.rep_scheme || null,
       programId: row.program_id,
       programWeek: row.program_week,
       prescribedWeight: row.prescribed_weight === null ? null : Number(toDisplay(row.prescribed_weight, getPrefs().units)),

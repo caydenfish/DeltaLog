@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchExercises } from "./lib/queries";
 import { getSplits } from "./lib/splits";
-import { muscleLabel, scientificNameOf, getMuscleTaxonomyEntries } from "./lib/muscleNomenclature";
+import { muscleLabel, scientificNameOf, getMuscleTaxonomyEntries } from "./lib/muscleTaxonomy";
 import { InlineLoading } from "./LoadingSpinner";
 
 const T = {

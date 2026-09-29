@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleTaxonomy } from "./lib/queries";
-import { setMuscleTaxonomyCache } from "./lib/muscleNomenclature";
+import { setMuscleTaxonomyCache } from "./lib/muscleTaxonomy";
 import { InlineLoading } from "./LoadingSpinner";
 import MuscleTaxonomyManager from "./MuscleTaxonomyManager";
 

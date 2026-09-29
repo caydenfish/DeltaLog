@@ -3,6 +3,8 @@ import { getPrefs, setPref } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
 import { PROGRESSION_MODELS, PROGRESSION_MODEL_DESCRIPTIONS } from "./lib/programEngine";
 import Logo from "./Logo";
+import IntroShell from "./IntroShell";
+import { NAME_MODES } from "./lib/muscleTaxonomy";
 
 const T = {
   bg: "#101216",
@@ -16,14 +18,19 @@ const T = {
 
 function PillRow({ options, value, onChange, columns }) {
   return (
-    <div style={{ display: "flex", flexWrap: columns ? "wrap" : "nowrap", background: T.surface2, borderRadius: 12, padding: 4, gap: 4 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", background: T.surface2, borderRadius: 12, padding: 4, gap: 4 }}>
       {options.map((opt) => (
         <button
           key={opt.key}
           onClick={() => onChange(opt.key)}
           style={{
-            flex: columns ? `1 1 calc(${100 / columns}% - 4px)` : 1,
-            padding: "14px 6px", borderRadius: 9, fontSize: 14, fontWeight: 700, border: "none",
+            // Columns mode fixes the row count; otherwise each option
+            // takes an equal share but can drop to its own line (basis
+            // 96px) instead of overflowing on a 320-375px iPhone.
+            flex: columns ? `1 1 calc(${100 / columns}% - 4px)` : "1 1 96px",
+            minWidth: 0,
+            padding: "13px 6px", borderRadius: 9, fontSize: 14, fontWeight: 700, border: "none",
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             background: value === opt.key ? T.accent : "transparent",
             color: value === opt.key ? "#fff" : T.dim,
           }}
@@ -122,8 +129,8 @@ export default function SetupWizard({ onComplete, onClose }) {
       subtitle: "How muscle groups are labeled throughout the app.",
       body: (
         <>
-          <PillRow options={[{ key: "generic", label: "Category" }, { key: "detailed", label: "Region" }, { key: "scientific", label: "Anatomy" }]} value={muscleNameMode} onChange={setMuscleNameMode} columns={3} />
-          <InfoBox>e.g. Chest (Category) vs Upper Chest (Region) vs Pectoralis Major, Clavicular Head (Anatomy)</InfoBox>
+          <PillRow options={NAME_MODES} value={muscleNameMode} onChange={setMuscleNameMode} columns={3} />
+          <InfoBox>{NAME_MODES.map((m) => `${m.example} (${m.label})`).join(" vs ")}</InfoBox>
         </>
       ),
     },
@@ -149,49 +156,47 @@ export default function SetupWizard({ onComplete, onClose }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 45, overflowY: "auto", background: T.bg, display: "flex", flexDirection: "column", padding: 24, boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <button
-          onClick={() => (step === 0 ? (onClose ? onClose() : null) : setStep(step - 1))}
-          aria-label={step === 0 ? "Close" : "Back"}
-          style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: step === 0 && !onClose ? "transparent" : T.dim, fontSize: 14 }}
-          disabled={step === 0 && !onClose}
-        >
-          ‹
-        </button>
-        <Logo size={36} />
-        <button onClick={commitStepAndFinish} style={{ background: "none", border: "none", color: T.dim, fontSize: 13, textDecoration: "underline" }}>
-          Skip
-        </button>
-      </div>
-
-      <div style={{ display: "flex", gap: 5, marginBottom: 28 }}>
-        {steps.map((_, i) => (
-          <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= step ? T.accent : T.line }} />
-        ))}
-      </div>
-
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: 380, width: "100%", margin: "0 auto" }}>
-        <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, textAlign: "center" }}>
-          Step {step + 1} of {steps.length}
-        </div>
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
-          {current.title}
-        </div>
-        <div style={{ color: T.dim, fontSize: 13, textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
-          {current.subtitle}
-        </div>
-        {current.body}
-      </div>
-
-      <div style={{ width: "100%", maxWidth: 380, margin: "0 auto", paddingTop: 16 }}>
+    <IntroShell
+      footer={
         <button
           onClick={handleNext}
           style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}
         >
           {isLast ? "Finish setup" : "Continue"}
         </button>
+      }
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <button
+          onClick={() => (step === 0 ? (onClose ? onClose() : null) : setStep(step - 1))}
+          aria-label={step === 0 ? "Close" : "Back"}
+          style={{ width: 36, height: 36, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: step === 0 && !onClose ? "transparent" : T.dim, fontSize: 16 }}
+          disabled={step === 0 && !onClose}
+        >
+          ‹
+        </button>
+        <Logo size={32} />
+        <button onClick={commitStepAndFinish} style={{ background: "none", border: "none", color: T.dim, fontSize: 13, textDecoration: "underline", padding: "8px 4px" }}>
+          Skip
+        </button>
       </div>
-    </div>
+
+      <div style={{ display: "flex", gap: 5, marginBottom: 22 }}>
+        {steps.map((_, i) => (
+          <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= step ? T.accent : T.line }} />
+        ))}
+      </div>
+
+      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, textAlign: "center" }}>
+        Step {step + 1} of {steps.length}
+      </div>
+      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
+        {current.title}
+      </div>
+      <div style={{ color: T.dim, fontSize: 13, textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
+        {current.subtitle}
+      </div>
+      {current.body}
+    </IntroShell>
   );
 }

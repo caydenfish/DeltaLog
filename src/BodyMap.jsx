@@ -1,7 +1,7 @@
 import { FRONT_REGIONS, BACK_REGIONS, OUTLINE_FRONT, OUTLINE_BACK, VIEWBOX_FRONT, VIEWBOX_BACK } from "./lib/bodyMapData";
 import { resolveRegions } from "./lib/bodyMapRegions";
 import { statusColorFor, PLAN_NEUTRAL } from "./lib/planStatus";
-import { getDetailedTaxonomyEntries } from "./lib/muscleNomenclature";
+import { getDetailedTaxonomyEntries } from "./lib/muscleTaxonomy";
 
 const T = {
   surface2: "#22262E",

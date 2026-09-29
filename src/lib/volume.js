@@ -1,4 +1,4 @@
-import { muscleLabel, isRealMuscle } from "./muscleNomenclature";
+import { muscleLabel, isRealMuscle, isFullBody, FULL_BODY } from "./muscleTaxonomy";
 import { toLocalDateStr } from "./time";
 
 // Sets arrive from two different shapes depending on caller: raw DB rows
@@ -8,51 +8,6 @@ import { toLocalDateStr } from "./time";
 // rather than each call site guessing which shape it was handed.
 function isWarmupSet(s) {
   return !!(s.is_warmup ?? s.isWarmup);
-}
-
-// Computes total working volume (weight × reps, summed across sets) per
-// muscle group from a list of { muscle, secondaryMuscles, sets } entries,
-// keeping primary-mover volume and secondary-mover volume separate so the
-// heatmap can render them as full-saturation vs muted orange.
-// "Full Body" exercises (carries, complexes, Olympic lifts) don't map to a
-// single region, so their volume is tracked separately and reported as a
-// percentage of total session volume instead.
-export function computeMuscleVolumes(entries) {
-  const primaryRaw = {};
-  const secondaryRaw = {};
-  let fullBodyVolume = 0;
-  let totalVolume = 0;
-
-  for (const entry of entries) {
-    const vol = (entry.sets || []).reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
-    if (vol <= 0) continue;
-    totalVolume += vol;
-
-    if (entry.muscle === "Full Body") {
-      fullBodyVolume += vol;
-      continue;
-    }
-    primaryRaw[entry.muscle] = (primaryRaw[entry.muscle] || 0) + vol;
-    for (const sec of entry.secondaryMuscles || []) {
-      if (sec === "Full Body") continue;
-      secondaryRaw[sec] = (secondaryRaw[sec] || 0) + vol * 0.5;
-    }
-  }
-
-  // Both maps normalize against the same max so intensity is comparable
-  // across the whole heatmap, not just within primary or secondary alone.
-  const max = Math.max(0, ...Object.values(primaryRaw), ...Object.values(secondaryRaw));
-  const normalize = (raw) => {
-    const out = {};
-    for (const [group, v] of Object.entries(raw)) out[group] = max > 0 ? v / max : 0;
-    return out;
-  };
-
-  return {
-    primary: normalize(primaryRaw),
-    secondary: normalize(secondaryRaw),
-    fullBodyFraction: totalVolume > 0 ? fullBodyVolume / totalVolume : 0,
-  };
 }
 
 // Counts working sets per muscle group (not weighted by volume) from the
@@ -87,7 +42,7 @@ export function computeMuscleSetCounts(entries, nameMode = "generic", setsFilter
     const count = filteredSets.length;
     if (count <= 0) continue;
 
-    if (entry.muscle === "Full Body") {
+    if (isFullBody(entry.muscle)) {
       fullBodySets += count;
       continue;
     }
@@ -100,10 +55,17 @@ export function computeMuscleSetCounts(entries, nameMode = "generic", setsFilter
     }
     for (const label of primaryLabels) primary[label] = (primary[label] || 0) + count;
 
+    // A muscle that's already a primary mover for this exercise isn't
+    // also counted as secondary. Previously it was, and since
+    // computeRollingWeeklyTotals sums primary + secondary, that inflated
+    // Weekly Set Goals progress for any exercise tagged both ways (or
+    // whose primary and secondary tags collapse to the same key at the
+    // active tier, e.g. Category mode).
     const secondaryLabels = new Set();
     for (const sec of entry.secondaryMuscles || []) {
-      if (!isRealMuscle(sec) || sec === "Full Body") continue;
-      secondaryLabels.add(muscleLabel(sec, nameMode));
+      if (!isRealMuscle(sec) || isFullBody(sec)) continue;
+      const label = muscleLabel(sec, nameMode);
+      if (!primaryLabels.has(label)) secondaryLabels.add(label);
     }
     for (const label of secondaryLabels) secondary[label] = (secondary[label] || 0) + count;
   }
@@ -339,7 +301,7 @@ export function summarizeWorkoutDuration(history) {
 // `nameMode` ("generic" | "detailed" | "scientific", default "generic")
 // controls the granularity of the grouping itself, matching whichever
 // tier Weekly Set Goals is currently tracking targets at (see
-// getMuscleGroupOptions in muscleNomenclature.js) -- e.g. in "detailed"
+// getMuscleGroupOptions in muscleTaxonomy.js) -- e.g. in "detailed"
 // mode, Lats and Traps come back as separate keys instead of both
 // collapsing into "Back".
 export function computeRollingWeeklyTotals(history, nameMode = "generic") {
@@ -351,11 +313,11 @@ export function computeRollingWeeklyTotals(history, nameMode = "generic") {
   for (const label of new Set([...Object.keys(primary), ...Object.keys(secondary)])) {
     totals[label] = (primary[label] || 0) + (secondary[label] || 0);
   }
-  totals["Full Body"] = fullBodySets;
+  totals[FULL_BODY] = fullBodySets;
   return totals;
 }
 
-// entries suitable for computeMuscleVolumes, and a parallel list of
+// entries suitable for computeMuscleSetCounts, and a parallel list of
 // { date, volume } points for the volume-over-time chart. `entries[].sets`
 // carries every logged set (working and warmup both, is_warmup intact)
 // rather than pre-filtering warmup out -- computeMuscleSetCounts' own

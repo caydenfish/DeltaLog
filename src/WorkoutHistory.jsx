@@ -8,6 +8,7 @@ import { formatClockTime, toLocalDateStr } from "./lib/time";
 import {
   deleteWorkout, updateSet, deleteSet, logSet, addWorkoutExercise, removeWorkoutExercise,
   fetchExercises, uploadProgressPhoto, fetchProgressPhoto, deleteProgressPhoto, setSetWarmup, shareWorkout, saveWorkoutSummary,
+  saveWorkoutAsTemplate,
 } from "./lib/queries";
 
 // Labels a sorted sets array for display: warmup sets count independently
@@ -169,6 +170,38 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
   const [sharing, setSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [showExport, setShowExport] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSaveError, setTemplateSaveError] = useState(null);
+  const [templateSaved, setTemplateSaved] = useState(false);
+
+  // Retroactive "save as template" -- same saveWorkoutAsTemplate call the
+  // live in-workout flow uses (SetLogger's handleSaveTemplate), just fed
+  // from a past workout's logged exercises/sets instead of the current
+  // in-progress ones. includeDetails is always false here: a completed
+  // workout's per-set weight/reps aren't a sensible "planned setup" for
+  // a reusable template, so this only carries over the exercise list,
+  // working-set count, and warmup-set count, same blank-slate shape as
+  // unchecking "include details" in the live flow.
+  async function handleSaveAsTemplate() {
+    if (!templateName.trim()) return;
+    setSavingTemplate(true);
+    setTemplateSaveError(null);
+    try {
+      const workoutItems = exercises.map((we) => ({
+        id: we.exercise_id,
+        planned: (we.sets || []).filter((s) => !s.is_warmup).length || 1,
+        plannedWarmup: (we.sets || []).filter((s) => s.is_warmup).length,
+      }));
+      await saveWorkoutAsTemplate(userId, templateName.trim(), workoutItems, false);
+      setTemplateSaved(true);
+      setTimeout(() => { setShowSaveTemplate(false); setTemplateName(""); setTemplateSaved(false); }, 1200);
+    } catch (err) {
+      setTemplateSaveError(err.message);
+    }
+    setSavingTemplate(false);
+  }
   const [progressPhoto, setProgressPhoto] = useState(undefined); // mirrors ProgressPhotoBlock's photo, lifted so "Save as image" can use it as a Story background
   const [editingBodyWeight, setEditingBodyWeight] = useState(false);
   const [bodyWeightDraft, setBodyWeightDraft] = useState("");
@@ -372,6 +405,9 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
           <button onClick={() => setShowExport(true)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
             Save image
+          </button>
+          <button onClick={() => setShowSaveTemplate(true)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
+            Save as template
           </button>
           <button onClick={handleShare} disabled={sharing} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: T.accent, padding: "6px 4px", fontSize: 13, fontWeight: 600 }}>
             {sharing ? "…" : <><IconShare size={16} /> Share</>}
@@ -610,6 +646,28 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
       )}
 
       {showExport && <ExportWorkoutModal data={buildSnapshot()} onClose={() => setShowExport(false)} />}
+      {showSaveTemplate && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.75)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ width: "100%", maxWidth: 360, background: T.bg, border: `1px solid ${T.line}`, borderRadius: 16, padding: 20 }}>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 4 }}>Save as template</div>
+            <div style={{ fontSize: 12, color: T.dim, marginBottom: 14 }}>Carries over this workout's exercise list and set counts, not the specific weights/reps logged.</div>
+            <input
+              autoFocus
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Template name"
+              style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, marginBottom: 12 }}
+            />
+            {templateSaveError && <div style={{ color: T.accent, fontSize: 12, marginBottom: 10 }}>{templateSaveError}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { setShowSaveTemplate(false); setTemplateName(""); setTemplateSaveError(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
+              <button onClick={handleSaveAsTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : "#fff", fontSize: 14, fontWeight: 700 }}>
+                {savingTemplate ? "Saving…" : templateSaved ? <><IconCheck size={13} /> Saved</> : "Save Template"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { setPref } from "./lib/prefs";
 import { HEIGHT_UNITS, HEIGHT_UNIT_LABELS, ftInToInches, inchesToFtIn } from "./lib/height";
 import { toLocalDateStr } from "./lib/time";
 import Logo from "./Logo";
+import IntroShell from "./IntroShell";
 
 const T = {
   bg: "#101216",
@@ -54,11 +55,27 @@ export default function Onboarding({ user, profile, onComplete }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", padding: 24, boxSizing: "border-box" }}>
-      <div style={{ marginTop: 40, marginBottom: 24 }}>
-        <Logo size={64} />
+    <IntroShell
+      maxWidth={360}
+      center={false}
+      footer={
+        <>
+          <button onClick={handleSave} disabled={!valid || saving} style={{
+            width: "100%", padding: "15px 0", borderRadius: 14, border: "none",
+            background: !valid || saving ? T.surface2 : T.accent,
+            color: !valid || saving ? T.dim : "#fff",
+            fontSize: 16, fontWeight: 700,
+          }}>
+            {saving ? "Saving…" : valid ? "Continue" : "Add name, gender, and birthday"}
+          </button>
+          {error && <div style={{ color: T.accent, fontSize: 13, marginTop: 10, textAlign: "center" }}>{error}</div>}
+        </>
+      }
+    >
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 8, marginBottom: 20 }}>
+        <Logo size={56} />
       </div>
-      <div style={{ width: "100%", maxWidth: 360 }}>
+      <div style={{ width: "100%" }}>
         <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
           A few quick details
         </div>
@@ -71,7 +88,7 @@ export default function Onboarding({ user, profile, onComplete }) {
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           placeholder="First name"
-          style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 15, padding: "12px 14px", outline: "none", boxSizing: "border-box", marginBottom: 18 }}
+          style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "12px 14px", outline: "none", boxSizing: "border-box", marginBottom: 18 }}
         />
 
         <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Last name</div>
@@ -79,7 +96,7 @@ export default function Onboarding({ user, profile, onComplete }) {
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
           placeholder="Last name"
-          style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 15, padding: "12px 14px", outline: "none", boxSizing: "border-box", marginBottom: 18 }}
+          style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "12px 14px", outline: "none", boxSizing: "border-box", marginBottom: 18 }}
         />
 
         <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Gender</div>
@@ -105,7 +122,7 @@ export default function Onboarding({ user, profile, onComplete }) {
           value={dob}
           onChange={(e) => setDob(e.target.value)}
           max={toLocalDateStr(new Date())}
-          style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 15, padding: "11px 12px", outline: "none", boxSizing: "border-box", marginBottom: 18, colorScheme: "dark" }}
+          style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "11px 12px", outline: "none", boxSizing: "border-box", marginBottom: 18, colorScheme: "dark" }}
         />
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
@@ -126,7 +143,7 @@ export default function Onboarding({ user, profile, onComplete }) {
           value={weight}
           onChange={(e) => setWeight(e.target.value.replace(/[^0-9.]/g, ""))}
           placeholder={`e.g. ${weightUnit === "kg" ? "80" : "178"}`}
-          style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 15, padding: "11px 12px", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+          style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "11px 12px", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
         />
         <div style={{ fontSize: 11, color: T.dim, marginBottom: 24, lineHeight: 1.4 }}>
           You can skip this, but adding it now improves the accuracy of your strength score and insights. If you leave it blank later on, we'll use your last recorded weight.
@@ -150,14 +167,14 @@ export default function Onboarding({ user, profile, onComplete }) {
               value={heightFt}
               onChange={(e) => setHeightFt(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder="ft"
-              style={{ flex: 1, minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 15, padding: "11px 12px", outline: "none", boxSizing: "border-box" }}
+              style={{ flex: 1, minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "11px 12px", outline: "none", boxSizing: "border-box" }}
             />
             <input
               inputMode="decimal"
               value={heightIn}
               onChange={(e) => setHeightIn(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder="in"
-              style={{ flex: 1, minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 15, padding: "11px 12px", outline: "none", boxSizing: "border-box" }}
+              style={{ flex: 1, minWidth: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "11px 12px", outline: "none", boxSizing: "border-box" }}
             />
           </div>
         ) : (
@@ -166,7 +183,7 @@ export default function Onboarding({ user, profile, onComplete }) {
             value={height}
             onChange={(e) => setHeight(e.target.value.replace(/[^0-9.]/g, ""))}
             placeholder={`e.g. ${heightUnit === "cm" ? "178" : "70"}`}
-            style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 15, padding: "11px 12px", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+            style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "11px 12px", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
           />
         )}
         <div style={{ fontSize: 11, color: T.dim, marginBottom: 24, lineHeight: 1.4 }}>
@@ -178,19 +195,10 @@ export default function Onboarding({ user, profile, onComplete }) {
           value={heardAboutUs}
           onChange={(e) => setHeardAboutUs(e.target.value)}
           placeholder="e.g. a friend, Instagram, App Store search"
-          style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 15, padding: "11px 12px", outline: "none", boxSizing: "border-box", marginBottom: 24 }}
+          style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "11px 12px", outline: "none", boxSizing: "border-box", marginBottom: 24 }}
         />
 
-        <button onClick={handleSave} disabled={!valid || saving} style={{
-          width: "100%", padding: "15px 0", borderRadius: 14, border: "none",
-          background: !valid || saving ? T.surface2 : T.accent,
-          color: !valid || saving ? T.dim : "#fff",
-          fontSize: 16, fontWeight: 700,
-        }}>
-          {saving ? "Saving…" : "Continue"}
-        </button>
-        {error && <div style={{ color: T.accent, fontSize: 13, marginTop: 10, textAlign: "center" }}>{error}</div>}
       </div>
-    </div>
+    </IntroShell>
   );
 }

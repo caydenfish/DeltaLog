@@ -6,7 +6,7 @@ import { RANGES } from "./lib/ranges";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
 import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, summarizeWorkoutDuration, bucketWeightHistory, bucketDailyVolume, bucketSeries, groupWorkoutsByDate } from "./lib/volume";
-import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleNomenclature";
+import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleTaxonomy";
 import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
 import { toDisplay } from "./lib/weight";
 import { InlineLoading } from "./LoadingSpinner";
@@ -49,6 +49,7 @@ import WhatsNext from "./WhatsNext";
 import HelpSupport from "./HelpSupport";
 import SetupWizard from "./SetupWizard";
 import VersionHistory from "./VersionHistory";
+import TrainingLoadCard from "./TrainingLoadCard";
 import { version as APP_VERSION } from "../package.json";
 
 const T = {
@@ -945,6 +946,8 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           )}
                         </div>
                       );
+                    case "trainingLoad":
+                      return <TrainingLoadCard key={m.id} history={history} />;
                     case "volume":
                       return (
                         <HomeChartCard

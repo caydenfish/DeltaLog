@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchMuscleGroups, fetchMuscleDetailed, fetchSplits, fetchSplitExclusions, addSplit, renameSplit, deleteSplit, addSplitMuscle, removeSplitMuscle, addSplitExclusion, removeSplitExclusion } from "./lib/queries";
 import { setSplitsCache, setSplitExclusionsCache } from "./lib/splits";
-import { muscleLabel } from "./lib/muscleNomenclature";
+import { muscleLabel } from "./lib/muscleTaxonomy";
 import { IconX } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
 

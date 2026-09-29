@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { muscleLabel, isRealMuscle } from "./lib/muscleNomenclature";
+import { muscleLabel, isRealMuscle, isFullBody } from "./lib/muscleTaxonomy";
 import { formatWeight } from "./lib/weight";
 
 function isWarmupSet(s) {
@@ -62,13 +62,13 @@ export default function MuscleSetsDetail({ muscle, entries, nameMode, units, onC
 
   function buildRows(role) {
     return (entries || [])
-      .filter((e) => e.muscle !== "Full Body")
+      .filter((e) => !isFullBody(e.muscle))
       .filter((e) => {
         if (role === "primary") {
           const rawPrimary = e.primaryMuscles && e.primaryMuscles.length > 0 ? e.primaryMuscles : [e.muscle];
           return rawPrimary.some((p) => isRealMuscle(p) && muscleLabel(p, nameMode) === muscle);
         }
-        return (e.secondaryMuscles || []).some((sec) => isRealMuscle(sec) && sec !== "Full Body" && muscleLabel(sec, nameMode) === muscle);
+        return (e.secondaryMuscles || []).some((sec) => isRealMuscle(sec) && !isFullBody(sec) && muscleLabel(sec, nameMode) === muscle);
       })
       .map((e) => ({ exerciseName: e.exerciseName, date: e.date, sets: filteredSetsOf(e), role }))
       .filter((r) => r.sets.length > 0);

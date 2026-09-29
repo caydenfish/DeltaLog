@@ -1,7 +1,6 @@
 import { useState } from "react";
+import { getDetailedTaxonomyEntries, genericBucket, muscleColor } from "./lib/muscleTaxonomy";
 import { computeMuscleSetCounts } from "./lib/volume";
-import { getDetailedTaxonomyEntries, genericBucket } from "./lib/muscleNomenclature";
-import { MUSCLE_COLORS } from "./lib/muscleColors";
 import { IconChevronUp, IconChevronDown } from "./Icons";
 import BodyMap from "./BodyMap";
 
@@ -144,7 +143,7 @@ function CoverageBreakdown({ primary, secondary, onSelectMuscle, view, onViewCha
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               {rows.map((r) => {
                 const clickable = r.total > 0 && !!onSelectMuscle;
-                const color = MUSCLE_COLORS[genericBucket(r.muscle)] || T.accent;
+                const color = muscleColor(r.muscle);
                 const pct = Math.max(r.total > 0 ? 6 : 0, Math.round((r.total / maxTotal) * 100));
                 return (
                   <button

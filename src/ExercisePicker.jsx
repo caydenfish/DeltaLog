@@ -1,9 +1,8 @@
 import { useState } from "react";
+import { muscleLabel, scientificNameOf, detailedNameOf, genericBucket, muscleOptionsForMode, expandSplit, isSplitActive } from "./lib/muscleTaxonomy";
 import { T } from "./lib/theme";
 import { getPrefs } from "./lib/prefs";
-import { MUSCLE_COLORS } from "./lib/muscleColors";
 import { getSplits } from "./lib/splits";
-import { muscleLabel, getMuscleTaxonomyEntries, getDetailedTaxonomyEntries, scientificNameOf, detailedNameOf, genericBucket } from "./lib/muscleNomenclature";
 import { IconStar, IconCheck } from "./Icons";
 import ExerciseThumb from "./ExerciseThumb";
 
@@ -58,17 +57,10 @@ export function filterLibrary(library, { search, muscleFilter, equipFilter, perf
   });
 }
 
-// Given the current muscleFilter and a split name, returns the group of
-// option keys that split expands to at the active naming mode, and
-// whether that group is already the exact active selection — used by
-// both the caller's onApplySplit handler and this file's isActive check.
+// A split's option keys at the given tier, honoring its Region
+// carve-outs. Thin re-export so existing callers keep working.
 export function splitGroupFor(splitName, mode) {
-  const buckets = getSplits()[splitName];
-  return mode === "generic"
-    ? buckets
-    : mode === "detailed"
-      ? getDetailedTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.detailed)
-      : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
+  return expandSplit(splitName, mode);
 }
 
 export function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, selected }) {
@@ -124,18 +116,9 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
   const muscleNameMode = getPrefs().muscleNameMode;
   const [muscleQuery, setMuscleQuery] = useState("");
   const muscleQ = muscleQuery.toLowerCase();
-  // Same options-per-mode approach as the generator: Generic mode offers
-  // the 8 broad buckets, Detailed/Scientific offer the full granular
-  // taxonomy so this filter shows the same level of detail the person
-  // has chosen in Preferences, not a fixed 8 regardless of that setting.
-  // Unlike the generator's target picker, Full Body/Neck stay included --
-  // someone browsing to add exercises manually might genuinely want to
-  // filter for a neck or full-body movement.
-  const muscleOptions = muscleNameMode === "generic"
-    ? Object.keys(MUSCLE_COLORS).map((m) => ({ key: m, label: m, color: MUSCLE_COLORS[m] }))
-    : muscleNameMode === "detailed"
-      ? getDetailedTaxonomyEntries().map((e) => ({ key: e.detailed, label: e.detailed, color: MUSCLE_COLORS[e.generic] }))
-      : getMuscleTaxonomyEntries().map((e) => ({ key: e.scientific, label: e.scientific, color: MUSCLE_COLORS[e.generic] }));
+  // Options at the active tier. Full Body/Neck stay in here (unlike the
+  // generator), since someone browsing may want a neck or full-body lift.
+  const muscleOptions = muscleOptionsForMode(muscleNameMode);
   return (
     <div style={fillHeight ? { display: "flex", flexDirection: "column", height: "100%", minHeight: 0 } : undefined}>
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -156,11 +139,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
           <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>Split</div>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
             {Object.keys(getSplits()).map((splitName) => {
-              const buckets = getSplits()[splitName];
-              const group = muscleNameMode === "generic" ? buckets : muscleNameMode === "detailed"
-                ? getDetailedTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.detailed)
-                : getMuscleTaxonomyEntries().filter((e) => buckets.includes(e.generic)).map((e) => e.scientific);
-              const active = group.length > 0 && group.length === muscleFilter.length && group.every((m) => muscleFilter.includes(m));
+              const active = isSplitActive(splitName, muscleFilter, muscleNameMode);
               return (
                 <button key={splitName} onClick={() => onApplySplit(splitName)} style={chip(active)}>{splitName}</button>
               );

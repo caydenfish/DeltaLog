@@ -75,14 +75,27 @@ Favorite name = filename (minus `.sql`), description = the text here.
 | 058 | `migration_058_fix_muscle_group_sync.sql` | Fixes the (previously undocumented) `sync_exercise_muscle_group` trigger — removes the "3+ buckets = auto Full Body" rule and the invalid "X / Y" bucket string, backfills existing rows. |
 | 059 | `migration_059_drop_metrics_table.sql` | Drops the empty, unreferenced `Metrics` table found during the live reconciliation. |
 | 060 | `migration_060_advisor_followup.sql` | Follow-up from a second Advisor scan: pins search_path on `e1rm`/`dots_score`, stops the `exercise-media` bucket from allowing full file listing, re-applies migration_057's function grants explicitly by role (in case those didn't fully take effect). |
+| 061 | `migration_061_dismiss_submission_notifications.sql` | Auto-dismisses the "new custom exercise submitted" admin notification once the submission is handled. |
+| 062 | `migration_062_muscle_group_targets.sql` | Per-user weekly set targets per muscle group (My Plan / Weekly Set Goals). |
+| 063 | `migration_063_program_generator.sql` | Multi-week program generator: `programs` and related tables. |
+| 064 | `migration_064_split_muscle_exclusions.sql` | Region-tier carve-outs per split (e.g. no Rear Delts on Push). |
+| 065 | `migration_065_workout_pause.sql` | Pause / save-for-later for in-progress workouts. |
+| 066 | `migration_066_dismiss_exercise_fix.sql` | Fixes admin Dismiss on a custom-exercise submission silently doing nothing. |
+| 067 | `migration_067_admin_profile_names.sql` | Shows real submitter names on custom exercise submissions. |
+| 068 | `migration_068_ppl_core_merge.sql` | Adds Core to Push, Pull, Legs, and Lower splits. |
+| 069 | `migration_069_program_warmup_sets.sql` | Warmup-set planning for program-generated days. |
+| 070 | `migration_070_body_map_region_muscles.sql` | Admin-editable body-map region to muscle correlation table. |
+| 071 | `migration_071_user_preferences.sql` | Server-synced user preferences (previously localStorage only). |
 | 072 | `migration_072_strava_integration.sql` | Strava integration: `strava_tokens` (service-role only), `strava_connections`, `strava_oauth_state`, `strava_link_status` tables, plus the pg_cron schedule that drives the delayed-retry check. Requires filling in `<PROJECT_REF>`/`<CRON_SECRET>` before running — see the file's own comments. |
+| 073 | `migration_073_rep_schemes.sql` | Per-set rep targets (`rep_scheme jsonb`) on `template_exercises` and `workout_exercises`. Run before deploying v1.13.0. |
 
 ## Tools (not part of the sequence — never run automatically, no number)
 
 | File | What it does |
 |---|---|
 | `tools/reset_templates_tables.sql` | Break-glass recovery for migration_003 only — drops + recreates `workout_templates`/`template_exercises`. |
-| `tools/diagnostics_taxonomy_audit.sql` | Read-only — verifies the 4-tier muscle taxonomy after migration_046. |
+| `tools/diagnostics_taxonomy_audit.sql` | Read-only — verifies the taxonomy after migration_046 (historical; the Specific tier was removed in 047). |
+| `tools/audit_muscle_tags.sql` | Read-only — finds exercise muscle tags that don't resolve to the taxonomy, Categories outside the canonical 8, and empty Regions. |
 | `tools/report_exercise_gaps.sql` | Read-only — finds exercises with no equivalent after migration_036's reimport. |
 
 ## Resolved / closed

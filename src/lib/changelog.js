@@ -9,6 +9,18 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.13.0": {
+    title: "A rebuilt template builder, per-set rep targets, and a training load meter",
+    items: [
+      "Building a template is now one clean screen: pick as many exercises as you want at once, then tap any exercise to set its sets, warmups, and rep targets in place. Reorder by dragging, link exercises into supersets, and undo a removal if you tap the wrong one.",
+      "New: rep targets per set. Run two sets of 8-12 and a 15-18 finisher, or a heavy top set followed by back-offs, from the template builder or mid-workout from the rep range button above your target.",
+      "When a set's rep range changes, its suggested weight now checks how your previous set went today. Having an off day? The back-off set comes down to match instead of repeating last week's weight.",
+      "New Training load card on Home: a gauge showing how hard this week has been compared to your usual week, from Low to Very high, with a day-by-day breakdown.",
+      "Template list: tap a template to edit it, and use the ... menu to duplicate, share, archive, or delete (with a confirmation now).",
+      "Fixed: on iPhone, the setup screens could run off the bottom of the screen with no way to reach Continue, and the birthday field could spill off the side.",
+      "Muscle groups are more consistent across the app: split filters like Push and Pull now leave out the muscles that belong to the other day (like Rear Delts on Push) in Region and Anatomy mode, and Weekly Set Goals no longer double-counts a muscle that an exercise lists as both a primary and a secondary mover.",
+    ],
+  },
   "1.12.23": {
     title: "Smarter next-set recommendations",
     items: [

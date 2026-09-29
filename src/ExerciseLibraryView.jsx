@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { muscleLabel, genericBucket, CATEGORY_KEYS, FULL_BODY } from "./lib/muscleTaxonomy";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { fetchExerciseLibrary, updateExercise, fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleTaxonomy, createSharedExercise, uploadExerciseMedia, fetchExerciseDefaults, saveExerciseDefaults, fetchExerciseHistory } from "./lib/queries";
-import { muscleLabel, genericBucket } from "./lib/muscleNomenclature";
-import { MUSCLE_COLORS } from "./lib/muscleColors";
 import { summarizeExerciseHistory, bucketSeries } from "./lib/volume";
 import { getPrefs } from "./lib/prefs";
 import { toDisplay } from "./lib/weight";
@@ -567,7 +566,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
             <>
               <div style={{ color: T.dim, fontSize: 12, marginBottom: 12 }}>Browse by muscle group, or view everything.</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-                {Object.keys(MUSCLE_COLORS).filter((m) => m !== "Full Body").map((m) => (
+                {CATEGORY_KEYS.filter((m) => m !== FULL_BODY).map((m) => (
                   <button
                     key={m}
                     onClick={() => pickGroup(m)}
