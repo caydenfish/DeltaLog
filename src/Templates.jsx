@@ -694,14 +694,7 @@ export default function Templates({ user, onClose, initialPicks }) {
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelected}
                 onToggleFavorite={toggleFavorite}
-                footer={
-                  <button
-                    onClick={() => { pendingCustomPick.current = (ex) => (replacing ? replaceWith(replacing.id, ex) : setSelected((prev) => [...prev, ex])); setShowCreateCustom(true); }}
-                    style={{ width: "100%", padding: "10px 0", marginTop: 6, borderRadius: 10, border: `1px dashed ${T.line}`, background: "none", color: T.dim, fontSize: 13 }}
-                  >
-                    + Create custom exercise
-                  </button>
-                }
+                onCreateCustom={() => { pendingCustomPick.current = (ex) => (replacing ? replaceWith(replacing.id, ex) : setSelected((prev) => [...prev, ex])); setShowCreateCustom(true); }}
                 fillHeight
               />
             )}

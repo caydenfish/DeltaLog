@@ -9,6 +9,16 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.13.4": {
+    title: "A cleaner Edit Workout screen, and easier-to-read lists",
+    items: [
+      "Edit Workout is rebuilt. Each exercise is one tidy row showing its sets and rest at a glance; tap it to adjust sets, warmups, and rest, or to favorite, replace, superset, or remove it.",
+      "Exercise names in the picker now get a full line to themselves, so long names stay readable.",
+      "Creating a custom exercise now lives inside My Custom, instead of trailing every list. If a search finds nothing, you can create it right from there too.",
+      "Tidied up the new exercise screen so nothing runs off the edge.",
+      "Programs are temporarily unavailable while we rebuild them on better training science.",
+    ],
+  },
   "1.13.3": {
     title: "A new way to pick exercises",
     items: [

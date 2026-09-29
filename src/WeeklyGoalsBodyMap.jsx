@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { fetchMuscleGroupTargets, saveMuscleGroupTarget } from "./lib/queries";
 import { fetchActiveProgram } from "./lib/programQueries";
+import { PROGRAM_LOCKED } from "./lib/features";
 import { dayLabelsForSplit } from "./lib/programEngine";
 import { computeRollingWeeklyTotals } from "./lib/volume";
 import { getMuscleGroupOptions } from "./lib/muscleTaxonomy";
@@ -121,7 +122,7 @@ export default function WeeklyGoalsBodyMap({ userId, history, nameMode }) {
   // before.
   useEffect(() => {
     let cancelled = false;
-    if (resolvedNameMode !== "generic") { setSuggestion(null); return; }
+    if (resolvedNameMode !== "generic" || PROGRAM_LOCKED) { setSuggestion(null); return; }
     fetchActiveProgram(userId)
       .then((program) => {
         if (cancelled || !program) return;

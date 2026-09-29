@@ -24,6 +24,7 @@ import AdminBodyMapRegionEditor from "./AdminBodyMapRegionEditor";
 import MachineNamesManager from "./MachineNamesManager";
 import Logo from "./Logo";
 import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX, IconCalendar, IconList, IconBarbell, IconUser, IconSliders, IconInfo, IconLock, IconAlertTriangle } from "./Icons";
+import { PROGRAM_LOCKED } from "./lib/features";
 import { SettingsTile, TileGrid, SettingsSectionLabel, ScreenHeader, SettingsSearch } from "./SettingsUI";
 import Templates from "./Templates";
 import { fetchUnlinkedWorkouts } from "./lib/strava";
@@ -904,7 +905,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                               <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.4 }}>{insight.tip}</div>
                             </div>
                           </div>
-                          {programDay && (
+                          {programDay && !PROGRAM_LOCKED && (
                             <button
                               onClick={() => setShowProgramView(true)}
                               style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
@@ -1108,8 +1109,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                   wide
                   icon={<IconCalendar size={20} />}
                   onClick={() => setShowProgramView(true)}
+                  disabled={PROGRAM_LOCKED}
                   title="Program"
-                  subtitle="Multi-week plans with progression"
+                  subtitle={PROGRAM_LOCKED ? "Being rebuilt" : "Multi-week plans with progression"}
+                  badge={PROGRAM_LOCKED ? <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: T.dim, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 8px", whiteSpace: "nowrap" }}>Coming soon</span> : null}
                 />
               </TileGrid>
               </>
@@ -1315,7 +1318,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           </div>
         </div>
       )}
-      {showProgramView && (
+      {showProgramView && !PROGRAM_LOCKED && (
         <ProgramView
           user={user}
           onClose={() => { setShowProgramView(false); setProgramRefreshKey((k) => k + 1); }}

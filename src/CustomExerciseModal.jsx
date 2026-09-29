@@ -3,7 +3,7 @@ import { muscleLabel, muscleLabelsFor, genericBucket, detailedNameOf, muscleOpti
 import { getPrefs } from "./lib/prefs";
 import { fetchMuscleTaxonomy, deriveEquipmentBucket } from "./lib/queries";
 import { EQUIPMENT_LIST } from "./ExercisePicker";
-import { IconX, IconCheck, IconChevronDown } from "./Icons";
+import { IconX, IconCheck, IconChevronDown, IconChevronLeft } from "./Icons";
 
 const T = {
   bg: "#101216",
@@ -60,21 +60,21 @@ function MusclePicker({ label, values, onAdd, onRemove, options, renderLabel, gr
 
   return (
     <>
-      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: CONDENSED, fontSize: 14, fontWeight: 600, color: "#B8BDC7", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6 }}>{label}</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
         {values.length === 0 && <div style={{ color: T.dim, fontSize: 12 }}>None yet.</div>}
         {values.map((m) => (
-          <div key={m} style={{ display: "flex", alignItems: "center", gap: 6, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 999, padding: "4px 10px" }}>
-            <span style={{ color: T.text, fontSize: 12 }}>{display(m)}</span>
-            <button onClick={() => onRemove(m)} aria-label={`Remove ${m}`} style={{ background: "none", border: "none", color: T.dim, fontSize: 12, padding: 0 }}><IconX size={12} /></button>
+          <div key={m} style={{ display: "flex", alignItems: "center", gap: 4, maxWidth: "100%", height: 34, boxSizing: "border-box", background: `${muscleColor(m)}1F`, border: `1px solid ${muscleColor(m)}`, borderRadius: 999, padding: "0 4px 0 12px" }}>
+            <span style={{ color: T.text, fontSize: 13, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{display(m)}</span>
+            <button onClick={() => onRemove(m)} aria-label={`Remove ${m}`} style={{ width: 28, height: 28, flexShrink: 0, background: "none", border: "none", color: T.text, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><IconX size={12} /></button>
           </div>
         ))}
       </div>
       <button
         onClick={() => setShowSheet(true)}
-        style={{ width: "100%", textAlign: "left", background: T.surface2, border: `1px dashed ${T.line}`, borderRadius: 8, color: T.dim, fontSize: 13, padding: "9px 12px", marginBottom: 18 }}
+        style={{ width: "100%", minHeight: 48, textAlign: "left", background: "transparent", border: "1px dashed #4A505B", borderRadius: 12, color: T.text, fontSize: 15, padding: "0 14px", marginBottom: 18 }}
       >
-        + Add muscle
+        {values.length ? "Edit muscles" : "+ Add muscles"}
       </button>
 
       {showSheet && (
@@ -267,7 +267,7 @@ function SingleSelectPicker({ label, value, onChange, options, renderLabel, grou
 
   return (
     <>
-      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: CONDENSED, fontSize: 14, fontWeight: 600, color: "#B8BDC7", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6 }}>{label}</div>
       <button
         onClick={() => setShowSheet(true)}
         style={{ ...selectStyle, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
@@ -328,11 +328,9 @@ function MatchPanel({ title, items, onUse }) {
       {items.map(({ ex, tag, strong }) => (
         <div key={ex.id} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 56, padding: "8px 8px 8px 12px", borderRadius: 12, background: T.surface, border: `1px solid ${T.line}` }}>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 600, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ex.name}</span>
-              {tag && <span style={{ flexShrink: 0, padding: "2px 6px", borderRadius: 6, background: strong ? "#4E8DE840" : T.surface2, color: strong ? "#CFE0FB" : "#B8BDC7", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{tag}</span>}
-            </div>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 600, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ex.name}</span>
             <div style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {tag && <span style={{ color: strong ? "#9CC0F5" : "#B8BDC7", fontWeight: 600 }}>{tag} · </span>}
               {muscleLabelsFor(ex.rawPrimaryMuscles, getPrefs().muscleNameMode).slice(0, 2).join(", ") || muscleLabel(ex.muscle, "generic")} · {ex.equipment}{ex.sessions > 0 ? " · Performed" : ""}
             </div>
           </div>
@@ -476,14 +474,13 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 50, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
-          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 21, fontWeight: 700, color: T.text, textAlign: "center" }}>{isEdit ? "EDIT EXERCISE" : "NEW CUSTOM EXERCISE"}</div>
-          <div style={{ width: 26 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 12px 10px", borderBottom: `1px solid ${T.line}`, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
+          <button onClick={onClose} aria-label="Close" style={{ width: 44, height: 44, borderRadius: 10, background: "transparent", border: "none", color: T.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconChevronLeft size={22} /></button>
+          <div style={{ flex: 1, minWidth: 0, fontFamily: CONDENSED, fontSize: 24, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: T.text, ...ONE_LINE }}>{isEdit ? "Edit Exercise" : "New Exercise"}</div>
         </div>
 
         <div style={{ padding: 16, flex: 1 }}>
-          <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Exercise name</div>
+          <div style={{ fontFamily: CONDENSED, fontSize: 14, fontWeight: 600, color: "#B8BDC7", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6 }}>Exercise name</div>
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Step-ups" style={inputStyle} />
 
           {nameMatches.length > 0 && (
@@ -492,13 +489,12 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
 
           {showSuggestion && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12, borderRadius: 14, background: T.surface, border: `1px solid ${T.line}`, marginBottom: 18 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: T.text }}>Suggested muscles</div>
-                  <div style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>From your library · {source.name}</div>
+                  <div style={{ fontFamily: CONDENSED, fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: T.text, ...ONE_LINE }}>Suggested muscles</div>
+                  <div style={{ fontSize: 12, color: T.dim, ...ONE_LINE }}>From your library · {source.name}</div>
                 </div>
-                <button onClick={() => setSuggestionDismissed(true)} aria-label="Dismiss suggestion" style={{ width: 36, height: 36, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "center" }}><IconX size={13} /></button>
-                <button onClick={acceptSuggestion} style={{ flexShrink: 0, height: 40, padding: "0 14px", borderRadius: 10, background: T.text, color: T.bg, border: "none", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Accept all</button>
+                <button onClick={() => setSuggestionDismissed(true)} aria-label="Dismiss suggestion" style={{ width: 36, height: 36, flexShrink: 0, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "center" }}><IconX size={13} /></button>
               </div>
               {[["Primary", suggestedPrimary], ["Secondary", suggestedSecondary]].filter(([, arr]) => arr.length > 0).map(([lbl, arr]) => (
                 <div key={lbl} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -514,6 +510,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
                   </div>
                 </div>
               ))}
+              <button onClick={acceptSuggestion} style={{ height: 44, borderRadius: 10, background: T.text, color: T.bg, border: "none", fontSize: 15, fontWeight: 600 }}>Accept all</button>
             </div>
           )}
 
@@ -529,7 +526,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
                 groupFn={taxonomyGroup}
               />
 
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Muscle group (auto)</div>
+              <div style={{ fontFamily: CONDENSED, fontSize: 14, fontWeight: 600, color: "#B8BDC7", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6 }}>Muscle group (auto)</div>
               <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: primaryMuscles.length ? T.text : T.dim, fontSize: 14, padding: "12px 14px", marginBottom: 18 }}>
                 {primaryMuscles.length ? muscle : "Add a primary muscle to derive this"}
               </div>
@@ -546,7 +543,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
             </>
           ) : (
             <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Muscle group (auto)</div>
+              <div style={{ fontFamily: CONDENSED, fontSize: 14, fontWeight: 600, color: "#B8BDC7", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6 }}>Muscle group (auto)</div>
               <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: primaryMuscles.length ? T.text : T.dim, fontSize: 14, padding: "12px 14px", marginBottom: 18 }}>
                 {primaryMuscles.length ? muscleLabel(muscle, "generic") : "Add a primary muscle to derive this"}
               </div>

@@ -5,6 +5,17 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.13.4",
+    date: "2026-09-29",
+    items: [
+      "New src/lib/features.js with PROGRAM_LOCKED = true. Home: Program settings tile disabled with a Coming soon badge, the Last Workout widget's Open Program button and the ProgramView mount are gated; WeeklyGoalsBodyMap skips the program target suggestion. ProgramSetup/ProgramView/programEngine untouched (overhaul planned: volume-first weekly sets with fractional secondary counting, RIR-driven loads, proportional increments, volume-cut deloads, prescribed rest).",
+      "ExercisePicker: new onCreateCustom(query) prop. The create button lives inside My Custom (tiles and rail; My Custom always shown when the prop is passed) and on an empty search ('Create \"query\"'); footer only renders when a caller passes one. SetLogger (add + replace) and Templates switched from footer buttons to onCreateCustom. ExerciseRow: name on its own full-width line, second line = muscles/equipment (truncates first) + last set and relative date; thumb hidden in multi-select (checkbox takes its place); star hidden in compact rail rows; rail narrowed to 68px.",
+      "Edit Workout (SetLogger manage view): new EditWorkoutCard.jsx. Collapsed row = drag handle, thumb, name, summary ('3 sets · 1 warmup · 2:00 rest · 2 logged'); tap expands to 40px steppers (working sets, warmups, rest, warmup rest with custom/default note), logged-set editor, and a Favorite / Replace / Superset / Remove action row. One card open at a time (manageExpanded), collapsed on drag. Header is back + title + Done; the tiny '+' is replaced by an Add exercises button under the list. Fixes long names pushing the side buttons off screen (name container had no min-width).",
+      "CustomExerciseModal: header matches ScreenHeader (back + left-aligned title), condensed field labels, tagged muscles as colored chips with truncation, 48px Add/Edit muscles button; Suggested muscles title no longer wraps (Accept all moved to a full-width button below the chips); match rows put the Same name/Similar tag on the second line so names get the width.",
+      "Verified in headless Chromium at 360px (tiles, rail, all three name modes, replace, empty search, new exercise, Edit Workout card): no content extends past the viewport outside intended horizontal scrollers.",
+    ],
+  },
+  {
     version: "1.13.3",
     date: "2026-09-29",
     items: [

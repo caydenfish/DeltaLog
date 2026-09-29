@@ -3,7 +3,7 @@ import { muscleLabel, muscleLabelsFor, muscleColor, scientificNameOf, detailedNa
 import { T } from "./lib/theme";
 import { getPrefs, setPref } from "./lib/prefs";
 import { getSplits } from "./lib/splits";
-import { IconStar, IconCheck, IconSearch, IconX, IconClock, IconBody, IconBarbell, IconRefresh, IconSuperset, IconPencil, IconFilter, IconChevronLeft, IconChevronRight } from "./Icons";
+import { IconStar, IconCheck, IconSearch, IconX, IconClock, IconBody, IconBarbell, IconRefresh, IconSuperset, IconPencil, IconFilter, IconChevronLeft, IconChevronRight, IconPlus } from "./Icons";
 import ExerciseThumb from "./ExerciseThumb";
 
 // The equipment filter's fixed set of buckets — see deriveEquipmentBucket
@@ -97,10 +97,10 @@ function timeAgo(iso) {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} wk ago`;
-  if (days < 365) return `${Math.floor(days / 30)} mo ago`;
-  return `${Math.floor(days / 365)} yr ago`;
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
 }
 
 function lastSetText(l) {
@@ -147,27 +147,26 @@ export function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, s
           </div>
         )}
         {badge}
-        {!compact && (l.mediaUrl ? (
+        {!compact && !selectable && (l.mediaUrl ? (
           <ExerciseThumb muscle={l.muscle} mediaUrl={l.mediaUrl} size={40} />
         ) : (
           <div aria-hidden="true" style={{ width: 40, height: 40, borderRadius: 10, background: T.surface2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: CONDENSED, fontWeight: 700, fontSize: 15, color: muscleColor(l.muscle) }}>
             {EQUIP_ABBR[l.equipment] || "—"}
           </div>
         ))}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+        {/* Name gets the full width on its own line; muscles/equipment and
+            the last set share the second line, which truncates first. */}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ fontFamily: CONDENSED, fontSize: compact ? 18 : 19, fontWeight: 600, color: performed ? T.text : "#C9CCD2", ...ONE_LINE }}>{l.name}</div>
-          <div style={{ fontSize: compact ? 12 : 13, color: T.dim, ...ONE_LINE }}>
-            {compact ? `${l.equipment} · ${lastSetText(l)}${l.lastPerformedAt ? ` · ${timeAgo(l.lastPerformedAt)}` : ""}` : `${primaryMuscleText(l)} · ${l.equipment}`}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: compact ? 12 : 13, color: T.dim, ...ONE_LINE }}>{compact ? l.equipment : `${primaryMuscleText(l)} · ${l.equipment}`}</span>
+            <span style={{ flexShrink: 0, fontSize: compact ? 12 : 13, fontWeight: 600, color: performed ? SOFT : T.dim, whiteSpace: "nowrap" }}>
+              {lastSetText(l)}{l.lastPerformedAt ? <span style={{ fontWeight: 400, color: T.dim }}>{` · ${timeAgo(l.lastPerformedAt)}`}</span> : null}
+            </span>
           </div>
         </div>
-        {!compact && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: performed ? T.text : T.dim, whiteSpace: "nowrap" }}>{lastSetText(l)}</div>
-            <div style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap" }}>{l.lastPerformedAt ? timeAgo(l.lastPerformedAt) : performed ? "" : "Not performed"}</div>
-          </div>
-        )}
       </button>
-      {onToggleFavorite && (
+      {onToggleFavorite && !compact && (
         <button
           onClick={(e) => { e.stopPropagation(); onToggleFavorite(l.id); }}
           aria-label={l.isFavorite ? "Unfavorite" : "Favorite"}
@@ -256,7 +255,7 @@ const NODES = [
 const VALUE_NODES = new Set(["muscle", "equipment", "movement", "splits"]);
 const RECENT_LIMIT = 20;
 
-export default function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMuscle, onApplySplit, equipFilter, onToggleEquip, performedFilter, onSetPerformed, sourceFilter, onSetSource, showFilters, onToggleFilters, onPick, onToggleFavorite, footer, multiSelect, selectedIds, onToggleSelect, fillHeight, replaceFor }) {
+export default function ExercisePicker({ list, search, onSearchChange, muscleFilter, onToggleMuscle, onApplySplit, equipFilter, onToggleEquip, performedFilter, onSetPerformed, sourceFilter, onSetSource, showFilters, onToggleFilters, onPick, onToggleFavorite, footer, multiSelect, selectedIds, onToggleSelect, fillHeight, replaceFor, onCreateCustom }) {
   const mode = getPrefs().muscleNameMode;
   const [layout, setLayoutState] = useState(() => (getPrefs().pickerLayout === "rail" ? "rail" : "tiles"));
   const [node, setNode] = useState(null); // tiles: null = hub. rail: selected rail entry.
@@ -346,6 +345,18 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
     ));
   }
 
+  // Create-custom lives inside My Custom (and on an empty search), never
+  // pinned under every list.
+  function createButton(label) {
+    if (!onCreateCustom) return null;
+    return (
+      <button onClick={() => onCreateCustom(q)} style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 56, padding: "8px 14px", borderRadius: 12, border: `1px dashed #4A505B`, background: "transparent", color: T.text, textAlign: "left", width: "100%", boxSizing: "border-box" }}>
+        <span style={{ width: 32, height: 32, borderRadius: 8, background: T.surface2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconPlus size={16} /></span>
+        <span style={{ fontFamily: CONDENSED, fontSize: 18, fontWeight: 600, ...ONE_LINE }}>{label}</span>
+      </button>
+    );
+  }
+
   // Favorites / Performed / Not yet performed, most recently used first.
   function sectioned(arr, compact) {
     const favs = arr.filter((l) => l.isFavorite).sort(byUsage);
@@ -412,7 +423,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
     if (key === "equipment") return "Barbell, dumbbell, cable";
     if (key === "movement") return "Squat, hinge, press, pull";
     if (key === "splits") return splitNames.slice(0, 3).join(", ");
-    if (key === "custom") return "Exercises you made";
+    if (key === "custom") return customs.length ? "Exercises you made" : "Create your own";
     return "";
   }
 
@@ -429,7 +440,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
               <div style={{ fontSize: 13, color: SOFT }}>Tap the star on any exercise to pin it here</div>
             )}
           </Tile>
-          {NODES.filter((n) => n.key !== "favorites" && (n.key !== "custom" || customs.length > 0) && (n.key !== "movement" || patterns.length > 0)).map((n) => (
+          {NODES.filter((n) => n.key !== "favorites" && (n.key !== "custom" || customs.length > 0 || onCreateCustom) && (n.key !== "movement" || patterns.length > 0)).map((n) => (
             <Tile key={n.key} title={n.label} sub={nodeSub(n.key)} icon={n.icon(20)} count={nodeCount(n.key)} onClick={() => openNode(n.key)} />
           ))}
         </div>
@@ -462,7 +473,8 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
           <>
             {chipsBlock(false)}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {node === "recent" ? (recent.length ? rowsOf(recent) : <div style={{ fontSize: 14, color: T.dim, padding: "16px 4px" }}>Nothing logged yet.</div>) : sectioned(results)}
+              {node === "custom" && createButton("Create custom exercise")}
+              {node === "custom" && customs.length === 0 ? null : node === "recent" ? (recent.length ? rowsOf(recent) : <div style={{ fontSize: 14, color: T.dim, padding: "16px 4px" }}>Nothing logged yet.</div>) : sectioned(results)}
             </div>
           </>
         )}
@@ -480,15 +492,15 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
     if (sub) railResults = railResults.filter((l) => (active === "muscle" ? exerciseMatchesOption(l, sub, mode) : inCategory(l, sub)));
     if (equipChip) railResults = railResults.filter((l) => l.equipment === equipChip);
     return (
-      <div style={{ display: "flex", gap: 10, minHeight: 0, flex: 1 }}>
-        <div style={{ width: 76, flexShrink: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-          {NODES.filter((n) => n.key !== "custom" || customs.length > 0).map((n) => {
+      <div style={{ display: "flex", gap: 8, minHeight: 0, flex: 1 }}>
+        <div style={{ width: 68, flexShrink: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+          {NODES.filter((n) => n.key !== "custom" || customs.length > 0 || onCreateCustom).map((n) => {
             const on = n.key === active;
             const gold = n.key === "favorites";
             return (
               <button key={n.key} onClick={() => openNode(n.key)} aria-pressed={on} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, height: 64, borderRadius: 12, border: "none", background: on ? (gold ? `${GOLD}1F` : T.surface2) : "transparent", color: gold ? GOLD : on ? T.text : T.dim }}>
                 {n.icon(20)}
-                <span style={{ fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap" }}>{n.railLabel}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{n.railLabel}</span>
               </button>
             );
           })}
@@ -509,7 +521,8 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
             </div>
           )}
           {node === active && value ? chipsBlock(true) : null}
-          {active === "favorites" ? groupedByCategory(favorites, true) : active === "recent" ? (recent.length ? rowsOf(recent, true) : <div style={{ fontSize: 14, color: T.dim, padding: "16px 4px" }}>Nothing logged yet.</div>) : sectioned(railResults, true)}
+          {active === "custom" && createButton("Create custom")}
+          {active === "custom" && customs.length === 0 ? null : active === "favorites" ? groupedByCategory(favorites, true) : active === "recent" ? (recent.length ? rowsOf(recent, true) : <div style={{ fontSize: 14, color: T.dim, padding: "16px 4px" }}>Nothing logged yet.</div>) : sectioned(railResults, true)}
         </div>
       </div>
     );
@@ -577,7 +590,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
 
   const inReplace = replaceFor && !browseAll && !q;
   const body = q
-    ? <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{sectioned(items)}</div>
+    ? <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{sectioned(items)}{items.length === 0 && createButton(`Create "${q}"`)}</div>
     : inReplace
     ? <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{replaceView()}</div>
     : layout === "rail"
@@ -603,7 +616,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
       {filtersPanel}
       <div style={fillHeight ? { flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column" } : { maxHeight: "52vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         {body}
-        <div style={{ marginTop: 8 }}>{footer}</div>
+        {footer && <div style={{ marginTop: 8 }}>{footer}</div>}
       </div>
       {trayItems.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 10, marginTop: 6, borderTop: `1px solid ${T.line}` }}>

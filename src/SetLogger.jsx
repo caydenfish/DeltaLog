@@ -11,10 +11,11 @@ import { IDEOLOGIES } from "./lib/ideologies";
 import { rangeForSet, isRangeChange, sanitizeScheme, resizeScheme, formatRange } from "./lib/repScheme";
 import RepSchemeEditor from "./RepSchemeEditor";
 import ExerciseThumb from "./ExerciseThumb";
+import EditWorkoutCard from "./EditWorkoutCard";
 import CustomExerciseModal from "./CustomExerciseModal";
 import ExportWorkoutModal from "./ExportWorkoutModal";
 import LoadingScreen, { InlineLoading } from "./LoadingSpinner";
-import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome, IconDragHandle } from "./Icons";
+import { IconX, IconCheck, IconStar, IconMenu, IconGear, IconBolt, IconSuperset, IconPencil, IconCamera, IconImage, IconTrash, IconBarbell, IconHome, IconDragHandle, IconChevronLeft, IconPlus } from "./Icons";
 import { getSplits } from "./lib/splits";
 import { triggerStravaCheck } from "./lib/strava";
 import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
@@ -524,6 +525,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [sourceFilter, setSourceFilter] = useState("all");
   const [showCreateCustom, setShowCreateCustom] = useState(false);
   const [linkingFrom, setLinkingFrom] = useState(null);
+  const [manageExpanded, setManageExpanded] = useState(null); // Edit Workout: which exercise card is open
   const [expandedSetsFor, setExpandedSetsFor] = useState(null); // exercise index whose logged sets are expanded for delete, in Edit Workout
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -2042,137 +2044,71 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       <div style={outer}>
         <style>{`${fontImport} button { cursor: pointer; } input:focus { border-color: ${T.accent} !important; }`}</style>
         <div style={frame}>
-          <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
-            <button onClick={handleManageBack} aria-label="Back" style={smallBtn}>‹</button>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>EDIT WORKOUT</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} aria-label="Add exercise" title="Add exercise" style={{ ...smallBtn, color: T.text, fontSize: 15, padding: "3px 9px", fontWeight: 700 }}>+</button>
-              <button onClick={finishEditing} aria-label="Done" style={{ ...smallBtn, color: T.text, borderColor: T.accent, fontSize: 13 }}><IconCheck size={12} /></button>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 12px 10px", borderBottom: `1px solid ${T.line}` }}>
+            <button onClick={handleManageBack} aria-label="Back" style={{ width: 44, height: 44, borderRadius: 10, background: "transparent", border: "none", color: T.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconChevronLeft size={22} /></button>
+            <div style={{ flex: 1, minWidth: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Edit Workout</div>
+            <button onClick={finishEditing} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "#C93A26", color: "#fff", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", flexShrink: 0 }}>Done</button>
           </div>
-          <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
+          <div style={{ flex: 1, padding: 16, overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {workout.length === 0 && (
-              <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "20px", border: `1px dashed ${T.line}`, borderRadius: 12, marginBottom: 10 }}>
-                Empty workout. Tap + above to add exercises, or use the generator.
+              <div style={{ color: T.dim, fontSize: 14, textAlign: "center", padding: 20, border: `1px dashed ${T.line}`, borderRadius: 14, marginBottom: 10 }}>
+                No exercises yet.
               </div>
             )}
             {linkingFrom !== null && (
-              <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10, marginBottom: 10, fontSize: 12, color: T.text, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                Tap the link icon on another exercise to pair them into a superset.
-                <button onClick={() => setLinkingFrom(null)} style={{ ...smallBtn, marginLeft: 8, flexShrink: 0 }}>Cancel</button>
+              <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 12, padding: "8px 8px 8px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Tap Superset on another exercise</span>
+                <button onClick={() => setLinkingFrom(null)} style={{ height: 36, padding: "0 12px", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 13, flexShrink: 0 }}>Cancel</button>
               </div>
             )}
-            {workout.map((w, i) => (
-              <div
-                key={i}
-                ref={(el) => (rowRefs.current[i] = el)}
-               
-                style={{ position: "relative", background: T.surface, border: `1px solid ${w.supersetGroup != null ? T.accent : T.line}`, borderRadius: 12, padding: 12, marginBottom: w.supersetGroup != null && workout[i + 1]?.supersetGroup === w.supersetGroup ? 4 : 10, opacity: dragIndex === i ? 0.5 : 1 }}
-              >
-                {dragIndex !== null && dragOverIndex === i && dragIndex > i && (
-                  <div style={{ position: "absolute", left: 8, right: 8, top: -6, height: 3, borderRadius: 2, background: T.accent }} />
-                )}
-                {dragIndex !== null && dragOverIndex === i && dragIndex < i && (
-                  <div style={{ position: "absolute", left: 8, right: 8, bottom: -6, height: 3, borderRadius: 2, background: T.accent }} />
-                )}
-                {w.supersetGroup != null && (
-                  <div style={{ fontSize: 10, fontWeight: 700, color: T.accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
-                    Superset · no rest to next exercise
-                  </div>
-                )}
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div
-                    onPointerDown={(e) => startRowDrag(i, e)}
-                    aria-label="Drag to reorder"
-                    title="Drag to reorder"
-                    style={{ cursor: "grab", color: T.dim, fontSize: 18, padding: "4px 2px", touchAction: "none", flexShrink: 0, alignSelf: "stretch", display: "flex", alignItems: "center" }}
-                  >
-                    <IconDragHandle size={16} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      <ExerciseThumb muscle={w.muscle} mediaUrl={w.mediaUrl} size={22} /> {w.name}
-                      {w.suggested && <span style={{ fontSize: 10, fontWeight: 700, color: "#7BD69B", border: `1px solid ${T.green}`, borderRadius: 999, padding: "1px 7px" }}>Balance pick</span>}
-                      {w.ideology && <span style={{ fontSize: 10, fontWeight: 700, color: T.dim, border: `1px solid ${T.line}`, borderRadius: 999, padding: "1px 7px" }}>{w.ideology}</span>}
-                    </div>
-                    <div style={{ fontSize: 12, color: T.dim, marginTop: 6 }}>Sets</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, flexWrap: "wrap" }}>
-                      <button onClick={() => adjustPlanned(i, Math.max(1, w.planned - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>−</button>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, minWidth: 16, textAlign: "center" }}>{w.planned}</div>
-                      <button onClick={() => adjustPlanned(i, Math.min(12, w.planned + 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
-                      <div style={{ width: 1, height: 18, background: T.line, margin: "0 2px" }} />
-                      <button onClick={() => adjustWarmupPlanned(i, Math.max(0, (w.plannedWarmup || 0) - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>−</button>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, minWidth: 16, textAlign: "center" }}>{w.plannedWarmup || 0}</div>
-                      <button onClick={() => adjustWarmupPlanned(i, Math.min(6, (w.plannedWarmup || 0) + 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
-                      <div style={{ fontSize: 11, color: T.dim }}>warmup</div>
-                      {allSets[i].length > 0 && (
-                        <button
-                          onClick={() => setExpandedSetsFor(expandedSetsFor === i ? null : i)}
-                          style={{ fontSize: 11, color: T.dim, marginLeft: 4, background: "none", border: "none", padding: 0, textDecoration: "underline" }}
-                        >
-                          {allSets[i].length} logged{expandedSetsFor === i ? " · hide" : " · edit"}
-                        </button>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>Rest timer</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
-                      <button onClick={() => adjustRest(i, Math.max(15, (w.restSeconds || getPrefs().restSeconds) - 15))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>−</button>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, fontWeight: 700, color: T.text, minWidth: 40, textAlign: "center" }}>
-                        {mmss(w.restSeconds || getPrefs().restSeconds)}
-                      </div>
-                      <button onClick={() => adjustRest(i, Math.min(600, (w.restSeconds || getPrefs().restSeconds) + 15))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
-                      {w.restSeconds != null && <span style={{ fontSize: 10, color: T.dim, marginLeft: 4 }}>custom</span>}
-                    </div>
-                    {getPrefs().warmupRestEnabled && (w.plannedWarmup || 0) > 0 && (
-                      <>
-                        <div style={{ fontSize: 12, color: T.dim, marginTop: 8 }}>Warmup rest timer</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
-                          <button onClick={() => adjustWarmupRest(i, Math.max(15, (w.warmupRestSeconds || getPrefs().warmupRestSeconds) - 15))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>−</button>
-                          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, fontWeight: 700, color: T.text, minWidth: 40, textAlign: "center" }}>
-                            {mmss(w.warmupRestSeconds || getPrefs().warmupRestSeconds)}
-                          </div>
-                          <button onClick={() => adjustWarmupRest(i, Math.min(600, (w.warmupRestSeconds || getPrefs().warmupRestSeconds) + 15))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
-                          {w.warmupRestSeconds != null && <span style={{ fontSize: 10, color: T.dim, marginLeft: 4 }}>custom</span>}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <button
-                      onClick={() => toggleFavorite(w.id)}
-                      aria-label={favoriteIds.has(w.id) ? "Unfavorite" : "Favorite"}
-                      title={favoriteIds.has(w.id) ? "Unfavorite" : "Favorite"}
-                      style={{ ...smallBtn, color: favoriteIds.has(w.id) ? "#F2C94C" : T.dim, borderColor: favoriteIds.has(w.id) ? "#F2C94C" : T.line, fontSize: 15, padding: "3px 10px" }}
-                    >
-                      <IconStar size={14} filled={favoriteIds.has(w.id)} />
-                    </button>
-                    <button onClick={() => { setPickerFor(pickerFor === i ? null : i); setPickerSearch(""); }} aria-label="Replace exercise" title="Replace" style={{ ...smallBtn, fontSize: 15, padding: "3px 10px" }}>⇄</button>
-                    <button
-                      onClick={() => (w.supersetGroup != null ? unlinkSuperset(i) : toggleSupersetLink(i))}
-                      aria-label={w.supersetGroup != null ? "Remove from superset" : "Link into superset"}
-                      title={w.supersetGroup != null ? "Unlink superset" : linkingFrom === i ? "Tap another exercise to link" : "Link into superset"}
-                      style={{ ...smallBtn, fontSize: 15, padding: "3px 10px", color: w.supersetGroup != null || linkingFrom === i ? T.accent : T.dim, borderColor: w.supersetGroup != null || linkingFrom === i ? T.accent : T.line }}
-                    ><IconSuperset size={14} /></button>
-                    <button onClick={() => removeExercise(i)} aria-label="Remove exercise" title="Remove" style={{ ...smallBtn, color: T.accent, borderColor: T.accent, fontSize: 15, padding: "3px 10px" }}>−</button>
-                  </div>
+            {workout.map((w, i) => {
+              const linkedNext = w.supersetGroup != null && workout[i + 1]?.supersetGroup === w.supersetGroup;
+              const restSecs = w.restSeconds || getPrefs().restSeconds;
+              const warmRestSecs = w.warmupRestSeconds || getPrefs().warmupRestSeconds;
+              return (
+                <div key={i} ref={(el) => (rowRefs.current[i] = el)} style={{ position: "relative", marginBottom: linkedNext ? 4 : 10, opacity: dragIndex === i ? 0.5 : 1 }}>
+                  {dragIndex !== null && dragOverIndex === i && dragIndex > i && (
+                    <div style={{ position: "absolute", left: 8, right: 8, top: -6, height: 3, borderRadius: 2, background: T.accent }} />
+                  )}
+                  {dragIndex !== null && dragOverIndex === i && dragIndex < i && (
+                    <div style={{ position: "absolute", left: 8, right: 8, bottom: -6, height: 3, borderRadius: 2, background: T.accent }} />
+                  )}
+                  {w.supersetGroup != null && (i === 0 || workout[i - 1]?.supersetGroup !== w.supersetGroup) && (
+                    <div style={{ fontSize: 11, fontWeight: 700, color: T.accent, textTransform: "uppercase", letterSpacing: 1, margin: "2px 4px 6px" }}>Superset</div>
+                  )}
+                  <EditWorkoutCard
+                    w={w}
+                    expanded={manageExpanded === i}
+                    onToggleExpand={() => setManageExpanded(manageExpanded === i ? null : i)}
+                    onDragStart={(e) => { setManageExpanded(null); startRowDrag(i, e); }}
+                    isFavorite={favoriteIds.has(w.id)}
+                    loggedSets={allSets[i] || []}
+                    showLoggedSets={expandedSetsFor === i}
+                    onToggleLoggedSets={() => setExpandedSetsFor(expandedSetsFor === i ? null : i)}
+                    onDeleteSet={(j) => deleteLoggedSet(i, j)}
+                    formatSet={(s) => `${formatWeight(s.weight, unit)} ${unit} × ${s.reps}${s.rir != null ? ` · RIR ${s.rir}` : ""}`}
+                    onAdjustPlanned={(n) => adjustPlanned(i, n)}
+                    onAdjustWarmup={(n) => adjustWarmupPlanned(i, n)}
+                    restSeconds={restSecs}
+                    restCustom={w.restSeconds != null}
+                    onAdjustRest={(n) => adjustRest(i, n)}
+                    showWarmupRest={getPrefs().warmupRestEnabled && (w.plannedWarmup || 0) > 0}
+                    warmupRestSeconds={warmRestSecs}
+                    warmupRestCustom={w.warmupRestSeconds != null}
+                    onAdjustWarmupRest={(n) => adjustWarmupRest(i, n)}
+                    onFavorite={() => toggleFavorite(w.id)}
+                    onReplace={() => { setPickerFor(pickerFor === i ? null : i); setPickerSearch(""); }}
+                    onSuperset={() => (w.supersetGroup != null ? unlinkSuperset(i) : toggleSupersetLink(i))}
+                    inSuperset={w.supersetGroup != null}
+                    linking={linkingFrom === i}
+                    onRemove={() => { setManageExpanded(null); removeExercise(i); }}
+                  />
                 </div>
-                {expandedSetsFor === i && allSets[i].length > 0 && (
-                  <div style={{ marginTop: 8, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 8 }}>
-                    <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Logged sets — remove any that shouldn't count</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      {allSets[i].map((s, j) => (
-                        <div key={j} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                          <span style={{ width: 16, color: T.dim }}>{j + 1}</span>
-                          <span style={{ color: T.text, fontWeight: 600, flex: 1 }}>{formatWeight(s.weight, unit)} {unit} × {s.reps}{s.rir != null ? ` · RIR ${s.rir}` : ""}</span>
-                          <button onClick={() => deleteLoggedSet(i, j)} aria-label="Remove set" style={{ background: "none", border: `1px solid ${T.line}`, color: T.accent, borderRadius: 6, padding: "3px 8px", fontSize: 12 }}>Remove</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {w.notes && <div style={{ fontSize: 12, color: T.dim, marginTop: 8, fontStyle: "italic" }}>Note: {w.notes}</div>}
-              </div>
-            ))}
+              );
+            })}
+            <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} style={{ marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", flexShrink: 0 }}>
+              <IconPlus size={16} /> Add exercises
+            </button>
           </div>
         </div>
         {typeof pickerFor === "number" && (
@@ -2198,7 +2134,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 replaceFor={library.find((l) => l.id === workout[pickerFor]?.id) || workout[pickerFor]}
                 fillHeight
                 onToggleFavorite={toggleFavorite}
-                footer={createCustomFooter((l) => replaceExercise(pickerFor, l))}
+                onCreateCustom={() => { pendingCustomPick.current = (l) => replaceExercise(pickerFor, l); setShowCreateCustom(true); }}
               />
             </div>
             {allSets[pickerFor]?.length > 0 && (
@@ -2234,7 +2170,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 selectedIds={new Set(pickerMultiSelected.map((p) => p.id))}
                 onToggleSelect={togglePickerSelect}
                 onToggleFavorite={toggleFavorite}
-                footer={<>{createCustomFooter((l) => togglePickerSelect(l))}</>}
+                onCreateCustom={() => { pendingCustomPick.current = (l) => togglePickerSelect(l); setShowCreateCustom(true); }}
               />
             </div>
             <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface }}>
