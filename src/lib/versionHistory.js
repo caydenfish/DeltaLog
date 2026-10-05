@@ -5,6 +5,14 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.14.3",
+    date: "2026-10-05",
+    items: [
+      "New lib/backNav.js: useBackLayer(depth, onBack, priority). Keeps one guard history entry (pushState) while any registered layer is open; popstate closes the highest-priority open owner's top layer and re-arms if anything remains; when all layers close via the UI the guard is popped after 400 ms (ignored popstate) so back on Home exits. Owners: App (priority 0, workout screen -> goHomeFromWorkout), SetLogger (10: keypad, Training preferences, jump list, menu, set entry with stashDraft, manage via handleManageBack, templates/generator), Home (10: muscle detail, history, every show* overlay deepest-first, Settings last).",
+      "App update flow: waiting service-worker updates now auto-apply (updateSW(true)) when not on the workout screen and either the update is found within 20 s of the app becoming visible, an update was already waiting when it becomes visible, or the user leaves the workout screen (onFinished / onGoHome). Existing 30-minute and visibilitychange registration.update() checks and the Home banner remain.",
+    ],
+  },
+  {
     version: "1.14.2",
     date: "2026-10-05",
     items: [

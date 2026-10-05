@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion, muscleOptionsForMode, optionForKey, expandSplit, isSplitActive, NON_TARGET_CATEGORIES } from "./lib/muscleTaxonomy";
 import { flushSync } from "react-dom";
 import { playRestTimerSound, triggerRestTimerVibration } from "./lib/restTimerCues";
+import { useBackLayer } from "./lib/backNav";
 import { scheduleRestPush, cancelRestPush, showRestingNotification, showRestDoneNotification, clearRestNotifications } from "./lib/restPush";
 import BodyHeatmap from "./BodyHeatmap";
 import BodyMap from "./BodyMap";
@@ -997,6 +998,24 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   }, [user.id]);
 
 
+
+  // Back gesture inside the workout (v1.14.3): closes the top-most layer
+  // in the same order the UI stacks them -- keypad, Training
+  // preferences, jump list, menu, set entry, then sub-screens (Edit
+  // Workout, templates, generator). With nothing open, App's layer takes
+  // over and goes Home. Summary and check-in aren't layers: back there
+  // goes Home, the workout is already saved.
+  const subView = view === "manage" || view === "templates" || view === "generator";
+  const backDepth = (exactEntryField ? 1 : 0) + (showTrainingPrefs ? 1 : 0) + (showJump ? 1 : 0) + (showMenu ? 1 : 0) + (wizardOpen ? 1 : 0) + (subView ? 1 : 0);
+  useBackLayer(backDepth, () => {
+    if (exactEntryField) { setExactEntryField(null); return; }
+    if (showTrainingPrefs) { setShowTrainingPrefs(false); return; }
+    if (showJump) { setShowJump(false); return; }
+    if (showMenu) { setShowMenu(false); setFinishConfirm(false); setCancelConfirm(false); setShowMenuHeatmap(false); return; }
+    if (wizardOpen) { stashDraft(); setWizardOpen(false); setShowCalc(false); setEditIndex(null); return; }
+    if (view === "manage") { handleManageBack(); return; }
+    if (subView) setView("workout");
+  }, 10);
 
   const ex = workout[exIdx] || null;
   const unit = getPrefs().units;

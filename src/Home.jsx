@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useBackLayer } from "./lib/backNav";
 import StartWorkoutSheet from "./StartWorkoutSheet";
 import { supabase } from "./lib/supabaseClient";
 import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
@@ -792,6 +793,50 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       setHistoryView({ dateFilter: dateStr });
     }
   }
+
+  // Back gesture on Home (v1.14.3): closes the top-most open overlay,
+  // deepest first (admin and settings sub-screens before Settings itself),
+  // so back steps out one level at a time. With nothing open, back exits
+  // the app as usual (lib/backNav.js).
+  const homeBackLayers = [
+    [muscleDetail, () => setMuscleDetail(null)],
+    [historyView, () => setHistoryView(null)],
+    [showAdminFeedback, () => setShowAdminFeedback(false)],
+    [showAdminHome, () => setShowAdminHome(false)],
+    [showAdminRoles, () => setShowAdminRoles(false)],
+    [showAdminUserActivity, () => setShowAdminUserActivity(false)],
+    [showAdminReferralSources, () => setShowAdminReferralSources(false)],
+    [showAdminTaxonomy, () => setShowAdminTaxonomy(false)],
+    [showAdminBodyMapRegions, () => setShowAdminBodyMapRegions(false)],
+    [showArchivedAnnouncements, () => setShowArchivedAnnouncements(false)],
+    [showAdmin, () => setShowAdmin(false)],
+    [showMachineNames, () => setShowMachineNames(false)],
+    [showExerciseLibraryView, () => setShowExerciseLibraryView(false)],
+    [showSplitsManager, () => setShowSplitsManager(false)],
+    [showProfileEditor, () => setShowProfileEditor(false)],
+    [showPreferencesScreen, () => setShowPreferencesScreen(false)],
+    [showDangerZone, () => setShowDangerZone(false)],
+    [showTerms, () => setShowTerms(false)],
+    [showPrivacy, () => setShowPrivacy(false)],
+    [showWhatsNew, () => setShowWhatsNew(false)],
+    [showWhatsNext, () => setShowWhatsNext(false)],
+    [showHelpSupport, () => setShowHelpSupport(false)],
+    [showSetupReplay, () => setShowSetupReplay(false)],
+    [showVersionHistory, () => setShowVersionHistory(false)],
+    [showFAQ, () => setShowFAQ(false)],
+    [showInstallGuide, () => setShowInstallGuide(false)],
+    [showFeedback, () => setShowFeedback(false)],
+    [showAnnouncements, () => setShowAnnouncements(false)],
+    [showTemplates, () => setShowTemplates(false)],
+    [showProgramView, () => setShowProgramView(false)],
+    [showHomeModulesEditor, () => setShowHomeModulesEditor(false)],
+    [showStartSheet, () => setShowStartSheet(false)],
+    [showMenu, () => setShowMenu(false)],
+  ];
+  useBackLayer(homeBackLayers.filter(([open]) => !!open).length, () => {
+    const top = homeBackLayers.find(([open]) => !!open);
+    if (top) top[1]();
+  }, 10);
 
   if (error) {
     return (

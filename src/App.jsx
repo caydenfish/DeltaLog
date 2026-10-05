@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { registerSW } from "virtual:pwa-register";
+import { useBackLayer } from "./lib/backNav";
 import { supabase } from "./lib/supabaseClient";
 import { fetchProfile, fetchActiveWorkout, fetchMuscleTaxonomy, fetchSplits, fetchSplitExclusions, fetchBodyMapRegionMuscles, logAppOpen } from "./lib/queries";
 import { setMuscleTaxonomyCache } from "./lib/muscleTaxonomy";
@@ -21,7 +22,14 @@ export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading, null = signed out
   const [profile, setProfile] = useState(undefined); // undefined = loading, null = not set up yet
   const [mode, setMode] = useState(null); // null = undecided, "home" | "workout"
-  const [startIntent, setStartIntent] = useState(null); // how Home's Start Workout sheet chose to start (see StartWorkoutSheet)
+  const [startIntent, setStartIntent] = useState(null);
+  // Leaving the workout screen without finishing: back to Home with the
+  // workout still active on the server, so Home offers to resume it.
+  function goHomeFromWorkout() {
+    setMode("home");
+    setStartIntent(null);
+    if (session && session.user) fetchActiveWorkout(session.user.id).then(setResumeWorkout).catch(() => {});
+  } // how Home's Start Workout sheet chose to start (see StartWorkoutSheet)
   const [resumeWorkout, setResumeWorkout] = useState(undefined); // undefined = not checked, null = none, object = found
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [setupSeen, setSetupSeen] = useState(() => getPrefs().setupWizardSeen);
@@ -45,9 +53,37 @@ export default function App() {
   const updateSWRef = useRef(null);
   const swRegistrationRef = useRef(null);
 
+  // Auto-apply (v1.14.3): people who never fully close the app (or never
+  // see the Home banner) used to stay on old builds indefinitely. A
+  // waiting update now applies itself at moments where a reload reads as
+  // a normal launch, and never with the workout screen open:
+  //  - right after the app comes back to the foreground (within ~20s of
+  //    becoming visible, which is when the visibility check below finds
+  //    the update), and
+  //  - when leaving the workout screen (finish or go Home).
+  // The Home banner stays as a fallback for anyone sitting on Home.
+  const modeRef = useRef(null);
+  const updateAvailableRef = useRef(false);
+  const lastVisibleAtRef = useRef(Date.now());
+  function canAutoApply() {
+    return modeRef.current !== "workout";
+  }
+  function applyUpdateIfWaiting() {
+    if (updateAvailableRef.current && canAutoApply()) applyUpdate();
+  }
+  modeRef.current = mode;
+  // Back gesture on the workout screen goes Home (workout stays active)
+  // instead of quitting the app. Overlays inside the workout register at
+  // a higher priority, so back closes those first.
+  useBackLayer(mode === "workout" ? 1 : 0, goHomeFromWorkout, 0);
+
   useEffect(() => {
     updateSWRef.current = registerSW({
-      onNeedRefresh() { setUpdateAvailable(true); },
+      onNeedRefresh() {
+        updateAvailableRef.current = true;
+        setUpdateAvailable(true);
+        if (canAutoApply() && Date.now() - lastVisibleAtRef.current < 20000) applyUpdate();
+      },
       onRegisteredSW(swUrl, registration) {
         swRegistrationRef.current = registration || null;
       },
@@ -71,7 +107,13 @@ export default function App() {
     }
     const id = setInterval(checkForUpdate, 30 * 60 * 1000);
     function onVisible() {
-      if (document.visibilityState === "visible") checkForUpdate();
+      if (document.visibilityState === "visible") {
+        lastVisibleAtRef.current = Date.now();
+        // An update found earlier (e.g. while sitting on Home) applies the
+        // moment the app is reopened; otherwise look for a new one.
+        if (updateAvailableRef.current && canAutoApply()) applyUpdate();
+        else checkForUpdate();
+      }
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => {
@@ -252,8 +294,9 @@ export default function App() {
             resumeWorkout={resumeWorkout?.isPaused ? null : resumeWorkout}
             savedWorkout={resumeWorkout?.isPaused ? resumeWorkout : null}
             startIntent={startIntent}
-            onFinished={() => { setResumeWorkout(null); setStartIntent(null); setMode("home"); }}
+            onFinished={() => { setResumeWorkout(null); setStartIntent(null); setMode("home"); setTimeout(applyUpdateIfWaiting, 0); }}
             onGoHome={() => {
+              setTimeout(applyUpdateIfWaiting, 0);
               // Unlike onFinished, the workout itself isn't touched — it's
               // still active on the server. Re-fetch it so Home knows to
               // offer "Resume workout" instead of losing track of it.

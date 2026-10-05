@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.14.3": {
+    title: "Back works the way you'd expect",
+    items: [
+      "On Android, swiping back now closes whatever's open, like a menu, sheet, set entry, or settings page, instead of closing the app. Back from a workout takes you Home, and your workout keeps going.",
+      "DeltaLog now updates itself when you reopen it or finish a workout, so you're always on the latest version without having to close the app. It never updates in the middle of a workout.",
+    ],
+  },
   "1.14.2": {
     title: "Research-backed weekly volume",
     items: [
