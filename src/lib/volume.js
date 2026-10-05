@@ -10,6 +10,26 @@ function isWarmupSet(s) {
   return !!(s.is_warmup ?? s.isWarmup);
 }
 
+// Fractional set counting (v1.13.8): a set counts 1.0 toward each
+// muscle it trains directly (primary) and 0.5 toward each muscle it
+// trains indirectly (secondary). This is the "fractional" method from
+// Pelland et al. (Sports Medicine, 2025), which predicted hypertrophy
+// and strength outcomes better than counting indirect sets as full sets
+// or ignoring them. computeMuscleSetCounts still returns RAW primary and
+// secondary counts (so "4 primary, 6 secondary" stays literal); anything
+// that combines them into a single per-muscle number goes through
+// effectiveSets() so every surface agrees.
+export const SECONDARY_SET_WEIGHT = 0.5;
+export function effectiveSets(primaryCount, secondaryCount) {
+  return (primaryCount || 0) + SECONDARY_SET_WEIGHT * (secondaryCount || 0);
+}
+// Fractional set totals render with at most one decimal ("7.5"), whole
+// numbers without one ("8").
+export function formatSets(n) {
+  const r = Math.round((n || 0) * 10) / 10;
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+
 // Counts working sets per muscle group (not weighted by volume) from the
 // same { muscle, primaryMuscles, secondaryMuscles, sets } entries used by
 // computeMuscleVolumes. Backs the "Primary Muscles / Secondary Muscles"
@@ -311,7 +331,7 @@ export function computeRollingWeeklyTotals(history, nameMode = "generic") {
   const { primary, secondary, fullBodySets } = computeMuscleSetCounts(rolling, nameMode);
   const totals = {};
   for (const label of new Set([...Object.keys(primary), ...Object.keys(secondary)])) {
-    totals[label] = (primary[label] || 0) + (secondary[label] || 0);
+    totals[label] = effectiveSets(primary[label], secondary[label]);
   }
   totals[FULL_BODY] = fullBodySets;
   return totals;

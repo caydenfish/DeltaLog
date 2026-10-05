@@ -3,6 +3,8 @@ import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion, muscleOptionsForMod
 import { flushSync } from "react-dom";
 import { playRestTimerSound, triggerRestTimerVibration, showRestTimerNotification } from "./lib/restTimerCues";
 import BodyHeatmap from "./BodyHeatmap";
+import BodyMap from "./BodyMap";
+import Preferences from "./Preferences";
 import { computeMuscleSetCounts } from "./lib/volume";
 import { computeDOTS, dotsBand } from "./lib/dots";
 import { getPrefs, setPref } from "./lib/prefs";
@@ -140,15 +142,25 @@ function targetFor(ex, range, unit, todaysWorkingSets = [], method = "rir_autore
 // last session's back-off weight. Only ever lowers the target, never
 // raises it -- a strong day doesn't make a back-off set heavier than your
 // normal progression would.
+//
+// Also fires when today's most recent working set fell short of the
+// bottom of the range (e.g. 60x6 against 8-12): fatigue has caught up,
+// so repeating the weight just repeats the miss. The cap brings the
+// weight down to what that set says you can do for the target reps,
+// putting the next set back inside the range. Applies under every
+// target method, since double progression otherwise holds weight flat.
 function applyBackoffAdjustment(base, ex, range, unit, todaysWorkingSets, setIdx) {
-  if (!base || !isRangeChange(ex.repScheme, setIdx, range) || todaysWorkingSets.length === 0) return base;
-  const step = unit === "kg" ? 2.5 : 5;
+  if (!base || todaysWorkingSets.length === 0) return base;
   const latest = todaysWorkingSets[todaysWorkingSets.length - 1];
+  const rangeChange = isRangeChange(ex.repScheme, setIdx, range);
+  const missedRange = latest.reps < range.low;
+  if (!rangeChange && !missedRange) return base;
+  const step = unit === "kg" ? 2.5 : 5;
   const todayE1RM = e1RM(latest.weight, latest.reps, latest.rir ?? 2);
   if (!(todayE1RM > 0)) return base;
   const adjusted = Math.max(0, Math.round(weightForReps(todayE1RM, base.reps) / step) * step);
   if (adjusted >= base.weight) return { ...base, backoffChecked: true };
-  return { ...base, weight: adjusted, backoff: { from: base.weight, source: latest, e1rm: Math.round(todayE1RM) } };
+  return { ...base, weight: adjusted, backoff: { from: base.weight, source: latest, e1rm: Math.round(todayE1RM), reason: rangeChange ? "range" : "missed" } };
 }
 
 function targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx) {
@@ -188,8 +200,14 @@ function targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx) {
   }
 
   const reps = Math.round((low + high) / 2);
+  // Within today's session, RIR autoregulation follows the MOST RECENT
+  // working set, not the best one: fatigue accumulates set to set, so
+  // the last set is the best predictor of the next. Taking the best let
+  // a strong first set (60x10 @ 0) keep the target pinned there even
+  // after a 60x6 @ 0. Across sessions, the best recent set still wins
+  // so one rough day doesn't drag next week's starting point down.
   const candidateSets = method === "rir_autoregulation" && todaysWorkingSets.length > 0
-    ? todaysWorkingSets
+    ? [todaysWorkingSets[todaysWorkingSets.length - 1]]
     : recentWorkingSets.length > 0 ? recentWorkingSets : lastWorkingSets;
   const bestFromHistory = candidateSets.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
   let baseE1RM, anchored, source;
@@ -280,21 +298,9 @@ function setLabels(sets) {
 
 
 
-// Fixed per-row height, used for the blank filler rows that pad a
-// shorter column (Last Session vs Today) out to the same row count so
-// the two lists line up and scroll in lockstep -- not for capping how
-// many rows show before scrolling. That cap used to be hardcoded at 4
-// rows regardless of actual screen space (rowsContainerHeight below),
-// which meant a phone with room for 5+ rows still forced a scroll
-// after the 4th. The row list container now just flexes to fill
-// whatever vertical space is actually available (see its `flex: 1,
-// minHeight: 0` at the call sites) and only becomes scrollable once
-// content genuinely overflows that.
-const ROW_HEIGHT = 56;
+// Gap between set rows in the workout view's paired list.
 const ROW_GAP = 6;
 
-// Today row's column template.
-const TODAY_ROW_TEMPLATE = (deleteMode) => `22px 1fr${deleteMode ? " 26px" : ""}`;
 
 // Small colored (+/-) badge for the aggregate Volume/e1RM comparison at
 // the bottom of the Today tile -- green for up, accent red for down,
@@ -322,47 +328,90 @@ function sessionStats(setsList) {
   return { working, totalVolume, bestE1RM };
 }
 
-// One row renderer shared by both tiles, so Last Session and Today can
-// never drift apart visually. Weight x reps stacked above RIR + e1RM
-// (rather than one crowded inline row) so nothing has to wrap or shrink
-// to fit. `interactive` toggles the tap-to-edit/warmup-toggle/
-// delete-select chrome; Last Session's rows are the same shape with all
-// of that chrome simply absent.
-function SessionSetRow({ label, set, unit, interactive, deleteMode, selected, onToggleWarmup, onRowTap, onToggleSelect }) {
-  const rm = Math.round(e1RM(set.weight, set.reps, set.rir));
-  const badgeStyle = { width: 20, height: 20, borderRadius: 6, background: set.isWarmup ? "rgba(232,168,46,0.18)" : T.surface, color: set.isWarmup ? "#E8A82E" : T.dim, fontSize: 10.5, fontWeight: set.isWarmup ? 700 : 400, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+// Paired set row (v1.13.9): last session's set N and today's set N on
+// one row, read left to right as "then -> now". Replaces the two
+// side-by-side tiles, which looked nearly identical and made it easy to
+// read the wrong column at a glance. Three states:
+//  - logged: today's set exists. Last time is small and dim on the left,
+//    an arrow shows beat / matched / below (by e1RM), today's set is big
+//    on the right. Tap to edit; the number badge toggles warmup.
+//  - next: the slot for the set about to be logged. Dashed accent
+//    border, and last time's weight goes bright, since that's the number
+//    you glance at before loading. Tap anywhere to log.
+//  - upcoming: last session had more sets than today has reached; shown
+//    dim with an empty today side.
+const PAIR_COLUMNS = (deleteMode) => `22px minmax(0, 1fr) 14px minmax(0, 1.3fr)${deleteMode ? " 22px" : ""}`;
 
+function compareSets(today, last) {
+  if (!today || !last || !!today.isWarmup !== !!last.isWarmup) return null;
+  const d = Math.round(e1RM(today.weight, today.reps, today.rir)) - Math.round(e1RM(last.weight, last.reps, last.rir));
+  if (d > 0) return { glyph: "↑", color: T.green, label: "Beat last time" };
+  if (d < 0) return { glyph: "↓", color: "#E8752E", label: "Below last time" };
+  return { glyph: "=", color: T.dim, label: "Matched last time" };
+}
+
+function PairedSetRow({ state, label, last, today, unit, deleteMode, selected, onToggleWarmup, onRowTap, onToggleSelect, onLogNext }) {
+  const isLogged = state === "logged";
+  const isNext = state === "next";
+  const cmp = isLogged ? compareSets(today, last) : null;
+  const warm = isLogged ? today.isWarmup : last && last.isWarmup;
+  const badgeStyle = {
+    width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0,
+    fontSize: 11, fontWeight: warm ? 700 : 500,
+    background: isNext ? "none" : warm ? "rgba(232,168,46,0.18)" : T.surface,
+    color: isNext ? T.accent : warm ? "#E8A82E" : T.dim,
+    border: isNext ? `1px solid ${T.accent}` : "none",
+  };
+  const onClick = isLogged ? () => (deleteMode ? onToggleSelect() : onRowTap()) : isNext ? onLogNext : undefined;
   return (
     <div
-      onClick={interactive ? () => (deleteMode ? onToggleSelect() : onRowTap()) : undefined}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
       style={{
-        display: "grid",
-        gridTemplateColumns: interactive ? TODAY_ROW_TEMPLATE(deleteMode) : "20px 1fr",
-        alignItems: "center",
-        gap: 6,
-        height: ROW_HEIGHT,
-        boxSizing: "border-box",
-        flexShrink: 0,
-        padding: "0 8px",
-        background: selected ? "rgba(232,90,90,0.10)" : interactive ? T.surface2 : T.surface,
-        border: `1px solid ${selected ? T.accent : T.line}`,
-        borderRadius: 10,
-        cursor: interactive ? "pointer" : "default",
-        overflow: "hidden",
+        display: "grid", gridTemplateColumns: PAIR_COLUMNS(deleteMode && isLogged), alignItems: "center", columnGap: 8,
+        minHeight: 54, boxSizing: "border-box", flexShrink: 0, padding: "6px 10px", borderRadius: 12,
+        background: selected ? "rgba(232,90,90,0.10)" : isLogged ? T.surface2 : "none",
+        border: isNext ? `1px dashed ${T.accent}` : `1px solid ${selected ? T.accent : isLogged ? T.line : "transparent"}`,
+        cursor: onClick ? "pointer" : "default",
       }}
     >
-      {interactive && !deleteMode ? (
-        <button onClick={(e) => { e.stopPropagation(); onToggleWarmup(); }} aria-label={set.isWarmup ? "Unmark as warmup" : "Mark as warmup"} style={{ ...badgeStyle, border: "none", cursor: "pointer" }}>{label}</button>
+      {isLogged && !deleteMode ? (
+        <button onClick={(e) => { e.stopPropagation(); onToggleWarmup(); }} aria-label={today.isWarmup ? "Unmark as warmup" : "Mark as warmup"} style={badgeStyle}>{label}</button>
       ) : (
         <div style={badgeStyle}>{label}</div>
       )}
 
-      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 1, overflow: "hidden" }}>
-        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, fontWeight: 700, color: T.text, whiteSpace: "nowrap" }}>{set.weight} {unit} × {set.reps}</span>
-        <span style={{ fontSize: 9.5, color: T.dim, whiteSpace: "nowrap" }}>RIR {set.rir} · e1RM {rm}</span>
+      <div style={{ minWidth: 0, overflow: "hidden" }}>
+        {last ? (
+          <>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: isNext ? 17 : 14.5, fontWeight: isNext ? 700 : 500, color: isNext ? T.text : T.dim, whiteSpace: "nowrap", lineHeight: 1.1 }}>
+              {last.weight} × {last.reps}
+            </div>
+            <div style={{ fontSize: 10.5, color: T.dim, whiteSpace: "nowrap", opacity: isNext ? 1 : 0.8 }}>RIR {last.rir ?? "?"}</div>
+          </>
+        ) : (
+          <div style={{ fontSize: 12, color: T.dim, opacity: 0.6 }}>—</div>
+        )}
       </div>
 
-      {interactive && deleteMode && (
+      <div aria-label={cmp ? cmp.label : undefined} style={{ fontSize: 14, fontWeight: 700, color: cmp ? cmp.color : "transparent", textAlign: "center" }}>
+        {cmp ? cmp.glyph : ""}
+      </div>
+
+      <div style={{ minWidth: 0, overflow: "hidden" }}>
+        {isLogged ? (
+          <>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, whiteSpace: "nowrap", lineHeight: 1.05 }}>
+              {today.weight} {unit} × {today.reps}
+            </div>
+            <div style={{ fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>RIR {today.rir} · e1RM {Math.round(e1RM(today.weight, today.reps, today.rir))}</div>
+          </>
+        ) : isNext ? (
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.accent, whiteSpace: "nowrap" }}>Tap to log</div>
+        ) : null}
+      </div>
+
+      {deleteMode && isLogged && (
         <div
           onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
           style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? T.accent : T.line}`, background: selected ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
@@ -374,62 +423,60 @@ function SessionSetRow({ label, set, unit, interactive, deleteMode, selected, on
   );
 }
 
-// Dashed-perimeter "+" tile that closes out the Today list -- replaces
-// the old standalone "Log next set" / "Add another set" buttons living
-// in the bottom bar. Logging the next set is now just tapping the next
-// slot in the list itself, the same way the list will look once that
-// set exists, rather than a separate action floating below two panels
-// of history. Same footprint as a real SessionSetRow so it drops into
-// the same grid/gap rhythm without any special-casing in the scroll math.
-function AddSetTile({ onClick }) {
+
+
+// Press-and-hold confirm for destructive actions (Discard workout). A
+// fill bar runs for `duration` ms while held; releasing, sliding off, or
+// cancelling the pointer resets it. Space/Enter work the same way for
+// keyboard users. Fires onConfirm once when the bar fills.
+function HoldToConfirm({ label, onConfirm, duration = 1000, disabled }) {
+  const [progress, setProgress] = useState(0);
+  const rafRef = useRef(null);
+  const startRef = useRef(null);
+  const firedRef = useRef(false);
+  function tick(now) {
+    const p = Math.min(1, (now - startRef.current) / duration);
+    setProgress(p);
+    if (p >= 1) {
+      rafRef.current = null;
+      if (!firedRef.current) {
+        firedRef.current = true;
+        if (navigator.vibrate) { try { navigator.vibrate(40); } catch { /* unsupported */ } }
+        onConfirm();
+      }
+      return;
+    }
+    rafRef.current = requestAnimationFrame(tick);
+  }
+  function start(e) {
+    if (disabled || rafRef.current) return;
+    if (e && e.preventDefault) e.preventDefault();
+    firedRef.current = false;
+    startRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+  }
+  function stop() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    if (!firedRef.current) setProgress(0);
+  }
+  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
   return (
     <button
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: ROW_HEIGHT,
-        boxSizing: "border-box",
-        flexShrink: 0,
-        borderRadius: 10,
-        border: `1.5px dashed ${T.line}`,
-        background: "none",
-        color: T.dim,
-        cursor: "pointer",
-      }}
-      aria-label="Log next set"
+      onPointerDown={start}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onContextMenu={(e) => e.preventDefault()}
+      onKeyDown={(e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) start(e); }}
+      onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") stop(); }}
+      disabled={disabled}
+      aria-label={`${label} (press and hold)`}
+      style={{ position: "relative", width: "100%", overflow: "hidden", padding: "15px 0", borderRadius: 12, border: `1px solid ${T.accent}`, background: "none", color: "#fff", fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
     >
-      <span style={{ fontSize: 20, fontWeight: 400, lineHeight: 1 }}>+</span>
+      <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${progress * 100}%`, background: T.accent }} />
+      <span style={{ position: "relative" }}>{label}</span>
     </button>
-  );
-}
-
-// Small 2-option settings tile for the Workout Menu's quick-settings
-// column beside the live heatmap -- same segmented-track pattern used
-// throughout Preferences/BodyHeatmap, just narrower and stacked instead
-// of full-width, since it only has ~92px to work with.
-function QuickSettingTile({ label, value, options, onChange }) {
-  return (
-    <div style={{ background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: 8 }}>
-      <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5, textAlign: "center" }}>{label}</div>
-      <div style={{ display: "flex", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 7, padding: 2, gap: 2 }}>
-        {options.map((o) => (
-          <button
-            key={o.key}
-            onClick={() => onChange(o.key)}
-            aria-pressed={value === o.key}
-            style={{
-              flex: 1, minWidth: 0, background: value === o.key ? T.accent : "transparent", border: "none",
-              borderRadius: 5, padding: "5px 0", fontSize: 10.5, fontWeight: 600,
-              color: value === o.key ? "#fff" : T.dim,
-            }}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -552,6 +599,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   // screen this list is trying to stay visible on).
   const [exactEntryField, setExactEntryField] = useState(null); // null | "weight" | "reps"
   const [exactEntryDraft, setExactEntryDraft] = useState("");
+  // True from the moment the keypad opens until the first keypress: the
+  // existing value is shown "selected" and the first digit replaces it
+  // outright (same as tapping into a selected text field), instead of
+  // appending to it. Backspace on a fresh entry clears the whole value.
+  const [exactEntryFresh, setExactEntryFresh] = useState(false);
   const [highlightMissing, setHighlightMissing] = useState({ weight: false, reps: false, rir: false });
   const [showCalc, setShowCalc] = useState(false);
   const [loaded, setLoaded] = useState([]);
@@ -560,7 +612,16 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   // exercises) doesn't silently throw away a half-typed weight/reps the
   // next time that exercise's wizard is reopened for the same upcoming set.
   const [drafts, setDrafts] = useState({});
-  const [barMode, setBarMode] = useState(0); // starting weight for the plate calculator; 0 until a per-exercise value is loaded or set
+  const [barMode, setBarMode] = useState(45); // starting weight for the plate calculator; per-exercise value rehydrated below, 45 lb / 20 kg when none saved
+  // Plate calculator memory for this workout, keyed by exercise slot
+  // (dbId): whether it was open on the last set and the plate stack it
+  // showed. Reopening the wizard for the next set restores the open/closed
+  // state, and the stack is reused as-is when it still adds up to the
+  // weight being logged (so a hand-built arrangement survives set to set);
+  // otherwise plates are re-derived from the weight. In-memory only --
+  // a new workout starts fresh.
+  const [plateMemory, setPlateMemory] = useState({});
+  const [plateLeftover, setPlateLeftover] = useState(0); // per-side weight the current target can't be loaded with
   const [customBar, setCustomBar] = useState("");
   const [showBarInfo, setShowBarInfo] = useState(false);
   const [restLeft, setRestLeft] = useState(0);
@@ -590,8 +651,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   // expose, so tapping one repaints immediately (the rest of the app
   // reads getPrefs().units etc fresh each render off of whatever state
   // change triggered it -- these tiles are that trigger).
-  const [quickUnits, setQuickUnits] = useState(() => getPrefs().units);
-  const [quickRestSound, setQuickRestSound] = useState(() => getPrefs().restTimerSoundEnabled);
+  const [showTrainingPrefs, setShowTrainingPrefs] = useState(false); // workout menu's Training preferences shortcut is open
+  const trainingPrefsIdeologyRef = useRef(null); // default focus when the shortcut opened, to tell whether it changed
+  const [showMenuHeatmap, setShowMenuHeatmap] = useState(false); // workout menu's muscle map expanded from its thumbnail
   const [confirmDeleteSets, setConfirmDeleteSets] = useState(false); // true once "Delete (n)" is tapped, awaiting the actual confirm
   const pendingCustomPick = useRef(null);
   const rowRefs = useRef([]);
@@ -620,7 +682,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const startTime = useRef(Date.now());
   const stripRef = useRef(null);
   const chipRefs = useRef([]);
-  const lastRowsRef = useRef(null);
   const todayRowsRef = useRef(null);
   const scrollSyncingRef = useRef(false);
 
@@ -678,7 +739,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
       showSetup, showMachineSetup, showIdeology, showTargetInfo,
       editingNote, noteDraft,
-      restEndsAt,
+      restEndsAt, drafts,
     });
   }, [
     workoutId, booting, view, exIdx, showCalc, showMenu,
@@ -686,7 +747,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
     showSetup, showMachineSetup, showIdeology, showTargetInfo,
     editingNote, noteDraft,
-    restEndsAt,
+    restEndsAt, drafts,
   ]);
 
   // Extra safety net beyond the effect above: force an immediate flush on
@@ -703,7 +764,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
         showSetup, showMachineSetup, showIdeology, showTargetInfo,
         editingNote, noteDraft,
-        restEndsAt,
+        restEndsAt, drafts,
       });
     };
     flush();
@@ -725,7 +786,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     pickerFor, pickerSearch, showPickerFilters, muscleFilter, equipFilter, performedFilter, sourceFilter,
     showSetup, showMachineSetup, showIdeology, showTargetInfo,
     editingNote, noteDraft,
-    restEndsAt,
+    restEndsAt, drafts,
   ]);
 
   // Overall workout timer, shown in the menu. Ticks from when this
@@ -806,6 +867,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             // menu right before backgrounding the app (a very common last
             // action) should still land back on their current exercise when
             // they resume, not on the overlay they happened to leave open.
+            if (saved.drafts && typeof saved.drafts === "object") setDrafts(saved.drafts);
             if (saved.wizardOpen) {
               setWizardOpen(true);
               setEditIndex(typeof saved.editIndex === "number" ? saved.editIndex : null);
@@ -983,7 +1045,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     setEditingNote(false); setShowSetup(false); setShowIdeology(false); setShowTargetInfo(false);
     setDeleteMode(false); setSelectedForDelete(new Set()); setConfirmDeleteSets(false);
     setNextExPopupDismissed(false);
-    if (lastRowsRef.current) lastRowsRef.current.scrollTop = 0;
     if (todayRowsRef.current) todayRowsRef.current.scrollTop = 0;
   }
 
@@ -1313,15 +1374,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     const target = (allSets[i] || [])[setIdx];
     setSetWarmup(workout[i].dbId, setIdx + 1, !(target && target.isWarmup)).catch((err) => note(`Couldn't save: ${err.message}`));
   }
-  function syncSetListScroll(source) {
-    if (scrollSyncingRef.current) return;
-    const other = source === "last" ? todayRowsRef.current : lastRowsRef.current;
-    const self = source === "last" ? lastRowsRef.current : todayRowsRef.current;
-    if (!other || !self) return;
-    scrollSyncingRef.current = true;
-    other.scrollTop = self.scrollTop;
-    scrollSyncingRef.current = false;
-  }
 
   function deleteLoggedSet(i, setIdx) {
     setAllSets(allSets.map((arr, k) => (k === i ? arr.filter((_, j) => j !== setIdx) : arr)));
@@ -1469,7 +1521,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     if (!ex) return;
     const saved = ex.setup && ex.setup["_startingWeight"];
     const savedLb = saved != null ? parseFloat(saved) : NaN;
-    const display = isNaN(savedLb) ? 0 : roundDisplay(toDisplay(savedLb, unit), unit);
+    // No saved value yet -> assume a standard bar (45 lb / 20 kg).
+    const display = isNaN(savedLb) ? BAR_PRESETS[unit][0] : roundDisplay(toDisplay(savedLb, unit), unit);
     const preset = BAR_PRESETS[unit].find((b) => b === display);
     if (preset !== undefined) { setBarMode(preset); setCustomBar(""); }
     else { setBarMode("custom"); setCustomBar(display ? String(display) : ""); }
@@ -1570,18 +1623,27 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     }
   }
 
-  // Saves whatever's currently typed as this exercise's draft for its next
-  // (not-yet-logged) set, so reopening the wizard restores it instead of
-  // recomputing a fresh target/last-set prefill. Only meaningful for a new
-  // set, not while editing a past one (editIndex !== null) — an edit's
-  // values always come from the set itself.
+  // Saves whatever's currently typed so backing out of the wizard (the
+  // back arrow, switching exercises) never throws input away: type the
+  // weight, go back, do the set, reopen, and it's all still there. New
+  // sets key on the exercise slot (dbId); edits of a logged set key on
+  // dbId#index and remember the values the set had when the edit started,
+  // so a stale edit draft is ignored if that set has since changed or a
+  // different set moved into that position.
+  const draftKey = (editIdx) => (editIdx === null ? ex.dbId : `${ex.dbId}#${editIdx}`);
   function stashDraft() {
-    if (!wizardOpen || editIndex !== null || !ex) return;
-    setDrafts((d) => ({ ...d, [ex.dbId]: { weight, reps, rir } }));
+    if (!wizardOpen || !ex) return;
+    const cur = editIndex !== null ? sets[editIndex] : null;
+    const base = cur ? { weight: cur.weight, reps: cur.reps, rir: cur.rir } : null;
+    setDrafts((d) => ({ ...d, [draftKey(editIndex)]: { weight, reps, rir, base } }));
   }
 
   function openWizard(prefill, editIdx = null) {
-    const draft = editIdx === null ? drafts[ex.dbId] : null;
+    let draft = drafts[draftKey(editIdx)] || null;
+    if (draft && editIdx !== null) {
+      const b = draft.base; const cur = sets[editIdx];
+      if (!b || !cur || b.weight !== cur.weight || b.reps !== cur.reps || b.rir !== cur.rir) draft = null;
+    }
     // A brand-new set that falls within this exercise's planned warmup
     // count (same rule logSet uses to flag isWarmup, further down) should
     // be prefilled at its scaled percentage of the upcoming top set, not
@@ -1589,8 +1651,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     // showing the full working weight, since none of the branches below
     // knew or cared whether the next set was a warmup.
     const nextIsWarmup = editIdx === null && !prefill && !draft && nextWarmupIndex != null;
-    if (prefill) { setWeight(String(prefill.weight)); setReps(String(prefill.reps)); setRir(prefill.rir !== undefined ? prefill.rir : null); }
-    else if (draft) { setWeight(draft.weight); setReps(draft.reps); setRir(draft.rir); }
+    if (draft) { setWeight(draft.weight); setReps(draft.reps); setRir(draft.rir); }
+    else if (prefill) { setWeight(String(prefill.weight)); setReps(String(prefill.reps)); setRir(prefill.rir !== undefined ? prefill.rir : null); }
     else if (nextIsWarmup) {
       const wWeight = warmupWeightFor(target.weight, ex.plannedWarmup, nextWarmupIndex, unit, getPrefs().warmupPercentSchemes);
       setWeight(String(wWeight)); setReps(String(target.reps)); setRir(null);
@@ -1608,13 +1670,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     // is exactly the "sometimes" in this bug — it wasn't broken, it was
     // a race against a cutoff that varies by device.
     flushSync(() => {
-      setEditIndex(editIdx); setLoaded([]); setWizardOpen(true);
-      setShowCalc(getPrefs().weightEntryMode === "plate");
+      const mem = plateMemory[ex.dbId];
+      setEditIndex(editIdx); setLoaded(mem && mem.stack ? mem.stack : []); setWizardOpen(true);
+      setShowCalc(mem && mem.open != null ? mem.open : getPrefs().weightEntryMode === "plate");
     });
     weightRef.current && weightRef.current.focus();
     noteAnchorRef.current && noteAnchorRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
   }
-  function fillFrom(s) { setWeight(String(s.weight)); setReps(String(s.reps)); setRir(s.rir); setLoaded([]); }
+  function fillFrom(s) { setWeight(String(s.weight)); setReps(String(s.reps)); setRir(s.rir); }
   function copyAll() {
     if (lastWeek.length === 0) return note("No last session on record for this exercise.");
     const remaining = lastWeek.slice(sets.length);
@@ -1627,14 +1690,35 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   function addPlate(lb) { const next = [...loaded, lb]; setLoaded(next); setWeight(String(barWeight + 2 * next.reduce((a, b) => a + b, 0))); }
   function removePlate(i) { const next = loaded.filter((_, idx) => idx !== i); setLoaded(next); setWeight(String(barWeight + 2 * next.reduce((a, b) => a + b, 0))); }
   function clearPlates() { setLoaded([]); setWeight(String(barWeight)); }
-  function autoLoad() {
-    const w = parseFloat(weight) || 0;
-    if (barWeight <= 0) return note("Set a starting weight first (bar, machine arms, etc.).");
-    if (w <= 0) return note("Type a target weight, then tap Optimize loading.");
-    if (w <= barWeight) return note("Target is at or below the starting weight. Nothing to load.");
-    const g = greedyPerSide(w, barWeight, unit, ex && ex.muscle);
+  // Plates follow the weight: whenever the calculator is showing, keep
+  // the stack in sync with whatever weight is entered (stepper, keypad,
+  // "same as" buttons). Adding/removing a plate by hand rewrites the
+  // weight to match, so those edits are always left alone here.
+  useEffect(() => {
+    if (!wizardOpen || !showCalc || !ex) return;
+    const w = parseFloat(weight);
+    if (isNaN(w)) { setPlateLeftover(0); return; }
+    const sumOf = (stack) => barWeight + 2 * stack.reduce((a, b) => a + b, 0);
+    if (Math.abs(sumOf(loaded) - w) < 0.01) { setPlateLeftover(0); return; }
+    const mem = plateMemory[ex.dbId];
+    if (mem && mem.stack && Math.abs(sumOf(mem.stack) - w) < 0.01) { setLoaded(mem.stack); setPlateLeftover(0); return; }
+    const g = greedyPerSide(w, barWeight, unit, ex.muscle);
     setLoaded(g.stack);
-    if (g.leftover > 0.01) note(`${g.leftover.toFixed(1)} ${unit} per side can't be loaded with standard plates.`);
+    setPlateLeftover(g.leftover > 0.01 ? g.leftover : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizardOpen, showCalc, weight, barWeight, exIdx, unit]);
+
+  // Remember the current stack for this exercise for the rest of the workout.
+  useEffect(() => {
+    if (!wizardOpen || !showCalc || !ex) return;
+    setPlateMemory((m) => ({ ...m, [ex.dbId]: { ...(m[ex.dbId] || {}), stack: loaded } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  function togglePlateCalc() {
+    const next = !showCalc;
+    setShowCalc(next);
+    if (ex) setPlateMemory((m) => ({ ...m, [ex.dbId]: { ...(m[ex.dbId] || {}), open: next } }));
   }
 
   function saveSet() {
@@ -1647,6 +1731,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     const entry = { weight: w, reps: r, rir };
     if (editIndex !== null) {
       setAllSets(allSets.map((arr, i) => (i === exIdx ? arr.map((s, j) => (j === editIndex ? { ...s, ...entry } : s)) : arr)));
+      setDrafts((d) => { const { [draftKey(editIndex)]: _drop, ...rest } = d; return rest; });
       setWizardOpen(false); setShowCalc(false); setEditIndex(null);
       note(`Set ${editIndex + 1} updated.`, "e1rm", 3000);
       updateSet(ex.dbId, editIndex + 1, toCanonical(w, unit), r, rir).catch((err) => note(`Set updated locally, but didn't sync: ${err.message}`));
@@ -1678,7 +1763,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     logSet(ex.dbId, nextSets.length, toCanonical(w, unit), r, rir, isWarmup).catch((err) => note(`Set logged locally, but didn't sync: ${err.message}`));
   }
 
-  const bestE1RM = sets.filter((s) => !s.isWarmup).reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);
   const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const hhmmss = (totalSec) => {
     const h = Math.floor(totalSec / 3600);
@@ -2608,90 +2692,133 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         input:focus, textarea:focus { border-color: ${T.accent} !important; }
         button { cursor: pointer; }
         @keyframes slideIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .chipstrip::-webkit-scrollbar { display: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
       `}</style>
       <div style={frame}>
-        {showMenu && (
-          <div style={{ position: "absolute", inset: 0, background: T.bg, zIndex: 10, display: "flex", flexDirection: "column", overflowY: "auto" }}>
-            <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
-              <button onClick={() => { setShowMenu(false); setFinishConfirm(false); }} aria-label="Close" style={smallBtn}>‹</button>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>WORKOUT MENU</div>
-              <button onClick={onGoHome} aria-label="Home" title="Back to home — your workout stays active" style={{ position: "relative", width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0, justifySelf: "end" }}>
-                <IconHome size={16} />
-              </button>
-            </div>
-            <div style={{ padding: 16, flex: 1 }}>
-              <div style={{ background: T.surface, border: `1px solid ${isPaused ? T.accent : T.line}`, borderRadius: 14, padding: 16, textAlign: "center", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: isPaused ? T.accent : T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4, fontWeight: isPaused ? 700 : 400 }}>{isPaused ? "Paused" : "Workout time"}</div>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 36, fontWeight: 700, color: T.text }}>{hhmmss(elapsedSec)}</div>
+{showMenu && (() => {
+          // Workout menu as a bottom sheet over the live workout (v1.13.7).
+          // Thumb-zone layout: Pause/Finish sit at the very bottom and never
+          // move (Resume takes Pause's spot). Destructive Discard lives in
+          // the top corner, out of thumb reach, and needs a press-and-hold.
+          // The muscle map is a thumbnail beside the timer; tapping it grows
+          // the full map in place of the list. Edit Workout is the header
+          // pencil (1.13.5); settings are one Training preferences shortcut.
+          const closeMenu = () => { setShowMenu(false); setFinishConfirm(false); setCancelConfirm(false); setShowMenuHeatmap(false); };
+          const working = allSets.flat().filter((x) => !x.isWarmup);
+          const totalSets = allSets.flat().length;
+          const totalVolume = Math.round(working.reduce((a, x) => a + x.weight * x.reps, 0));
+          const hasMuscleData = Object.keys(livePrimary).length > 0 || Object.keys(liveSecondary).length > 0;
+          const thumbCounts = computeMuscleSetCounts(liveVolumeEntries, "detailed");
+          const rowStyle = { width: "100%", minHeight: 46, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "0 2px", background: "none", border: "none", borderBottom: `1px solid ${T.line}`, color: T.text, fontSize: 14, textAlign: "left" };
+          const rowValue = { color: T.dim, fontSize: 13, whiteSpace: "nowrap" };
+          const cornerBtn = { height: 32, display: "flex", alignItems: "center", gap: 5, padding: "0 4px", background: "none", border: "none", color: T.dim, fontSize: 12.5, whiteSpace: "nowrap" };
+          return (
+          <div style={{ position: "absolute", inset: 0, zIndex: 10, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+            <div onClick={closeMenu} style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", animation: "fadeIn 0.18s ease" }} />
+            <div style={{ position: "relative", maxHeight: "92%", overflowY: "auto", background: T.surface, borderTop: `1px solid ${T.line}`, borderRadius: "18px 18px 0 0", padding: "6px 16px 18px", animation: "sheetUp 0.22s ease" }}>
+              {cancelConfirm ? (
+                <>
+                  <button onClick={() => setCancelConfirm(false)} aria-label="Back to menu" style={{ display: "block", width: 64, height: 22, margin: "0 auto 8px", background: "none", border: "none", padding: 0 }}>
+                    <span style={{ display: "block", width: 36, height: 4, borderRadius: 4, background: T.line, margin: "0 auto" }} />
+                  </button>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: T.accent }}>Discard this workout?</div>
+                  <div style={{ fontSize: 13.5, color: T.dim, marginTop: 6, lineHeight: 1.5 }}>
+                    {totalSets} set{totalSets === 1 ? "" : "s"} logged today will be deleted. This can't be undone.
+                  </div>
+                  <div style={{ marginTop: 18 }}>
+                    <HoldToConfirm label={cancelling ? "Discarding…" : "Hold to discard"} onConfirm={handleConfirmCancel} disabled={cancelling} />
+                  </div>
+                  <button onClick={() => setCancelConfirm(false)} style={{ width: "100%", marginTop: 10, padding: "15px 0", borderRadius: 12, border: "none", background: T.green, color: "#fff", fontSize: 15, fontWeight: 700 }}>Keep going</button>
+                </>
+              ) : (
+              <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }}>
+                <button onClick={onGoHome} aria-label="Home" title="Back to home, your workout stays active" style={{ ...cornerBtn, justifySelf: "start" }}><IconHome size={17} /></button>
+                <button onClick={closeMenu} aria-label="Close menu" style={{ width: 64, height: 32, background: "none", border: "none", padding: 0 }}>
+                  <span style={{ display: "block", width: 36, height: 4, borderRadius: 4, background: T.line, margin: "0 auto" }} />
+                </button>
+                <button onClick={() => { setCancelConfirm(true); setFinishConfirm(false); }} style={{ ...cornerBtn, justifySelf: "end" }}><IconTrash size={13} /> Discard</button>
               </div>
 
-              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Muscles worked, this session</div>
-                {Object.keys(livePrimary).length === 0 && Object.keys(liveSecondary).length === 0 ? (
-                  <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "12px 0" }}>Log a set to see it light up here.</div>
-                ) : (
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} entries={liveVolumeEntries} mapMaxWidth={112} />
-                    </div>
-                    {/* Small quick-toggle tiles -- the mid-workout menu's
-                        own settings surface (Preferences was already built
-                        to support this self-managed/fields-subset mode,
-                        just never wired anywhere). Kept to the two
-                        settings most worth touching without leaving the
-                        workout; everything else stays in the full Settings
-                        screen from Home. */}
-                    <div style={{ width: 92, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                      <QuickSettingTile
-                        label="Units"
-                        value={quickUnits}
-                        options={[{ key: "lb", label: "lb" }, { key: "kg", label: "kg" }]}
-                        onChange={(v) => { setPref("units", v); setQuickUnits(v); }}
-                      />
-                      <QuickSettingTile
-                        label="Rest sound"
-                        value={quickRestSound ? "on" : "off"}
-                        options={[{ key: "on", label: "On" }, { key: "off", label: "Off" }]}
-                        onChange={(v) => { const on = v === "on"; setPref("restTimerSoundEnabled", on); setQuickRestSound(on); }}
-                      />
-                    </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 36, fontWeight: 700, lineHeight: 1, color: isPaused ? T.dim : T.text }}>{hhmmss(elapsedSec)}</span>
+                    {isPaused && <span style={{ fontSize: 12, fontWeight: 700, color: T.accent, whiteSpace: "nowrap" }}>Paused</span>}
                   </div>
+                  <div style={{ fontSize: 12.5, color: T.dim, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {totalSets} set{totalSets === 1 ? "" : "s"} · {totalVolume.toLocaleString()} {unit}
+                  </div>
+                </div>
+                {!showMenuHeatmap && (
+                  <button onClick={() => setShowMenuHeatmap(true)} aria-label="Show muscle map" style={{ flexShrink: 0, width: 84, padding: 6, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, opacity: isPaused ? 0.6 : 1 }}>
+                    <div style={{ pointerEvents: "none" }}>
+                      <BodyMap primary={thumbCounts.primary} secondary={thumbCounts.secondary} nameMode={muscleNameMode} maxWidth={34} showLegend={false} />
+                    </div>
+                  </button>
                 )}
               </div>
 
-              {!finishConfirm ? (
-                <button onClick={() => { setFinishConfirm(true); setCancelConfirm(false); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Finish workout</button>
-              ) : (
-                <div style={{ background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 14 }}>
-                  <div style={{ color: T.text, fontSize: 14, fontWeight: 700, marginBottom: 4 }}>End this workout?</div>
-                  <div style={{ color: T.dim, fontSize: 13, marginBottom: 12 }}>
-                    {allSets.flat().length} set{allSets.flat().length === 1 ? "" : "s"} logged. You can still review it after, but it'll be marked complete.
+              {showMenuHeatmap ? (
+                <div style={{ marginTop: 14, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 12px 12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, color: T.dim, whiteSpace: "nowrap" }}>Muscles worked</span>
+                    <button onClick={() => setShowMenuHeatmap(false)} aria-label="Hide muscle map" style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><IconX size={16} /></button>
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => { setFinishConfirm(false); setOutlierReview(null); }} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
-                    <button onClick={handleFinishClick} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Yes, finish</button>
+                  {hasMuscleData ? (
+                    <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} entries={liveVolumeEntries} />
+                  ) : (
+                    <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 0" }}>Log a set to see it light up here.</div>
+                  )}
+                </div>
+              ) : (
+              <div style={{ marginTop: 14, borderTop: `1px solid ${T.line}` }}>
+                <button onClick={handleSaveForLater} style={rowStyle}>
+                  <span style={{ whiteSpace: "nowrap" }}>Save for later</span>
+                  <span style={rowValue}>{isPaused ? "Go home" : "Pause and go home"} ›</span>
+                </button>
+              {!showSaveTemplate ? (
+                <button onClick={() => { setShowSaveTemplate(true); setTemplateSaved(false); }} style={rowStyle}>
+                  <span style={{ whiteSpace: "nowrap", color: templateSaved ? "#7BD69B" : T.text }}>{templateSaved ? "Saved as template" : "Save as template"}</span>
+                  <span style={rowValue}>{templateSaved ? <IconCheck size={13} /> : "›"}</span>
+                </button>
+              ) : (
+                <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 14, marginTop: 10 }}>
+                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Template name</div>
+                  <input
+                    autoFocus
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="e.g. Push Day A"
+                    style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 10px", outline: "none", boxSizing: "border-box", marginBottom: 10 }}
+                  />
+                  <button onClick={() => setTemplateIncludeDetails(!templateIncludeDetails)} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, marginBottom: 12, textAlign: "left", width: "100%" }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 5, border: `1px solid ${templateIncludeDetails ? T.accent : T.line}`, background: templateIncludeDetails ? T.accent : "none", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }}>
+                      {templateIncludeDetails && <IconCheck size={11} />}
+                    </div>
+                    <span style={{ fontSize: 13, color: T.text }}>Include current notes & setup for each exercise</span>
+                  </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => { setShowSaveTemplate(false); setTemplateName(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
+                    <button onClick={handleSaveTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : "#fff", fontSize: 14, fontWeight: 700 }}>
+                      {savingTemplate ? "Saving…" : "Save Template"}
+                    </button>
                   </div>
                 </div>
               )}
-
-              <button onClick={() => { setManageFromScratch(false); setView("manage"); }} style={{ width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Edit Workout</button>
-
-              {!finishConfirm && (
-                isPaused ? (
-                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                    <button onClick={handleResumeFromPause} style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Resume</button>
-                    <button onClick={handleSaveForLater} style={{ flex: 1, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Save for later</button>
-                  </div>
-                ) : (
-                  <button onClick={handlePause} style={{ width: "100%", marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Pause</button>
-                )
+                <button onClick={() => { trainingPrefsIdeologyRef.current = getPrefs().trainingIdeology; setShowTrainingPrefs(true); }} style={{ ...rowStyle, borderBottom: "none" }}>
+                  <span style={{ whiteSpace: "nowrap" }}>Training preferences</span>
+                  <span style={rowValue}>Focus, timers, alerts ›</span>
+                </button>
+              </div>
               )}
 
               {outlierReview && outlierReview.length > 0 && (
-                <div style={{ marginTop: 12, background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 14 }}>
+                <div style={{ marginTop: 12, background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 14 }}>
                   <div style={{ color: T.text, fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Double-check these sets</div>
                   <div style={{ color: T.dim, fontSize: 12.5, marginBottom: 10, lineHeight: 1.4 }}>
                     {outlierReview.length} set{outlierReview.length === 1 ? "" : "s"} logged {outlierReview.some((f) => f.direction === "high") && outlierReview.some((f) => f.direction === "low") ? "far off" : outlierReview[0].direction === "high" ? "much heavier than" : "much lighter than"} your other sets on that exercise — worth a quick look in case it's a typo or the wrong plates.
@@ -2717,62 +2844,45 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 </div>
               )}
 
-              {!showSaveTemplate ? (
-                <button
-                  onClick={() => { setShowSaveTemplate(true); setTemplateSaved(false); }}
-                 
-                  style={{
-                    width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14,
-                    border: `1px solid ${templateSaved ? T.green : T.line}`,
-                    background: templateSaved ? "rgba(59,165,93,0.12)" : T.surface,
-                    color: templateSaved ? "#7BD69B" : T.text, fontSize: 15, fontWeight: 600,
-                  }}
-                >
-                  {templateSaved ? <><IconCheck size={13} /> Saved as Template</> : "Save as Template"}
-                </button>
+              {!finishConfirm ? (
+                <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                  {isPaused ? (
+                    <button onClick={handleResumeFromPause} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>Resume</button>
+                  ) : (
+                    <button onClick={handlePause} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap" }}>Pause</button>
+                  )}
+                  <button onClick={() => { setFinishConfirm(true); setCancelConfirm(false); }} style={{ flex: 1.3, padding: "15px 0", borderRadius: 12, border: "none", background: T.green, color: "#fff", fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>Finish</button>
+                </div>
               ) : (
-                <div style={{ background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 14, marginTop: 10 }}>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Template name</div>
-                  <input
-                    autoFocus
-                    value={templateName}
-                    onChange={(e) => setTemplateName(e.target.value)}
-                    placeholder="e.g. Push Day A"
-                    style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 10px", outline: "none", boxSizing: "border-box", marginBottom: 10 }}
-                  />
-                  <button onClick={() => setTemplateIncludeDetails(!templateIncludeDetails)} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, marginBottom: 12, textAlign: "left", width: "100%" }}>
-                    <div style={{ width: 18, height: 18, borderRadius: 5, border: `1px solid ${templateIncludeDetails ? T.accent : T.line}`, background: templateIncludeDetails ? T.accent : "none", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }}>
-                      {templateIncludeDetails && <IconCheck size={11} />}
-                    </div>
-                    <span style={{ fontSize: 13, color: T.text }}>Include current notes & setup for each exercise</span>
-                  </button>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => { setShowSaveTemplate(false); setTemplateName(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
-                    <button onClick={handleSaveTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : "#fff", fontSize: 14, fontWeight: 700 }}>
-                      {savingTemplate ? "Saving…" : "Save Template"}
-                    </button>
+                <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 14, marginTop: 14 }}>
+                  <div style={{ color: T.text, fontSize: 14, fontWeight: 700, marginBottom: 4 }}>End this workout?</div>
+                  <div style={{ color: T.dim, fontSize: 13, marginBottom: 12 }}>
+                    {allSets.flat().length} set{allSets.flat().length === 1 ? "" : "s"} logged. You can still review it after, but it'll be marked complete.
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => { setFinishConfirm(false); setOutlierReview(null); }} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
+                    <button onClick={handleFinishClick} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Yes, finish</button>
                   </div>
                 </div>
               )}
-
-              {!cancelConfirm ? (
-                <button onClick={() => { setCancelConfirm(true); setFinishConfirm(false); }} style={{ width: "100%", marginTop: 10, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 15, fontWeight: 700 }}>Cancel workout</button>
-              ) : (
-                <div style={{ background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 14, marginTop: 10 }}>
-                  <div style={{ color: T.accent, fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Discard this workout?</div>
-                  <div style={{ color: T.dim, fontSize: 13, marginBottom: 12 }}>
-                    {allSets.flat().length} set{allSets.flat().length === 1 ? "" : "s"} logged this session will be permanently deleted. This can't be undone.
-                  </div>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => setCancelConfirm(false)} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Keep going</button>
-                    <button onClick={handleConfirmCancel} disabled={cancelling} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>
-                      {cancelling ? "Deleting…" : "Yes, discard it"}
-                    </button>
-                  </div>
-                </div>
+              </>
               )}
             </div>
           </div>
+          );
+        })()}
+        {showTrainingPrefs && (
+          <Preferences
+            user={user}
+            initialScreen="training"
+            onExit={() => {
+              setShowTrainingPrefs(false);
+              // A changed default focus applies to the rest of this workout;
+              // per-exercise overrides are untouched.
+              const next = getPrefs().trainingIdeology;
+              if (next && next !== trainingPrefsIdeologyRef.current) setGlobalIdeology(next);
+            }}
+          />
         )}
         {/* Top bar: scrollable strip + pinned pencil, always visible */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px 0" }}>
@@ -2790,6 +2900,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               );
             })}
           </div>
+          <button onClick={() => { setManageFromScratch(false); setView("manage"); }} aria-label="Edit workout" title="Edit workout" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><IconPencil size={15} /></button>
           <button onClick={() => setShowMenu(true)} aria-label="Workout menu" title="Timer, muscle map, finish workout" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}><IconMenu size={16} /></button>
         </div>
 
@@ -2846,7 +2957,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               ) : target.fromProgram ? (
                 <><b style={{ color: T.text }}>Program coach:</b> {target.reasonText}</>
               ) : target.backoff ? (
+                target.backoff.reason === "missed" ? (
+                <><b style={{ color: T.text }}>Adjusted for today.</b> Your last set ({target.backoff.source.weight} {unit} x {target.backoff.source.reps} @ RIR {target.backoff.source.rir ?? "?"}) came in under the {formatRange(setRange)} range, which puts your estimated 1RM at {target.backoff.e1rm} {unit} right now. This set comes down from {target.backoff.from} to <b style={{ color: T.text }}>{target.weight} {unit}</b> to get you back into the range.</>
+                ) : (
                 <><b style={{ color: T.text }}>Adjusted for today.</b> Set {setNum} moves to a {formatRange(setRange)} rep target. Your normal suggestion would be {target.backoff.from} {unit}, but your last set today ({target.backoff.source.weight} {unit} x {target.backoff.source.reps} @ RIR {target.backoff.source.rir ?? "?"}) puts your estimated 1RM at {target.backoff.e1rm} {unit} right now, so this set comes down to <b style={{ color: T.text }}>{target.weight} {unit}</b> for {target.reps} reps.</>
+                )
               ) : target.perSet ? (
                 <>Double progression for set {setNum}: last session you did {target.source.weight} {unit} x {target.source.reps} on this set. {target.source.reps >= setRange.high ? "You hit the top of the range, so the weight goes up and reps reset." : `Same weight, aim for ${setRange.high} reps.`}</>
               ) : target.anchored && target.fromToday ? (
@@ -3059,10 +3174,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         {!wizardOpen && (
         <div key={exIdx} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ flex: 1, padding: "12px 16px", overflowY: "auto", animation: "slideIn 0.18s ease", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ display: "flex", gap: 10, marginBottom: 6 }}>
-            <div style={{ flex: "0.92 1 0", minWidth: 0, height: 22, display: "flex", alignItems: "center" }}>
-              <span style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Last session</span>
-            </div>
-            <div style={{ flex: "1.08 1 0", minWidth: 0 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               {deleteMode ? (
                 confirmDeleteSets ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "rgba(232,90,90,0.12)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: "8px 10px" }}>
@@ -3096,8 +3208,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   </div>
                 )
               ) : (
-                <div style={{ height: 22, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Today</span>
+                <div style={{ height: 22, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
                   <div style={{ display: "flex", gap: 6 }}>
                     {lastWeek.length > sets.length && <button onClick={copyAll} style={{ ...smallBtn, whiteSpace: "nowrap" }}>Copy last session</button>}
                     {sets.length > 0 && <button onClick={() => setDeleteMode(true)} style={{ ...smallBtn, whiteSpace: "nowrap" }}>Delete sets</button>}
@@ -3108,85 +3219,67 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           </div>
 
           {(() => {
-            // Today's column always carries one extra slot for the AddSetTile
-            // (unless mid-delete-selection, where adding would be a confusing
-            // action to offer) -- both columns size off the larger of the two
-            // so Last Session and Today keep scrolling in lockstep.
+            // One list of paired rows (see PairedSetRow): row i is last
+            // session's set i beside today's set i. Today always carries one
+            // extra "next" slot (except mid-delete-selection); rows run to
+            // whichever side is longer.
             const todaySlots = sets.length + (deleteMode ? 0 : 1);
             const totalRows = Math.max(lastWeek.length, todaySlots);
+            const todayLabels = setLabels(sets);
+            const lastLabels = setLabels(lastWeek);
+            const nextLabel = String(sets.filter((x) => !x.isWarmup).length + 1);
+            const lastAt = lastWeek[0] && lastWeek[0].completedAt;
+            const lastDateLabel = lastAt ? new Date(lastAt).toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" }) : "Last time";
+            const lastStats = sessionStats(lastWeek);
+            const todayStats = sessionStats(sets);
+            const colHead = { fontSize: 11.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
             return (
-          <div style={{ display: "flex", gap: 10, flex: 1, minHeight: 0 }}>
-            <div style={{ flex: "0.92 1 0", minWidth: 0, minHeight: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
-              {lastWeek.length === 0 ? (
-                <div style={{ color: T.dim, fontSize: 12, textAlign: "center", padding: "10px 0" }}>No history yet</div>
-              ) : (
-                <>
-                  <div ref={lastRowsRef} onScroll={() => syncSetListScroll("last")} className="no-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
-                    {Array.from({ length: totalRows }).map((_, i) => {
-                      const s = lastWeek[i];
-                      return s ? (
-                        <SessionSetRow key={i} label={setLabels(lastWeek)[i]} set={s} unit={unit} interactive={false} />
-                      ) : (
-                        <div key={i} style={{ height: ROW_HEIGHT, flexShrink: 0 }} />
-                      );
-                    })}
-                  </div>
-                  {(() => {
-                    const { totalVolume, bestE1RM } = sessionStats(lastWeek);
-                    return (
-                      <div style={{ marginTop: "auto", borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
-                        <span>Volume <b style={{ color: T.text, fontWeight: 700 }}>{totalVolume} {unit}</b></span>
-                        <span>e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(bestE1RM)} {unit}</b></span>
-                      </div>
-                    );
-                  })()}
-                </>
-              )}
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+            <div style={{ display: "grid", gridTemplateColumns: PAIR_COLUMNS(false), columnGap: 8, padding: "0 11px 6px", alignItems: "end" }}>
+              <span />
+              <span style={{ ...colHead, color: T.dim }}>{lastWeek.length > 0 ? <>↺ {lastDateLabel}</> : "First time"}</span>
+              <span />
+              <span style={{ ...colHead, color: T.accent, fontWeight: 700 }}>Today</span>
             </div>
-
-            <div style={{ flex: "1.08 1 0", minWidth: 0, minHeight: 0, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column" }}>
-              <div ref={todayRowsRef} onScroll={() => syncSetListScroll("today")} className="no-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
-                {Array.from({ length: totalRows }).map((_, i) => {
-                  const s = sets[i];
-                  if (s) {
-                    return (
-                      <SessionSetRow
-                        key={i}
-                        label={setLabels(sets)[i]}
-                        set={s}
-                        unit={unit}
-                        interactive
-                        deleteMode={deleteMode}
-                        selected={selectedForDelete.has(i)}
-                        onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
-                        onRowTap={() => openWizard(s, i)}
-                        onToggleSelect={() => {
-                          setSelectedForDelete((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(i)) next.delete(i); else next.add(i);
-                            return next;
-                          });
-                        }}
-                      />
-                    );
-                  }
-                  if (i === sets.length && !deleteMode) {
-                    return <AddSetTile key={i} onClick={() => openWizard()} />;
-                  }
-                  return <div key={i} style={{ height: ROW_HEIGHT, flexShrink: 0 }} />;
-                })}
+            <div ref={todayRowsRef} className="no-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: ROW_GAP }}>
+              {Array.from({ length: totalRows }).map((_, i) => {
+                const today = sets[i];
+                const last = lastWeek[i] || null;
+                if (today) {
+                  return (
+                    <PairedSetRow
+                      key={i}
+                      state="logged"
+                      label={todayLabels[i]}
+                      last={last}
+                      today={today}
+                      unit={unit}
+                      deleteMode={deleteMode}
+                      selected={selectedForDelete.has(i)}
+                      onToggleWarmup={() => toggleSetWarmup(exIdx, i)}
+                      onRowTap={() => openWizard(today, i)}
+                      onToggleSelect={() => {
+                        setSelectedForDelete((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(i)) next.delete(i); else next.add(i);
+                          return next;
+                        });
+                      }}
+                    />
+                  );
+                }
+                if (i === sets.length && !deleteMode) {
+                  return <PairedSetRow key={i} state="next" label={nextLabel} last={last} unit={unit} onLogNext={() => openWizard()} />;
+                }
+                return <PairedSetRow key={i} state="upcoming" label={lastLabels[i]} last={last} unit={unit} />;
+              })}
+            </div>
+            {sets.length > 0 && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${T.line}`, display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11, color: T.dim, whiteSpace: "nowrap" }}>
+                <span>Volume <b style={{ color: T.text, fontWeight: 700 }}>{todayStats.totalVolume.toLocaleString()} {unit}</b> {lastWeek.length > 0 && diffLabel(todayStats.totalVolume - lastStats.totalVolume)}</span>
+                <span>Best e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(todayStats.bestE1RM)}</b> {lastWeek.length > 0 && diffLabel(todayStats.bestE1RM - lastStats.bestE1RM)}</span>
               </div>
-              {sets.length > 0 && (() => {
-                const last = sessionStats(lastWeek);
-                const today = sessionStats(sets);
-                return (
-                  <div style={{ marginTop: "auto", borderTop: `1px solid ${T.line}`, paddingTop: 6, display: "flex", flexDirection: "column", gap: 2, fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>
-                    <span>Volume <b style={{ color: T.text, fontWeight: 700 }}>{today.totalVolume} {unit}</b> {diffLabel(today.totalVolume - last.totalVolume)}</span>
-                    <span>e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(today.bestE1RM)} {unit}</b> {diffLabel(today.bestE1RM - last.bestE1RM)}</span>
-                  </div>
-                );
-              })()}
-            </div>
+            )}
           </div>
             );
           })()}
@@ -3220,26 +3313,23 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           // stat line. With neither (fresh exercise, mid-set, no PR-worthy
           // lift logged yet), skip the bar entirely rather than showing an
           // empty bordered strip with nothing in it.
-          const hasBottomContent = wizardOpen || (exDone && workoutDone) || bestE1RM > 0;
+          const hasBottomContent = wizardOpen || (exDone && workoutDone);
           if (!hasBottomContent) return null;
           return (
         <div style={wizardOpen ? { borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16, flex: 1, overflowY: "auto", minHeight: 0 } : { borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
           {!wizardOpen ? (
             <>
               {exDone && workoutDone && (
-                <button onClick={() => setShowMenu(true)} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Finish workout</button>
-              )}
-              {bestE1RM > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 13 }}>
-                  <span style={{ color: T.dim }}>Best e1RM today: <b style={{ color: T.text }}>{Math.round(bestE1RM)} {unit}</b></span>
-                  <span style={{ color: T.dim }}>Percentile: <span style={{ filter: "blur(4px)" }}>94th</span> — calibrating</span>
-                </div>
+                <button onClick={() => { setShowMenu(true); setFinishConfirm(true); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Finish workout</button>
               )}
             </>
           ) : (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{editIndex !== null ? `Editing set ${editIndex + 1}` : `Set ${setNum}`}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <button onClick={() => { stashDraft(); setWizardOpen(false); setShowCalc(false); setEditIndex(null); }} aria-label="Back" title="Back (keeps what you've entered)" style={{ width: 32, height: 32, marginLeft: -6, borderRadius: 8, border: "none", background: "none", color: T.text, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}><IconChevronLeft size={20} /></button>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: "nowrap" }}>{editIndex !== null ? `Editing set ${editIndex + 1}` : `Set ${setNum}`}</div>
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {editIndex === null && lastLogged && <button onClick={() => fillFrom(lastLogged)} style={smallBtn}>Same as previous set</button>}
                   {editIndex === null && lastWeek[sets.length] && <button onClick={() => fillFrom(lastWeek[sets.length])} style={smallBtn}>Same as last session</button>}
@@ -3254,7 +3344,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 function bumpWeight(delta) {
                   const cur = parseFloat(weight) || 0;
                   setWeight(String(Math.max(0, cur + delta)));
-                  setLoaded([]);
                 }
                 function bumpReps(delta) {
                   const cur = parseInt(reps, 10) || 0;
@@ -3273,7 +3362,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                           readOnly
                           inputMode="none"
                           value={weight}
-                          onClick={(e) => { e.target.blur(); setExactEntryDraft(weight); setExactEntryField("weight"); }}
+                          onClick={(e) => { e.target.blur(); setExactEntryDraft(weight); setExactEntryFresh(true); setExactEntryField("weight"); }}
                           style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
                         />
                         <button onClick={() => bumpWeight(weightSteps[0])} style={stepBtn}>+{weightSteps[0]}</button>
@@ -3289,7 +3378,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                           readOnly
                           inputMode="none"
                           value={reps}
-                          onClick={(e) => { e.target.blur(); setExactEntryDraft(reps); setExactEntryField("reps"); }}
+                          onClick={(e) => { e.target.blur(); setExactEntryDraft(reps); setExactEntryFresh(true); setExactEntryField("reps"); }}
                           style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
                         />
                         <button onClick={() => bumpReps(1)} style={{ ...stepBtn, width: 48 }}>+1</button>
@@ -3301,13 +3390,23 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               {exactEntryField && (() => {
                 const isWeight = exactEntryField === "weight";
                 const commit = () => {
-                  if (isWeight) { setWeight(exactEntryDraft || "0"); setLoaded([]); }
+                  if (isWeight) setWeight(exactEntryDraft || "0");
                   else setReps(exactEntryDraft || "0");
                   setExactEntryField(null);
                 };
                 const digit = (d) => {
-                  if (d === "." && (exactEntryDraft.includes(".") || !isWeight)) return;
+                  if (d === "." && !isWeight) return;
+                  if (exactEntryFresh) {
+                    setExactEntryFresh(false);
+                    setExactEntryDraft(d === "." ? "0." : d);
+                    return;
+                  }
+                  if (d === "." && exactEntryDraft.includes(".")) return;
                   setExactEntryDraft((prev) => (prev === "0" && d !== "." ? d : prev + d));
+                };
+                const backspace = () => {
+                  if (exactEntryFresh) { setExactEntryFresh(false); setExactEntryDraft(""); return; }
+                  setExactEntryDraft((prev) => prev.slice(0, -1));
                 };
                 const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", isWeight ? "." : "", "0", "⌫"];
                 return (
@@ -3315,7 +3414,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     <div style={{ width: "100%", maxWidth: 400, background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "16px 16px 0 0", padding: 16, boxSizing: "border-box" }}>
                       <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{isWeight ? `Weight (${unit})` : "Reps"}</div>
                       <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, textAlign: "center", padding: "8px 0", marginBottom: 10 }}>
-                        {exactEntryDraft || "0"}
+                        <span style={exactEntryFresh && exactEntryDraft ? { background: "rgba(232,68,46,0.35)", borderRadius: 4, padding: "0 4px" } : undefined}>{exactEntryDraft || "0"}</span>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
                         {keys.map((k, i) => k === "" ? (
@@ -3323,7 +3422,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                         ) : (
                           <button
                             key={i}
-                            onClick={() => (k === "⌫" ? setExactEntryDraft((prev) => prev.slice(0, -1)) : digit(k))}
+                            onClick={() => (k === "⌫" ? backspace() : digit(k))}
                             style={{ padding: "13px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}
                           >
                             {k}
@@ -3338,14 +3437,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   </div>
                 );
               })()}
-              <button onClick={() => setShowCalc(!showCalc)} style={{ marginTop: 12, width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${showCalc ? T.accent : T.line}`, background: showCalc ? "rgba(232,68,46,0.1)" : T.surface2, color: T.text, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button onClick={togglePlateCalc} style={{ marginTop: 12, width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${showCalc ? T.accent : T.line}`, background: showCalc ? "rgba(232,68,46,0.1)" : T.surface2, color: T.text, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <IconBarbell size={15} /> {showCalc ? "Hide plate calculator" : "Plate calculator"}
               </button>
               {showCalc && (
                 <div style={{ marginTop: 10, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12 }}>
-                  <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.5, marginBottom: 10 }}>
-                    Type your target weight above, then tap <b style={{ color: T.text }}>Optimize loading</b> below to see exactly what to put on the bar.
-                  </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <div style={{ fontSize: 12, color: T.dim }}>Starting weight</div>
@@ -3367,16 +3463,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   </div>
                   {showBarInfo && (
                     <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.5, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10 }}>
-                      Starting weight is the empty weight of whatever you're loading: the bar, both machine arms combined, a trap bar, or an EZ curl bar. Use 0 for plate-loaded machines with no bar weight of their own. Plates you add below count once per side, and the diagram mirrors them on both ends. Or type a target weight above and tap Optimize loading to fill the bar with the fewest plates.
+                      Starting weight is the empty weight of whatever you're loading: the bar, both machine arms combined, a trap bar, or an EZ curl bar. Use 0 for plate-loaded machines with no bar weight of their own. The plates shown follow the weight above, loaded with the fewest plates per side. Tap a plate to remove it or add your own below; the weight updates to match.
                     </div>
                   )}
-                  <button
-                    onClick={autoLoad}
-                   
-                    style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-                  >
-                    <IconBolt size={14} /> Optimize loading
-                  </button>
                   <div style={{ display: "flex", alignItems: "center", height: 104, marginBottom: 8 }}>
                     {/* Left half — mirrors the right, outermost plate furthest from center */}
                     <div style={{ display: "flex", alignItems: "center", flex: 1, justifyContent: "flex-end" }}>
@@ -3394,7 +3483,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     </div>
                   </div>
                   <div style={{ fontSize: 13, color: T.text, minHeight: 18, textAlign: "center" }}>
-                    {loaded.length > 0 ? <>Per side: {loaded.join(" + ")} · Total <b>{barWeight + 2 * stackSum} {unit}</b> <span style={{ color: T.dim, fontSize: 11 }}>(tap a plate to remove)</span></> : <span style={{ color: T.dim }}>No plates loaded · starting weight {barWeight > 0 ? `${barWeight} ${unit}` : "not set"}</span>}
+                    {loaded.length > 0 ? <>Per side: {loaded.join(" + ")} · Total <b>{barWeight + 2 * stackSum} {unit}</b></> : (parseFloat(weight) || 0) < barWeight ? <span style={{ color: T.dim }}>Below the {barWeight} {unit} starting weight</span> : <span style={{ color: T.dim }}>Empty · starting weight {barWeight} {unit}</span>}
+                    {plateLeftover > 0 && <div style={{ fontSize: 11.5, color: "#E8A82E", marginTop: 2 }}>{+plateLeftover.toFixed(2)} {unit} per side can't be loaded with your plates</div>}
                   </div>
                   <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
                     {availablePlates(unit, ex && ex.muscle).map((p) => (
@@ -3415,8 +3505,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                <button onClick={() => { stashDraft(); setWizardOpen(false); setShowCalc(false); setEditIndex(null); }} style={{ flex: 1, padding: "14px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
-                <button onClick={saveSet} style={{ flex: 2, padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>
+                <button onClick={saveSet} style={{ flex: 1, padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>
                   {editIndex !== null ? "Save changes" : "Log set"}
                 </button>
               </div>

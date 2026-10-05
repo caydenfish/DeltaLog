@@ -505,7 +505,11 @@ export async function fetchLastSession(userId, exerciseId) {
     .order("set_number");
 
   if (setsErr) throw setsErr;
-  return (sets || []).map((s) => ({ weight: s.weight, reps: s.reps, rir: s.rir, set_number: s.set_number, isWarmup: !!s.is_warmup }));
+  // completedAt rides along on every set (same value) so the workout view
+  // can label last session's column with its date without changing this
+  // function's array return shape for existing callers.
+  const completedAt = lastWorkoutExercise.workouts?.completed_at || null;
+  return (sets || []).map((s) => ({ weight: s.weight, reps: s.reps, rir: s.rir, set_number: s.set_number, isWarmup: !!s.is_warmup, completedAt }));
 }
 
 // Fetches every set logged for this exercise across all completed

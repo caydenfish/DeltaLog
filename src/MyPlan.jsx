@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { fetchMuscleGroupTargets, saveMuscleGroupTarget } from "./lib/queries";
 import { fetchActiveProgram } from "./lib/programQueries";
 import { dayLabelsForSplit } from "./lib/programEngine";
-import { computeRollingWeeklyTotals } from "./lib/volume";
+import { computeRollingWeeklyTotals, formatSets } from "./lib/volume";
 import { MUSCLE_COLORS } from "./lib/muscleTaxonomy";
 import { statusColorFor } from "./lib/planStatus";
 import { InlineLoading } from "./LoadingSpinner";
@@ -163,7 +163,7 @@ export default function MyPlan({ userId, history }) {
                   <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{m}</span>
                 </div>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color }}>
-                  {total} <span style={{ color: T.dim, fontWeight: 500 }}>/ {target} sets</span>
+                  {formatSets(total)} <span style={{ color: T.dim, fontWeight: 500 }}>/ {target} sets</span>
                 </div>
               </div>
               <div style={{ height: 5, borderRadius: 3, background: T.surface2, overflow: "hidden", marginBottom: 8 }}>

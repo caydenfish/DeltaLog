@@ -1,4 +1,5 @@
 import { FRONT_REGIONS, BACK_REGIONS, OUTLINE_FRONT, OUTLINE_BACK, VIEWBOX_FRONT, VIEWBOX_BACK } from "./lib/bodyMapData";
+import { SECONDARY_SET_WEIGHT, effectiveSets, formatSets } from "./lib/volume";
 import { resolveRegions } from "./lib/bodyMapRegions";
 import { statusColorFor, PLAN_NEUTRAL } from "./lib/planStatus";
 import { getDetailedTaxonomyEntries } from "./lib/muscleTaxonomy";
@@ -100,7 +101,7 @@ function intensityTierLegend(maxTotal) {
     { key: "none", color: NEUTRAL, label: "0" },
     { key: "low", color: "#C9A227", label: lowMax === 1 ? "1" : `1–${lowMax}` },
     { key: "moderate", color: "#E8752E", label: modMax === lowMax + 1 ? `${modMax}` : `${lowMax + 1}–${modMax}` },
-    { key: "high", color: T.accent, label: hiMin === maxTotal ? `${maxTotal}` : `${hiMin}–${maxTotal}` },
+    { key: "high", color: T.accent, label: hiMin >= maxTotal ? formatSets(maxTotal) : `${hiMin}–${formatSets(maxTotal)}` },
   ];
 }
 
@@ -188,7 +189,12 @@ function labelBreakdown(t, roleFilter) {
   const combined = {};
   const addFrom = (map) => { for (const [label, count] of Object.entries(map || {})) combined[label] = (combined[label] || 0) + count; };
   if (roleFilter !== "secondary") addFrom(t.labelsByRole?.primary);
-  if (roleFilter !== "primary") addFrom(t.labelsByRole?.secondary);
+  if (roleFilter !== "primary") {
+    // Secondary labels count half when combined with primary (fractional
+    // sets), so the breakdown still adds up to the total shown.
+    const w = roleFilter === "secondary" ? 1 : SECONDARY_SET_WEIGHT;
+    for (const [label, count] of Object.entries(t.labelsByRole?.secondary || {})) combined[label] = (combined[label] || 0) + w * count;
+  }
   return combined;
 }
 
@@ -200,7 +206,7 @@ function labelBreakdown(t, roleFilter) {
 function roleTotal(t, roleFilter) {
   if (roleFilter === "primary") return t.primary;
   if (roleFilter === "secondary") return t.secondary;
-  return t.primary + t.secondary;
+  return effectiveSets(t.primary, t.secondary);
 }
 
 function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, targets, rollingTotals, roleFilter, planNameMode, regionKeyMap, nameMode, maxWidth }) {
@@ -257,13 +263,13 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
         // says everything the breakdown would, via displayName above.
         // Category mode skips it: the contributing labels are Region-tier.
         const breakdownText = nameMode !== "generic" && breakdownEntries.length > 1
-          ? ` — ${breakdownEntries.map(([label, count]) => `${label} ${count}`).join(", ")}`
+          ? ` — ${breakdownEntries.map(([label, count]) => `${label} ${formatSets(count)}`).join(", ")}`
           : "";
         return (
           <g key={region.slug}>
             {region.paths.map((d, i) => (
               <path key={i} d={d} fill={tier.color} vectorEffect="non-scaling-stroke">
-                <title>{`${regionTitle(view, region.slug, nameMode)} — ${total} set${total === 1 ? "" : "s"} (${tier.label})${breakdownText}`}</title>
+                <title>{`${regionTitle(view, region.slug, nameMode)} — ${formatSets(total)} set${total === 1 ? "" : "s"} (${tier.label})${breakdownText}`}</title>
               </path>
             ))}
           </g>
@@ -294,7 +300,7 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
 // Region/Anatomy-tier key sharing that region (buildRegionKeyMap), since
 // (same as intensity mode) the fixed SVG art has fewer shapes than the
 // finer tiers have labels.
-export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals, roleFilter = "both", planNameMode = "generic", nameMode = planNameMode, maxWidth }) {
+export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals, roleFilter = "both", planNameMode = "generic", nameMode = planNameMode, maxWidth, showLegend = true }) {
   const totals = mode === "plan" ? {} : buildRegionTotals(primary, secondary);
   const maxTotal = mode === "plan" ? 1 : Math.max(1, ...Object.values(totals).map((t) => roleTotal(t, roleFilter)));
   const regionKeyMap = mode === "plan" && planNameMode !== "generic" ? buildRegionKeyMap() : null;
@@ -305,14 +311,14 @@ export default function BodyMap({ primary = {}, secondary = {}, mode = "intensit
         <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} nameMode={nameMode} maxWidth={maxWidth} />
         <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} nameMode={nameMode} maxWidth={maxWidth} />
       </div>
-      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
+      {showLegend && <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
         {(mode === "plan" ? PLAN_TIERS : intensityTierLegend(maxTotal)).map((t) => (
           <div key={t.key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ width: 9, height: 9, borderRadius: 3, background: t.color, display: "inline-block", flexShrink: 0 }} />
             <span style={{ fontSize: 10.5, color: T.dim }}>{t.label}</span>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }

@@ -9,6 +9,52 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.13.9": {
+    title: "See exactly how today stacks up",
+    items: [
+      "Your sets now sit side by side with last session's on the same row: last time on the left, today on the right, so set 2 always lines up with set 2.",
+      "An arrow on each row shows whether you beat, matched, or fell short of last time's set.",
+      "The next set to log shows last time's weight up front, right when you need it for loading the bar.",
+      "Last session is labeled with its date, so you always know which workout you're comparing against.",
+    ],
+  },
+  "1.13.8": {
+    title: "Smarter targets and research-backed set counting",
+    items: [
+      "Target weight now follows your most recent set instead of your best one. If your reps drop off mid-workout, the next target comes down to keep you in your rep range.",
+      "If a set falls short of your rep range, the next target lowers the weight to get you back into it. Tap the target to see why it changed.",
+      "Sets now count fully toward the muscles an exercise targets directly, and half toward muscles it works indirectly. This is the counting method current research finds most predictive of growth, so totals like 7.5 sets are normal now.",
+    ],
+  },
+  "1.13.7": {
+    title: "A lighter workout menu",
+    items: [
+      "The workout menu now slides up from the bottom, so you can still see the exercise you're on. Tap outside it or swipe the handle to close.",
+      "Pause and Finish sit at the bottom of the menu, right under your thumb. When you pause, Resume takes Pause's spot.",
+      "A live muscle map sits next to your workout timer. Tap it to see the full map.",
+      "Training preferences are one tap away in the menu, so you can change focus, rest timers, or alerts without leaving your workout.",
+      "Discarding a workout now lives in the top corner and asks you to press and hold, so it can't happen by accident.",
+      "Tapping Finish workout at the end of your last exercise now goes straight to the confirmation.",
+    ],
+  },
+  "1.13.6": {
+    title: "Step away from a set without losing it",
+    items: [
+      "Cancel in set entry is now a back arrow, and nothing you've entered gets thrown away. Punch in your weight, go back, do the set, then reopen it and everything's still there.",
+      "This works when editing a logged set too, and your in-progress entries now survive closing or reloading the app.",
+    ],
+  },
+  "1.13.5": {
+    title: "Faster set entry and a smarter plate calculator",
+    items: [
+      "Tapping weight or reps now replaces the number as you type, so there's nothing to clear first.",
+      "The plate calculator shows the plates for whatever weight you enter, instantly. No more Optimize button.",
+      "The plate calculator remembers itself for the rest of the workout: if it was open on your last set, it opens again, with the same plates when the weight hasn't changed.",
+      "Starting weight now assumes a standard 45 lb (20 kg) bar until you set something else for that exercise.",
+      "Edit Workout is now one tap from the top of the workout screen.",
+      "The bottom of the workout screen is cleaner, freeing up room for your sets.",
+    ],
+  },
   "1.13.4": {
     title: "A cleaner Edit Workout screen, and easier-to-read lists",
     items: [

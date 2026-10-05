@@ -5,6 +5,58 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.13.9",
+    date: "2026-10-05",
+    items: [
+      "Workout view: the Last session / Today side-by-side tiles (two scroll-synced lists of SessionSetRow + AddSetTile) replaced with one list of PairedSetRow, row i = lastWeek[i] beside sets[i]. States: logged (tap edits, badge toggles warmup, delete-mode checkbox), next (dashed accent, last time's weight shown bright, tap opens the wizard), upcoming (last session only, dim). compareSets() draws an up/equal/down glyph by rounded e1RM, only when both sets share warmup status.",
+      "Column header row: last session's date (\u21ba Sat, 9/28) or First time, and Today in accent. Volume / Best e1RM footer with diffs vs last session moved under the list.",
+      "lib/queries.js fetchLastSession: each returned set now carries completedAt (the workout's completed_at); array return shape unchanged for existing callers. Workouts restored from older session state just show 'Last time' until rehydrated.",
+      "Removed dead code: SessionSetRow, AddSetTile, TODAY_ROW_TEMPLATE, ROW_HEIGHT, syncSetListScroll, lastRowsRef.",
+    ],
+  },
+  {
+    version: "1.13.8",
+    date: "2026-10-05",
+    items: [
+      "Target fix (SetLogger targetFromHistory): under rir_autoregulation with sets logged today, candidateSets is now [latest working set] instead of all of today's sets (which took the max e1RM, so 60x10@0 then 60x6@0 kept suggesting 60x10). Cross-session history still uses the best recent set.",
+      "applyBackoffAdjustment now also fires when today's latest working set's reps < range.low (any method, incl. double progression), capping weight at weightForReps(latest e1RM, target reps). backoff.reason = 'range' | 'missed'; target info sheet has a 'missed' explanation.",
+      "Fractional sets (Pelland et al., Sports Medicine 2025): lib/volume.js exports SECONDARY_SET_WEIGHT = 0.5, effectiveSets(p, s), formatSets(n). computeMuscleSetCounts still returns raw primary/secondary counts; combined totals use effectiveSets in computeRollingWeeklyTotals (Weekly Set Goals), BodyMap roleTotal('both') + labelBreakdown (secondary labels weighted 0.5 when combined), BodyHeatmap coverage rows. Totals render via formatSets (one decimal max) in coverage, MyPlan, WeeklyGoalsBodyMap, BodyMap tooltip and legend max.",
+    ],
+  },
+  {
+    version: "1.13.7",
+    date: "2026-10-05",
+    items: [
+      "Workout menu rewritten from a full-screen overlay to a bottom sheet (absolute inside frame, dim backdrop closes; sheetUp/fadeIn keyframes; maxHeight 92%, scrolls). Top row: Home (left), handle (closes), Discard (right, dim). Header: elapsed timer (dimmed + Paused tag when paused), total sets and working volume, plus a muscle-map thumbnail button.",
+      "Thumbnail = BodyMap with new showLegend={false} prop at maxWidth 34, fed computeMuscleSetCounts(liveVolumeEntries, 'detailed'). Tapping it (showMenuHeatmap) swaps the list for the full BodyHeatmap card with a close button.",
+      "List: Save for later, Save as template (existing inline form), Training preferences. The shortcut mounts <Preferences initialScreen='training' onExit>; Preferences gains initialScreen/onExit props (back from the deep-linked sub-screen calls onExit; top-level tile grid suppressed). On exit, a changed default trainingIdeology is applied via setGlobalIdeology. Units and Rest sound quick toggles removed (quickUnits/quickRestSound state and QuickSettingTile deleted).",
+      "Pause/Resume + Finish pinned last in the sheet; finish confirm and outlier review render inline above/in place of them. Edit Workout removed from the menu (header pencil since 1.13.5).",
+      "Discard: tapping it swaps the sheet to a confirm view with new module-scope HoldToConfirm (rAF-driven fill over 1000 ms; pointerup/leave/cancel resets; Space/Enter supported; touch-action none, no callout; 40 ms vibrate on fire) wired to handleConfirmCancel, and a full-width green Keep going.",
+      "Bottom-bar Finish workout button opens the sheet with finishConfirm already true.",
+    ],
+  },
+  {
+    version: "1.13.6",
+    date: "2026-10-05",
+    items: [
+      "Set wizard: bottom Cancel button removed (Log set / Save changes now full width); back arrow (IconChevronLeft) added left of the Set N / Editing set N header. Same handler as the old Cancel: stashDraft() then close.",
+      "Drafts extended to edits: draftKey(editIdx) = dbId for new sets, dbId#index for edits. Edit drafts store base {weight, reps, rir} of the set when stashed; openWizard ignores the draft if the set at that index no longer matches base (edited elsewhere, deleted/reindexed). Draft now takes precedence over prefill. Saving an edit clears its draft; logging a new set already cleared the new-set draft.",
+      "drafts added to the saveSessionState snapshot (reactive effect + flush effect) and restored on resume, so stashed input survives reload/backgrounding, not just an open wizard.",
+    ],
+  },
+  {
+    version: "1.13.5",
+    date: "2026-10-05",
+    items: [
+      "SetLogger exact-entry keypad: new exactEntryFresh flag, set when the weight/reps field opens the keypad. First digit replaces the draft (\".\" -> \"0.\"), backspace on a fresh entry clears it; the current value renders with a selection highlight until the first key.",
+      "Plate calculator: plates are now derived from the weight. Effect on [wizardOpen, showCalc, weight, barWeight, exIdx, unit] keeps loaded in sync via greedyPerSide unless the current stack already sums to the weight; leftover per side shown inline (plateLeftover) instead of a toast. autoLoad and the Optimize loading button removed; manual add/remove plate still rewrites weight. setLoaded([]) dropped from fillFrom, bumpWeight and keypad commit (the sync effect handles it).",
+      "New plateMemory state keyed by exercise dbId ({ open, stack }), in-memory for the current workout. openWizard restores showCalc from memory (falls back to prefs.weightEntryMode) and seeds loaded from the remembered stack, which is kept when it still matches the weight. togglePlateCalc records open/closed.",
+      "Starting weight default when ex.setup._startingWeight is unset: BAR_PRESETS[unit][0] (45 lb / 20 kg) instead of 0. barMode initial state 45.",
+      "Top bar: pencil button next to the menu button opens the manage view directly (manageFromScratch false); Done/back return to the workout. Menu's Edit Workout button left in place pending the menu redesign.",
+      "Bottom bar: removed the Best e1RM today line and the blurred percentile placeholder; bar only renders for the wizard or the Finish workout button. Unused component-level bestE1RM removed.",
+    ],
+  },
+  {
     version: "1.13.4",
     date: "2026-09-29",
     items: [

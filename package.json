@@ -1,7 +1,7 @@
 {
   "name": "set-logger",
   "private": true,
-  "version": "1.13.4",
+  "version": "1.13.9",
   "type": "module",
   "scripts": {
     "dev": "vite",

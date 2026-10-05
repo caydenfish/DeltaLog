@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { getPrefs } from "./lib/prefs";
 import { muscleColor, muscleOptionsForMode, FULL_BODY } from "./lib/muscleTaxonomy";
-import { computeMuscleSetCounts } from "./lib/volume";
+import { computeMuscleSetCounts, effectiveSets, formatSets } from "./lib/volume";
 import { IconChevronUp, IconChevronDown } from "./Icons";
 import BodyMap from "./BodyMap";
 
@@ -102,7 +102,7 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
     known.add(opt.key);
     const p = primary[opt.key] || 0;
     const s = secondary[opt.key] || 0;
-    rows.push({ muscle: opt.key, primary: p, secondary: s, total: p + s });
+    rows.push({ muscle: opt.key, primary: p, secondary: s, total: effectiveSets(p, s) });
   }
   // Anything present in the counts but not in the taxonomy list (e.g. a
   // custom/legacy label) still deserves a row.
@@ -111,7 +111,7 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
     known.add(m);
     const p = primary[m] || 0;
     const s = secondary[m] || 0;
-    rows.push({ muscle: m, primary: p, secondary: s, total: p + s });
+    rows.push({ muscle: m, primary: p, secondary: s, total: effectiveSets(p, s) });
   }
 
   rows.sort((a, b) => b.total - a.total || a.muscle.localeCompare(b.muscle));
@@ -160,7 +160,7 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
                       <span style={{ fontSize: 11.5, color: r.total > 0 ? T.text : T.dim, fontWeight: r.total > 0 ? 600 : 500 }}>{r.muscle}</span>
-                      <span style={{ fontSize: 10.5, color: T.dim, flexShrink: 0, marginLeft: 8 }}>{r.total > 0 ? `${r.total} set${r.total === 1 ? "" : "s"}` : "—"}</span>
+                      <span style={{ fontSize: 10.5, color: T.dim, flexShrink: 0, marginLeft: 8 }}>{r.total > 0 ? `${formatSets(r.total)} set${r.total === 1 ? "" : "s"}` : "—"}</span>
                     </div>
                     <div style={{ width: "100%", height: 7, borderRadius: 4, background: T.surface2, overflow: "hidden" }}>
                       {r.total > 0 && <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: color }} />}
@@ -187,7 +187,7 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
                     <span style={{ fontSize: 13, color: r.total > 0 ? T.text : T.dim, fontWeight: r.total > 0 ? 600 : 500 }}>{r.muscle}</span>
                     {r.total > 0 ? (
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ fontSize: 12, color: T.text, fontWeight: 700 }}>{r.total} set{r.total === 1 ? "" : "s"}</div>
+                        <div style={{ fontSize: 12, color: T.text, fontWeight: 700 }}>{formatSets(r.total)} set{r.total === 1 ? "" : "s"}</div>
                         <div style={{ fontSize: 10.5, color: T.dim, marginTop: 1 }}>{r.primary} primary &middot; {r.secondary} secondary</div>
                       </div>
                     ) : (

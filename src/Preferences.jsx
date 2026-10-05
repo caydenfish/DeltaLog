@@ -76,7 +76,11 @@ function FieldCard({ children }) {
 //  - self-managed state (omit both) — used in the in-workout menu, which
 //    has no equivalent cached copies and can just read/write lib/prefs.js
 //    directly.
-export default function Preferences({ user, value, onChange, fields, onApplyRestToAll, filterQuery }) {
+// initialScreen/onExit: open straight into a sub-screen (the in-workout
+// menu's "Training preferences" shortcut uses initialScreen="training"),
+// with the sub-screen's back button calling onExit instead of returning
+// to a top-level tile grid that was never shown.
+export default function Preferences({ user, value, onChange, fields, onApplyRestToAll, filterQuery, initialScreen = null, onExit }) {
   const show = (key) => !fields || fields.includes(key);
   const controlled = value !== undefined && onChange !== undefined;
   const [confirmApplyAll, setConfirmApplyAll] = useState(false);
@@ -109,7 +113,8 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
   // showTrainingPrefs/showUnitsGroup accordion-toggle booleans now that
   // "Units" and "Training Preferences" are real full-screen destinations
   // (SubScreen) rather than inline-expanding sections.
-  const [screen, setScreen] = useState(null); // null | "units" | "training"
+  const [screen, setScreen] = useState(initialScreen); // null | "units" | "training"
+  const leaveScreen = () => { if (initialScreen && onExit) onExit(); else setScreen(null); };
   const [openTrainingSection, setOpenTrainingSection] = useState(null); // null | "focus" | "muscles" | "logging" | "restDurations" | "restAlerts" | "warmupWeights"
   const [warmupSchemeCount, setWarmupSchemeCount] = useState(2); // which warmup-count's percentages are shown in the editor
   const [notifPermission, setNotifPermission] = useState(() => getNotificationPermission());
@@ -952,7 +957,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
 
   return (
     <>
-      {screen === null && (
+      {screen === null && !initialScreen && (
         <>
           {!searchActive && (
             <TileGrid style={{ marginBottom: 12 }}>
@@ -1031,7 +1036,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
       )}
 
       {screen === "training" && (
-        <SubScreen title="Training" eyebrow="Preferences" onBack={() => { setOpenTrainingSection(null); setScreen(null); }}>
+        <SubScreen title="Training" eyebrow="Preferences" onBack={() => { setOpenTrainingSection(null); leaveScreen(); }}>
           <TileGrid>
             {TRAINING_SECTIONS.map((sec) => (
               <SettingsTile key={sec.key} icon={sec.icon} title={sec.title} subtitle={sec.subtitle} value={sec.value} onClick={() => setOpenTrainingSection(sec.key)} />

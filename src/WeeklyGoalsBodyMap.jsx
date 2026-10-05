@@ -3,7 +3,7 @@ import { fetchMuscleGroupTargets, saveMuscleGroupTarget } from "./lib/queries";
 import { fetchActiveProgram } from "./lib/programQueries";
 import { PROGRAM_LOCKED } from "./lib/features";
 import { dayLabelsForSplit } from "./lib/programEngine";
-import { computeRollingWeeklyTotals } from "./lib/volume";
+import { computeRollingWeeklyTotals, formatSets } from "./lib/volume";
 import { getMuscleGroupOptions } from "./lib/muscleTaxonomy";
 import { statusColorFor } from "./lib/planStatus";
 import { getPrefs } from "./lib/prefs";
@@ -63,7 +63,7 @@ function GoalsBreakdown({ options, targets, rollingTotals }) {
                   <span style={{ fontSize: 13, color: T.text, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.muscle}</span>
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 700, color, flexShrink: 0 }}>
-                  {r.total} <span style={{ color: T.dim, fontWeight: 500 }}>/ {r.target} sets</span>
+                  {formatSets(r.total)} <span style={{ color: T.dim, fontWeight: 500 }}>/ {r.target} sets</span>
                 </div>
               </div>
             );
