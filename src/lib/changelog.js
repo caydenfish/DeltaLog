@@ -9,6 +9,27 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.14.1": {
+    title: "A cleaner top of the workout screen",
+    items: [
+      "The scrolling row of exercise names is gone. A slim progress bar now shows your whole workout at a glance, filling in as you log sets.",
+      "Tap the exercise name or the progress bar to see every exercise with its progress and jump straight to any of them. Supersets are grouped together.",
+      "Long exercise names now shrink to fit instead of getting cut off.",
+      "Your training focus and target sit side by side on one row, and your workout time shows at the top.",
+    ],
+  },
+  "1.14.0": {
+    title: "A new Home, a cleaner workout, and smarter rest",
+    items: [
+      "Home is now four cards: Today, Trends, Weekly volume, and Calendar. Tap the pencil to reorder them, hide them, or choose what goes inside each one.",
+      "Weekly volume replaces Muscle breakdown and Weekly Set Goals. Each muscle shows its sets against a target range, so you can see what's behind, on track, or over. Switch between the last 7 days and a 4-week average, and tap a muscle to see exactly which sets counted.",
+      "Start Workout now opens a quick menu: start from scratch, pick a template, or resume a saved workout. Workout generation is coming soon.",
+      "Set entry has bigger numbers, easier buttons, and Log set right under your thumb. Your target and rest time sit up top.",
+      "The rest timer moved to a slim bar at the bottom with +15s and Skip. With notifications on, your lock screen shows when rest ends and alerts you when it's up, even with your phone locked.",
+      "Check-in after a workout starts from your last bodyweight, so logging it is one tap.",
+      "The workout summary keeps all its detail but is easier to scan. Tap any exercise to see its sets.",
+    ],
+  },
   "1.13.9": {
     title: "See exactly how today stacks up",
     items: [

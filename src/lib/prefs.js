@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 
 const KEY = "deltalog_prefs";
-const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVolume: 0.8, restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both", coverageBreakdownView: "chart", warmupPercentSchemes: {}, pickerLayout: "tiles" };
+const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVolume: 0.8, restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, homeCards: null, homeCardSettings: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both", coverageBreakdownView: "chart", warmupPercentSchemes: {}, pickerLayout: "tiles" };
 
 // Backs up preferences to Supabase (migration_071's user_preferences,
 // one jsonb blob per user) so clearing browser data -- cookies, cache,
@@ -177,4 +177,93 @@ export function getHomeModules() {
 
 export function setHomeModules(modules) {
   setPref("homeModules", modules);
+}
+
+// ---------------------------------------------------------------------------
+// Home cards (v1.14.0). The eight modules became four richer cards, each
+// with its own settings, so nothing that could be shown before is lost:
+//   today        = Last workout + Training load (+ streak)
+//   trends       = Volume / Bodyweight / Workout time, as one switchable
+//                  chart or as separate cards
+//   weeklyVolume = Muscle breakdown + Weekly Set Goals, merged
+//   calendar     = unchanged
+// Someone who customized the old modules keeps their choices: a card's
+// position is its earliest old module's position, it's on if any of its
+// old modules were on, and each old module's on/off becomes the matching
+// setting inside the card.
+// ---------------------------------------------------------------------------
+export const DEFAULT_HOME_CARD_IDS = ["today", "trends", "weeklyVolume", "calendar"];
+
+export const HOME_CARD_LABELS = {
+  today: "Today",
+  trends: "Trends",
+  weeklyVolume: "Weekly volume",
+  calendar: "Calendar",
+};
+
+export const DEFAULT_HOME_CARD_SETTINGS = {
+  today: { lastWorkout: true, trainingLoad: true, streak: true },
+  trends: { volume: true, weight: true, workoutTime: true, layout: "switch" },
+  weeklyVolume: { showMap: true, rows: 4, window: "7d" },
+  calendar: { streak: true, history: true },
+};
+
+const CARD_SOURCES = {
+  today: ["insight", "trainingLoad"],
+  trends: ["volume", "weight", "workoutTime"],
+  weeklyVolume: ["muscleBreakdown", "weeklyGoalsMap"],
+  calendar: ["calendar"],
+};
+
+function migrateFromModules() {
+  const old = getPrefs().homeModules;
+  if (!Array.isArray(old) || old.length === 0) return null;
+  const pos = {};
+  const on = {};
+  old.forEach((m, i) => { if (m && m.id) { pos[m.id] = i; on[m.id] = !!m.enabled; } });
+  const cards = DEFAULT_HOME_CARD_IDS.map((id) => {
+    const src = CARD_SOURCES[id];
+    const positions = src.map((s) => (s in pos ? pos[s] : 99));
+    return { id, enabled: src.some((s) => on[s] !== false), at: Math.min(...positions) };
+  }).sort((a, b) => a.at - b.at).map(({ id, enabled }) => ({ id, enabled }));
+  const settings = JSON.parse(JSON.stringify(DEFAULT_HOME_CARD_SETTINGS));
+  if (on.insight === false) settings.today.lastWorkout = false;
+  if (on.trainingLoad === false) settings.today.trainingLoad = false;
+  if (on.volume === false) settings.trends.volume = false;
+  if (on.weight === false) settings.trends.weight = false;
+  if (on.workoutTime === false) settings.trends.workoutTime = false;
+  return { cards, settings };
+}
+
+export function getHomeCards() {
+  let saved = getPrefs().homeCards;
+  if (!Array.isArray(saved)) {
+    const migrated = migrateFromModules();
+    if (migrated) {
+      setPref("homeCards", migrated.cards);
+      if (!getPrefs().homeCardSettings) setPref("homeCardSettings", migrated.settings);
+      saved = migrated.cards;
+    } else {
+      saved = [];
+    }
+  }
+  const known = new Set(DEFAULT_HOME_CARD_IDS);
+  const cards = saved.filter((c) => c && known.has(c.id));
+  for (const id of DEFAULT_HOME_CARD_IDS) if (!cards.some((c) => c.id === id)) cards.push({ id, enabled: true });
+  return cards;
+}
+
+export function setHomeCards(cards) {
+  setPref("homeCards", cards);
+}
+
+export function getHomeCardSettings() {
+  const saved = getPrefs().homeCardSettings || {};
+  const out = {};
+  for (const id of DEFAULT_HOME_CARD_IDS) out[id] = { ...DEFAULT_HOME_CARD_SETTINGS[id], ...(saved[id] || {}) };
+  return out;
+}
+
+export function setHomeCardSettings(settings) {
+  setPref("homeCardSettings", settings);
 }

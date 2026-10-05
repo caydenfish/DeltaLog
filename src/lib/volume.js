@@ -323,6 +323,30 @@ export function summarizeWorkoutDuration(history) {
 // tier Weekly Set Goals is currently tracking targets at (see
 // getMuscleGroupOptions in muscleTaxonomy.js) -- e.g. in "detailed"
 // mode, Lats and Traps come back as separate keys instead of both
+
+// Average fractional sets per week over the last `weeks` weeks (default
+// 4), per muscle -- the Weekly volume card's "4-week avg" view. Same keys
+// and weighting as computeRollingWeeklyTotals.
+export function computeAverageWeeklyTotals(history, nameMode = "generic", weeks = 4) {
+  const cutoff = toLocalDateStr(new Date(Date.now() - (weeks * 7 - 1) * 86400000));
+  const { entries } = summarizeHistory(history || []);
+  const windowed = entries.filter((e) => e.date >= cutoff);
+  const { primary, secondary, fullBodySets } = computeMuscleSetCounts(windowed, nameMode);
+  const totals = {};
+  for (const label of new Set([...Object.keys(primary), ...Object.keys(secondary)])) {
+    totals[label] = effectiveSets(primary[label], secondary[label]) / weeks;
+  }
+  totals[FULL_BODY] = fullBodySets / weeks;
+  return totals;
+}
+
+// Entries (summarizeHistory shape) from the last `days` days, for drilling
+// into one muscle's sets behind a windowed total.
+export function entriesSince(history, days) {
+  const cutoff = toLocalDateStr(new Date(Date.now() - (days - 1) * 86400000));
+  return summarizeHistory(history || []).entries.filter((e) => e.date >= cutoff);
+}
+
 // collapsing into "Back".
 export function computeRollingWeeklyTotals(history, nameMode = "generic") {
   const cutoff = toLocalDateStr(new Date(Date.now() - 6 * 86400000));

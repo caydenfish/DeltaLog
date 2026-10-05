@@ -1961,6 +1961,32 @@ export async function fetchMuscleGroupTargets(userId) {
   return map;
 }
 
+// Weekly volume target ranges (v1.14.0): weekly_target_sets is the
+// range's minimum, the new weekly_target_max column its maximum (see
+// the migration in the release notes). Returns { [muscle]: { min, max } };
+// max is null for rows saved before the column existed. If the column
+// hasn't been added yet, falls back to min-only so the card still works.
+export async function fetchMuscleGroupRanges(userId) {
+  let { data, error } = await supabase
+    .from("muscle_group_targets")
+    .select("muscle_group, weekly_target_sets, weekly_target_max")
+    .eq("user_id", userId);
+  if (error && /weekly_target_max/.test(error.message || "")) {
+    ({ data, error } = await supabase.from("muscle_group_targets").select("muscle_group, weekly_target_sets").eq("user_id", userId));
+  }
+  if (error) throw error;
+  const map = {};
+  for (const row of data || []) map[row.muscle_group] = { min: row.weekly_target_sets, max: row.weekly_target_max ?? null };
+  return map;
+}
+
+export async function saveMuscleGroupRange(userId, muscleGroup, min, max) {
+  const { error } = await supabase
+    .from("muscle_group_targets")
+    .upsert({ user_id: userId, muscle_group: muscleGroup, weekly_target_sets: min, weekly_target_max: max, updated_at: new Date().toISOString() });
+  if (error) throw error;
+}
+
 // Upserts a single muscle group's weekly set target (one row per
 // muscle_group per user). Called per-slider on My Plan, debounced
 // client-side so dragging a slider doesn't fire a write per tick.

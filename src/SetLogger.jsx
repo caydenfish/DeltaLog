@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion, muscleOptionsForMode, optionForKey, expandSplit, isSplitActive, NON_TARGET_CATEGORIES } from "./lib/muscleTaxonomy";
 import { flushSync } from "react-dom";
-import { playRestTimerSound, triggerRestTimerVibration, showRestTimerNotification } from "./lib/restTimerCues";
+import { playRestTimerSound, triggerRestTimerVibration } from "./lib/restTimerCues";
+import { scheduleRestPush, cancelRestPush, showRestingNotification, showRestDoneNotification, clearRestNotifications } from "./lib/restPush";
 import BodyHeatmap from "./BodyHeatmap";
 import BodyMap from "./BodyMap";
 import Preferences from "./Preferences";
@@ -328,6 +329,53 @@ function sessionStats(setsList) {
   return { working, totalVolume, bestE1RM };
 }
 
+// Exercise title that never cuts off mid-word if it can help it (v1.14.1):
+// starts at `max` px and steps the font down until the name fits in two
+// lines; only if it still overflows at `min` does it clamp to two lines
+// with an ellipsis (full name in the tooltip and the jump list). Refits
+// when the text, the available width, or the web font changes.
+function FitTitle({ text, max = 24, min = 15, lineHeight = 1.12, style }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const fit = () => {
+      el.style.display = "block";
+      el.style.webkitLineClamp = "unset";
+      el.style.overflow = "visible";
+      let size = max;
+      for (;;) {
+        el.style.fontSize = `${size}px`;
+        if (el.scrollHeight <= Math.ceil(size * lineHeight * 2) + 1 || size <= min) break;
+        size -= 1;
+      }
+      if (el.scrollHeight > Math.ceil(size * lineHeight * 2) + 1) {
+        el.style.display = "-webkit-box";
+        el.style.webkitBoxOrient = "vertical";
+        el.style.webkitLineClamp = "2";
+        el.style.overflow = "hidden";
+      }
+    };
+    fit();
+    let ro = null;
+    if (typeof ResizeObserver !== "undefined" && el.parentElement) {
+      let lastWidth = el.parentElement.clientWidth;
+      ro = new ResizeObserver(() => {
+        const w = el.parentElement ? el.parentElement.clientWidth : lastWidth;
+        if (w !== lastWidth) { lastWidth = w; fit(); }
+      });
+      ro.observe(el.parentElement);
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit).catch(() => {});
+    return () => { if (ro) ro.disconnect(); };
+  }, [text, max, min, lineHeight]);
+  return (
+    <div ref={ref} title={text} style={{ ...style, fontSize: max, lineHeight, overflowWrap: "anywhere" }}>
+      {text}
+    </div>
+  );
+}
+
 // Paired set row (v1.13.9): last session's set N and today's set N on
 // one row, read left to right as "then -> now". Replaces the two
 // side-by-side tiles, which looked nearly identical and made it easy to
@@ -480,7 +528,7 @@ function HoldToConfirm({ label, onConfirm, duration = 1000, disabled }) {
   );
 }
 
-export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, savedWorkout }) {
+export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, savedWorkout, startIntent }) {
   // The muscle taxonomy fetch (App.jsx) and this screen's own boot chain
   // both kick off at app start, and either can win the race -- someone
   // resuming a workout right after opening the app can easily start
@@ -505,6 +553,12 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [library, setLibrary] = useState([]);
   const [workoutId, setWorkoutId] = useState(null);
   const [booting, setBooting] = useState(true);
+  // Home's Start Workout sheet (v1.14.0) picks how to start before this
+  // screen opens: { kind: "scratch" | "template" | "templates" | "resume",
+  // template? }. Applied once, right after boot, so the empty-workout
+  // chooser is skipped. Without an intent (older entry points), the
+  // chooser shows as before.
+  const startIntentAppliedRef = useRef(false);
   const [bootError, setBootError] = useState(null);
   const [workout, setWorkout] = useState([]);
   const [exIdx, setExIdx] = useState(0);
@@ -536,6 +590,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const pausedTotalSecRef = useRef(0); // cumulative seconds from all *completed* pauses on this workout
   const [resumingSaved, setResumingSaved] = useState(false); // true while swapping the fresh empty workout for a saved one
   const [bodyWeightInput, setBodyWeightInput] = useState("");
+  const [showCiPhoto, setShowCiPhoto] = useState(false); // check-in: photo row expanded
+  const [showCiNotes, setShowCiNotes] = useState(false); // check-in: notes row expanded
   const [progressPhotoFile, setProgressPhotoFile] = useState(null);
   const [progressPhotoPreview, setProgressPhotoPreview] = useState(null);
   const [sessionNotesInput, setSessionNotesInput] = useState("");
@@ -644,6 +700,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [prResults, setPrResults] = useState({ weight: [], reps: [], volume: [] });
   const [expandedPR, setExpandedPR] = useState(null);
+  const [summaryOpenEx, setSummaryOpenEx] = useState(() => new Set()); // summary: which exercise cards show their sets
   const [deleteMode, setDeleteMode] = useState(false); // set-list select-to-delete mode, per exercise (reset on goTo)
   const [selectedForDelete, setSelectedForDelete] = useState(new Set()); // set indices checked while deleteMode is on
   const [nextExPopupDismissed, setNextExPopupDismissed] = useState(false); // hides the "planned sets complete" popup once dismissed, until goTo changes exercise again
@@ -651,6 +708,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   // expose, so tapping one repaints immediately (the rest of the app
   // reads getPrefs().units etc fresh each render off of whatever state
   // change triggered it -- these tiles are that trigger).
+  const [showJump, setShowJump] = useState(false); // exercise jump list (tap the title or progress bar)
   const [showTrainingPrefs, setShowTrainingPrefs] = useState(false); // workout menu's Training preferences shortcut is open
   const trainingPrefsIdeologyRef = useRef(null); // default focus when the shortcut opened, to tell whether it changed
   const [showMenuHeatmap, setShowMenuHeatmap] = useState(false); // workout menu's muscle map expanded from its thumbnail
@@ -680,12 +738,34 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   }
   const touch = useRef(null);
   const startTime = useRef(Date.now());
-  const stripRef = useRef(null);
-  const chipRefs = useRef([]);
   const todayRowsRef = useRef(null);
   const scrollSyncingRef = useRef(false);
 
-  const restCompletedForRef = useRef(null); // which restEndsAt value has already fired its completion cue, so it only fires once per timer
+  const restCompletedForRef = useRef(null);
+  const restTotalRef = useRef(0); // full length of the current rest (ms), so the pill can drain proportionally
+  const restPushIdRef = useRef(null); // QStash message id of the scheduled end-of-rest push, if any
+  const restNoticeRef = useRef({ title: "Rest's up", body: "" }); // text for the end-of-rest alert // which restEndsAt value has already fired its completion cue, so it only fires once per timer
+
+  // Rest notifications (lib/restPush.js): whenever the rest timer starts,
+  // changes (+15s, skip) or pauses, drop any scheduled push and, if a rest
+  // is now running, post the silent "Resting until" notification and
+  // schedule the end-of-rest push for the new end time.
+  useEffect(() => {
+    if (!getPrefs().restTimerNotificationEnabled) return;
+    const prevId = restPushIdRef.current;
+    restPushIdRef.current = null;
+    if (prevId) cancelRestPush(prevId);
+    const running = restEndsAt && !isPaused && restEndsAt - Date.now() > 3000;
+    if (!running) { if (!restEndsAt) clearRestNotifications(); return; }
+    let cancelled = false;
+    const notice = restNoticeRef.current;
+    showRestingNotification({ endsAt: restEndsAt, body: notice.body });
+    scheduleRestPush({ endsAt: restEndsAt, title: notice.title, body: notice.body }).then((id) => {
+      if (cancelled) { if (id) cancelRestPush(id); return; }
+      restPushIdRef.current = id;
+    });
+    return () => { cancelled = true; };
+  }, [restEndsAt, isPaused]);
 
   useEffect(() => {
     if (!restEndsAt) { setRestLeft(0); setRestOverSec(0); return; }
@@ -705,7 +785,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             const prefs = getPrefs();
             if (prefs.restTimerSoundEnabled) playRestTimerSound(prefs.restTimerSound, prefs.restTimerVolume);
             if (prefs.restTimerVibrationEnabled) triggerRestTimerVibration(prefs.restTimerVibration);
-            if (prefs.restTimerNotificationEnabled && document.visibilityState !== "visible") showRestTimerNotification();
+            // A scheduled server push already covers the alert (and
+            // replaces the "resting" notification); only post locally
+            // when no push is in flight.
+            if (prefs.restTimerNotificationEnabled && !restPushIdRef.current) showRestDoneNotification(restNoticeRef.current);
           }
         }
       }
@@ -889,7 +972,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             if (saved.showIdeology) setShowIdeology(true);
             if (saved.showTargetInfo) setShowTargetInfo(true);
             if (saved.editingNote) { setEditingNote(true); setNoteDraft(saved.noteDraft || ""); }
-            if (saved.restEndsAt && saved.restEndsAt > Date.now()) setRestEndsAt(saved.restEndsAt);
+            if (saved.restEndsAt && saved.restEndsAt > Date.now()) { restTotalRef.current = saved.restEndsAt - Date.now(); setRestEndsAt(saved.restEndsAt); }
           }
         } else {
           const newWorkoutId = await startWorkout(user.id, globalIdeology);
@@ -914,11 +997,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   }, [user.id]);
 
 
-  // Auto-scroll the exercise strip so the active chip is always in view.
-  useEffect(() => {
-    const el = chipRefs.current[exIdx];
-    if (el) el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, [exIdx, workout.length]);
 
   const ex = workout[exIdx] || null;
   const unit = getPrefs().units;
@@ -998,6 +1076,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   // paused/saved one, chosen from the empty-workout screen's "Resume
   // previous workout" option. Deletes the throwaway empty row, then
   // hydrates exactly like the boot-time resume path does.
+  useEffect(() => {
+    if (booting || startIntentAppliedRef.current || !startIntent || resumeWorkout) return;
+    startIntentAppliedRef.current = true;
+    if (workout.length > 0) return;
+    if (startIntent.kind === "scratch") { setManageFromScratch(true); setView("manage"); }
+    else if (startIntent.kind === "template" && startIntent.template) loadTemplate(startIntent.template);
+    else if (startIntent.kind === "templates") openTemplates();
+    else if (startIntent.kind === "resume" && savedWorkout) handleResumePreviousSaved();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booting, startIntent]);
+
   async function handleResumePreviousSaved() {
     if (!savedWorkout || resumingSaved) return;
     setResumingSaved(true);
@@ -1755,7 +1844,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       setRestEndsAt(null);
       goTo(partnerIdx);
     } else {
-      setRestEndsAt(Date.now() + (getPrefs().warmupRestEnabled && isWarmup ? (ex.warmupRestSeconds || getPrefs().warmupRestSeconds) : (ex.restSeconds || getPrefs().restSeconds)) * 1000);
+      const restMs = (getPrefs().warmupRestEnabled && isWarmup ? (ex.warmupRestSeconds || getPrefs().warmupRestSeconds) : (ex.restSeconds || getPrefs().restSeconds)) * 1000;
+      restTotalRef.current = restMs;
+      const nextSetNum = nextSets.filter((x) => !x.isWarmup).length + 1;
+      restNoticeRef.current = { title: `Rest's up: set ${nextSetNum} is ready`, body: `Next: ${ex.short || ex.name}, set ${nextSetNum}` };
+      setRestEndsAt(Date.now() + restMs);
     }
     if (nextSets.length === planned && lastWeek.length >= planned && r >= lastWeek[planned - 1].reps + 2) {
       note(`Final set beat last session by ${r - lastWeek[planned - 1].reps} reps. Do it again next workout and the target moves up.`, "progress", 5000);
@@ -2358,9 +2451,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       <div style={outer}>
         <style>{`${fontImport} button { cursor: pointer; }`}</style>
         <div style={frame}>
-          <div style={{ padding: "22px 16px 14px", borderBottom: `1px solid ${T.line}`, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, color: T.text }}>WORKOUT COMPLETE</div>
-            <div style={{ color: T.dim, fontSize: 13, marginTop: 2 }}>{dateStr}</div>
+          <div style={{ padding: "22px 16px 6px" }}>
+            <div style={{ color: T.dim, fontSize: 13 }}>{dateStr}</div>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 700, color: T.text, lineHeight: 1.05 }}>Workout complete</div>
           </div>
 
           <div style={{ flex: 1, padding: "0 16px 16px", overflowY: "auto" }}>
@@ -2372,7 +2465,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               ].map((s) => (
                 <div key={s.label} style={{ flex: 1, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
                   <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>{s.value}</div>
-                  <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{s.label}</div>
+                  <div style={{ fontSize: 12, color: T.dim }}>{s.label}</div>
                   {s.sub && <div style={{ fontSize: 10, color: T.dim, marginTop: 1 }}>{s.sub}</div>}
                 </div>
               ))}
@@ -2388,7 +2481,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
             {(prResults.weight.length + prResults.reps.length + prResults.volume.length) > 0 && (
               <div style={{ marginBottom: 14, background: T.surface, border: "1px solid #FFD166", borderRadius: 12, padding: 12 }}>
-                <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Personal records</div>
+                <div style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>Personal records <span style={{ fontSize: 12 }}>· tap to see</span></div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {[
                     { key: "weight", label: "Weight", list: prResults.weight, unit },
@@ -2406,7 +2499,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                       }}
                     >
                       <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: cat.list.length > 0 ? "#FFD166" : T.dim }}>{cat.list.length}</div>
-                      <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{cat.label} PR{cat.list.length === 1 ? "" : "s"}</div>
+                      <div style={{ fontSize: 11.5, color: T.dim }}>{cat.label} PR{cat.list.length === 1 ? "" : "s"}</div>
                     </button>
                   ))}
                 </div>
@@ -2417,7 +2510,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                         <span style={{ color: T.text }}>{pr.name}</span>
                         <span style={{ color: "#FFD166", fontWeight: 700 }}>
                           {expandedPR === "reps" ? `${pr.value} reps` : `${pr.value} ${unit}`}
-                          {pr.previous > 0 && <span style={{ color: T.dim, fontWeight: 400 }}> (prev {pr.previous}{expandedPR === "reps" ? "" : " lb"})</span>}
+                          {pr.previous > 0 && <span style={{ color: T.dim, fontWeight: 400 }}> (prev {pr.previous}{expandedPR === "reps" ? "" : ` ${unit}`})</span>}
                         </span>
                       </div>
                     ))}
@@ -2426,25 +2519,39 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               </div>
             )}
 
+            <div style={{ fontSize: 13, color: T.dim, margin: "4px 0 6px" }}>Exercises <span style={{ fontSize: 12 }}>· tap for sets</span></div>
             {exerciseRows.map((row) => {
               if (!row) return null;
               const { w, i, exSets, bestToday, delta, hasHistory, isPR, twoForTwo } = row;
+              const open = summaryOpenEx.has(i);
+              const deltaColor = delta > 0.5 ? T.green : delta < -0.5 ? T.accent : T.dim;
               return (
-                <div key={i} style={{ background: T.surface, border: `1px solid ${isPR ? "#FFD166" : T.line}`, boxShadow: isPR ? "0 0 0 1px rgba(255,209,102,0.35)" : "none", borderRadius: 12, padding: 12, marginBottom: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{w.name}</div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      {isPR && <span style={{ fontSize: 11, fontWeight: 700, color: "#FFD166", border: "1px solid #FFD166", borderRadius: 999, padding: "2px 8px" }}>e1RM PR</span>}
+                <div key={i} style={{ background: T.surface, border: `1px solid ${isPR ? "#FFD166" : T.line}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+                  <button
+                    onClick={() => setSummaryOpenEx((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })}
+                    aria-expanded={open}
+                    style={{ width: "100%", background: "none", border: "none", padding: "11px 12px", textAlign: "left", color: T.text }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</div>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        {isPR && <span style={{ fontSize: 11, fontWeight: 700, color: "#FFD166", border: "1px solid #FFD166", borderRadius: 999, padding: "2px 8px" }}>e1RM PR</span>}
                       {twoForTwo && <span style={{ fontSize: 11, fontWeight: 700, color: "#7BD69B", border: `1px solid ${T.green}`, borderRadius: 999, padding: "2px 8px" }}>Progress +2</span>}
+                    
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ fontSize: 12, color: T.dim, marginTop: 4 }}>
-                    Best e1RM {Math.round(bestToday)} {unit}
-                    {hasHistory && <span style={{ color: delta > 0.5 ? T.green : delta < -0.5 ? T.accent : T.dim }}> ({delta > 0 ? "+" : ""}{Math.round(delta)} vs last session)</span>}
-                    {!hasHistory && <span> · first session on record</span>}
-                  </div>
-                  {w.notes && <div style={{ fontSize: 12, color: T.dim, fontStyle: "italic", marginTop: 4 }}>Note: {w.notes}</div>}
-                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ fontSize: 12.5, color: T.dim, marginTop: 3, display: "flex", justifyContent: "space-between", gap: 8 }}>
+                      <span>
+                        e1RM {Math.round(bestToday)} {unit}
+                        {hasHistory ? <span style={{ color: deltaColor }}> · {delta > 0 ? "+" : ""}{Math.round(delta)} vs last</span> : <span> · first session</span>}
+                      </span>
+                      <span style={{ whiteSpace: "nowrap" }}>{exSets.length} set{exSets.length === 1 ? "" : "s"} {open ? "▴" : "▾"}</span>
+                    </div>
+                  </button>
+                  {open && (
+                    <div style={{ padding: "0 12px 12px" }}>
+                      {w.notes && <div style={{ fontSize: 12, color: T.dim, fontStyle: "italic", marginBottom: 6 }}>Note: {w.notes}</div>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {exSets.map((s, j) => (
                       <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: T.text }}>
                         <span style={{ color: s.isWarmup ? "#E8A82E" : T.dim }}>{s.isWarmup ? setLabels(exSets)[j] : `Set ${setLabels(exSets)[j]}${j >= w.planned ? " (extra)" : ""}`}</span>
@@ -2452,6 +2559,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                       </div>
                     ))}
                   </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -2490,9 +2599,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             </div>
             )}
           </div>
-          <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface }}>
-            <button onClick={() => setShowExportImage(true)} style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Save as image</button>
-            <button onClick={onFinished} style={{ width: "100%", padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>Done</button>
+          <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface, display: "flex", gap: 8 }}>
+            <button onClick={() => setShowExportImage(true)} aria-label="Save as image" style={{ flex: "0 0 auto", padding: "0 16px", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><IconImage size={15} /> Image</button>
+            <button onClick={onFinished} style={{ flex: 1, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>Done</button>
           </div>
         </div>
         {showExportImage && (
@@ -2522,30 +2631,68 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
   // ---------- Post-workout capture (body weight + notes) ----------
   if (view === "postWorkout") {
+    // Check-in (v1.14.0): same three optional fields and save path as
+    // before, laid out so most days it's one tap. Bodyweight shows your
+    // last logged weight; the steppers start from it, and "Same as last"
+    // logs it explicitly. Nothing is logged unless you touch it, so the
+    // bodyweight chart doesn't fill with repeats of an old number.
+    const bwUnit = (profile && profile.weight_unit) || getPrefs().units;
+    const lastBw = profile && profile.weight ? Number(profile.weight) : null;
+    const bwStep = bwUnit === "kg" ? 0.1 : 0.2;
+    const bumpBw = (dir) => {
+      const base = bodyWeightInput !== "" ? parseFloat(bodyWeightInput) : lastBw;
+      if (base == null || isNaN(base)) return;
+      setBodyWeightInput(String(Math.round((base + dir * bwStep) * 10) / 10));
+    };
+    const ciSets = allSets.flat();
+    const ciVolume = Math.round(ciSets.filter((x) => !x.isWarmup).reduce((v, x) => v + x.weight * x.reps, 0));
+    const ciMinutes = Math.max(1, Math.round((Date.now() - startTime.current) / 60000));
+    const stepBtn = { width: 44, height: 44, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 20, flexShrink: 0 };
+    const ciRow = { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, minHeight: 50, padding: "0 2px", background: "none", border: "none", borderBottom: `1px solid ${T.line}`, color: T.text, fontSize: 14.5, textAlign: "left" };
     return (
       <div style={outer}>
         <style>{`${fontImport} button { cursor: pointer; } input:focus, textarea:focus { border-color: ${T.accent} !important; }`}</style>
         <div style={frame}>
-          <div style={{ padding: "22px 16px 14px", borderBottom: `1px solid ${T.line}`, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text }}>NICE WORK</div>
-            <div style={{ color: T.dim, fontSize: 13, marginTop: 2 }}>A couple quick things before you go.</div>
-          </div>
-          <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
-            <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Body weight ({(profile && profile.weight_unit) || getPrefs().units}) — optional</div>
-            <input
-              inputMode="decimal"
-              value={bodyWeightInput}
-              onChange={(e) => setBodyWeightInput(e.target.value.replace(/[^0-9.]/g, ""))}
-              placeholder="e.g. 178"
-              style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 600, textAlign: "center", padding: "10px 8px", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
-            />
-            <div style={{ fontSize: 11, color: T.dim, marginBottom: 20, lineHeight: 1.4 }}>
-              Logging it here keeps your strength score sharp and updates your profile automatically. Leave it blank and we'll use your last recorded weight instead.
+          <div style={{ flex: 1, padding: "24px 16px 16px", overflowY: "auto" }}>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 700, color: T.text, lineHeight: 1 }}>Nice work</div>
+            <div style={{ color: T.dim, fontSize: 13.5, marginTop: 6 }}>{ciMinutes} min · {ciSets.length} set{ciSets.length === 1 ? "" : "s"} · {ciVolume.toLocaleString()} {unit}</div>
+
+            <div style={{ marginTop: 20, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <span style={{ fontSize: 13, color: T.dim }}>Body weight</span>
+                {lastBw != null && bodyWeightInput === "" && (
+                  <button onClick={() => setBodyWeightInput(String(lastBw))} style={{ background: "none", border: "none", color: T.accent, fontSize: 12.5, fontWeight: 600, padding: 4 }}>Same as last</button>
+                )}
+                {bodyWeightInput !== "" && (
+                  <button onClick={() => setBodyWeightInput("")} style={{ background: "none", border: "none", color: T.dim, fontSize: 12.5, padding: 4 }}>Clear</button>
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                <button onClick={() => bumpBw(-1)} aria-label="Decrease body weight" style={stepBtn}>−</button>
+                <input
+                  inputMode="decimal"
+                  value={bodyWeightInput}
+                  onChange={(e) => setBodyWeightInput(e.target.value.replace(/[^0-9.]/g, ""))}
+                  placeholder={lastBw != null ? String(lastBw) : "—"}
+                  aria-label={`Body weight in ${bwUnit}`}
+                  style={{ flex: 1, minWidth: 0, background: "none", border: `1px solid ${bodyWeightInput !== "" ? T.line : "transparent"}`, borderRadius: 10, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 38, fontWeight: 700, textAlign: "center", padding: "4px 6px", outline: "none", boxSizing: "border-box" }}
+                />
+                <button onClick={() => bumpBw(1)} aria-label="Increase body weight" style={stepBtn}>+</button>
+              </div>
+              <div style={{ fontSize: 12, color: T.dim, textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>
+                {bodyWeightInput !== "" ? `Logging ${bodyWeightInput} ${bwUnit} · feeds your strength score` : lastBw != null ? `Last logged ${lastBw} ${bwUnit} · not logging today` : `Optional · feeds your strength score`}
+              </div>
             </div>
 
-            <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Progress photo — optional, private to you</div>
+            <div style={{ marginTop: 10, borderTop: `1px solid ${T.line}` }}>
+              <button onClick={() => setShowCiPhoto(!showCiPhoto)} style={ciRow} aria-expanded={showCiPhoto}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><IconCamera size={15} /> Progress photo</span>
+                <span style={{ color: progressPhotoPreview ? T.green : T.dim, fontSize: 13 }}>{progressPhotoPreview ? "Added" : "Add ›"}</span>
+              </button>
+              {(showCiPhoto || progressPhotoPreview) && (
+                <div style={{ padding: "10px 0 12px", borderBottom: `1px solid ${T.line}` }}>
             {progressPhotoPreview ? (
-              <div style={{ position: "relative", marginBottom: 20 }}>
+              <div style={{ position: "relative", marginBottom: 4 }}>
                 <img src={progressPhotoPreview} alt="Progress preview" style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 12, border: `1px solid ${T.line}` }} />
                 <button
                   onClick={() => { setProgressPhotoFile(null); setProgressPhotoPreview(null); }}
@@ -2554,7 +2701,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 ><IconX size={13} /></button>
               </div>
             ) : (
-              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
                 <label style={{ flex: 1, display: "block", padding: "14px 0", borderRadius: 12, border: `1px dashed ${T.line}`, textAlign: "center", color: T.dim, fontSize: 13, cursor: "pointer" }}>
                   <IconCamera size={14} /> Take Photo
                   <input
@@ -2586,18 +2733,30 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 </label>
               </div>
             )}
-            <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Session notes — optional</div>
-            <textarea
-              value={sessionNotesInput}
-              onChange={(e) => setSessionNotesInput(e.target.value)}
-              placeholder="How did it feel? Anything to remember for next time?"
-              rows={4}
-              style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
-            />
+                  <div style={{ fontSize: 11.5, color: T.dim, marginTop: 6 }}>Private to you.</div>
+                </div>
+              )}
+              <button onClick={() => setShowCiNotes(!showCiNotes)} style={ciRow} aria-expanded={showCiNotes}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><IconPencil size={14} /> Session notes</span>
+                <span style={{ color: T.dim, fontSize: 13, maxWidth: "55%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sessionNotesInput.trim() ? sessionNotesInput.trim() : "Add ›"}</span>
+              </button>
+              {showCiNotes && (
+                <div style={{ padding: "10px 0 12px" }}>
+                  <textarea
+                    autoFocus
+                    value={sessionNotesInput}
+                    onChange={(e) => setSessionNotesInput(e.target.value)}
+                    placeholder="Anything to remember for next time?"
+                    rows={4}
+                    style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
           <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface }}>
             <button onClick={handleSavePostWorkout} disabled={savingSummary} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: savingSummary ? T.surface2 : T.accent, color: savingSummary ? T.dim : "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
-              {savingSummary ? "Saving…" : "Save & Return Home"}
+              {savingSummary ? "Saving…" : "See summary"}
             </button>
           </div>
         </div>
@@ -2650,11 +2809,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             <button onClick={() => { deleteAllIncompleteWorkouts(user.id).catch(() => {}); clearSessionState(workoutId); onFinished(); }} aria-label="Back to home" style={smallBtn}>‹</button>
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 24, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text }}>EMPTY WORKOUT</div>
-            <div style={{ color: T.dim, fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>Build it yourself or let the generator put one together from your preferences.</div>
-            <button onClick={() => setView("generator")} style={{ width: "100%", maxWidth: 280, marginTop: 24, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}><IconBolt size={14} /> Generate workout</button>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text }}>Start a workout</div>
+            <div style={{ color: T.dim, fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>Build it yourself or start from one of your templates.</div>
+            <button onClick={() => { setManageFromScratch(true); setView("manage"); }} style={{ width: "100%", maxWidth: 280, marginTop: 24, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>Start from scratch</button>
             <button onClick={openTemplates} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 15 }}>Use a Template</button>
-            <button onClick={() => { setManageFromScratch(true); setView("manage"); }} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Add exercises manually</button>
+            <div style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, color: T.dim, fontSize: 15, opacity: 0.6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><IconBolt size={14} /> Generate workout <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, border: `1px solid ${T.line}`, borderRadius: 999, padding: "2px 7px" }}>Coming soon</span></div>
             {savedWorkout && (
               <button onClick={handleResumePreviousSaved} disabled={resumingSaved} style={{ width: "100%", maxWidth: 280, marginTop: 18, padding: "13px 0", borderRadius: 12, border: `1px dashed ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.accent, fontSize: 15, fontWeight: 600 }}>
                 {resumingSaved ? "Resuming…" : "Resume previous workout"}
@@ -2694,12 +2853,50 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         @keyframes slideIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .chipstrip::-webkit-scrollbar { display: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
       `}</style>
       <div style={frame}>
-{showMenu && (() => {
+{showJump && (
+          // Exercise jump list (v1.14.1): every exercise with its progress,
+          // tap to go straight there. Supersets are grouped with a shared
+          // accent edge. Names wrap in full here, never truncated.
+          <div style={{ position: "absolute", inset: 0, zIndex: 10, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+            <div onClick={() => setShowJump(false)} style={{ position: "absolute", inset: 0, background: "rgba(10,11,13,0.6)", animation: "fadeIn 0.18s ease" }} />
+            <div style={{ position: "relative", maxHeight: "80%", overflowY: "auto", background: T.surface, borderTop: `1px solid ${T.line}`, borderRadius: "18px 18px 0 0", padding: "6px 16px 18px", animation: "sheetUp 0.22s ease" }}>
+              <button onClick={() => setShowJump(false)} aria-label="Close" style={{ display: "block", width: 64, height: 26, margin: "0 auto 2px", background: "none", border: "none", padding: 0 }}>
+                <span style={{ display: "block", width: 36, height: 4, borderRadius: 4, background: T.line, margin: "0 auto" }} />
+              </button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: T.text }}>Exercises</span>
+                <a href={`https://www.google.com/search?q=${encodeURIComponent(`how to ${ex.name}`)}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: T.dim, textDecoration: "none", whiteSpace: "nowrap" }}>How to do {ex.short || "this"} ↗</a>
+              </div>
+              {workout.map((w, i) => {
+                const doneCount = allSets[i].filter((x) => !x.isWarmup).length;
+                const done = w.planned > 0 && doneCount >= w.planned;
+                const current = i === exIdx;
+                const inSuperset = w.supersetGroup != null;
+                const prevSame = inSuperset && i > 0 && workout[i - 1].supersetGroup === w.supersetGroup;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => { setShowJump(false); goTo(i); }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, minHeight: 52, padding: "8px 2px 8px 10px", background: current ? "rgba(232,68,46,0.08)" : "none", border: "none", borderBottom: `1px solid ${T.line}`, borderLeft: `3px solid ${inSuperset ? "#5B8DEF" : "transparent"}`, borderRadius: current ? 8 : 0, textAlign: "left", color: T.text }}
+                  >
+                    <span style={{ width: 9, height: 9, borderRadius: 999, flexShrink: 0, background: done ? T.green : current ? T.accent : doneCount > 0 ? "#5A606B" : T.line }} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 14.5, fontWeight: current ? 700 : 500, color: current ? T.accent : T.text, lineHeight: 1.3 }}>{w.name}</span>
+                      {inSuperset && !prevSame && <span style={{ display: "block", fontSize: 11.5, color: "#5B8DEF", marginTop: 2 }}>Superset</span>}
+                    </span>
+                    <span style={{ fontSize: 13, color: done ? T.green : T.dim, whiteSpace: "nowrap", flexShrink: 0 }}>{doneCount}/{w.planned}{done ? " ✓" : ""}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {showMenu && (() => {
           // Workout menu as a bottom sheet over the live workout (v1.13.7).
           // Thumb-zone layout: Pause/Finish sit at the very bottom and never
           // move (Resume takes Pause's spot). Destructive Discard lives in
@@ -2884,70 +3081,69 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             }}
           />
         )}
-        {/* Top bar: scrollable strip + pinned pencil, always visible */}
+        {/* Top bar (v1.14.1): workout clock, edit, menu. The scrolling
+            exercise chips are gone -- the arrows step through exercises,
+            and the progress bar / title open a jump list for skipping
+            ahead. */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px 0" }}>
-          <div ref={stripRef} className="chipstrip" style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", flex: 1 }}>
-            {workout.map((w, i) => {
-              const doneCount = allSets[i].filter((s) => !s.isWarmup).length;
-              const done = doneCount >= w.planned;
-              const pct = !done && w.planned > 0 ? Math.min(100, Math.round((doneCount / w.planned) * 100)) : 0;
-              const active = i === exIdx;
-              return (
-                <button key={i} ref={(el) => (chipRefs.current[i] = el)} onClick={() => goTo(i)} style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, fontSize: 12, whiteSpace: "nowrap", border: `1px solid ${done ? T.green : active ? T.accent : T.line}`, background: done ? T.green : active ? "rgba(232,68,46,0.12)" : T.surface, color: done ? "#fff" : pct > 0 ? T.text : active ? T.text : T.dim, flexShrink: 0 }}>
-                  {pct > 0 && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: T.green }} />}
-                  <span style={{ position: "relative" }}>{w.short}</span>
-                </button>
-              );
-            })}
-          </div>
+          <span style={{ flex: 1, fontSize: 12.5, color: isPaused ? T.accent : T.dim, fontVariantNumeric: "tabular-nums" }}>{hhmmss(elapsedSec)}{isPaused ? " · paused" : ""}</span>
           <button onClick={() => { setManageFromScratch(false); setView("manage"); }} aria-label="Edit workout" title="Edit workout" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><IconPencil size={15} /></button>
           <button onClick={() => setShowMenu(true)} aria-label="Workout menu" title="Timer, muscle map, finish workout" style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14, flexShrink: 0 }}><IconMenu size={16} /></button>
         </div>
 
+        {/* Progress bar: one segment per exercise, filled by working sets
+            logged vs planned. Green when done, accent for the current one. */}
+        <button onClick={() => setShowJump(true)} aria-label="Show all exercises" style={{ display: "flex", gap: 3, padding: "10px 16px 0", background: "none", border: "none", width: "100%" }}>
+          {workout.map((w, i) => {
+            const doneCount = allSets[i].filter((x) => !x.isWarmup).length;
+            const pct = w.planned > 0 ? Math.min(100, (doneCount / w.planned) * 100) : 0;
+            const color = pct >= 100 ? T.green : i === exIdx ? T.accent : "#5A606B";
+            return (
+              <span key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: T.line, overflow: "hidden", outline: i === exIdx ? `1px solid ${T.accent}` : "none", outlineOffset: 1 }}>
+                <span style={{ display: "block", height: "100%", width: `${pct}%`, background: color }} />
+              </span>
+            );
+          })}
+        </button>
+
         {/* Header */}
-        <div style={{ padding: "12px 16px", borderBottom: `1px solid ${T.line}` }}>
+        <div style={{ padding: "10px 16px 12px", borderBottom: `1px solid ${T.line}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <button onClick={() => goTo(exIdx - 1)} style={arrowBtn(exIdx === 0)} aria-label="Previous exercise">‹</button>
-            <div style={{ flex: 1, textAlign: "center" }}>
-              <a
-                href={`https://www.google.com/search?q=${encodeURIComponent(`how to ${ex.name}`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: 0.3, color: T.text, lineHeight: 1.1, textDecoration: "none", display: "inline-block" }}
-              >
-                {ex.name}
-              </a>
-              <div style={{ color: T.dim, fontSize: 12, marginTop: 2 }}>Exercise {exIdx + 1} of {workout.length} · {exDone ? `${sets.filter((s) => !s.isWarmup).length}/${planned} sets done` : `Set ${setNum} of ${planned}`}{ex.supersetGroup != null && <span style={{ color: T.accent, fontWeight: 700 }}> · Superset</span>}</div>
-            </div>
+            <button onClick={() => setShowJump(true)} aria-label={`${ex.name}. Show all exercises`} style={{ flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, textAlign: "center", color: T.text }}>
+              <FitTitle text={ex.name} max={24} min={15} style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: 0.3, color: T.text }} />
+              <div style={{ color: T.dim, fontSize: 12, marginTop: 3 }}>
+                {exIdx + 1} of {workout.length} · {exDone ? `${sets.filter((x) => !x.isWarmup).length}/${planned} sets done` : `set ${setNum} of ${planned}`} <span style={{ color: T.accent }}>▾</span>
+              </div>
+            </button>
             <button onClick={() => goTo(exIdx + 1)} style={arrowBtn(exIdx === workout.length - 1)} aria-label="Next exercise">›</button>
           </div>
 
           {!wizardOpen && (
           <>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "stretch" }}>
+            <button onClick={() => { setShowIdeology(!showIdeology); setShowTargetInfo(false); }} style={{ flex: "0 1 auto", minHeight: 40, fontSize: 12, color: T.text, background: T.surface2, border: `1px solid ${showIdeology ? T.accent : T.line}`, borderRadius: 999, padding: "3px 10px", display: "flex", alignItems: "center", gap: 5 }}>
+              {hasScheme ? <>Set {setNum} · {formatRange(setRange)} reps</> : <>{effIdeology} · {ideo.low}-{ideo.high} reps</>}
+              {(ex.ideology || hasScheme) && <span style={{ width: 5, height: 5, borderRadius: 3, background: T.accent, display: "inline-block" }} title="Override for this exercise" />}
+              <span style={{ fontSize: 9, color: T.dim }}>▾</span>
+            </button>
           <button
             onClick={() => setShowTargetInfo(!showTargetInfo)}
             style={{
-              width: "100%", marginTop: 10, padding: "10px 14px", borderRadius: 12,
+              flex: "1 1 150px", minWidth: 0, padding: "8px 12px", borderRadius: 12, flexWrap: "wrap",
               border: `1px solid ${nextWarmupIndex != null ? "#E8A82E" : showTargetInfo ? T.accent : T.line}`,
               background: nextWarmupIndex != null ? "rgba(232,168,46,0.12)" : "rgba(232,68,46,0.08)",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}
           >
-            <span style={{ fontSize: 11, color: nextWarmupIndex != null ? "#E8A82E" : T.dim, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: nextWarmupIndex != null ? 700 : 400 }}>
+            <span style={{ fontSize: 11, color: nextWarmupIndex != null ? "#E8A82E" : T.dim, fontWeight: nextWarmupIndex != null ? 700 : 400 }}>
               {nextWarmupIndex != null ? `Warmup ${nextWarmupIndex + 1} of ${ex.plannedWarmup}` : "Target"}
             </span>
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: nextWarmupIndex != null ? "#E8A82E" : T.text, letterSpacing: 0.3 }}>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, whiteSpace: "nowrap", color: nextWarmupIndex != null ? "#E8A82E" : T.text, letterSpacing: 0.3 }}>
               {nextWarmupIndex != null ? nextWarmupWeight : target.weight} {unit} <span style={{ color: T.dim, fontWeight: 500 }}>×</span> {target.reps}
             </span>
             <span style={{ fontSize: 11, color: T.dim }}>ⓘ</span>
           </button>
-
-          <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "center" }}>
-            <button onClick={() => { setShowIdeology(!showIdeology); setShowTargetInfo(false); }} style={{ fontSize: 12, color: T.text, background: T.surface2, border: `1px solid ${showIdeology ? T.accent : T.line}`, borderRadius: 999, padding: "3px 10px", display: "flex", alignItems: "center", gap: 5 }}>
-              {hasScheme ? <>Set {setNum} · {formatRange(setRange)} reps</> : <>{effIdeology} · {ideo.low}-{ideo.high} reps</>}
-              {(ex.ideology || hasScheme) && <span style={{ width: 5, height: 5, borderRadius: 3, background: T.accent, display: "inline-block" }} title="Override for this exercise" />}
-              <span style={{ fontSize: 9, color: T.dim }}>▾</span>
-            </button>
           </div>
 
           {showTargetInfo && (
@@ -3154,19 +3350,6 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           )}
         </div>
 
-        {restEndsAt !== null && (
-          <div
-            onClick={() => setRestEndsAt(null)}
-            title={restOverSec > 0 ? "Tap to dismiss" : undefined}
-            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.surface2, borderBottom: `1px solid ${T.line}`, padding: "5px 16px", cursor: restOverSec > 0 ? "pointer" : "default" }}
-          >
-            <div style={{ color: T.dim, fontSize: 11 }}>{restOverSec > 0 ? "Rest timer complete" : "Rest"}</div>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>
-              {restOverSec > 0 ? `+${mmss(restOverSec)}` : mmss(restLeft)}
-            </div>
-          </div>
-        )}
-
         {!wizardOpen && flash && (
           <div style={{ margin: "12px 16px 0", padding: "10px 12px", borderRadius: 10, fontSize: 13, lineHeight: 1.4, background: flash.type === "progress" ? "rgba(59,165,93,0.12)" : T.surface2, border: `1px solid ${flash.type === "progress" ? T.green : T.line}`, color: flash.type === "progress" ? "#7BD69B" : T.text }}>{flash.msg}</div>
         )}
@@ -3307,6 +3490,41 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           );
         })()}
 
+        {!wizardOpen && restEndsAt !== null && (() => {
+          // Background rest timer (v1.14.0): a slim pill above the bottom of
+          // the screen instead of a strip across the top. It drains as rest
+          // runs out, never covers the set list's "Tap to log" row, and
+          // offers +15s / Skip. Once rest is over it flips to "over by"
+          // and tapping it dismisses.
+          const over = restOverSec > 0;
+          const total = restTotalRef.current || 0;
+          const frac = over || !total ? 0 : Math.max(0, Math.min(1, (restLeft * 1000) / total));
+          const pillBtn = { background: "none", border: "none", color: T.dim, fontSize: 12.5, fontWeight: 600, padding: "6px 8px", whiteSpace: "nowrap" };
+          return (
+            <div style={{ padding: "0 16px 10px" }}>
+              <div
+                onClick={over ? () => setRestEndsAt(null) : undefined}
+                role={over ? "button" : undefined}
+                aria-label={over ? "Dismiss rest timer" : undefined}
+                style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 8, minHeight: 44, padding: "0 6px 0 12px", borderRadius: 999, background: T.surface2, border: `1px solid ${over ? T.accent : T.line}`, cursor: over ? "pointer" : "default" }}
+              >
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${frac * 100}%`, background: "rgba(232,68,46,0.16)", transition: "width 1s linear" }} />
+                <span style={{ position: "relative", width: 8, height: 8, borderRadius: 999, background: T.accent, flexShrink: 0 }} />
+                <span style={{ position: "relative", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, fontVariantNumeric: "tabular-nums" }}>
+                  {over ? `+${mmss(restOverSec)}` : mmss(restLeft)}
+                </span>
+                <span style={{ position: "relative", flex: 1, fontSize: 12, color: over ? T.accent : T.dim, whiteSpace: "nowrap" }}>{over ? "Rest's up · tap to dismiss" : isPaused ? "Rest · paused" : "Rest"}</span>
+                {!over && (
+                  <>
+                    <button onClick={() => { restTotalRef.current += 15000; setRestEndsAt(restEndsAt + 15000); }} style={{ ...pillBtn, position: "relative" }}>+15s</button>
+                    <button onClick={() => setRestEndsAt(null)} style={{ ...pillBtn, position: "relative", color: T.text }}>Skip</button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {(() => {
           // Bottom bar only has two possible contents now that "add a set"
           // lives in the list itself: the Finish button, and the best-e1RM
@@ -3330,11 +3548,22 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   <button onClick={() => { stashDraft(); setWizardOpen(false); setShowCalc(false); setEditIndex(null); }} aria-label="Back" title="Back (keeps what you've entered)" style={{ width: 32, height: 32, marginLeft: -6, borderRadius: 8, border: "none", background: "none", color: T.text, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}><IconChevronLeft size={20} /></button>
                   <div style={{ fontSize: 13, fontWeight: 700, color: T.text, whiteSpace: "nowrap" }}>{editIndex !== null ? `Editing set ${editIndex + 1}` : `Set ${setNum}`}</div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {editIndex === null && lastLogged && <button onClick={() => fillFrom(lastLogged)} style={smallBtn}>Same as previous set</button>}
-                  {editIndex === null && lastWeek[sets.length] && <button onClick={() => fillFrom(lastWeek[sets.length])} style={smallBtn}>Same as last session</button>}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, fontSize: 12.5, color: T.dim, whiteSpace: "nowrap" }}>
+                  {restEndsAt !== null && (
+                    <span style={{ display: "flex", alignItems: "center", gap: 5, color: restOverSec > 0 ? T.accent : T.dim }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 999, background: T.accent }} />
+                      <span style={{ fontVariantNumeric: "tabular-nums" }}>{restOverSec > 0 ? `+${mmss(restOverSec)}` : mmss(restLeft)}</span>
+                    </span>
+                  )}
+                  {target && editIndex === null && <span>Target <b style={{ color: T.text, fontWeight: 600 }}>{target.weight} × {target.reps}</b></span>}
                 </div>
               </div>
+              {editIndex === null && (lastLogged || lastWeek[sets.length]) && (
+                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                  {lastLogged && <button onClick={() => fillFrom(lastLogged)} style={{ background: "none", border: `1px solid ${T.line}`, borderRadius: 999, color: T.dim, fontSize: 12, padding: "6px 11px", whiteSpace: "nowrap" }}>Copy previous set · {lastLogged.weight}×{lastLogged.reps}</button>}
+                  {lastWeek[sets.length] && <button onClick={() => fillFrom(lastWeek[sets.length])} style={{ background: "none", border: `1px solid ${T.line}`, borderRadius: 999, color: T.dim, fontSize: 12, padding: "6px 11px", whiteSpace: "nowrap" }}>Copy last session · {lastWeek[sets.length].weight}×{lastWeek[sets.length].reps}</button>}
+                </div>
+              )}
               {(() => {
                 // Small/big step sizes per unit -- matches the plate sizes
                 // people actually load (2.5/5 lb, 1.25/2.5 kg), so a tap
@@ -3349,40 +3578,52 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   const cur = parseInt(reps, 10) || 0;
                   setReps(String(Math.max(0, cur + delta)));
                 }
-                const stepBtn = { width: 40, flexShrink: 0, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12, fontWeight: 700, padding: "10px 0" };
+                // Set entry restyle (v1.14.0): weight and reps as big numbers
+                // you can read at arm's length. Tapping a number opens the
+                // keypad (auto-replace, v1.13.5); steppers sit around it at
+                // full 44px touch size.
+                const stepBtn = { flex: 1, minWidth: 0, height: 44, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 };
+                const roundBtn = { width: 48, height: 48, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 22, fontWeight: 500, flexShrink: 0 };
+                const bigNum = (missing) => ({ width: "100%", background: "none", border: `1px solid ${missing ? T.accent : "transparent"}`, borderRadius: 12, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 52, fontWeight: 700, lineHeight: 1.05, textAlign: "center", padding: "2px 0", cursor: "pointer", outline: "none", boxShadow: missing ? "0 0 0 2px rgba(232,68,46,0.25)" : "none" });
                 return (
                   <>
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Weight ({unit})</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <button onClick={() => bumpWeight(-weightSteps[1])} style={stepBtn}>−{weightSteps[1]}</button>
-                        <button onClick={() => bumpWeight(-weightSteps[0])} style={stepBtn}>−{weightSteps[0]}</button>
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ position: "relative" }}>
                         <input
                           ref={weightRef}
                           readOnly
                           inputMode="none"
                           value={weight}
+                          placeholder="0"
+                          aria-label={`Weight in ${unit}`}
                           onClick={(e) => { e.target.blur(); setExactEntryDraft(weight); setExactEntryFresh(true); setExactEntryField("weight"); }}
-                          style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.weight ? T.accent : T.line, boxShadow: highlightMissing.weight ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                          style={bigNum(highlightMissing.weight)}
                         />
+                        <span style={{ position: "absolute", right: 14, bottom: 12, fontSize: 14, color: T.dim, pointerEvents: "none" }}>{unit}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                        <button onClick={() => bumpWeight(-weightSteps[1])} style={stepBtn}>−{weightSteps[1]}</button>
+                        <button onClick={() => bumpWeight(-weightSteps[0])} style={stepBtn}>−{weightSteps[0]}</button>
                         <button onClick={() => bumpWeight(weightSteps[0])} style={stepBtn}>+{weightSteps[0]}</button>
                         <button onClick={() => bumpWeight(weightSteps[1])} style={stepBtn}>+{weightSteps[1]}</button>
                       </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Reps</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <button onClick={() => bumpReps(-1)} style={{ ...stepBtn, width: 48 }}>−1</button>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <button onClick={() => bumpReps(-1)} aria-label="One less rep" style={roundBtn}>−</button>
+                      <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
                         <input
                           ref={repsRef}
                           readOnly
                           inputMode="none"
                           value={reps}
+                          placeholder="0"
+                          aria-label="Reps"
                           onClick={(e) => { e.target.blur(); setExactEntryDraft(reps); setExactEntryFresh(true); setExactEntryField("reps"); }}
-                          style={{ ...inputStyle, flex: 1, minWidth: 0, cursor: "pointer", borderColor: highlightMissing.reps ? T.accent : T.line, boxShadow: highlightMissing.reps ? `0 0 0 2px rgba(232,68,46,0.3)` : "none" }}
+                          style={{ ...bigNum(highlightMissing.reps), fontSize: 44 }}
                         />
-                        <button onClick={() => bumpReps(1)} style={{ ...stepBtn, width: 48 }}>+1</button>
+                        <span style={{ position: "absolute", right: 10, bottom: 10, fontSize: 14, color: T.dim, pointerEvents: "none" }}>reps</span>
                       </div>
+                      <button onClick={() => bumpReps(1)} aria-label="One more rep" style={roundBtn}>+</button>
                     </div>
                   </>
                 );
@@ -3437,8 +3678,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   </div>
                 );
               })()}
-              <button onClick={togglePlateCalc} style={{ marginTop: 12, width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${showCalc ? T.accent : T.line}`, background: showCalc ? "rgba(232,68,46,0.1)" : T.surface2, color: T.text, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <IconBarbell size={15} /> {showCalc ? "Hide plate calculator" : "Plate calculator"}
+              <button onClick={togglePlateCalc} aria-expanded={showCalc} style={{ marginTop: 14, width: "100%", minHeight: 46, padding: "0 2px", border: "none", borderTop: `1px solid ${T.line}`, borderBottom: showCalc ? "none" : `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><IconBarbell size={15} /> Plates</span>
+                <span style={{ color: T.dim, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {showCalc ? "Hide ▴" : (() => {
+                    const g = greedyPerSide(parseFloat(weight) || 0, barWeight, unit, ex && ex.muscle);
+                    return g.stack.length ? `${g.stack.join(" + ")} per side ›` : "Show ›";
+                  })()}
+                </span>
               </button>
               {showCalc && (
                 <div style={{ marginTop: 10, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12 }}>
@@ -3494,8 +3741,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   </div>
                 </div>
               )}
-              <div style={{ marginTop: 14, ...(highlightMissing.rir ? { background: "rgba(232,68,46,0.1)", borderRadius: 12, padding: 8, margin: "14px -8px 0" } : {}) }}>
-                <div style={{ fontSize: 11, color: highlightMissing.rir ? T.accent : T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, fontWeight: highlightMissing.rir ? 700 : 400 }}>
+              <div style={{ position: "sticky", bottom: -16, margin: "14px -16px -16px", padding: "12px 16px 16px", background: T.surface, borderTop: `1px solid ${T.line}`, zIndex: 1 }}>
+              <div style={{ ...(highlightMissing.rir ? { background: "rgba(232,68,46,0.1)", borderRadius: 12, padding: 8, margin: "0 -8px" } : {}) }}>
+                <div style={{ fontSize: 12.5, color: highlightMissing.rir ? T.accent : T.dim, marginBottom: 6, fontWeight: highlightMissing.rir ? 700 : 400 }}>
                   Reps in reserve{highlightMissing.rir ? " — pick one" : ""}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -3504,10 +3752,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   ))}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                <button onClick={saveSet} style={{ flex: 1, padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>
+              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                <button onClick={saveSet} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>
                   {editIndex !== null ? "Save changes" : "Log set"}
                 </button>
+              </div>
               </div>
             </div>
           )}

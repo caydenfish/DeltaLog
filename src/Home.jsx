@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
+import StartWorkoutSheet from "./StartWorkoutSheet";
 import { supabase } from "./lib/supabaseClient";
 import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
-import { getPrefs, setPref, getHomeModules, setHomeModules, getChartRange, setChartRange } from "./lib/prefs";
+import { getPrefs, setPref, getChartRange, setChartRange, getHomeCards, setHomeCards, getHomeCardSettings, setHomeCardSettings } from "./lib/prefs";
+import WeeklyVolumeCard from "./WeeklyVolume";
+import { computeTrainingLoad } from "./lib/trainingLoad";
 import { RANGES } from "./lib/ranges";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
-import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, summarizeWorkoutDuration, bucketWeightHistory, bucketDailyVolume, bucketSeries, groupWorkoutsByDate } from "./lib/volume";
+import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, summarizeWorkoutDuration, bucketWeightHistory, bucketDailyVolume, bucketSeries, groupWorkoutsByDate, entriesSince } from "./lib/volume";
 import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleTaxonomy";
 import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
 import { toDisplay } from "./lib/weight";
@@ -159,6 +162,7 @@ function buildLastWorkoutInsight(history, programDay) {
 }
 
 export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset, onProgramWorkoutStarted, showUpdateNotice, onApplyUpdate }) {
+  const [showStartSheet, setShowStartSheet] = useState(false); // Start Workout sheet (StartWorkoutSheet.jsx)
   // Each chart that has a Training Range keeps its own independent
   // selection (e.g. Bodyweight pinned to 90 Days while Volume stays at
   // 30 Days) instead of one range controlling all of them -- see
@@ -205,14 +209,24 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     return () => { cancelled = true; document.removeEventListener("visibilitychange", onVisible); };
   }, [user.id]);
   // Reorderable/toggleable home dashboard modules (pencil icon, top left).
-  const [homeModules, setHomeModulesState] = useState(() => getHomeModules());
+  // Home cards (v1.14.0, lib/prefs.js getHomeCards): Today, Trends,
+  // Weekly volume, Calendar -- reorderable, toggleable, and each with its
+  // own settings in Customize Home.
+  const [homeCards, setHomeCardsState] = useState(() => getHomeCards());
+  const [homeCardSettings, setHomeCardSettingsState] = useState(() => getHomeCardSettings());
   const [showHomeModulesEditor, setShowHomeModulesEditor] = useState(false);
-  function updateHomeModules(next) {
-    setHomeModulesState((prev) => {
+  const [trendsTab, setTrendsTab] = useState(null); // selected chart when Trends is one switchable card
+  const [showLoadDetail, setShowLoadDetail] = useState(false); // Today card: full training load gauge expanded
+  function updateHomeCards(next) {
+    setHomeCardsState((prev) => {
       const resolved = typeof next === "function" ? next(prev) : next;
-      setHomeModules(resolved);
+      setHomeCards(resolved);
       return resolved;
     });
+  }
+  function updateHomeCardSettings(next) {
+    setHomeCardSettingsState(next);
+    setHomeCardSettings(next);
   }
   // The date a person tapped on the Volume/Weight/Workout Time charts —
   // shared across all three so selecting one date highlights it
@@ -765,6 +779,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const monthGrid = useMemo(() => buildMonthGrid(calendarMonth, calendarByDate), [calendarMonth, calendarByDate]);
   const programForecastDates = useMemo(() => computeProgramForecastDates(activeProgramForCalendar, calendarByDate), [activeProgramForCalendar, calendarByDate]);
   const insight = useMemo(() => buildLastWorkoutInsight(history, programDay), [history, programDay]);
+  const trainingLoadSummary = useMemo(() => computeTrainingLoad(history || []), [history]);
 
   function handleDayClick(dateStr) {
     const workouts = workoutsByDate[dateStr];
@@ -881,15 +896,22 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                   );
                 })()}
 
-                {homeModules.filter((m) => m.enabled).map((m) => {
-                  switch (m.id) {
-                    case "insight":
+                {homeCards.filter((c) => c.enabled).map((c) => {
+                  const cs = homeCardSettings[c.id];
+                  switch (c.id) {
+                    case "today": {
+                      if (!cs.lastWorkout && !cs.trainingLoad && !cs.streak) return null;
+                      const load = cs.trainingLoad ? trainingLoadSummary : null;
+                      const statusColor = insight.status === "overdue" ? T.accent : insight.status === "today" || insight.status === "ready" ? T.green : T.line;
                       return (
-                        <div key={m.id} style={{
-                          background: T.surface, border: `1px solid ${T.line}`, borderLeft: `3px solid ${insight.status === "overdue" ? T.accent : insight.status === "today" || insight.status === "ready" ? T.green : T.line}`,
-                          borderRadius: 12, padding: "12px 14px", marginBottom: 16,
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div key="today" style={{ background: T.surface, border: `1px solid ${T.line}`, borderLeft: `3px solid ${statusColor}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: cs.lastWorkout ? 10 : 0 }}>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: T.text }}>Today</span>
+                            {cs.streak && streak > 0 && <span style={{ fontSize: 12.5, color: T.accent, fontWeight: 600 }}>{streak} day streak</span>}
+                          </div>
+                          {cs.lastWorkout && (
+                            <>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
                               <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1, color: insight.status === "overdue" ? T.accent : T.text }}>
                                 {insight.daysSince === null ? "—" : insight.daysSince}
@@ -913,14 +935,30 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                               Open Program — {programDay.dayLabel}{programDay.deload ? " (deload)" : ""} <span style={{ color: T.dim }}>›</span>
                             </button>
                           )}
+                            </>
+                          )}
+                          {load && (
+                            <>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setShowLoadDetail(!showLoadDetail); }}
+                                aria-expanded={showLoadDetail}
+                                style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, marginTop: cs.lastWorkout ? 10 : 8, padding: cs.lastWorkout ? "10px 0 0" : 0, borderWidth: cs.lastWorkout ? "1px 0 0" : 0, borderStyle: "solid", borderColor: T.line, background: "none", color: T.text, fontSize: 13, textAlign: "left", minHeight: 36 }}
+                              >
+                                <span style={{ width: 8, height: 8, borderRadius: 999, background: load.zone ? load.zone.color : T.dim, flexShrink: 0 }} />
+                                <span style={{ flex: 1 }}>Training load <b style={{ color: load.zone ? load.zone.color : T.dim, fontWeight: 700 }}>{load.zone ? load.zone.label : `building base (${load.daysUntilBaseline}d)`}</b></span>
+                                <span style={{ color: T.dim }}>{showLoadDetail ? "▴" : "›"}</span>
+                              </button>
+                              {showLoadDetail && <div style={{ marginTop: 10 }}><TrainingLoadCard history={history} /></div>}
+                            </>
+                          )}
                         </div>
                       );
-                    case "trainingLoad":
-                      return <TrainingLoadCard key={m.id} history={history} />;
-                    case "volume":
-                      return (
+                    }
+                    case "trends": {
+                      const charts = [
+                        cs.volume && { key: "volume", label: "Volume", el: (
                         <HomeChartCard
-                          key={m.id}
+                          key="volume"
                           title="Volume over time"
                           data={dailyVolume}
                           dataKey="volume"
@@ -933,11 +971,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           lockedTs={lockedTs}
                           onLock={setLockedTs}
                         />
-                      );
-                    case "weight":
-                      return (
+                      ) },
+                        cs.weight && { key: "weight", label: "Bodyweight", el: (
                         <HomeChartCard
-                          key={m.id}
+                          key="weight"
                           title="Bodyweight over time"
                           data={weightHistory}
                           dataKey="weight"
@@ -950,11 +987,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           lockedTs={lockedTs}
                           onLock={setLockedTs}
                         />
-                      );
-                    case "workoutTime":
-                      return (
+                      ) },
+                        cs.workoutTime && { key: "workoutTime", label: "Time", el: (
                         <HomeChartCard
-                          key={m.id}
+                          key="workoutTime"
                           title="Workout time"
                           data={workoutTimeData}
                           dataKey="minutes"
@@ -967,42 +1003,44 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           lockedTs={lockedTs}
                           onLock={setLockedTs}
                         />
-                      );
-                    case "muscleBreakdown":
+                      ) },
+                      ].filter(Boolean);
+                      if (charts.length === 0) return null;
+                      if (cs.layout === "separate" || charts.length === 1) return <div key="trends">{charts.map((ch) => ch.el)}</div>;
+                      const active = charts.find((ch) => ch.key === trendsTab) || charts[0];
                       return (
-                        <div key={m.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
-                            <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, flexShrink: 0 }}>Muscle breakdown</div>
-                            <RangeSwitcher range={muscleRange} onChange={setMuscleRange} />
+                        <div key="trends">
+                          <div style={{ display: "flex", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: 3, gap: 3, marginBottom: 8 }}>
+                            {charts.map((ch) => (
+                              <button key={ch.key} onClick={(e) => { e.stopPropagation(); setTrendsTab(ch.key); }} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: "none", background: active.key === ch.key ? T.line : "none", color: active.key === ch.key ? T.text : T.dim, fontSize: 12.5, fontWeight: 600 }}>{ch.label}</button>
+                            ))}
                           </div>
-                          <div style={{ textAlign: "right", fontSize: 11, color: T.dim, marginBottom: 8 }}>{totalSetsInRange} set{totalSetsInRange === 1 ? "" : "s"}</div>
-                          <BodyHeatmap
-                            primary={primary}
-                            secondary={secondary}
-                            fullBodySets={fullBodySets}
-                            entries={entries}
-                            onSelectMuscle={(muscle) => setMuscleDetail({ muscle })}
-                            setsFilter={muscleSetsFilter}
-                            roleFilter={muscleRoleFilter}
-                            onSetsFilterChange={setMuscleSetsFilter}
-                            onRoleFilterChange={setMuscleRoleFilter}
-                            coverageView={coverageView}
-                            onCoverageViewChange={setCoverageView}
-                          />
+                          {active.el}
                         </div>
                       );
-                    case "weeklyGoalsMap":
-                      return <WeeklyGoalsBodyMap key={m.id} userId={user.id} history={history} nameMode={muscleNameMode} />;
+                    }
+                    case "weeklyVolume":
+                      return (
+                        <WeeklyVolumeCard
+                          key="weeklyVolume"
+                          userId={user.id}
+                          history={history}
+                          nameMode={muscleNameMode}
+                          settings={cs}
+                          onSettingsChange={(next) => updateHomeCardSettings({ ...homeCardSettings, weeklyVolume: next })}
+                          onSelectMuscle={({ muscle, windowDays, nameMode }) => setMuscleDetail({ muscle, entries: entriesSince(history, windowDays), nameMode })}
+                        />
+                      );
                     case "calendar":
                       return (
-                        <div key={m.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
+                        <div key="calendar" style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, marginBottom: 16 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                             <button onClick={() => shiftMonth(setCalendarMonth, -1)} style={navBtn}>‹</button>
                             <div style={{ textAlign: "center" }}>
                               <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
                                 {calendarMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}
                               </div>
-                              {streak > 0 && (
+                              {streak > 0 && homeCardSettings.calendar.streak && (
                                 <div style={{ fontSize: 10, color: T.accent, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginTop: 1 }}>
                                   {streak} day streak
                                 </div>
@@ -1053,12 +1091,14 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                               <span style={{ fontSize: 10.5, color: T.dim }}>Forecasted program day</span>
                             </div>
                           )}
+                          {homeCardSettings.calendar.history && (
                           <button
                             onClick={() => setHistoryView({})}
                             style={{ width: "100%", marginTop: 12, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                           >
                             View full history <span style={{ color: T.dim }}>›</span>
                           </button>
+                          )}
                         </div>
                       );
                     default:
@@ -1072,23 +1112,27 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
         {/* Start workout */}
         <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
-          {activeWorkout?.isPaused && (
-            <div style={{ textAlign: "center", fontSize: 12, color: T.dim, marginBottom: 8 }}>
-              You have a paused workout — pick "Resume previous workout" after starting
-            </div>
-          )}
           {activeWorkout && !activeWorkout.isPaused ? (
             <button onClick={onResumeWorkout} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span>Resume Workout</span>
               <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}>{activeWorkoutElapsed}</span>
             </button>
           ) : (
-            <button onClick={onStartWorkout} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
+            <button onClick={() => setShowStartSheet(true)} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
               Start Workout
             </button>
           )}
         </div>
       </div>
+
+      {showStartSheet && (
+        <StartWorkoutSheet
+          userId={user.id}
+          savedWorkout={activeWorkout?.isPaused ? activeWorkout : null}
+          onClose={() => setShowStartSheet(false)}
+          onChoose={(intent) => { setShowStartSheet(false); onStartWorkout(intent); }}
+        />
+      )}
 
       {showMenu && (
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 20, display: "flex", justifyContent: "center", overflowY: "auto" }}>
@@ -1371,15 +1415,15 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {muscleDetail && (
         <MuscleSetsDetail
           muscle={muscleDetail.muscle}
-          entries={entries}
-          nameMode="detailed"
+          entries={muscleDetail.entries || entries}
+          nameMode={muscleDetail.nameMode || "detailed"}
           units={units}
           onClose={() => setMuscleDetail(null)}
           setsFilter={muscleSetsFilter}
         />
       )}
       {showHomeModulesEditor && (
-        <HomeModulesEditor modules={homeModules} onChange={updateHomeModules} onClose={() => setShowHomeModulesEditor(false)} />
+        <HomeModulesEditor cards={homeCards} settings={homeCardSettings} onChange={updateHomeCards} onSettingsChange={updateHomeCardSettings} onClose={() => setShowHomeModulesEditor(false)} />
       )}
       {showAdminRoles && <AdminRoles currentUserId={user.id} onClose={() => setShowAdminRoles(false)} />}
       {showAdminUserActivity && isRealCreator && <AdminUserActivity onClose={() => setShowAdminUserActivity(false)} />}

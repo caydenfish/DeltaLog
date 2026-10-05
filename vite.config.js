@@ -52,7 +52,10 @@ export default defineConfig({
         // generateSW's default inference.
         cleanupOutdatedCaches: true,
         clientsClaim: true,
-        navigateFallback: "/index.html"
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api\//],
+        // Rest-timer Web Push handlers (public/push-sw.js).
+        importScripts: ["push-sw.js"]
       }
     })
   ],

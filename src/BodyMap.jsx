@@ -110,6 +110,12 @@ const PLAN_TIERS = [
   { key: "under", label: "Under target", color: "#E8752E" },
   { key: "met", label: "Target met", color: "#3BA55D" },
 ];
+const PLAN_TIERS_RANGE = [
+  { key: "none", label: "None", color: PLAN_NEUTRAL },
+  { key: "under", label: "Under", color: "#E8752E" },
+  { key: "met", label: "On track", color: "#3BA55D" },
+  { key: "over", label: "Over", color: "#5B8DEF" },
+];
 
 function tierFor(total, max) {
   if (!total) return TIERS[0];
@@ -209,19 +215,20 @@ function roleTotal(t, roleFilter) {
   return effectiveSets(t.primary, t.secondary);
 }
 
-function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, targets, rollingTotals, roleFilter, planNameMode, regionKeyMap, nameMode, maxWidth }) {
+function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, targets, targetMax, rollingTotals, roleFilter, planNameMode, regionKeyMap, nameMode, maxWidth }) {
   return (
     <svg viewBox={viewBox} width="100%" style={{ maxWidth: maxWidth || 150, display: "block", margin: "0 auto" }}>
       <path d={outline} fill="none" stroke={OUTLINE_STROKE} strokeWidth={2} vectorEffect="non-scaling-stroke" />
       {regions.map((region) => {
         if (mode === "plan") {
-          let total = 0, target = 0, hasKeys = false, label;
+          let total = 0, target = 0, maxT = 0, hasKeys = false, label;
           if (planNameMode === "generic" || !planNameMode) {
             const generic = REGION_GENERIC[region.slug];
             hasKeys = !!generic;
             target = generic ? (targets?.[generic] || 0) : 0;
+            maxT = generic ? (targetMax?.[generic] || 0) : 0;
             total = generic ? (rollingTotals?.[generic] || 0) : 0;
-            label = generic ? `${generic} — ${total}/${target} sets this week` : regionTitle(view, region.slug, "generic");
+            label = generic ? `${generic} — ${formatSets(total)}/${target} sets this week` : regionTitle(view, region.slug, "generic");
           } else {
             const keys = regionKeyMap?.[`${view}:${region.slug}`];
             hasKeys = !!(keys && keys.size > 0);
@@ -230,18 +237,19 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
               for (const k of keys) {
                 const t = rollingTotals?.[k] || 0;
                 const g = targets?.[k] || 0;
+                maxT += targetMax?.[k] || 0;
                 total += t;
                 target += g;
                 parts.push(`${k} ${t}/${g}`);
               }
               label = keys.size > 1
-                ? `${displayName(view, region.slug)} — ${total}/${target} sets this week (${parts.join(", ")})`
-                : `${[...keys][0]} — ${total}/${target} sets this week`;
+                ? `${displayName(view, region.slug)} — ${formatSets(total)}/${target} sets this week (${parts.join(", ")})`
+                : `${[...keys][0]} — ${formatSets(total)}/${target} sets this week`;
             } else {
               label = displayName(view, region.slug);
             }
           }
-          const color = hasKeys ? statusColorFor(total, target) : PLAN_NEUTRAL;
+          const color = hasKeys ? statusColorFor(total, target, undefined, maxT || null) : PLAN_NEUTRAL;
           return (
             <g key={region.slug}>
               {region.paths.map((d, i) => (
@@ -300,7 +308,7 @@ function Silhouette({ view, regions, outline, viewBox, totals, maxTotal, mode, t
 // Region/Anatomy-tier key sharing that region (buildRegionKeyMap), since
 // (same as intensity mode) the fixed SVG art has fewer shapes than the
 // finer tiers have labels.
-export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, rollingTotals, roleFilter = "both", planNameMode = "generic", nameMode = planNameMode, maxWidth, showLegend = true }) {
+export default function BodyMap({ primary = {}, secondary = {}, mode = "intensity", targets, targetMax, rollingTotals, roleFilter = "both", planNameMode = "generic", nameMode = planNameMode, maxWidth, showLegend = true }) {
   const totals = mode === "plan" ? {} : buildRegionTotals(primary, secondary);
   const maxTotal = mode === "plan" ? 1 : Math.max(1, ...Object.values(totals).map((t) => roleTotal(t, roleFilter)));
   const regionKeyMap = mode === "plan" && planNameMode !== "generic" ? buildRegionKeyMap() : null;
@@ -308,11 +316,11 @@ export default function BodyMap({ primary = {}, secondary = {}, mode = "intensit
   return (
     <div>
       <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} nameMode={nameMode} maxWidth={maxWidth} />
-        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} nameMode={nameMode} maxWidth={maxWidth} />
+        <Silhouette view="front" regions={FRONT_REGIONS} outline={OUTLINE_FRONT} viewBox={VIEWBOX_FRONT} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} targetMax={targetMax} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} nameMode={nameMode} maxWidth={maxWidth} />
+        <Silhouette view="back" regions={BACK_REGIONS} outline={OUTLINE_BACK} viewBox={VIEWBOX_BACK} totals={totals} maxTotal={maxTotal} mode={mode} targets={targets} targetMax={targetMax} rollingTotals={rollingTotals} roleFilter={roleFilter} planNameMode={planNameMode} regionKeyMap={regionKeyMap} nameMode={nameMode} maxWidth={maxWidth} />
       </div>
       {showLegend && <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
-        {(mode === "plan" ? PLAN_TIERS : intensityTierLegend(maxTotal)).map((t) => (
+        {(mode === "plan" ? (targetMax ? PLAN_TIERS_RANGE : PLAN_TIERS) : intensityTierLegend(maxTotal)).map((t) => (
           <div key={t.key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ width: 9, height: 9, borderRadius: 3, background: t.color, display: "inline-block", flexShrink: 0 }} />
             <span style={{ fontSize: 10.5, color: T.dim }}>{t.label}</span>

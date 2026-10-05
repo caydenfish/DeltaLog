@@ -5,6 +5,28 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.14.1",
+    date: "2026-10-05",
+    items: [
+      "Workout header: horizontal chip strip removed (stripRef, chipRefs, scroll-into-view effect, .chipstrip CSS). Top row is now elapsed time (hhmmss, 'paused' when paused) + edit + menu. New progress bar, one segment per exercise filled by working sets / planned (green done, accent current, grey partial); tapping it opens the jump list.",
+      "New FitTitle component: steps font size from max (24) down to min (15) until the name fits in two lines (scrollHeight vs 2 x line height), then clamps to two lines with ellipsis only if it still overflows. Refits on text change, parent width change (ResizeObserver) and document.fonts.ready. Title + subtitle ('2 of 5 · set 3 of 3') is a button that opens the jump list; the Google 'how to' link moved into the jump list header.",
+      "Jump list sheet (showJump): every exercise with status dot, full wrapping name, done/planned count, superset grouping (blue left edge + label on the first of each group); tap goes to that exercise.",
+      "Focus pill and target button share one wrapping row (target compacted to 20px numerals, sentence-case label); target info and focus picker behave as before.",
+    ],
+  },
+  {
+    version: "1.14.0",
+    date: "2026-10-05",
+    items: [
+      "Home: eight modules collapsed into four cards (today, trends, weeklyVolume, calendar) with per-card settings. lib/prefs.js adds homeCards / homeCardSettings, getHomeCards (migrates a saved homeModules layout: card position = earliest source module, enabled if any source was, each disabled source becomes the matching card setting), getHomeCardSettings, DEFAULT_HOME_CARD_SETTINGS. HomeModulesEditor rewritten with a second level per card. Today = Last workout insight + training load row (computeTrainingLoad; tap expands TrainingLoadCard) + streak. Trends renders the three HomeChartCards as one switchable card or separately.",
+      "WeeklyVolume.jsx: WeeklyVolumeCard replaces Muscle breakdown + WeeklyGoalsBodyMap on Home. Fractional totals over rolling 7d (computeRollingWeeklyTotals) or 4-week average (new computeAverageWeeklyTotals), ranges from fetchMuscleGroupRanges (min = weekly_target_sets, max = new weekly_target_max, migration_075; falls back if the column is missing; legacy rows max = 2x min; min 0 = not tracked; unsaved muscles use FOCUS_RANGES by training focus). Status none/under/on track/over; planStatus.statusColorFor gains max -> PLAN_BLUE; BodyMap plan mode takes targetMax and a 4-tier legend. Rows sorted furthest-behind first; tap opens MuscleSetsDetail with entriesSince(history, 7|28). WeeklyTargetsEditor: focus presets plus per-muscle min/max and tracking toggle, saved via saveMuscleGroupRange.",
+      "StartWorkoutSheet.jsx: Home's Start Workout opens a sheet (resume saved, scratch, first 3 templates + all, Generate locked). Choice passed as startIntent through App to SetLogger, applied once after boot (manage view, loadTemplate, openTemplates, handleResumePreviousSaved). Empty-workout screen's Generate button locked as Coming soon.",
+      "Set entry restyle: 52px tap-to-keypad weight and 44px reps, full-width weight steppers, round rep steppers, copy chips showing values, target + rest countdown in the header, Plates row summarizing greedyPerSide loading, RIR + Log set in a sticky footer.",
+      "Rest timer: top strip replaced by a bottom pill (drains via restTotalRef, +15s, Skip, tap to dismiss once over). lib/restPush.js: silent 'Resting until' notification (tag deltalog-rest) and an end-of-rest Web Push scheduled through api/rest-push.js (Supabase-JWT-authenticated, publishes a delayed QStash message carrying the push subscription) and delivered by api/rest-push-send.js (shared-secret header, web-push). public/push-sw.js imported via workbox.importScripts handles push + notificationclick; navigateFallbackDenylist excludes /api. Effect on [restEndsAt, isPaused] cancels/reschedules; in-page end alert only when no push is pending. New dependency: web-push.",
+      "Check-in: bodyweight stepper from profile.weight with Same as last / Clear (nothing logged unless touched), photo and notes as expandable rows, button now See summary. Summary: sentence-case headers, collapsible exercise cards (summaryOpenEx), Image + Done side by side; PR 'prev' unit fixed (was hardcoded lb).",
+    ],
+  },
+  {
     version: "1.13.9",
     date: "2026-10-05",
     items: [

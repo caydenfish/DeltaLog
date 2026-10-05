@@ -21,6 +21,7 @@ export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading, null = signed out
   const [profile, setProfile] = useState(undefined); // undefined = loading, null = not set up yet
   const [mode, setMode] = useState(null); // null = undecided, "home" | "workout"
+  const [startIntent, setStartIntent] = useState(null); // how Home's Start Workout sheet chose to start (see StartWorkoutSheet)
   const [resumeWorkout, setResumeWorkout] = useState(undefined); // undefined = not checked, null = none, object = found
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [setupSeen, setSetupSeen] = useState(() => getPrefs().setupWizardSeen);
@@ -250,12 +251,14 @@ export default function App() {
             user={session.user}
             resumeWorkout={resumeWorkout?.isPaused ? null : resumeWorkout}
             savedWorkout={resumeWorkout?.isPaused ? resumeWorkout : null}
-            onFinished={() => { setResumeWorkout(null); setMode("home"); }}
+            startIntent={startIntent}
+            onFinished={() => { setResumeWorkout(null); setStartIntent(null); setMode("home"); }}
             onGoHome={() => {
               // Unlike onFinished, the workout itself isn't touched — it's
               // still active on the server. Re-fetch it so Home knows to
               // offer "Resume workout" instead of losing track of it.
               setMode("home");
+              setStartIntent(null);
               fetchActiveWorkout(session.user.id).then(setResumeWorkout).catch(() => {});
             }}
           />
@@ -263,7 +266,7 @@ export default function App() {
           <Home
             user={session.user}
             activeWorkout={resumeWorkout}
-            onStartWorkout={() => { setMode("workout"); }}
+            onStartWorkout={(intent) => { setStartIntent(intent || null); setMode("workout"); }}
             onResumeWorkout={() => setMode("workout")}
             onDataReset={() => setProfile(null)}
             showUpdateNotice={updateAvailable && !resumeWorkout}
