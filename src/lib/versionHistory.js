@@ -5,6 +5,17 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.14.2",
+    date: "2026-10-05",
+    items: [
+      "lib/volume.js: HARD_SET_MAX_RIR = 4, isHardSet (null RIR counts), hardOnly option on computeRollingWeeklyTotals, computeAverageWeeklyTotals and entriesSince. WeeklyVolumeCard and its drill-down use hard sets only; MyPlan / WeeklyGoalsBodyMap unchanged (default false).",
+      "FOCUS_RANGES: Endurance changed 8-16 -> 10-20 (no endurance-specific weekly-volume research); Strength 6-12 and Hypertrophy 10-20 unchanged, now documented with sources (Pelland 2025, Schoenfeld 2017, Baz-Valle 2022, Ralston 2017, Robinson 2024). New VolumeInfo explainer behind an info button on the card and a 'How these ranges were chosen' disclosure in WeeklyTargetsEditor; FOCUS_NOTES per focus; 'Maximum' stepper relabeled 'Diminishing returns'.",
+      "Bug: WeeklyTargetsEditor cleared pending debounced saves on unmount, so changes made just before Done/back were dropped. Pending saves now tracked in a ref and flushed on close (awaited) and on unmount. saveMuscleGroupRange upserts with onConflict user_id,muscle_group and, if weekly_target_max is missing (migration_075 not run), retries min-only and returns { maxSaved: false }; the editor shows a notice.",
+      "Weekly volume rows: sorted by total descending (all muscles, tracked or not). settings.rows is 0..N or 'all'; Customize Home uses a range slider (0 = none, max = all) sized to getMuscleGroupOptions(muscleNameMode).",
+      "Today card: training load expanded state persisted as homeCardSettings.today.loadOpen (was component state).",
+    ],
+  },
+  {
     version: "1.14.1",
     date: "2026-10-05",
     items: [

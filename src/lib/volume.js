@@ -20,6 +20,21 @@ function isWarmupSet(s) {
 // that combines them into a single per-muscle number goes through
 // effectiveSets() so every surface agrees.
 export const SECONDARY_SET_WEIGHT = 0.5;
+
+// Hard sets (v1.14.2): weekly-volume research counts sets taken close to
+// failure (in Pelland et al. ~78% of effects were trained to failure),
+// and Robinson et al. (Sports Medicine, 2024) found hypertrophy falls off
+// as sets end further from failure. So the Weekly volume card only counts
+// working sets logged at RIR 4 or less. Sets with no RIR logged still
+// count, since there's nothing to say they were easy. RIR 4 is the common
+// "hard set" convention, not a sharp physiological line.
+export const HARD_SET_MAX_RIR = 4;
+export function isHardSet(s) {
+  return s.rir == null || s.rir <= HARD_SET_MAX_RIR;
+}
+function hardOnlyEntries(entries) {
+  return entries.map((e) => ({ ...e, sets: (e.sets || []).filter(isHardSet) }));
+}
 export function effectiveSets(primaryCount, secondaryCount) {
   return (primaryCount || 0) + SECONDARY_SET_WEIGHT * (secondaryCount || 0);
 }
@@ -327,10 +342,11 @@ export function summarizeWorkoutDuration(history) {
 // Average fractional sets per week over the last `weeks` weeks (default
 // 4), per muscle -- the Weekly volume card's "4-week avg" view. Same keys
 // and weighting as computeRollingWeeklyTotals.
-export function computeAverageWeeklyTotals(history, nameMode = "generic", weeks = 4) {
+export function computeAverageWeeklyTotals(history, nameMode = "generic", weeks = 4, { hardOnly = false } = {}) {
   const cutoff = toLocalDateStr(new Date(Date.now() - (weeks * 7 - 1) * 86400000));
   const { entries } = summarizeHistory(history || []);
-  const windowed = entries.filter((e) => e.date >= cutoff);
+  const inWindow = entries.filter((e) => e.date >= cutoff);
+  const windowed = hardOnly ? hardOnlyEntries(inWindow) : inWindow;
   const { primary, secondary, fullBodySets } = computeMuscleSetCounts(windowed, nameMode);
   const totals = {};
   for (const label of new Set([...Object.keys(primary), ...Object.keys(secondary)])) {
@@ -342,16 +358,18 @@ export function computeAverageWeeklyTotals(history, nameMode = "generic", weeks 
 
 // Entries (summarizeHistory shape) from the last `days` days, for drilling
 // into one muscle's sets behind a windowed total.
-export function entriesSince(history, days) {
+export function entriesSince(history, days, { hardOnly = false } = {}) {
   const cutoff = toLocalDateStr(new Date(Date.now() - (days - 1) * 86400000));
-  return summarizeHistory(history || []).entries.filter((e) => e.date >= cutoff);
+  const windowed = summarizeHistory(history || []).entries.filter((e) => e.date >= cutoff);
+  return hardOnly ? hardOnlyEntries(windowed) : windowed;
 }
 
 // collapsing into "Back".
-export function computeRollingWeeklyTotals(history, nameMode = "generic") {
+export function computeRollingWeeklyTotals(history, nameMode = "generic", { hardOnly = false } = {}) {
   const cutoff = toLocalDateStr(new Date(Date.now() - 6 * 86400000));
   const { entries } = summarizeHistory(history || []);
-  const rolling = entries.filter((e) => e.date >= cutoff);
+  const windowed = entries.filter((e) => e.date >= cutoff);
+  const rolling = hardOnly ? hardOnlyEntries(windowed) : windowed;
   const { primary, secondary, fullBodySets } = computeMuscleSetCounts(rolling, nameMode);
   const totals = {};
   for (const label of new Set([...Object.keys(primary), ...Object.keys(secondary)])) {

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { HOME_CARD_LABELS } from "./lib/prefs";
+import { HOME_CARD_LABELS, getPrefs } from "./lib/prefs";
+import { getMuscleGroupOptions } from "./lib/muscleTaxonomy";
 import { IconDragHandle } from "./Icons";
 import { useDragReorder, InsertionLine } from "./DragReorder";
 
@@ -20,7 +21,10 @@ function describe(id, s) {
     const charts = [s.volume && "Volume", s.weight && "bodyweight", s.workoutTime && "time"].filter(Boolean);
     return charts.length ? `${charts.join(", ")} · ${s.layout === "separate" ? "separate cards" : "one card"}` : "No charts selected";
   }
-  if (id === "weeklyVolume") return `${s.showMap ? "Map, " : ""}${s.rows} muscles listed · ${s.window === "4w" ? "4-week avg" : "last 7 days"}`;
+  if (id === "weeklyVolume") {
+    const listed = s.rows === "all" ? "all muscles" : Number(s.rows) === 0 ? "no list" : `${s.rows} muscles listed`;
+    return `${s.showMap ? "Map, " : ""}${listed} · ${s.window === "4w" ? "4-week avg" : "last 7 days"}`;
+  }
   if (id === "calendar") return [s.streak && "Streak", s.history && "history link"].filter(Boolean).join(", ") || "Calendar only";
   return "";
 }
@@ -138,10 +142,34 @@ export default function HomeModulesEditor({ cards, settings, onChange, onSetting
               {editing === "weeklyVolume" && (
                 <>
                   <SettingRow label="Body map"><Toggle on={s.showMap} onClick={() => set("weeklyVolume", { showMap: !s.showMap })} label="Body map" /></SettingRow>
-                  <div style={{ padding: "14px 0 0" }}>
-                    <div style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>Muscles listed before "All muscles"</div>
-                    <Segmented value={s.rows} options={[[3, "3"], [4, "4"], [6, "6"], [8, "8"]]} onChange={(v) => set("weeklyVolume", { rows: v })} />
-                  </div>
+                  {(() => {
+                    // 0 = map only, max = every muscle ("all", so muscles
+                    // added later still show). Listed most sets first.
+                    const maxRows = getMuscleGroupOptions(getPrefs().muscleNameMode).length;
+                    const value = s.rows === "all" ? maxRows : Math.min(maxRows, Math.max(0, Number(s.rows ?? 4)));
+                    return (
+                      <div style={{ padding: "14px 0 0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                          <span style={{ fontSize: 13, color: T.dim }}>Muscles listed before "All muscles"</span>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{value >= maxRows ? "All" : value === 0 ? "None" : value}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={maxRows}
+                          step={1}
+                          value={value}
+                          onChange={(e) => { const v = Number(e.target.value); set("weeklyVolume", { rows: v >= maxRows ? "all" : v }); }}
+                          aria-label="Muscles listed before All muscles"
+                          style={{ width: "100%", accentColor: T.accent, height: 32 }}
+                        />
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: T.dim }}>
+                          <span>None</span><span>All {maxRows}</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: T.dim, marginTop: 6 }}>Listed with the most sets on top.</div>
+                      </div>
+                    );
+                  })()}
                   <div style={{ padding: "14px 0 4px" }}>
                     <div style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>Default window</div>
                     <Segmented value={s.window} options={[["7d", "Last 7 days"], ["4w", "4-week avg"]]} onChange={(v) => set("weeklyVolume", { window: v })} />

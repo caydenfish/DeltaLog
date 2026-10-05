@@ -216,7 +216,6 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [homeCardSettings, setHomeCardSettingsState] = useState(() => getHomeCardSettings());
   const [showHomeModulesEditor, setShowHomeModulesEditor] = useState(false);
   const [trendsTab, setTrendsTab] = useState(null); // selected chart when Trends is one switchable card
-  const [showLoadDetail, setShowLoadDetail] = useState(false); // Today card: full training load gauge expanded
   function updateHomeCards(next) {
     setHomeCardsState((prev) => {
       const resolved = typeof next === "function" ? next(prev) : next;
@@ -940,15 +939,15 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           {load && (
                             <>
                               <button
-                                onClick={(e) => { e.stopPropagation(); setShowLoadDetail(!showLoadDetail); }}
-                                aria-expanded={showLoadDetail}
+                                onClick={(e) => { e.stopPropagation(); updateHomeCardSettings({ ...homeCardSettings, today: { ...cs, loadOpen: !cs.loadOpen } }); }}
+                                aria-expanded={!!cs.loadOpen}
                                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, marginTop: cs.lastWorkout ? 10 : 8, padding: cs.lastWorkout ? "10px 0 0" : 0, borderWidth: cs.lastWorkout ? "1px 0 0" : 0, borderStyle: "solid", borderColor: T.line, background: "none", color: T.text, fontSize: 13, textAlign: "left", minHeight: 36 }}
                               >
                                 <span style={{ width: 8, height: 8, borderRadius: 999, background: load.zone ? load.zone.color : T.dim, flexShrink: 0 }} />
                                 <span style={{ flex: 1 }}>Training load <b style={{ color: load.zone ? load.zone.color : T.dim, fontWeight: 700 }}>{load.zone ? load.zone.label : `building base (${load.daysUntilBaseline}d)`}</b></span>
-                                <span style={{ color: T.dim }}>{showLoadDetail ? "▴" : "›"}</span>
+                                <span style={{ color: T.dim }}>{cs.loadOpen ? "▴" : "›"}</span>
                               </button>
-                              {showLoadDetail && <div style={{ marginTop: 10 }}><TrainingLoadCard history={history} /></div>}
+                              {cs.loadOpen && <div style={{ marginTop: 10 }}><TrainingLoadCard history={history} /></div>}
                             </>
                           )}
                         </div>
@@ -1028,7 +1027,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           nameMode={muscleNameMode}
                           settings={cs}
                           onSettingsChange={(next) => updateHomeCardSettings({ ...homeCardSettings, weeklyVolume: next })}
-                          onSelectMuscle={({ muscle, windowDays, nameMode }) => setMuscleDetail({ muscle, entries: entriesSince(history, windowDays), nameMode })}
+                          onSelectMuscle={({ muscle, windowDays, nameMode, hardOnly }) => setMuscleDetail({ muscle, entries: entriesSince(history, windowDays, { hardOnly }), nameMode })}
                         />
                       );
                     case "calendar":

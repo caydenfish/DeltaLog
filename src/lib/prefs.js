@@ -202,7 +202,7 @@ export const HOME_CARD_LABELS = {
 };
 
 export const DEFAULT_HOME_CARD_SETTINGS = {
-  today: { lastWorkout: true, trainingLoad: true, streak: true },
+  today: { lastWorkout: true, trainingLoad: true, streak: true, loadOpen: false },
   trends: { volume: true, weight: true, workoutTime: true, layout: "switch" },
   weeklyVolume: { showMap: true, rows: 4, window: "7d" },
   calendar: { streak: true, history: true },

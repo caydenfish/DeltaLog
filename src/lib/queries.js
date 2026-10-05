@@ -1980,11 +1980,20 @@ export async function fetchMuscleGroupRanges(userId) {
   return map;
 }
 
+// Returns { maxSaved: false } when the weekly_target_max column doesn't
+// exist yet (migration_075 not run): the minimum is still saved so the
+// change isn't lost, and the caller can say why the maximum didn't stick.
 export async function saveMuscleGroupRange(userId, muscleGroup, min, max) {
-  const { error } = await supabase
-    .from("muscle_group_targets")
-    .upsert({ user_id: userId, muscle_group: muscleGroup, weekly_target_sets: min, weekly_target_max: max, updated_at: new Date().toISOString() });
-  if (error) throw error;
+  const row = { user_id: userId, muscle_group: muscleGroup, weekly_target_sets: min, weekly_target_max: max, updated_at: new Date().toISOString() };
+  const { error } = await supabase.from("muscle_group_targets").upsert(row, { onConflict: "user_id,muscle_group" });
+  if (!error) return { maxSaved: true };
+  if (/weekly_target_max/.test(error.message || "")) {
+    const { weekly_target_max: _drop, ...minOnly } = row;
+    const retry = await supabase.from("muscle_group_targets").upsert(minOnly, { onConflict: "user_id,muscle_group" });
+    if (retry.error) throw retry.error;
+    return { maxSaved: false };
+  }
+  throw error;
 }
 
 // Upserts a single muscle group's weekly set target (one row per

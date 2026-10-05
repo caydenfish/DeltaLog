@@ -9,6 +9,17 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.14.2": {
+    title: "Research-backed weekly volume",
+    items: [
+      "Weekly volume now counts hard sets only, logged at RIR 4 or less, matching how the research measured volume. Tap the new i button to see how it's counted and where the ranges come from.",
+      "Default ranges are tied to research: Hypertrophy 10–20 and Strength 6–12 sets per week. Endurance now uses 10–20, since there's little research on volume for muscular endurance specifically.",
+      "The top of each range now reads as where extra sets start adding less, not a hard limit.",
+      "Fixed weekly target changes not saving when you closed the editor right after making them.",
+      "Choose how many muscles Weekly volume lists, from none to all, with a slider in Customize Home. Muscles are now listed with the most sets on top.",
+      "The training load chart on Home stays open once you open it.",
+    ],
+  },
   "1.14.1": {
     title: "A cleaner top of the workout screen",
     items: [
