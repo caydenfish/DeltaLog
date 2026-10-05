@@ -138,7 +138,14 @@ function buildLastWorkoutInsight(history, programDay) {
   const msPerDay = 1000 * 60 * 60 * 24;
   const daysSince = Math.floor((today.setHours(0, 0, 0, 0) - new Date(completedDate).setHours(0, 0, 0, 0)) / msPerDay);
 
-  const muscles = [...new Set((last.workout_exercises || []).map((we) => we.exercises?.muscle_group).filter(Boolean))];
+  // Only exercises with at least one working set logged count as
+  // "trained" (v1.14.4). Previously every exercise in the workout was
+  // listed, so planned-but-skipped exercises (e.g. from a template)
+  // showed up as muscles you trained.
+  const muscles = [...new Set((last.workout_exercises || [])
+    .filter((we) => (we.sets || []).some((st) => !st.is_warmup && st.reps > 0))
+    .map((we) => we.exercises?.muscle_group)
+    .filter(Boolean))];
 
   let tip, status;
   if (daysSince <= 0) {

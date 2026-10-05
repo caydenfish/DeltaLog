@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchTemplates } from "./lib/queries";
-import { IconPlus, IconBolt } from "./Icons";
+import { IconPlus, IconBolt, IconList } from "./Icons";
 
 const T = {
   bg: "#101216",
@@ -15,8 +15,9 @@ const T = {
 // Start Workout sheet (v1.14.0). Opens from Home's Start Workout button
 // and decides how the workout starts *before* the workout screen opens,
 // in order of how people actually start: resume a saved workout (when
-// there is one), start from scratch, or one of your templates. Generate
-// is locked as Coming soon. onChoose receives the intent SetLogger
+// there is one), start from scratch, or templates. Generate
+// is locked as Coming soon. Templates is a single button (v1.14.4) that
+// opens the full template picker. onChoose receives the intent SetLogger
 // applies after boot: { kind: "scratch" | "template" | "templates" |
 // "resume", template? }.
 export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onClose }) {
@@ -30,8 +31,6 @@ export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onCl
     return () => { cancelled = true; };
   }, [userId]);
 
-  const shown = (templates || []).slice(0, 3);
-  const row = { width: "100%", display: "flex", alignItems: "center", gap: 10, minHeight: 52, padding: "0 2px", background: "none", border: "none", borderBottom: `1px solid ${T.line}`, color: T.text, textAlign: "left" };
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 30, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center" }}>
@@ -53,29 +52,10 @@ export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onCl
           <IconPlus size={16} /> Start from scratch
         </button>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 18 }}>
-          <span style={{ fontSize: 12.5, color: T.dim }}>Templates</span>
-          {templates && templates.length > shown.length && (
-            <button onClick={() => onChoose({ kind: "templates" })} style={{ background: "none", border: "none", color: T.dim, fontSize: 12.5, padding: 4 }}>All {templates.length} ›</button>
-          )}
-        </div>
-        <div>
-          {templates === null ? (
-            <div style={{ color: T.dim, fontSize: 13, padding: "14px 0" }}>Loading…</div>
-          ) : shown.length === 0 ? (
-            <div style={{ color: T.dim, fontSize: 13, padding: "14px 0", lineHeight: 1.5 }}>No templates yet. Save any workout as a template from its menu.</div>
-          ) : (
-            shown.map((t, i) => (
-              <button key={t.id} onClick={() => onChoose({ kind: "template", template: t })} style={{ ...row, borderBottom: i === shown.length - 1 ? "none" : row.borderBottom }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</div>
-                  <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{t.exerciseCount} exercise{t.exerciseCount === 1 ? "" : "s"}</div>
-                </div>
-                <span style={{ color: T.dim, fontSize: 13 }}>Start ›</span>
-              </button>
-            ))
-          )}
-        </div>
+        <button onClick={() => onChoose({ kind: "templates" })} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}><IconList size={16} /> Templates</span>
+          <span style={{ fontSize: 13, color: T.dim, fontWeight: 500 }}>{templates === null ? "" : templates.length === 0 ? "None yet ›" : `${templates.length} saved ›`}</span>
+        </button>
 
         <div aria-disabled="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 12, padding: "12px 14px", borderRadius: 12, border: `1px solid ${T.line}`, color: T.dim, opacity: 0.6 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}><IconBolt size={14} /> Generate workout</span>

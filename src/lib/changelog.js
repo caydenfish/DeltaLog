@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.14.4": {
+    title: "Small fixes",
+    items: [
+      "Start Workout now has a Templates button that opens all your templates, instead of listing a few.",
+      "Fixed the Today card listing muscles from exercises you skipped. Only exercises you actually logged sets for now count as trained.",
+    ],
+  },
   "1.14.3": {
     title: "Back works the way you'd expect",
     items: [

@@ -5,6 +5,14 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.14.4",
+    date: "2026-10-05",
+    items: [
+      "StartWorkoutSheet: inline first-3 template rows replaced with a single Templates button (intent { kind: 'templates' } -> SetLogger openTemplates) showing the saved-template count.",
+      "Home buildLastWorkoutInsight: 'muscles trained' now only includes workout_exercises with at least one non-warmup set with reps > 0. Previously every exercise in the last workout counted, so planned-but-skipped exercises (e.g. from a template) showed as trained.",
+    ],
+  },
+  {
     version: "1.14.3",
     date: "2026-10-05",
     items: [
