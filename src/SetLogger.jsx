@@ -2439,7 +2439,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     let bestE1RMOverall = 0;
     const exerciseRows = workout.map((w, i) => {
       const exSets = allSets[i];
-      if (exSets.length === 0) return null;
+      // Only exercises actually worked (a working set with reps) appear.
+      if (!exSets.some((x) => !x.isWarmup && (x.reps || 0) > 0)) return null;
       const workingSets = exSets.filter((s) => !s.isWarmup);
       const lastWorkingSets = w.lastWeek.filter((s) => !s.isWarmup);
       const bestToday = workingSets.reduce((m, s) => Math.max(m, e1RM(s.weight, s.reps, s.rir)), 0);

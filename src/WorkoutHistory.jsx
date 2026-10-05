@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { isWorkedExercise } from "./lib/volume";
 import ExerciseThumb from "./ExerciseThumb";
 import ExportWorkoutModal from "./ExportWorkoutModal";
 import { IconX, IconCamera, IconImage, IconTrash, IconCheck, IconShare } from "./Icons";
@@ -800,7 +801,7 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
             {sorted.map((w) => {
               const dateStr = new Date(w.completed_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
               const startTimeStr = w.started_at ? formatClockTime(w.started_at, timeFormat) : null;
-              const exCount = (w.workout_exercises || []).length;
+              const exCount = (w.workout_exercises || []).filter(isWorkedExercise).length;
               const checked = checkedIds.has(w.id);
               return (
                 <div

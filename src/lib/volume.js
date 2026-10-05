@@ -21,6 +21,16 @@ function isWarmupSet(s) {
 // effectiveSets() so every surface agrees.
 export const SECONDARY_SET_WEIGHT = 0.5;
 
+// An exercise only counts as "worked" (v1.14.5) if at least one working
+// (non-warmup) set with reps was logged for it. Planned-but-skipped and
+// warmup-only exercises don't count anywhere they'd be read as trained:
+// the Today card's muscles, history exercise counts, and "last session".
+// (Volume, heat map, weekly volume and training load already sum only
+// working sets, so those exercises contribute nothing there.)
+export function isWorkedExercise(we) {
+  return (we && we.sets ? we.sets : []).some((s) => !s.is_warmup && !s.isWarmup && (s.reps || 0) > 0);
+}
+
 // Hard sets (v1.14.2): weekly-volume research counts sets taken close to
 // failure (in Pelland et al. ~78% of effects were trained to failure),
 // and Robinson et al. (Sports Medicine, 2024) found hypertrophy falls off

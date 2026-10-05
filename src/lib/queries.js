@@ -485,17 +485,20 @@ export async function logAppOpen() {
 // *completed* workout. Replaces the hardcoded `lastWeek` array on each
 // library item — this is what makes the reps/lbs comparison badges real.
 export async function fetchLastSession(userId, exerciseId) {
-  const { data: lastWorkoutExercise, error: findErr } = await supabase
+  // The most recent session where this exercise was actually worked (at
+  // least one working set with reps, v1.14.5) -- not just the most recent
+  // appearance, which could be warmups only.
+  const { data: recent, error: findErr } = await supabase
     .from("workout_exercises")
-    .select("id, workouts!inner(user_id, completed_at)")
+    .select("id, workouts!inner(user_id, completed_at), sets(reps, is_warmup)")
     .eq("exercise_id", exerciseId)
     .eq("workouts.user_id", userId)
     .not("workouts.completed_at", "is", null)
     .order("workouts(completed_at)", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(10);
 
   if (findErr) throw findErr;
+  const lastWorkoutExercise = (recent || []).find((r) => (r.sets || []).some((s) => !s.is_warmup && (s.reps || 0) > 0));
   if (!lastWorkoutExercise) return [];
 
   const { data: sets, error: setsErr } = await supabase

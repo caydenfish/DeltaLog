@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.14.5": {
+    title: "Only exercises you actually worked count",
+    items: [
+      "Exercises only count once you log a working set for them. Skipped or warmup-only exercises no longer show up as trained on the Today card, in your history's exercise counts, or in your workout summary.",
+      "Last session now shows the last time you actually worked an exercise, not a session where you only warmed up on it.",
+    ],
+  },
   "1.14.4": {
     title: "Small fixes",
     items: [

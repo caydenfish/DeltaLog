@@ -9,7 +9,7 @@ import { computeTrainingLoad } from "./lib/trainingLoad";
 import { RANGES } from "./lib/ranges";
 import { CHANGELOG } from "./lib/changelog";
 import { versionsSince } from "./lib/versionCheck";
-import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, summarizeWorkoutDuration, bucketWeightHistory, bucketDailyVolume, bucketSeries, groupWorkoutsByDate, entriesSince } from "./lib/volume";
+import { computeMuscleSetCounts, summarizeHistory, summarizeWeightHistory, summarizeWorkoutDuration, bucketWeightHistory, bucketDailyVolume, bucketSeries, groupWorkoutsByDate, entriesSince, isWorkedExercise } from "./lib/volume";
 import { muscleLabel, subscribeTaxonomy, getTaxonomyVersion } from "./lib/muscleTaxonomy";
 import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
 import { toDisplay } from "./lib/weight";
@@ -143,7 +143,7 @@ function buildLastWorkoutInsight(history, programDay) {
   // listed, so planned-but-skipped exercises (e.g. from a template)
   // showed up as muscles you trained.
   const muscles = [...new Set((last.workout_exercises || [])
-    .filter((we) => (we.sets || []).some((st) => !st.is_warmup && st.reps > 0))
+    .filter(isWorkedExercise)
     .map((we) => we.exercises?.muscle_group)
     .filter(Boolean))];
 

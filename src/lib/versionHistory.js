@@ -5,6 +5,15 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.14.5",
+    date: "2026-10-05",
+    items: [
+      "lib/volume.js isWorkedExercise(we): true when at least one non-warmup set with reps > 0 exists (handles is_warmup and isWarmup). Used by Home's Today insight muscles, WorkoutHistory list exercise count, and SetLogger summary exerciseRows (previously only excluded zero-set exercises, so warmup-only ones showed). Volume, heat map, weekly volume and training load already sum working sets only.",
+      "fetchLastSession: now fetches the 10 most recent completed appearances with their sets and picks the first with a working set, instead of the single most recent appearance (which could be warmup-only, leaving 'last session' showing warmups).",
+      "Unchanged by design: completeWorkout still deletes zero-set exercise rows on finish; the history detail editor still lists every exercise row so warmup-only entries remain editable.",
+    ],
+  },
+  {
     version: "1.14.4",
     date: "2026-10-05",
     items: [
