@@ -7,7 +7,7 @@ import { scheduleRestPush, cancelRestPush, showRestingNotification, showRestDone
 import BodyHeatmap from "./BodyHeatmap";
 import BodyMap from "./BodyMap";
 import Preferences from "./Preferences";
-import { computeMuscleSetCounts } from "./lib/volume";
+import { computeMuscleSetCounts, isWorkedExercise } from "./lib/volume";
 import { computeDOTS, dotsBand } from "./lib/dots";
 import { getPrefs, setPref } from "./lib/prefs";
 import { saveSessionState, loadSessionState, clearSessionState } from "./lib/sessionState";
@@ -1117,6 +1117,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     if (startIntent.kind === "scratch") { setManageFromScratch(true); setView("manage"); }
     else if (startIntent.kind === "template" && startIntent.template) loadTemplate(startIntent.template);
     else if (startIntent.kind === "templates") openTemplates();
+    else if (startIntent.kind === "repeat" && startIntent.workout) loadPastWorkout(startIntent.workout);
     else if (startIntent.kind === "resume" && savedWorkout) handleResumePreviousSaved();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booting, startIntent]);
@@ -1424,6 +1425,35 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       note(`Couldn't load template: ${err.message}`);
     }
     setLoadingTemplateId(null);
+  }
+
+  // "Do again" from a past workout in History: same exercises in the same
+  // order, with that session's working and warmup set counts as the plan.
+  // Targets come from the normal history-based logic, so they reflect
+  // everything logged since, not a copy of that day's weights.
+  async function loadPastWorkout(past) {
+    try {
+      const rows = [...(past.workout_exercises || [])]
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
+        .filter(isWorkedExercise);
+      const items = [];
+      for (const row of rows) {
+        const libItem = library.find((l) => l.id === row.exercise_id);
+        if (!libItem) continue; // removed from the library since
+        const working = (row.sets || []).filter((x) => !x.is_warmup).length || 1;
+        const warmups = (row.sets || []).filter((x) => x.is_warmup).length;
+        const dbId = await addWorkoutExercise(workoutId, libItem.id, items.length, working, "", null, warmups, null);
+        const hydrated = await hydrateExercise(user.id, libItem);
+        items.push(newItem(hydrated, dbId, working, warmups));
+      }
+      if (items.length === 0) { note("None of that workout's exercises are in your library anymore."); return; }
+      setWorkout(items);
+      setAllSets(items.map(() => []));
+      setExIdx(0);
+      setView("workout");
+    } catch (err) {
+      note(`Couldn't load that workout: ${err.message}`);
+    }
   }
 
   function toggleSupersetLink(i) {

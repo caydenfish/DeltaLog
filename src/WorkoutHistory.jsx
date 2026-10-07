@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { isWorkedExercise, computeMuscleSetCounts } from "./lib/volume";
 import { getPrefs } from "./lib/prefs";
 import ExerciseThumb from "./ExerciseThumb";
 import ExportWorkoutModal from "./ExportWorkoutModal";
-import { IconX, IconCamera, IconImage, IconTrash, IconCheck, IconShare } from "./Icons";
+import { IconX, IconCamera, IconImage, IconTrash, IconCheck, IconShare, IconMoreHorizontal } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
 import { formatWeight, toDisplay, toCanonical } from "./lib/weight";
+import { buildExportStats, autoTitle, compactNum, fmtW, PR_LABEL } from "./lib/exportStats";
 import { formatClockTime, toLocalDateStr } from "./lib/time";
 import {
   deleteWorkout, updateSet, deleteSet, logSet, addWorkoutExercise, removeWorkoutExercise,
@@ -33,6 +34,9 @@ const T = {
   green: "#3BA55D",
 };
 
+const prTag = { fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(232,68,46,0.18)", color: "#E8442E", whiteSpace: "nowrap", flexShrink: 0 };
+const actionBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" };
+const menuItem = { display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: "#F2F1EC", fontSize: 14, padding: "10px 12px", borderRadius: 8, whiteSpace: "nowrap" };
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13, whiteSpace: "nowrap" };
 
 function workoutVolume(w) {
@@ -147,7 +151,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
   );
 }
 
-function DetailView({ workout, history, units, timeFormat, userId, editMode, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
+function DetailView({ workout, history, units, timeFormat, userId, editMode, prev, next, onNavigate, onRepeat, repeatBlocked, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
   const dateStr = new Date(workout.completed_at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const startTimeStr = workout.started_at ? formatClockTime(workout.started_at, timeFormat) : null;
   const isoDate = toLocalDateStr(workout.completed_at);
@@ -155,6 +159,28 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, onR
   const volume = Math.round(toDisplay(workoutVolume(workout), units));
   const setCounts = workoutSetCount(workout);
   const exercises = [...(workout.workout_exercises || [])].sort((a, b) => (a.position || 0) - (b.position || 0));
+  // Display-unit snapshot of this workout, shared by the title, the
+  // What changed block and the per-set PR outlines. Same shape the export
+  // image uses, so lib/exportStats.js judges PRs and deltas identically
+  // in both places (all-time bests as of this workout's date).
+  const statsData = useMemo(() => ({
+    workoutId: workout.id,
+    completedAt: workout.completed_at,
+    unit: units,
+    totalSets: setCounts.working,
+    totalVolume: volume,
+    durationMin: duration,
+    exercises: exercises.map((we) => ({
+      exerciseId: we.exercise_id,
+      name: (we.exercises && (we.exercises.name || we.exercises.short)) || "Exercise",
+      muscleGroup: we.exercises?.muscle_group,
+      sets: [...(we.sets || [])].sort((a, b) => (a.set_number || 0) - (b.set_number || 0)).map((st) => ({ weight: formatWeight(Number(st.weight), units), reps: st.reps, rir: st.rir, isWarmup: !!st.is_warmup })),
+    })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [workout, units]);
+  const stats = useMemo(() => (history ? buildExportStats({ data: statsData, history }) : null), [statsData, history]);
+  const title = autoTitle(statsData.exercises);
+  const [showMore, setShowMore] = useState(false);
   const [editing, setEditing] = useState(null); // { weId, setNumber } | null
   const [editWeight, setEditWeight] = useState("");
   const [editReps, setEditReps] = useState("");
@@ -420,57 +446,81 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, onR
     return !q || l.name.toLowerCase().includes(q) || (l.aliases || []).some((a) => a.toLowerCase().includes(q));
   });
 
+  const shortDate = (w) => new Date(w.completed_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const deltaText = (d) => {
+    if (!d || d.value === 0) return null;
+    const sign = d.value > 0 ? "+" : "\u2212";
+    if (d.kind === "weight") return `${sign}${fmtW(Math.abs(d.value))} ${units}`;
+    const n = Math.abs(d.value);
+    return `${sign}${n} rep${n === 1 ? "" : "s"}`;
+  };
+  const changes = stats && stats.hasHistory
+    ? stats.exercises.map((e, i) => ({ e, i })).filter(({ e }) => e.workingCount > 0 && (e.prs.length > 0 || (e.delta && e.delta.value !== 0)))
+    : [];
+  const showChanges = !editMode && stats && stats.hasHistory && (changes.length > 0 || (stats.compare && stats.compare.volumePct != null));
+  const statCol = { flex: 1, minWidth: 0, textAlign: "center" };
+  const statVal = { fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, whiteSpace: "nowrap" };
+  const statLab = { fontSize: 11, color: T.dim, whiteSpace: "nowrap" };
+  const navBtn = { background: "none", border: "none", color: T.dim, fontSize: 13, padding: "6px 2px", whiteSpace: "nowrap" };
+
   return (
-    <div style={{ padding: 16, flex: 1, overflowY: "auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{dateStr}</div>
-        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-          <button onClick={() => { setExportData(buildExportData()); setShowExport(true); }} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
-            Save image
-          </button>
-          <button onClick={() => setShowSaveTemplate(true)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
-            Save as template
-          </button>
-          <button onClick={handleShare} disabled={sharing} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: T.accent, padding: "6px 4px", fontSize: 13, fontWeight: 600 }}>
-            {sharing ? "…" : <><IconShare size={16} /> Share</>}
-          </button>
-        </div>
+    <div style={{ padding: "12px 16px 0", flex: 1, display: "flex", flexDirection: "column" }}>
+      {/* Prev / next between workouts, chronological across all history */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", minHeight: 30 }}>
+        {prev ? <button onClick={() => onNavigate(prev.id)} style={navBtn}>‹ {shortDate(prev)}</button> : <span />}
+        {next ? <button onClick={() => onNavigate(next.id)} style={navBtn}>{shortDate(next)} ›</button> : <span />}
       </div>
-      {startTimeStr && <div style={{ color: T.dim, fontSize: 12, marginTop: 2 }}>Started {startTimeStr}</div>}
-      <div style={{ color: T.dim, fontSize: 11.5, marginTop: 2, marginBottom: 8 }}>
-        {editMode ? "Tap any set below to correct it — useful if a set got logged wrong or wasn't logged in the moment." : "Viewing only. Tap Edit above to correct a set, or add/remove sets and exercises."}
-      </div>
-      <div style={{ display: "flex", gap: 16, marginTop: 8, marginBottom: 16 }}>
-        <div>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{volume.toLocaleString()}</div>
-          <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Volume ({units})</div>
-        </div>
-        <div>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{setCounts.working}</div>
-          <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Sets</div>
-          {setCounts.warmup > 0 && <div style={{ fontSize: 10, color: T.dim, marginTop: 1 }}>+{setCounts.warmup} warmup</div>}
-        </div>
+
+      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, lineHeight: 1.05, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
+      <div style={{ color: T.dim, fontSize: 12.5, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dateStr}{startTimeStr ? ` · ${startTimeStr}` : ""}</div>
+      {editMode && (
+        <div style={{ color: T.dim, fontSize: 11.5, marginTop: 6 }}>Tap any set to correct it, or add and remove sets and exercises.</div>
+      )}
+
+      <div style={{ display: "flex", gap: 6, marginTop: 14, marginBottom: 14, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 4px" }}>
         {duration != null && (
-          <div>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{duration}</div>
-            <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Minutes</div>
-          </div>
+          <div style={statCol}><div style={statVal}>{duration}</div><div style={statLab}>min</div></div>
         )}
-        {workout.body_weight != null && !editMode && (
-          <div>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{workout.body_weight}</div>
-            <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Bodyweight</div>
-          </div>
-        )}
-        {editMode && (
-          <button onClick={startEditBodyWeight} style={{ background: "none", border: "none", padding: 0, textAlign: "left" }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: workout.body_weight != null ? T.text : T.dim }}>
-              {workout.body_weight != null ? workout.body_weight : "+ Add"}
-            </div>
-            <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Bodyweight</div>
+        <div style={statCol}>
+          <div style={statVal}>{setCounts.working}</div>
+          <div style={statLab}>sets{setCounts.warmup > 0 ? ` +${setCounts.warmup}W` : ""}</div>
+        </div>
+        <div style={statCol}><div style={statVal}>{compactNum(volume)}</div><div style={statLab}>{units} volume</div></div>
+        {editMode ? (
+          <button onClick={startEditBodyWeight} style={{ ...statCol, background: "none", border: "none", padding: 0 }}>
+            <div style={{ ...statVal, color: workout.body_weight != null ? T.text : T.dim }}>{workout.body_weight != null ? workout.body_weight : "+ Add"}</div>
+            <div style={statLab}>bodyweight</div>
           </button>
+        ) : workout.body_weight != null && (
+          <div style={statCol}><div style={statVal}>{workout.body_weight}</div><div style={statLab}>bodyweight</div></div>
         )}
       </div>
+
+      {showChanges && (
+        <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 12px", marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, fontWeight: 600, color: T.dim, marginBottom: 4 }}>
+            <span>What changed</span>
+            <span>vs last time</span>
+          </div>
+          {stats.compare && stats.compare.volumePct != null && (
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, padding: "3px 0" }}>
+              <span style={{ color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Volume <span style={{ color: T.dim }}>vs {shortDate({ completed_at: stats.compare.date })}</span></span>
+              <span style={{ color: stats.compare.volumePct > 0 ? T.green : stats.compare.volumePct < 0 ? "#E8A82E" : T.dim, fontWeight: 600, whiteSpace: "nowrap" }}>{stats.compare.volumePct > 0 ? "+" : stats.compare.volumePct < 0 ? "\u2212" : "\u00b1"}{Math.abs(stats.compare.volumePct)}%</span>
+            </div>
+          )}
+          {changes.slice(0, 5).map(({ e, i }) => {
+            const dt = deltaText(e.delta);
+            return (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13, padding: "3px 0" }}>
+                <span style={{ color: T.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{statsData.exercises[i].name}</span>
+                {dt && <span style={{ color: e.delta.value > 0 ? T.green : "#E8A82E", fontWeight: 600, whiteSpace: "nowrap" }}>{dt}</span>}
+                {e.prs.length > 0 && <span style={prTag}>PR</span>}
+              </div>
+            );
+          })}
+          {changes.length > 5 && <div style={{ fontSize: 11.5, color: T.dim, marginTop: 2 }}>+{changes.length - 5} more below</div>}
+        </div>
+      )}
 
       {editingBodyWeight && (
         <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10, marginBottom: 16, marginTop: -8 }}>
@@ -491,15 +541,46 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, onR
         </div>
       )}
 
-      {workout.session_notes && (
-        <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 16, fontSize: 13, color: T.text, fontStyle: "italic" }}>
-          "{workout.session_notes}"
-        </div>
-      )}
+      {!editMode && exercises.map((we, i) => {
+        const ex = we.exercises || {};
+        const sets = [...(we.sets || [])].sort((a, b) => (a.set_number || 0) - (b.set_number || 0));
+        const labels = setLabels(sets);
+        const est = stats ? stats.exercises[i] : null;
+        const dt = est ? deltaText(est.delta) : null;
+        let right = null;
+        if (est && est.prs.length > 0) right = <span style={prTag}>{PR_LABEL[est.prs[0].type]}</span>;
+        else if (dt) right = <span style={{ fontSize: 12, fontWeight: 600, color: est.delta.value > 0 ? T.green : "#E8A82E", whiteSpace: "nowrap" }}>{dt}</span>;
+        else if (est && est.last && est.workingCount > 0) right = <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap" }}>same as last</span>;
+        else if (est && stats.hasHistory && !est.last && est.workingCount > 0) right = <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap" }}>first time</span>;
+        return (
+          <div key={we.id || i} style={{ marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${T.line}` }}>
+              <ExerciseThumb muscle={ex.muscle_group} mediaUrl={ex.media_url} size={20} />
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ex.name || ex.short || "Exercise"}</div>
+              {right}
+            </div>
+            {sets.length === 0 ? (
+              <div style={{ fontSize: 12, color: T.dim, padding: "8px 0" }}>No sets logged.</div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 0 6px" }}>
+                {sets.map((st, j) => {
+                  const isPR = !!(est && est.prSetIndexes.has(j));
+                  const warm = !!st.is_warmup;
+                  return (
+                    <span key={j} style={{ display: "inline-flex", alignItems: "baseline", gap: 4, padding: "4px 9px", borderRadius: 999, whiteSpace: "nowrap", fontSize: 13, border: `1px solid ${isPR ? T.accent : warm ? "rgba(232,168,46,0.45)" : T.line}`, background: isPR ? "rgba(232,68,46,0.10)" : "none", color: isPR ? T.accent : warm ? "#E8A82E" : T.text, fontWeight: isPR ? 700 : 500 }}>
+                      {warm && <span style={{ fontSize: 11, fontWeight: 700 }}>{labels[j]}</span>}
+                      {formatWeight(st.weight, units)}×{st.reps}
+                      {st.rir != null && <span style={{ fontSize: 11, color: isPR ? T.accent : T.dim, fontWeight: 400 }}>RIR {st.rir}</span>}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
-      <ProgressPhotoBlock userId={userId} dateStr={isoDate} onPhotoChange={setProgressPhoto} />
-
-      {exercises.map((we, i) => {
+      {editMode && exercises.map((we, i) => {
         const ex = we.exercises || {};
         const sets = [...(we.sets || [])].sort((a, b) => (a.set_number || 0) - (b.set_number || 0));
         const labels = setLabels(sets);
@@ -653,6 +734,44 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, onR
         <button onClick={onRequestDelete} style={{ width: "100%", marginTop: 10, padding: "12px 0", borderRadius: 10, border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 13, fontWeight: 600 }}>Delete entire workout</button>
       )}
 
+      {workout.session_notes && (
+        <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginTop: 10, fontSize: 13, color: T.text, fontStyle: "italic" }}>
+          "{workout.session_notes}"
+        </div>
+      )}
+      <div style={{ marginTop: 12 }}>
+        <ProgressPhotoBlock userId={userId} dateStr={isoDate} onPhotoChange={setProgressPhoto} />
+      </div>
+
+      <div style={{ flex: 1 }} />
+      {!editMode && (
+        <div style={{ position: "sticky", bottom: 0, margin: "12px -16px 0", padding: "12px 16px calc(12px + env(safe-area-inset-bottom, 0px))", background: T.bg, borderTop: `1px solid ${T.line}`, display: "flex", gap: 8, zIndex: 2 }}>
+          <button
+            onClick={() => onRepeat && !repeatBlocked && onRepeat(workout)}
+            disabled={repeatBlocked}
+            title={repeatBlocked ? "Finish your current workout first" : undefined}
+            style={{ flex: 1.4, padding: "12px 0", borderRadius: 12, border: "none", background: repeatBlocked ? T.surface2 : T.accent, color: repeatBlocked ? T.dim : "#fff", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}
+          >
+            {repeatBlocked ? "Workout in progress" : "Do again"}
+          </button>
+          <button onClick={() => { setExportData(buildExportData()); setShowExport(true); }} style={actionBtn}><IconImage size={14} /> Image</button>
+          <button onClick={handleShare} disabled={sharing} style={actionBtn}><IconShare size={14} /> {sharing ? "…" : "Share"}</button>
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <button onClick={() => setShowMore((v) => !v)} aria-label="More actions" style={{ ...actionBtn, width: 44, flex: "none", padding: "12px 0" }}><IconMoreHorizontal size={16} /></button>
+            {showMore && (
+              <>
+                <div onClick={() => setShowMore(false)} style={{ position: "fixed", inset: 0, zIndex: 3 }} />
+                <div style={{ position: "absolute", right: 0, bottom: "calc(100% + 8px)", zIndex: 4, minWidth: 190, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+                  <button onClick={() => { setShowMore(false); setShowSaveTemplate(true); }} style={menuItem}>Save as template</button>
+                  <button onClick={() => { setShowMore(false); onRequestDelete(); }} style={{ ...menuItem, color: T.accent }}>Delete workout</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {editMode && <div style={{ height: 16 }} />}
+
       {shareUrl && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.75)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 360, background: T.bg, border: `1px solid ${T.line}`, borderRadius: 16, padding: 20 }}>
@@ -699,7 +818,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, onR
 // opened straight into a specific workout (e.g. from tapping a calendar
 // day) via `initialWorkoutId`, in which case the back arrow closes
 // directly instead of returning to the list.
-export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
+export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, activeWorkout, onRepeatWorkout, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
   const [selectedId, setSelectedId] = useState(initialWorkoutId || null);
   const [confirmDeleteIds, setConfirmDeleteIds] = useState(null); // null | array of workout ids pending delete confirmation
   const [deleting, setDeleting] = useState(false);
@@ -711,7 +830,24 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
   const sorted = [...(history || [])]
     .filter((w) => !dateFilter || toLocalDateStr(w.completed_at) === dateFilter)
     .sort((a, b) => b.completed_at.localeCompare(a.completed_at));
-  const selected = selectedId ? sorted.find((w) => w.id === selectedId) : null;
+  // Looked up in the full history (not just the date-filtered list) so
+  // prev/next can walk past the day a calendar tap opened.
+  const selected = selectedId ? (history || []).find((w) => w.id === selectedId) || null : null;
+  const chronological = [...(history || [])].filter((w) => w.completed_at).sort((a, b) => a.completed_at.localeCompare(b.completed_at));
+  const selIdx = selected ? chronological.findIndex((w) => w.id === selected.id) : -1;
+  const prevWorkout = selIdx > 0 ? chronological[selIdx - 1] : null;
+  const nextWorkout = selIdx >= 0 && selIdx < chronological.length - 1 ? chronological[selIdx + 1] : null;
+  const scrollRef = useRef(null);
+  // A delete started from the detail view's bottom bar shows its
+  // confirmation at the top of the screen; bring it into view.
+  useEffect(() => {
+    if (confirmDeleteIds && scrollRef.current) scrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+  }, [confirmDeleteIds]);
+  function navigateTo(id) {
+    setSelectedId(id);
+    setEditMode(false);
+    if (scrollRef.current) scrollRef.current.scrollTo({ top: 0 });
+  }
   const dateFilterLabel = dateFilter ? new Date(`${dateFilter}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase() : null;
 
   function handleBack() {
@@ -757,7 +893,7 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
+    <div ref={scrollRef} style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <style>{`button { cursor: pointer; }`}</style>
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
@@ -799,8 +935,14 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
 
         {selected ? (
           <DetailView
+            key={selected.id}
             workout={selected}
             history={history}
+            prev={prevWorkout}
+            next={nextWorkout}
+            onNavigate={navigateTo}
+            onRepeat={onRepeatWorkout}
+            repeatBlocked={!!(activeWorkout && !activeWorkout.isPaused)}
             units={units}
             timeFormat={timeFormat}
             userId={user.id}

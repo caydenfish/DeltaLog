@@ -9,6 +9,17 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.16.0": {
+    title: "A better look back at past workouts",
+    items: [
+      "Past workouts now open with a title based on what you trained, like Chest + Shoulders, plus a quick stat row.",
+      "What changed shows how the session compared to last time: volume, lifts that went up or down, and every PR.",
+      "Sets show as compact chips. PR sets are outlined, warmups are amber, and each lift says whether it beat last time.",
+      "Do again starts a new workout with the same exercises and set counts. Your targets still come from everything you've logged since.",
+      "Arrows at the top step to the previous or next workout without going back to the list.",
+      "Save image, Share, Save as template and Delete now live in one bar at the bottom.",
+    ],
+  },
   "1.15.0": {
     title: "Brand new workout images",
     items: [

@@ -5,6 +5,18 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.16.0",
+    date: "2026-10-06",
+    items: [
+      "WorkoutHistory.jsx DetailView view mode rebuilt: autoTitle (lib/exportStats) heading, date + start time line, four-up stat card (min, working sets + warmup count, compact volume, bodyweight; bodyweight stays the edit button in edit mode). The 'Viewing only' hint is gone; the edit hint shows only in edit mode.",
+      "New statsData memo (display-unit snapshot, same shape as the export image data) feeds buildExportStats({data, history}), so PR detection, per-exercise last-session deltas and the comparable-workout volume delta are identical to the image export. What changed card lists volume % vs the comparable workout plus every exercise with a PR or nonzero top-set delta (capped at 5). Hidden when there's no earlier history or in edit mode.",
+      "View-mode exercises render as a header row (thumb, name, PR label / delta / same as last / first time) plus set chips: warmups amber with W labels, PR sets (prSetIndexes) outlined in accent, RIR shown dim inside the chip. Edit mode keeps the previous card-and-row editor unchanged.",
+      "Header action row removed. New sticky bottom bar (root no longer overflowY:auto, so sticky binds to the WorkoutHistory scroll container): Do again, Image, Share, and a More menu with Save as template and Delete workout. Notes and ProgressPhotoBlock moved below the exercises.",
+      "Prev/next navigation: WorkoutHistory now resolves `selected` from the full history (not the dateFilter list), computes chronological neighbours and passes prev/next/onNavigate; DetailView is keyed by workout id so per-view state resets. A delete confirmation triggered from the bottom bar scrolls the container to the top banner.",
+      "Do again: Home passes activeWorkout and onRepeatWorkout; it closes History and calls onStartWorkout({kind:'repeat', workout}). SetLogger handles the new intent with loadPastWorkout(past): worked exercises in position order, planned = that session's working set count (min 1), plannedWarmup = its warmup count, via addWorkoutExercise + hydrateExercise + newItem. Supersets and rep schemes aren't carried (not in the history query). The button is disabled with 'Workout in progress' while a non-paused workout is active.",
+    ],
+  },
+  {
     version: "1.15.0",
     date: "2026-10-06",
     items: [

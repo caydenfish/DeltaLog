@@ -1660,6 +1660,8 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {historyView && (
         <WorkoutHistory
           history={history || []}
+          activeWorkout={activeWorkout}
+          onRepeatWorkout={(w) => { setHistoryView(null); onStartWorkout({ kind: "repeat", workout: w }); }}
           initialWorkoutId={historyView.initialWorkoutId}
           dateFilter={historyView.dateFilter}
           units={units}
