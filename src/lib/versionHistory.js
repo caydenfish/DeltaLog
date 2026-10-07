@@ -5,6 +5,30 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.15.0",
+    date: "2026-10-06",
+    items: [
+      "ExportWorkoutModal.jsx rewritten. Old Card/Detailed/Story layouts, Position picker and VolumeSideChart removed. Layouts now live in new exportLayouts.jsx (13 components, LAYOUTS registry with per-layout `uses` for which Include toggles apply and a `photo` flag). Every layout renders into a fixed W=270 x heightFor(format) frame (Story 480, Post 338, Square 270); capture scale is a flat 1080/270 = 4, so every format exports 1080 wide. Frame has no radius/border (rounded corners come from a non-captured wrapper).",
+      "Layout picker renders real thumbnails of every layout (ExportFrame at transform scale 0.3) in a horizontal strip. Photo layouts are disabled when there's no progress photo. Legacy exportImagePrefs.layout keys map card->scoreboard, detailed->log, story->overlay (photo) or poster.",
+      "Photo pipeline: step 2 now crops to photoBoxFor(layout, H), the exact box each photo layout draws into (full frame, split top 58%, polaroid window), keyed on that box's aspect. html2canvas still never sees object-fit doing real work.",
+      "New lib/exportStats.js buildExportStats({data, history}): filters history to workouts completed before data.completedAt (excluding data.workoutId), builds running per-exercise baselines chronologically (max weight, max e1RM via programEngine.e1RM, max single-set volume; working sets with reps > 0), flags this workout's PRs per exercise and per set (thresholds 0.05 weight / 0.5 e1RM / 0.5 volume; only when the exercise has prior history), picks a headline PR (weight > e1RM > volume, then largest relative gain), last-session top set and delta per exercise, the most recent earlier workout sharing >= 50% of exercise ids for workout-level deltas, month totals (workouts, volume, PR exercise count incl. prior month workouts scored with the same running baselines) and the rest-day-tolerant streak as of that date (same <= 2 day gap rule as fetchStreak). Rep PRs are deliberately not counted on images.",
+      "Modal fetches fetchWorkoutHistory(userId, null) when no `history` prop is passed (post-workout path); History passes Home's already-loaded history through WorkoutHistory -> DetailView. Image renders immediately; PR context fills in when history resolves.",
+      "Data contract additions: workoutId, completedAt, muscleMap {primary, secondary, nameMode}, and per exercise exerciseId + muscleGroup. SetLogger passes livePrimary/liveSecondary and a summaryCompletedAtRef timestamp; WorkoutHistory builds buildExportData() (computeMuscleSetCounts over raw tags) once when the sheet opens, kept in exportData state so it's stable while open. Share-link snapshot (buildSnapshot) unchanged.",
+      "Options: editable title (autoTitle from top two muscle groups by working sets, or Full body), five accent swatches, Include toggles (Highlight PRs, Date, Volume, Duration, Bodyweight, Warmups) greyed out per layout. Web Share API button (navigator.canShare with files) next to Save; prefs persist layout, format, accent and toggles.",
+      "Verified in headless Chromium: all 13 layouts in all 3 formats, plus html2canvas captures of Scoreboard, Polaroid (rotated), Muscle map (inline SVG BodyMap) and Cover.",
+    ],
+  },
+  {
+    version: "1.14.6",
+    date: "2026-10-06",
+    items: [
+      "lib/weight.js roundDisplay: lb now rounds to 0.1 (was whole number, which turned stored 72.5 lb into 73 on every toDisplay/formatWeight path). kg rounds to 0.1 but snaps to the nearest 0.25 when within 0.02, so 1.25 kg microplate loads (31.25) survive the lb canonical round trip instead of showing 31.3.",
+      "New WEIGHT_STEP {lb:5, kg:2.5}, FINE_WEIGHT_STEP {lb:2.5, kg:1.25}, weightStepFor(unit, weights), isFineStep, roundToStep (float-cleaned). weightStepFor returns the fine step when any weight is on the fine grid but off the base grid (tolerance 0.03), else base.",
+      "SetLogger: new exerciseStep(ex, unit, todaysWorkingSets) pools working-set weights from today, lastWeek and recentSets (30-day window) and feeds weightStepFor. targetFor computes it once and passes it to targetFromHistory and applyBackoffAdjustment (replacing three hardcoded 5/2.5 steps), and returns it as target.step. Program-prescribed targets are untouched.",
+      "lib/warmup.js warmupWeightFor takes an optional step (both SetLogger call sites pass target.step). Target info tooltip appends a line explaining the fine step when active. bumpWeight float-cleans to 2 decimals.",
+    ],
+  },
+  {
     version: "1.14.5",
     date: "2026-10-05",
     items: [

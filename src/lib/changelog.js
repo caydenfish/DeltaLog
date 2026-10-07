@@ -9,6 +9,23 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.15.0": {
+    title: "Brand new workout images",
+    items: [
+      "Save as image is rebuilt with 13 layouts: Scoreboard, PR hero, Stat sheet, Receipt, Progress, Muscle map, Streak, Training log and Poster, plus four made for your progress photo: Photo overlay, Photo split, Polaroid and Cover.",
+      "Highlight PRs marks every lift where you beat your all-time best weight, estimated 1RM or set volume, judged against workouts before that day, so older workouts from History show the PRs they had at the time.",
+      "Every layout works in Story, Post and Square, with a live preview and thumbnails of each layout so you can see them before you pick.",
+      "Name the image yourself or keep the automatic title, pick an accent color, and choose what to include.",
+      "Share straight to Instagram, Messages and other apps from the share button on phones that support it.",
+    ],
+  },
+  "1.14.6": {
+    title: "Half-step weights",
+    items: [
+      "Weights now show up to one decimal, so 72.5 lb stays 72.5 everywhere instead of rounding to 73.",
+      "Log a 2.5 lb (or 1.25 kg) increment on an exercise and its targets and warmups switch to 2.5 lb steps for that exercise. Everything else keeps the usual 5 lb / 2.5 kg steps.",
+    ],
+  },
   "1.14.5": {
     title: "Only exercises you actually worked count",
     items: [

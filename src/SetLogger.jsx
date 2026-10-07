@@ -24,7 +24,7 @@ import { getSplits } from "./lib/splits";
 import { triggerStravaCheck } from "./lib/strava";
 import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
 import { toLocalDateStr } from "./lib/time";
-import { toDisplay, toCanonical, roundDisplay, formatWeight, platesFor, plateByValue, BAR_PRESETS, BIG_PLATE, bigPlateAllowed } from "./lib/weight";
+import { toDisplay, toCanonical, roundDisplay, formatWeight, platesFor, plateByValue, BAR_PRESETS, BIG_PLATE, bigPlateAllowed, weightStepFor, isFineStep, roundToStep } from "./lib/weight";
 import { warmupWeightFor, getWarmupPercents } from "./lib/warmup";
 import {
   fetchExercises,
@@ -132,8 +132,22 @@ function targetFor(ex, range, unit, todaysWorkingSets = [], method = "rir_autore
   if (ex.prescribedWeight != null && ex.prescribedReps != null) {
     return { weight: ex.prescribedWeight, reps: ex.prescribedReps, anchored: true, baseE1RM: null, source: null, reasonText: ex.progressionReason, fromProgram: true };
   }
-  const base = targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx);
-  return applyBackoffAdjustment(base, ex, range, unit, todaysWorkingSets, setIdx);
+  const step = exerciseStep(ex, unit, todaysWorkingSets);
+  const base = targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx, step);
+  const out = applyBackoffAdjustment(base, ex, range, unit, todaysWorkingSets, setIdx, step);
+  return out ? { ...out, step } : out;
+}
+
+// Loading increment for this exercise: 5 lb / 2.5 kg by default, half
+// that once any working weight logged for it today, last session, or in
+// the trailing 30 days sits on the half-step grid (see weightStepFor).
+function exerciseStep(ex, unit, todaysWorkingSets = []) {
+  const weights = [
+    ...todaysWorkingSets,
+    ...(ex.lastWeek || []).filter((s) => !s.isWarmup),
+    ...(ex.recentSets || []).filter((s) => !s.isWarmup),
+  ].map((s) => Number(s.weight));
+  return weightStepFor(unit, weights);
 }
 
 // Back-off / range-change sets (e.g. set 3 drops from 8-12 to 15-18):
@@ -151,21 +165,20 @@ function targetFor(ex, range, unit, todaysWorkingSets = [], method = "rir_autore
 // weight down to what that set says you can do for the target reps,
 // putting the next set back inside the range. Applies under every
 // target method, since double progression otherwise holds weight flat.
-function applyBackoffAdjustment(base, ex, range, unit, todaysWorkingSets, setIdx) {
+function applyBackoffAdjustment(base, ex, range, unit, todaysWorkingSets, setIdx, step) {
   if (!base || todaysWorkingSets.length === 0) return base;
   const latest = todaysWorkingSets[todaysWorkingSets.length - 1];
   const rangeChange = isRangeChange(ex.repScheme, setIdx, range);
   const missedRange = latest.reps < range.low;
   if (!rangeChange && !missedRange) return base;
-  const step = unit === "kg" ? 2.5 : 5;
   const todayE1RM = e1RM(latest.weight, latest.reps, latest.rir ?? 2);
   if (!(todayE1RM > 0)) return base;
-  const adjusted = Math.max(0, Math.round(weightForReps(todayE1RM, base.reps) / step) * step);
+  const adjusted = Math.max(0, roundToStep(weightForReps(todayE1RM, base.reps), step));
   if (adjusted >= base.weight) return { ...base, backoffChecked: true };
   return { ...base, weight: adjusted, backoff: { from: base.weight, source: latest, e1rm: Math.round(todayE1RM), reason: rangeChange ? "range" : "missed" } };
 }
 
-function targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx) {
+function targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx, step) {
   const { low, high } = range;
   const hasScheme = Array.isArray(ex.repScheme) && ex.repScheme.length > 0;
   const lastWorkingSets = ex.lastWeek.filter((s) => !s.isWarmup);
@@ -174,7 +187,6 @@ function targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx) {
   // session doesn't drag the next recommendation down. Falls back to
   // lastWorkingSets when the window is empty.
   const recentWorkingSets = (ex.recentSets || []).filter((s) => !s.isWarmup);
-  const step = unit === "kg" ? 2.5 : 5;
 
   // Double Progression: same weight session to session until the top of
   // the range is hit, then add one step and restart at the bottom. With a
@@ -185,14 +197,14 @@ function targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx) {
     const ref = hasScheme ? lastWorkingSets[setIdx] : null;
     if (hasScheme && ref) {
       const hitTop = ref.reps >= high;
-      const weight = hitTop ? Math.round((ref.weight + step) / step) * step : ref.weight;
+      const weight = hitTop ? roundToStep(ref.weight + step, step) : ref.weight;
       const reps = hitTop ? low : high;
       return { weight, reps, anchored: true, baseE1RM: Math.round(e1RM(weight, reps, ref.rir ?? 2)), source: ref, fromToday: false, method, perSet: true };
     }
     if (!hasScheme) {
       const lastSet = lastWorkingSets[lastWorkingSets.length - 1];
       const hitTop = lastWorkingSets.every((s) => s.reps >= high);
-      const weight = hitTop ? Math.round((lastSet.weight + step) / step) * step : lastSet.weight;
+      const weight = hitTop ? roundToStep(lastSet.weight + step, step) : lastSet.weight;
       const reps = hitTop ? low : high;
       const baseE1RM = e1RM(weight, reps, lastSet.rir ?? 2);
       return { weight, reps, anchored: true, baseE1RM: Math.round(baseE1RM), source: lastSet, fromToday: false, method };
@@ -224,7 +236,7 @@ function targetFromHistory(ex, range, unit, todaysWorkingSets, method, setIdx) {
     anchored = false;
     source = { weight: ex.targetWeight, reps: hypReps, rir: 2 };
   }
-  const weight = Math.round(weightForReps(baseE1RM, reps) / step) * step;
+  const weight = roundToStep(weightForReps(baseE1RM, reps), step);
   const usedRecentWindow = candidateSets === recentWorkingSets && recentWorkingSets.length > 0;
   return { weight, reps, anchored, baseE1RM: Math.round(baseE1RM), source, fromToday: method === "rir_autoregulation" && todaysWorkingSets.length > 0, usedRecentWindow, method };
 }
@@ -569,6 +581,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [finishConfirm, setFinishConfirm] = useState(false);
   const [outlierReview, setOutlierReview] = useState(null); // null | array of flagged sets pending review
   const [showExportImage, setShowExportImage] = useState(false);
+  // Stable completion timestamp for the export image's PR/streak context
+  // (set once when the summary first renders).
+  const summaryCompletedAtRef = useRef(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   // True only when "manage" was entered via the empty-workout "Add exercises
   // manually" path -- i.e. nothing has been committed to yet, so the back
@@ -1048,7 +1063,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   // prefill (below) never disagree about which set is coming up next.
   const nextWarmupIndex = ex && sets.length < (ex.plannedWarmup || 0) ? sets.length : null;
   const nextWarmupWeight = ex && nextWarmupIndex != null && target
-    ? warmupWeightFor(target.weight, ex.plannedWarmup, nextWarmupIndex, unit, getPrefs().warmupPercentSchemes)
+    ? warmupWeightFor(target.weight, ex.plannedWarmup, nextWarmupIndex, unit, getPrefs().warmupPercentSchemes, target.step)
     : null;
 
   const note = (msg, type = "e1rm", ms = 4000) => { setFlash({ type, msg }); setTimeout(() => setFlash(null), ms); };
@@ -1762,7 +1777,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     if (draft) { setWeight(draft.weight); setReps(draft.reps); setRir(draft.rir); }
     else if (prefill) { setWeight(String(prefill.weight)); setReps(String(prefill.reps)); setRir(prefill.rir !== undefined ? prefill.rir : null); }
     else if (nextIsWarmup) {
-      const wWeight = warmupWeightFor(target.weight, ex.plannedWarmup, nextWarmupIndex, unit, getPrefs().warmupPercentSchemes);
+      const wWeight = warmupWeightFor(target.weight, ex.plannedWarmup, nextWarmupIndex, unit, getPrefs().warmupPercentSchemes, target.step);
       setWeight(String(wWeight)); setReps(String(target.reps)); setRir(null);
     } else if (lastLogged) {
       const lw = lastWeek[Math.min(sets.length, lastWeek.length - 1)];
@@ -2423,6 +2438,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
   // ---------- Summary view ----------
   if (view === "summary") {
+    if (!summaryCompletedAtRef.current) summaryCompletedAtRef.current = new Date().toISOString();
     const totalSets = allSets.flat().length;
     const totalWorkingSets = allSets.flat().filter((s) => !s.isWarmup).length;
     const totalWarmupSets = totalSets - totalWorkingSets;
@@ -2626,7 +2642,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         </div>
         {showExportImage && (
           <ExportWorkoutModal
+            userId={user.id}
             data={{
+              workoutId,
+              completedAt: summaryCompletedAtRef.current,
               dateLabel: dateStr,
               unit,
               totalSets: totalWorkingSets,
@@ -2634,10 +2653,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               durationMin,
               bodyWeight: bodyWeightInput ? parseFloat(bodyWeightInput) : null,
               photoUrl: progressPhotoPreview || null,
+              muscleMap: { primary: livePrimary, secondary: liveSecondary, nameMode: muscleNameMode },
               exercises: exerciseRows.filter(Boolean).map((row) => {
                 const labels = setLabels(row.exSets);
                 return {
+                  exerciseId: row.w.id,
                   name: row.w.short || row.w.name,
+                  muscleGroup: row.w.muscle,
                   sets: row.exSets.map((s, j) => ({ label: labels[j], weight: s.weight, reps: s.reps, rir: s.rir, isWarmup: !!s.isWarmup })),
                 };
               }),
@@ -3187,6 +3209,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               ) : (
                 <>No session history yet, so this starts from the library default of {ex.targetWeight} {unit}, treated as a moderate hypertrophy effort (~{target.baseE1RM} {unit} estimated 1RM). Scaled to {rangeLabel}. Log a session and this becomes personalized.</>
               )}
+              {!target.fromProgram && isFineStep(target.step, unit) && (
+                <> Rounded to <b style={{ color: T.text }}>{target.step} {unit}</b> steps, since you've logged {target.step} {unit} increments on this exercise.</>
+              )}
             </div>
           )}
 
@@ -3592,7 +3617,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 const weightSteps = unit === "kg" ? [1.25, 2.5] : [2.5, 5];
                 function bumpWeight(delta) {
                   const cur = parseFloat(weight) || 0;
-                  setWeight(String(Math.max(0, cur + delta)));
+                  setWeight(String(Math.max(0, Math.round((cur + delta) * 100) / 100)));
                 }
                 function bumpReps(delta) {
                   const cur = parseInt(reps, 10) || 0;

@@ -16,8 +16,8 @@ export function kgToLb(kg) {
 }
 
 // Canonical (lb, as stored) -> whatever unit the user has selected.
-// Rounded at this single conversion boundary (whole lb / one decimal
-// kg -- see roundDisplay below) rather than left at full float
+// Rounded at this single conversion boundary (one decimal, plus
+// quarter-kg values -- see roundDisplay below) rather than left at full float
 // precision, since LB_PER_KG is irrational and every unrounded kg
 // conversion was surfacing long decimal tails (e.g. 61.68539...) any
 // place this ran through a plain toDisplay call instead of the
@@ -36,16 +36,54 @@ export function toCanonical(displayValue, unit) {
   return unit === "kg" ? kgToLb(displayValue) : displayValue;
 }
 
-// Rounds a display-unit weight the way it'd actually be spoken/written in
-// that unit — whole numbers for lb, one decimal for kg.
+// Rounds a display-unit weight to at most one decimal, so half-step
+// loads (72.5 lb on a 2.5 lb machine) survive the round trip instead of
+// snapping to a whole number. kg additionally keeps quarter values
+// (31.25, 31.75) intact when the stored value sits on that grid, since
+// 1.25 kg is the kg equivalent of a 2.5 lb step and those loads would
+// otherwise display as an unloadable 31.3. Anything else (a plain unit
+// conversion like 72.5 lb -> 32.886 kg) still lands on one decimal.
 export function roundDisplay(value, unit) {
   if (value == null || isNaN(value)) return value;
-  return unit === "kg" ? Math.round(value * 10) / 10 : Math.round(value);
+  if (unit === "kg") {
+    const quarter = Math.round(value * 4) / 4;
+    if (Math.abs(value - quarter) < 0.02) return quarter;
+  }
+  return Math.round(value * 10) / 10;
 }
 
 // Converts a canonical lb value straight to a rounded display value.
 export function formatWeight(lbValue, unit) {
   return roundDisplay(toDisplay(lbValue, unit), unit);
+}
+
+// ---------- Loading increments ----------
+// Default step targets/warmups round to (5 lb / 2.5 kg), and the finer
+// half step (2.5 lb / 1.25 kg) used once the user shows they have it.
+// The app never assumes a machine has half steps; it switches only when
+// a logged working weight for that exercise sits on the half-step grid
+// but off the default grid (e.g. 72.5 lb, 31.25 kg).
+export const WEIGHT_STEP = { lb: 5, kg: 2.5 };
+export const FINE_WEIGHT_STEP = { lb: 2.5, kg: 1.25 };
+
+function onGrid(w, step) {
+  return Math.abs(w - Math.round(w / step) * step) < 0.03;
+}
+
+export function weightStepFor(unit, weights = []) {
+  const base = WEIGHT_STEP[unit] || 5;
+  const fine = FINE_WEIGHT_STEP[unit] || 2.5;
+  const usesFine = weights.some((w) => w > 0 && !onGrid(w, base) && onGrid(w, fine));
+  return usesFine ? fine : base;
+}
+
+export function isFineStep(step, unit) {
+  return step === FINE_WEIGHT_STEP[unit];
+}
+
+// Rounds to the nearest multiple of step, cleaned of float tails.
+export function roundToStep(weight, step) {
+  return Math.round(Math.round(weight / step) * step * 100) / 100;
 }
 
 // ---------- Plates ----------

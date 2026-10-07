@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import html2canvas from "html2canvas";
-import Logo, { Wordmark } from "./Logo";
-import { IconX, IconCheck } from "./Icons";
+import { IconX, IconCheck, IconShare, IconDownload, IconRefresh } from "./Icons";
 import { getPrefs, setPref } from "./lib/prefs";
+import { fetchWorkoutHistory } from "./lib/queries";
+import { buildExportStats, autoTitle } from "./lib/exportStats";
+import { ExportFrame, LAYOUTS, FORMATS, ACCENTS, W, heightFor, photoBoxFor } from "./exportLayouts";
 
 const T = {
   bg: "#101216",
@@ -13,125 +15,76 @@ const T = {
   text: "#F2F1EC",
   dim: "#8B919D",
   accent: "#E8442E",
-  green: "#3BA55D",
 };
 
-// Instagram's own documented export sizes for each surface. These are
-// fixed, known-good targets -- unlike device viewport dimensions (tried
-// and reverted in 1.12.17), these don't vary by phone, so a "Story"
-// export is exactly the ratio Instagram's Story composer is designed for
-// on any device. Instagram's composer will still center/pinch-to-fill on
-// screens taller than 9:16 (there is no dimension that avoids that on
-// every physical screen), but this is the same tradeoff every export
-// tool -- Canva, Later, etc. -- ships with, and it's a small pinch vs.
-// the previous letterboxed-and-shrunk result.
-// Instagram's documented baseline export width across Story/Post/Square
-// alike (only the height varies by format -- see FORMATS below). Used to
-// compute how much html2canvas needs to upscale the on-screen preview
-// (which is deliberately small, 260-320 CSS px, to fit the modal sheet)
-// so the actual saved file is full resolution rather than a low-res
-// upscale target for Instagram to blow up further.
+// Instagram's baseline width; every format exports 1080 px wide (Story
+// 1080x1920, Post 1080x1350, Square 1080x1080). The frame renders at
+// W = 270 CSS px, so capture scale is a flat 4.
 const EXPORT_TARGET_WIDTH = 1080;
+const MAX_PHOTO_DIM = 1600;
+const THUMB_SCALE = 0.3;
 
-const FORMATS = [
-  { key: "story", label: "Story", sub: "9:16", heightOverWidth: 16 / 9 },
-  { key: "post", label: "Post", sub: "4:5", heightOverWidth: 5 / 4 },
-  { key: "square", label: "Square", sub: "1:1", heightOverWidth: 1 },
+const INCLUDE = [
+  { key: "prs", pref: "showPRs", label: "Highlight PRs" },
+  { key: "date", pref: "showDate", label: "Date" },
+  { key: "volume", pref: "showVolume", label: "Volume" },
+  { key: "duration", pref: "showDuration", label: "Duration" },
+  { key: "bodyweight", pref: "showBodyweight", label: "Bodyweight" },
+  { key: "warmups", pref: "showWarmups", label: "Warmups" },
 ];
+const DEFAULT_OPTS = { showPRs: true, showDate: true, showVolume: true, showDuration: true, showBodyweight: false, showWarmups: false };
 
-const POSITIONS = [
-  { key: "center", label: "Centered" },
-  { key: "corner", label: "Corner" },
-];
+const sectionLabel = { fontSize: 11, color: T.dim, marginBottom: 8, whiteSpace: "nowrap" };
 
-const LAYOUTS = [
-  { key: "card", label: "Card" },
-  { key: "detailed", label: "Detailed" },
-  { key: "story", label: "Story" },
-];
-
-// Thin vertical bar-per-exercise volume chart, pinned to the right edge
-// of the Corner/Detailed card -- that layout anchors its text block to
-// the bottom-left, so the whole right side of the card is otherwise
-// dead space. Volume = sum(weight x reps) across working sets only, per
-// exercise, capped to the same 12 exercises the text block already
-// shows so the bars line up 1:1 with what's listed. html2canvas renders
-// plain DOM fine, so this is div bars rather than SVG.
-function VolumeSideChart({ exercises }) {
-  const bars = (exercises || []).slice(0, 12).map((ex) => ({
-    name: ex.name,
-    volume: (ex.sets || []).filter((s) => !s.isWarmup).reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0),
-  }));
-  const max = Math.max(1, ...bars.map((b) => b.volume));
-  if (bars.every((b) => b.volume === 0)) return null;
-  return (
-    <div style={{ position: "absolute", top: 16, right: 14, bottom: 16, width: 34, zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{ fontSize: 6.5, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, textAlign: "center" }}>Volume</div>
-      <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 2 }}>
-        {bars.map((b, i) => (
-          <div
-            key={i}
-            title={b.name}
-            style={{
-              width: Math.max(2, Math.floor(24 / bars.length) - 2),
-              height: `${Math.max(4, Math.round((b.volume / max) * 100))}%`,
-              borderRadius: 2,
-              background: b.volume === max && max > 0 ? T.accent : "rgba(232,68,46,0.45)",
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Reusable "save workout summary as image" modal — used from both the
-// post-workout summary and the workout history detail view, since both
-// have the same shape of data to render. `data` is:
-// { dateLabel, unit, totalSets, totalVolume, durationMin, bodyWeight?, photoUrl?, exercises: [{name, sets:[{label, weight, reps, rir, isWarmup}]}] }
-export default function ExportWorkoutModal({ data, onClose }) {
-  const remembered = getPrefs().exportImagePrefs;
-  const [layout, setLayout] = useState(remembered?.layout || "card");
-  const [format, setFormat] = useState(remembered?.format || "story");
-  const formatRatio = FORMATS.find((f) => f.key === format)?.heightOverWidth ?? 16 / 9;
-  const [position, setPosition] = useState(remembered?.position || "center");
-  const [showSets, setShowSets] = useState(remembered ? remembered.showSets : true);
-  const [showVolume, setShowVolume] = useState(remembered ? remembered.showVolume : true);
-  const [showDuration, setShowDuration] = useState(remembered ? remembered.showDuration : true);
-  const [showBodyweight, setShowBodyweight] = useState(remembered ? remembered.showBodyweight : true);
-  const [showDate, setShowDate] = useState(remembered ? remembered.showDate : true);
-  const [usePhotoBg, setUsePhotoBg] = useState(remembered ? remembered.usePhotoBg : !!data.photoUrl);
-  const [saving, setSaving] = useState(false);
+// Reusable "save workout as image" sheet, used from the post-workout
+// summary and from a workout's History detail view. `data`:
+// { workoutId, completedAt, dateLabel, unit, totalSets, totalVolume,
+//   durationMin, bodyWeight?, photoUrl?, muscleMap?: {primary, secondary, nameMode},
+//   exercises: [{ exerciseId, name, muscleGroup, sets: [{label, weight, reps, rir, isWarmup}] }] }
+// Weights are display units. `history` (raw fetchWorkoutHistory rows) is
+// optional; when absent it's fetched once so PRs, last-session deltas,
+// month and streak stats can be computed (see lib/exportStats.js).
+export default function ExportWorkoutModal({ data, onClose, userId, history: historyProp }) {
+  const remembered = getPrefs().exportImagePrefs || {};
+  const hasPhoto = !!data.photoUrl;
+  const validLayout = (key) => LAYOUTS.some((l) => l.key === key && (!l.photo || hasPhoto));
+  // Pre-1.15 layout keys map to their closest new layout.
+  const LEGACY = { card: "scoreboard", detailed: "log", story: hasPhoto ? "overlay" : "poster" };
+  const initialLayout = LEGACY[remembered.layout] || remembered.layout;
+  const [layout, setLayout] = useState(validLayout(initialLayout) ? initialLayout : "scoreboard");
+  const [format, setFormat] = useState(FORMATS.some((f) => f.key === remembered.format) ? remembered.format : "story");
+  const [accent, setAccent] = useState(ACCENTS.includes(remembered.accent) ? remembered.accent : ACCENTS[0]);
+  const [opts, setOpts] = useState(() => {
+    const o = { ...DEFAULT_OPTS };
+    for (const k of Object.keys(DEFAULT_OPTS)) if (typeof remembered[k] === "boolean") o[k] = remembered[k];
+    return o;
+  });
+  const defaultTitle = useMemo(() => autoTitle(data.exercises), [data.exercises]);
+  const [title, setTitle] = useState("");
+  const [history, setHistory] = useState(historyProp || null);
+  const [saving, setSaving] = useState(null); // "save" | "share" | null
   const [saveError, setSaveError] = useState(null);
   const [rawPhotoImg, setRawPhotoImg] = useState(null);
   const [photoDataUrl, setPhotoDataUrl] = useState(null);
-  const previewRef = useRef(null);
+  const frameRef = useRef(null);
   const containerRef = useRef(null);
+  const H = heightFor(format);
 
-  // Step 1: fetch the (possibly cross-origin, possibly several-megapixel)
-  // progress photo exactly once per underlying photo, and reduce it to a
-  // same-origin, downscaled <img> we can read pixels from freely from here
-  // on. Same reasoning as before (avoids a live network fetch stalling
-  // html2canvas's capture, and avoids decoding a full camera-resolution
-  // image on every re-crop below) -- this step just stops one image short
-  // of a final data URL, so step 2 can re-crop it instantly whenever the
-  // target aspect ratio (Format) changes, with no network and no re-decode
-  // of the original.
-  //
-  // Keyed on photoUrlKey (the URL's path, stripped of its query string)
-  // rather than data.photoUrl itself. The progress photo bucket is
-  // private, so its URL is a signed URL, and fetchProgressPhoto calls
-  // createSignedUrl fresh on every read -- same photo, brand new token
-  // and expiry each time. Any upstream re-fetch (a re-render, a realtime
-  // sync tick, whatever) therefore hands this component a "new" photoUrl
-  // for a photo that hasn't actually changed. Keying on data.photoUrl
-  // directly meant every one of those re-signs re-ran the entire
-  // fetch-decode-crop pipeline and reloaded the visible image -- the
-  // repeated flicker reported. The storage path portion of the URL is
-  // stable for the same photo, so keying on that skips the reload
-  // entirely when nothing actually changed; the full data.photoUrl (with
-  // a valid token at the time this fires) is still what's fetched.
-  const MAX_PHOTO_DIM = 1600;
+  // History for PR/progress context. Fetched once if the caller didn't
+  // pass it; the image renders immediately and PR highlights fill in
+  // when this lands.
+  useEffect(() => {
+    if (historyProp || !userId) return;
+    let cancelled = false;
+    fetchWorkoutHistory(userId, null).then((h) => { if (!cancelled) setHistory(h || []); }).catch(() => { if (!cancelled) setHistory([]); });
+    return () => { cancelled = true; };
+  }, [historyProp, userId]);
+
+  const stats = useMemo(() => (history ? buildExportStats({ data, history }) : null), [data, history]);
+
+  // Photo step 1: fetch and downscale once per underlying photo. Keyed on
+  // the URL path, not the signed URL, since the private bucket re-signs
+  // on every read and the token changing would otherwise reload it.
   const photoUrlKey = data.photoUrl ? data.photoUrl.split("?")[0] : null;
   useEffect(() => {
     if (!data.photoUrl) { setRawPhotoImg(null); return; }
@@ -147,327 +100,207 @@ export default function ExportWorkoutModal({ data, onClose }) {
       }))
       .then((img) => new Promise((resolve, reject) => {
         const scale = Math.min(1, MAX_PHOTO_DIM / Math.max(img.naturalWidth, img.naturalHeight));
-        const w = Math.max(1, Math.round(img.naturalWidth * scale));
-        const h = Math.max(1, Math.round(img.naturalHeight * scale));
         const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        const downscaled = new Image();
-        downscaled.onload = () => resolve(downscaled);
-        downscaled.onerror = reject;
-        downscaled.src = canvas.toDataURL("image/jpeg", 0.9);
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        const out = new Image();
+        out.onload = () => resolve(out);
+        out.onerror = reject;
+        out.src = canvas.toDataURL("image/jpeg", 0.9);
       }))
-      .then((downscaled) => { if (!cancelled) setRawPhotoImg(downscaled); })
+      .then((img) => { if (!cancelled) setRawPhotoImg(img); })
       .catch(() => { if (!cancelled) setRawPhotoImg(null); });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only photoUrlKey (the stable path) should re-trigger a refetch, not every re-signed token for the same photo. data.photoUrl is still read fresh from the closure when this does fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only the stable path should refetch
   }, [photoUrlKey]);
 
-  // Step 2: re-crop rawPhotoImg to exactly the current target box's aspect
-  // ratio -- the same math CSS object-fit: cover does (scale to cover,
-  // crop centered overflow) -- and bake that into the data URL the <img>
-  // actually renders. This is what makes the saved PNG match the preview:
-  // html2canvas doesn't reliably honor object-fit, so previously the live
-  // preview (CSS-cropped, correct) and the captured canvas (html2canvas
-  // ignoring object-fit, often stretching/squishing the source instead of
-  // cropping it) could show visibly different results. Pre-cropping here
-  // means there's no CSS cropping left for html2canvas to get wrong --
-  // the pixels in the data URL already are the correctly-cropped image.
-  // This also removes the flicker: previously the <img> briefly rendered
-  // the live remote data.photoUrl (with crossOrigin="anonymous") before
-  // swapping to the local data URL once ready, and that crossOrigin
-  // attribute changing between renders forces a second image load --
-  // together, a visible flash every time. Now the remote URL is never
-  // rendered at all; nothing shows until the cropped local version is
-  // ready, then it appears once, cleanly. Runs on a canvas (no network),
-  // so switching Format (Story/Post/Square) re-crops instantly too.
+  // Photo step 2: crop to the exact box the active layout draws the photo
+  // into (full frame, split top, polaroid window), cover-style. html2canvas
+  // doesn't honor object-fit, so the pixels have to already be cropped.
+  const box = photoBoxFor(layout, H);
+  const boxAspect = box.w / box.h;
   useEffect(() => {
     if (!rawPhotoImg) { setPhotoDataUrl(null); return; }
-    const targetAspect = 1 / formatRatio; // width / height
-    const nw = rawPhotoImg.naturalWidth;
-    const nh = rawPhotoImg.naturalHeight;
-    const srcAspect = nw / nh;
-    let sx, sy, sw, sh;
-    if (srcAspect > targetAspect) {
-      sh = nh;
-      sw = Math.round(nh * targetAspect);
-      sx = Math.round((nw - sw) / 2);
-      sy = 0;
-    } else {
-      sw = nw;
-      sh = Math.round(nw / targetAspect);
-      sx = 0;
-      sy = Math.round((nh - sh) / 2);
-    }
-    const outW = Math.min(EXPORT_TARGET_WIDTH, sw);
-    const outH = Math.max(1, Math.round(outW / targetAspect));
+    const nw = rawPhotoImg.naturalWidth, nh = rawPhotoImg.naturalHeight;
+    let sx = 0, sy = 0, sw = nw, sh = nh;
+    if (nw / nh > boxAspect) { sw = Math.round(nh * boxAspect); sx = Math.round((nw - sw) / 2); }
+    else { sh = Math.round(nw / boxAspect); sy = Math.round((nh - sh) / 2); }
+    const outW = Math.min(Math.round(EXPORT_TARGET_WIDTH * (box.w / W)), sw);
+    const outH = Math.max(1, Math.round(outW / boxAspect));
     const canvas = document.createElement("canvas");
     canvas.width = outW;
     canvas.height = outH;
     canvas.getContext("2d").drawImage(rawPhotoImg, sx, sy, sw, sh, 0, 0, outW, outH);
     setPhotoDataUrl(canvas.toDataURL("image/jpeg", 0.92));
-  }, [rawPhotoImg, formatRatio]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawPhotoImg, boxAspect]);
 
-  const toggles = [
-    { key: "sets", label: "Set-by-set detail", value: showSets, set: setShowSets, hideOn: ["story"] },
-    { key: "volume", label: "Volume", value: showVolume, set: setShowVolume },
-    { key: "duration", label: "Duration", value: showDuration, set: setShowDuration },
-    { key: "bodyweight", label: "Bodyweight", value: showBodyweight, set: setShowBodyweight, requires: data.bodyWeight != null },
-    { key: "date", label: "Date", value: showDate, set: setShowDate },
-    { key: "photoBg", label: "Use photo as background", value: usePhotoBg, set: setUsePhotoBg, requires: !!data.photoUrl, hideOn: ["card", "detailed"] },
-  ];
+  const o = { ...opts, accent, title: title.trim() || defaultTitle };
+  const ctx = (fmt) => ({ d: data, st: stats, o, fmt, H: heightFor(fmt), photo: photoDataUrl });
+  const activeLayout = LAYOUTS.find((l) => l.key === layout) || LAYOUTS[0];
 
-  // Photo background only makes sense for Story — Card/Detailed are
-  // dense with text and a photo behind them would just hurt legibility.
-  const photoBgActive = usePhotoBg && layout === "story" && !!data.photoUrl;
+  function rememberPrefs() {
+    setPref("exportImagePrefs", { layout, format, accent, ...opts });
+  }
 
-  async function handleSaveImage() {
-    if (!previewRef.current) return;
-    setSaving(true);
+  async function renderCanvas() {
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+    return html2canvas(frameRef.current, {
+      backgroundColor: T.bg, scale: EXPORT_TARGET_WIDTH / W, useCORS: true, scrollX: 0, scrollY: 0, imageTimeout: 3000,
+    });
+  }
+
+  const fileName = `deltalog-${(o.title || "workout").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${(data.dateLabel || "").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`;
+
+  async function handleSave() {
+    if (!frameRef.current) return;
+    setSaving("save");
     setSaveError(null);
     try {
-      // html2canvas clones the DOM to render off-screen, but a clone
-      // doesn't carry over live scroll position -- any scrollable
-      // ancestor comes back scrollTop 0, which no longer lines up with
-      // where the live page measured the preview to be. That mismatch is
-      // what shows up as a visible flicker/jump while it generates.
-      // Scrolling the sheet to the top first, then telling html2canvas
-      // not to apply its own window-scroll offset on top of that,
-      // keeps the live and cloned layouts in sync so there's nothing
-      // to visibly snap into place.
-      if (containerRef.current) containerRef.current.scrollTop = 0;
-      // previewRef already carries explicit CSS width/height (260x462 for
-      // Story), so leaving width/height/window* unset lets html2canvas
-      // fall back to its default: measure and capture the element's own
-      // real rendered box, matching exactly what's on screen.
-      //
-      // scale is computed rather than a flat 2, because a flat 2 against
-      // a 260-320 CSS px preview box (deliberately small so it fits the
-      // modal sheet) only produced a ~520-640px wide PNG -- well under
-      // the 1080px width Instagram and most platforms expect, so the
-      // output got upscaled again on the other end and came out soft,
-      // for both the photo and the text/logo layer since both are
-      // rasterized together in the same capture. Solving for scale such
-      // that boxWidth * scale === EXPORT_TARGET_WIDTH (1080) means the
-      // saved file is always full resolution regardless of how small the
-      // on-screen preview needs to be.
-      const boxWidth = previewRef.current.getBoundingClientRect().width || (layout === "story" ? 260 : 320);
-      const exportScale = EXPORT_TARGET_WIDTH / boxWidth;
-      const canvas = await html2canvas(previewRef.current, {
-        backgroundColor: T.bg, scale: exportScale, useCORS: true, scrollX: 0, scrollY: 0, imageTimeout: 3000,
-      });
-      const url = canvas.toDataURL("image/png");
+      const canvas = await renderCanvas();
       const a = document.createElement("a");
-      a.href = url;
-      a.download = `deltalog-workout-${(data.dateLabel || "summary").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`;
+      a.href = canvas.toDataURL("image/png");
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setPref("exportImagePrefs", { layout, format, position, showSets, showVolume, showDuration, showBodyweight, showDate, usePhotoBg });
-    } catch (err) {
+      rememberPrefs();
+    } catch {
       setSaveError("Couldn't generate the image. Try again.");
     }
-    setSaving(false);
+    setSaving(null);
   }
 
-  const showSetsEffective = showSets && layout !== "story";
-  // Corner is only offered for Card/Detailed -- Story already has its own
-  // dedicated, centered full-bleed treatment and a competing "smaller,
-  // different spot" option there would just fight the photo-background
-  // framing that layout is built around.
-  const compact = layout !== "story" && position === "corner";
+  // Native share sheet (Instagram, Messages, etc.) where the browser
+  // supports sharing files; the button only shows when it does.
+  const canShareFiles = typeof navigator !== "undefined" && !!navigator.canShare && (() => {
+    try { return navigator.canShare({ files: [new File([""], "x.png", { type: "image/png" })] }); } catch { return false; }
+  })();
+
+  async function handleShare() {
+    if (!frameRef.current) return;
+    setSaving("share");
+    setSaveError(null);
+    try {
+      const canvas = await renderCanvas();
+      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+      const file = new File([blob], fileName, { type: "image/png" });
+      rememberPrefs();
+      await navigator.share({ files: [file] });
+    } catch (err) {
+      if (err && err.name !== "AbortError") setSaveError("Couldn't share the image. Try Save instead.");
+    }
+    setSaving(null);
+  }
+
+  const chip = (on, disabled) => ({
+    padding: "7px 12px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap",
+    border: `1px solid ${on && !disabled ? T.accent : T.line}`,
+    background: on && !disabled ? "rgba(232,68,46,0.12)" : "transparent",
+    color: on && !disabled ? T.accent : T.dim, opacity: disabled ? 0.4 : 1,
+  });
 
   return createPortal(
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.85)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 420, maxHeight: "92vh", display: "flex", flexDirection: "column", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0" }}>
+      <div style={{ width: "100%", maxWidth: 440, maxHeight: "94vh", display: "flex", flexDirection: "column", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0" }}>
         <div style={{ padding: "16px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>Save as image</div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}><IconX size={12} /></button>
         </div>
 
         <div ref={containerRef} style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
-          {/* Layout picker */}
-          <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Layout</div>
-          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
-            {LAYOUTS.map((l) => (
-              <button
-                key={l.key}
-                onClick={() => setLayout(l.key)}
-                aria-pressed={layout === l.key}
-                style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: layout === l.key ? T.accent : "transparent", color: layout === l.key ? "#fff" : T.dim }}
-              >
-                {l.label}
-              </button>
-            ))}
+          {/* Live preview */}
+          <div style={{ display: "flex", justifyContent: "center", background: T.surface2, borderRadius: 14, padding: 14, marginBottom: 14 }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
+              <ExportFrame layout={layout} ctx={ctx(format)} frameRef={frameRef} />
+            </div>
           </div>
 
-          {/* Format picker — only meaningful once Story's fixed-frame path is active */}
-          {layout === "story" && (
-            <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Format</div>
-              <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
-                {FORMATS.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setFormat(f.key)}
-                    aria-pressed={format === f.key}
-                    style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: format === f.key ? T.accent : "transparent", color: format === f.key ? "#fff" : T.dim }}
-                  >
-                    {f.label} <span style={{ opacity: 0.7, fontWeight: 500 }}>{f.sub}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Position picker — Card/Detailed only; Story has its own framing */}
-          {layout !== "story" && (
-            <>
-              <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Position</div>
-              <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
-                {POSITIONS.map((p) => (
-                  <button
-                    key={p.key}
-                    onClick={() => setPosition(p.key)}
-                    aria-pressed={position === p.key}
-                    style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: position === p.key ? T.accent : "transparent", color: position === p.key ? "#fff" : T.dim }}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Toggles */}
-          <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Include</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
-            {toggles.filter((t) => t.requires !== false).map((t) => {
-              const disabled = t.hideOn && t.hideOn.includes(layout);
-              const disabledHint = disabled ? (t.key === "photoBg" ? " (Story only)" : " (n/a for Story)") : "";
+          {/* Layout strip: real mini renders of every layout */}
+          <div style={sectionLabel}>Layout</div>
+          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6, marginBottom: 12, marginRight: -16, paddingRight: 16 }}>
+            {LAYOUTS.map((l) => {
+              const locked = l.photo && !hasPhoto;
+              const selected = layout === l.key;
+              const th = heightFor(format);
               return (
                 <button
-                  key={t.key}
-                  onClick={() => !disabled && t.set(!t.value)}
-                  disabled={disabled}
-                  aria-pressed={t.value && !disabled}
-                  style={{
-                    padding: "7px 12px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, border: `1px solid ${t.value && !disabled ? T.accent : T.line}`,
-                    background: t.value && !disabled ? "rgba(232,68,46,0.12)" : "transparent",
-                    color: disabled ? T.dim : t.value ? T.accent : T.dim,
-                    opacity: disabled ? 0.5 : 1,
-                  }}
+                  key={l.key}
+                  onClick={() => !locked && setLayout(l.key)}
+                  aria-pressed={selected}
+                  disabled={locked}
+                  style={{ flexShrink: 0, background: "none", border: "none", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, opacity: locked ? 0.4 : 1 }}
                 >
-                  {t.value && !disabled ? <><IconCheck size={11} /> </> : ""}{t.label}{disabledHint}
+                  <div style={{ width: W * THUMB_SCALE, height: th * THUMB_SCALE, borderRadius: 7, overflow: "hidden", outline: selected ? `2px solid ${T.accent}` : `1px solid ${T.line}`, outlineOffset: selected ? 1 : 0, pointerEvents: "none" }}>
+                    <div style={{ transform: `scale(${THUMB_SCALE})`, transformOrigin: "top left" }}>
+                      <ExportFrame layout={l.key} ctx={ctx(format)} />
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 11, color: selected ? T.text : T.dim, fontWeight: selected ? 600 : 400, whiteSpace: "nowrap" }}>{l.label}</span>
                 </button>
               );
             })}
           </div>
+          {!hasPhoto && <div style={{ fontSize: 11.5, color: T.dim, marginTop: -6, marginBottom: 12 }}>Add a progress photo to unlock the photo layouts.</div>}
 
-          {/* Live preview */}
-          <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Preview</div>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16, background: T.surface2, borderRadius: 12, padding: 12 }}>
-            <div
-              ref={previewRef}
-              style={{
-                width: layout === "story" ? 260 : 320,
-                height: layout === "story" ? Math.round(260 * formatRatio) : undefined,
-                minHeight: compact ? 320 : undefined,
-                background: T.bg,
-                border: `1px solid ${T.line}`,
-                borderRadius: 16,
-                padding: layout === "story" ? "28px 20px" : 20,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: layout === "story" ? "center" : "flex-start",
-                gap: layout === "story" ? 20 : 12,
-                boxSizing: "border-box",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              {photoBgActive && photoDataUrl && (
-                <>
-                  <img
-                    src={photoDataUrl}
-                    alt=""
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
-                  />
-                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,11,13,0.55) 0%, rgba(10,11,13,0.35) 45%, rgba(10,11,13,0.75) 100%)", zIndex: 1 }} />
-                </>
-              )}
-              {/* Corner's bottom-left-anchored content leaves the whole
-                  right side of the card empty -- fill it with a small
-                  per-exercise volume chart (Detailed only, since Card's
-                  layout doesn't list individual sets to draw volume from
-                  anyway). Purely derived from data already on `data`, no
-                  new fetch needed. */}
-              {compact && layout === "detailed" && showSetsEffective && (
-                <VolumeSideChart exercises={data.exercises} />
-              )}
-              <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: layout === "story" ? 20 : compact ? 8 : 12, height: "100%", justifyContent: layout === "story" ? "center" : compact ? "flex-end" : "flex-start", alignItems: compact ? "flex-start" : "stretch" }}>
-              <div style={{ display: "flex", flexDirection: compact ? "row" : "column", alignItems: "center", gap: compact ? 6 : 4, marginBottom: layout === "story" ? 8 : compact ? 2 : 4 }}>
-                <Logo size={layout === "story" ? 60 : compact ? 26 : 44} />
-                <Wordmark size={layout === "story" ? 22 : compact ? 12 : 17} />
+          {/* Format */}
+          <div style={sectionLabel}>Format</div>
+          <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 14 }}>
+            {FORMATS.map((f) => (
+              <button key={f.key} onClick={() => setFormat(f.key)} aria-pressed={format === f.key} style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", whiteSpace: "nowrap", background: format === f.key ? T.accent : "transparent", color: format === f.key ? "#fff" : T.dim }}>
+                {f.label} <span style={{ opacity: 0.7, fontWeight: 500 }}>{f.sub}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Title + accent */}
+          <div style={{ display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-end" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={sectionLabel}>Title</div>
+              <div style={{ display: "flex", alignItems: "center", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: "0 8px 0 10px" }}>
+                <input value={title} onChange={(e) => setTitle(e.target.value.slice(0, 28))} placeholder={defaultTitle} style={{ flex: 1, minWidth: 0, background: "none", border: "none", outline: "none", color: T.text, fontSize: 14, padding: "9px 0" }} />
+                {title && <button onClick={() => setTitle("")} aria-label="Reset title" style={{ background: "none", border: "none", color: T.dim, padding: 4 }}><IconRefresh size={13} /></button>}
               </div>
-
-              {showDate && (
-                <div style={{ textAlign: compact ? "left" : "center", fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 20 : compact ? 12 : 16, fontWeight: 700, color: T.text }}>
-                  {data.dateLabel}
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: compact ? 14 : 8, justifyContent: compact ? "flex-start" : "center" }}>
-                <div style={{ flex: layout === "story" ? "0 1 auto" : compact ? "0 1 auto" : 1, textAlign: compact ? "left" : "center" }}>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 30 : compact ? 17 : 20, fontWeight: 700, color: T.text }}>{data.totalSets}</div>
-                  <div style={{ fontSize: compact ? 7.5 : 9, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Sets</div>
-                </div>
-                {showVolume && (
-                  <div style={{ flex: layout === "story" ? "0 1 auto" : compact ? "0 1 auto" : 1, textAlign: compact ? "left" : "center", padding: layout === "story" ? "0 16px" : 0 }}>
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 30 : compact ? 17 : 20, fontWeight: 700, color: T.text }}>{data.totalVolume.toLocaleString()}</div>
-                    <div style={{ fontSize: compact ? 7.5 : 9, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Volume ({data.unit})</div>
-                  </div>
-                )}
-                {showDuration && data.durationMin != null && (
-                  <div style={{ flex: layout === "story" ? "0 1 auto" : compact ? "0 1 auto" : 1, textAlign: compact ? "left" : "center" }}>
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: layout === "story" ? 30 : compact ? 17 : 20, fontWeight: 700, color: T.text }}>{data.durationMin}</div>
-                    <div style={{ fontSize: compact ? 7.5 : 9, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Minutes</div>
-                  </div>
-                )}
-              </div>
-
-              {showBodyweight && data.bodyWeight != null && (
-                <div style={{ textAlign: compact ? "left" : "center", fontSize: layout === "story" ? 15 : compact ? 10 : 12, color: T.dim }}>Bodyweight: <span style={{ color: T.text, fontWeight: 600 }}>{data.bodyWeight} {data.unit}</span></div>
-              )}
-
-              {showSetsEffective && (
-                <div style={{ display: "flex", flexDirection: "column", gap: compact ? 5 : 8, marginTop: compact ? 2 : 4, maxWidth: compact && layout === "detailed" ? "calc(100% - 40px)" : "100%", boxSizing: "border-box" }}>
-                  {(data.exercises || []).slice(0, layout === "detailed" ? 12 : 6).map((ex, i) => (
-                    <div key={i} style={{ minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: compact ? 11 : 13, fontWeight: 700, color: T.text, marginBottom: layout === "detailed" ? 3 : 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ex.name}</div>
-                      {layout === "detailed" ? (
-                        (ex.sets || []).map((s, j) => (
-                          <div key={j} style={{ display: "flex", justifyContent: "space-between", gap: 6, fontSize: compact ? 9.5 : 11 }}>
-                            <span style={{ color: s.isWarmup ? "#E8A82E" : T.dim, whiteSpace: "nowrap" }}>{s.label}</span>
-                            <span style={{ color: T.text, whiteSpace: "nowrap" }}>{s.weight} {data.unit} × {s.reps}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div style={{ fontSize: compact ? 9.5 : 11, color: T.dim }}>{(ex.sets || []).length} set{(ex.sets || []).length === 1 ? "" : "s"}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+            </div>
+            <div>
+              <div style={sectionLabel}>Accent</div>
+              <div style={{ display: "flex", gap: 6, height: 38, alignItems: "center" }}>
+                {ACCENTS.map((a) => (
+                  <button key={a} onClick={() => setAccent(a)} aria-label={`Accent ${a}`} aria-pressed={accent === a} style={{ width: 22, height: 22, borderRadius: 999, background: a, border: accent === a ? `2px solid ${T.text}` : `1px solid ${T.line}`, padding: 0, boxSizing: "border-box" }} />
+                ))}
               </div>
             </div>
           </div>
 
+          {/* Include toggles; ones this layout doesn't use are dimmed */}
+          <div style={sectionLabel}>Include</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+            {INCLUDE.filter((t) => t.key !== "bodyweight" || data.bodyWeight != null).map((t) => {
+              const disabled = !activeLayout.uses.includes(t.key);
+              const on = opts[t.pref];
+              return (
+                <button key={t.key} onClick={() => !disabled && setOpts((p) => ({ ...p, [t.pref]: !p[t.pref] }))} disabled={disabled} aria-pressed={on && !disabled} style={chip(on, disabled)}>
+                  {on && !disabled ? <><IconCheck size={11} /> </> : ""}{t.label}
+                </button>
+              );
+            })}
+          </div>
+          {opts.showPRs && history && stats && !stats.hasHistory && (
+            <div style={{ fontSize: 11.5, color: T.dim, marginTop: -10, marginBottom: 14 }}>PRs show up once you have earlier workouts to beat.</div>
+          )}
+
           {saveError && <div style={{ color: T.accent, fontSize: 12.5, marginBottom: 10, textAlign: "center" }}>{saveError}</div>}
-          <button onClick={handleSaveImage} disabled={saving} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, opacity: saving ? 0.7 : 1 }}>
-            {saving ? "Generating…" : "Save image"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {canShareFiles && (
+              <button onClick={handleShare} disabled={!!saving} style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, whiteSpace: "nowrap", opacity: saving ? 0.7 : 1 }}>
+                <IconShare size={15} /> {saving === "share" ? "Preparing…" : "Share"}
+              </button>
+            )}
+            <button onClick={handleSave} disabled={!!saving} style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, whiteSpace: "nowrap", opacity: saving ? 0.7 : 1 }}>
+              <IconDownload size={15} /> {saving === "save" ? "Generating…" : "Save image"}
+            </button>
+          </div>
         </div>
       </div>
     </div>,

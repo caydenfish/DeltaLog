@@ -56,10 +56,12 @@ export function getWarmupPercents(n, savedSchemes) {
 // increment for the unit (same 5 lb / 2.5 kg step used for working
 // weight elsewhere) rather than the exact percentage, since a warmup
 // weight nobody can actually load onto a bar isn't useful.
-export function warmupWeightFor(topWeight, n, index, unit, savedSchemes) {
+// `step` is the exercise's loading increment (see weightStepFor in
+// lib/weight.js); defaults to 5 lb / 2.5 kg when not supplied.
+export function warmupWeightFor(topWeight, n, index, unit, savedSchemes, step) {
   const percents = getWarmupPercents(n, savedSchemes);
   const percent = (percents[index] ?? percents[percents.length - 1] ?? 50) / 100;
-  const step = unit === "kg" ? 2.5 : 5;
+  const s = step || (unit === "kg" ? 2.5 : 5);
   const raw = (topWeight || 0) * percent;
-  return Math.max(0, Math.round(raw / step) * step);
+  return Math.max(0, Math.round(Math.round(raw / s) * s * 100) / 100);
 }

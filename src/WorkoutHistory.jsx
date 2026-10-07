@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { isWorkedExercise } from "./lib/volume";
+import { isWorkedExercise, computeMuscleSetCounts } from "./lib/volume";
+import { getPrefs } from "./lib/prefs";
 import ExerciseThumb from "./ExerciseThumb";
 import ExportWorkoutModal from "./ExportWorkoutModal";
 import { IconX, IconCamera, IconImage, IconTrash, IconCheck, IconShare } from "./Icons";
@@ -146,7 +147,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
   );
 }
 
-function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
+function DetailView({ workout, history, units, timeFormat, userId, editMode, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
   const dateStr = new Date(workout.completed_at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const startTimeStr = workout.started_at ? formatClockTime(workout.started_at, timeFormat) : null;
   const isoDate = toLocalDateStr(workout.completed_at);
@@ -171,6 +172,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
   const [sharing, setSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [showExport, setShowExport] = useState(false);
+  const [exportData, setExportData] = useState(null); // snapshot taken when the sheet opens, so it stays stable while open
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -274,6 +276,25 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
       bodyWeight: workout.body_weight != null ? formatWeight(workout.body_weight, units) : null,
       exercises: snapshotExercises,
       photoUrl: progressPhoto?.url || null,
+    };
+  }
+
+  // Export-image snapshot: the share snapshot plus what the image needs
+  // to judge PRs and progress (ids, muscle groups, completion time) and
+  // the muscle-map counts, same raw-tag path the post-workout map uses.
+  function buildExportData() {
+    const base = buildSnapshot();
+    const nameMode = getPrefs().muscleNameMode;
+    const { primary, secondary } = computeMuscleSetCounts(
+      exercises.map((we) => ({ muscle: we.exercises?.muscle_group, primaryMuscles: we.exercises?.primary_muscles || [], secondaryMuscles: we.exercises?.secondary_muscles || [], sets: we.sets || [] })),
+      nameMode
+    );
+    return {
+      ...base,
+      workoutId: workout.id,
+      completedAt: workout.completed_at,
+      muscleMap: { primary, secondary, nameMode },
+      exercises: base.exercises.map((ex, i) => ({ ...ex, exerciseId: exercises[i].exercise_id, muscleGroup: exercises[i].exercises?.muscle_group })),
     };
   }
 
@@ -404,7 +425,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{dateStr}</div>
         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-          <button onClick={() => setShowExport(true)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
+          <button onClick={() => { setExportData(buildExportData()); setShowExport(true); }} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
             Save image
           </button>
           <button onClick={() => setShowSaveTemplate(true)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
@@ -646,7 +667,7 @@ function DetailView({ workout, units, timeFormat, userId, editMode, onRequestDel
         </div>
       )}
 
-      {showExport && <ExportWorkoutModal data={buildSnapshot()} onClose={() => setShowExport(false)} />}
+      {showExport && <ExportWorkoutModal data={exportData} userId={userId} history={history} onClose={() => setShowExport(false)} />}
       {showSaveTemplate && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.75)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 360, background: T.bg, border: `1px solid ${T.line}`, borderRadius: 16, padding: 20 }}>
@@ -779,6 +800,7 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
         {selected ? (
           <DetailView
             workout={selected}
+            history={history}
             units={units}
             timeFormat={timeFormat}
             userId={user.id}
