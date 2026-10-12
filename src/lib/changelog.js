@@ -9,6 +9,25 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.18.0": {
+    title: "DeltaLog on your computer",
+    items: [
+      "Open DeltaLog in a browser on a laptop or desktop and it switches to a full-width layout with a sidebar: Dashboard, History, Templates, Exercise Library, Friends and Settings, one click each.",
+      "Your home modules spread across two columns, so charts, weekly volume and the calendar fit on one screen.",
+      "History shows your list of workouts beside the full workout, so you can click straight through sessions.",
+      "Start or resume a workout from the sidebar any time. Phones and small windows keep the layout you know.",
+    ],
+  },
+  "1.17.0": {
+    title: "Lift with friends",
+    items: [
+      "Start Group Workout from the Start Workout menu: pick friends, or tap a saved group, and everyone logs their own workout together.",
+      "Under each exercise, On this lift shows each friend's latest set and best estimated 1RM for today. Tap it to compare everyone set by set, opened right on that exercise.",
+      "Friends lives in Settings: pick your ID, find people by theirs, accept requests, and save groups for the crew you lift with most.",
+      "Got invited? A banner on Home lets you join in one tap.",
+      "Share DeltaLog from the bottom of Settings, or send someone your ID from Friends.",
+    ],
+  },
   "1.16.0": {
     title: "A better look back at past workouts",
     items: [

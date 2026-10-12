@@ -818,7 +818,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
 // opened straight into a specific workout (e.g. from tapping a calendar
 // day) via `initialWorkoutId`, in which case the back arrow closes
 // directly instead of returning to the list.
-export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, activeWorkout, onRepeatWorkout, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
+export default function WorkoutHistory({ wide = false, history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, activeWorkout, onRepeatWorkout, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
   const [selectedId, setSelectedId] = useState(initialWorkoutId || null);
   const [confirmDeleteIds, setConfirmDeleteIds] = useState(null); // null | array of workout ids pending delete confirmation
   const [deleting, setDeleting] = useState(false);
@@ -832,7 +832,10 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
     .sort((a, b) => b.completed_at.localeCompare(a.completed_at));
   // Looked up in the full history (not just the date-filtered list) so
   // prev/next can walk past the day a calendar tap opened.
-  const selected = selectedId ? (history || []).find((w) => w.id === selectedId) || null : null;
+  // Desktop (wide, v1.18.0): list and detail sit side by side, so there's
+  // always a workout open; the newest is shown until another is picked.
+  const selected = (selectedId ? (history || []).find((w) => w.id === selectedId) || null : null)
+    || (wide && !selectMode ? sorted[0] || null : null);
   const chronological = [...(history || [])].filter((w) => w.completed_at).sort((a, b) => a.completed_at.localeCompare(b.completed_at));
   const selIdx = selected ? chronological.findIndex((w) => w.id === selected.id) : -1;
   const prevWorkout = selIdx > 0 ? chronological[selIdx - 1] : null;
@@ -851,6 +854,7 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
   const dateFilterLabel = dateFilter ? new Date(`${dateFilter}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase() : null;
 
   function handleBack() {
+    if (wide) { onClose(); return; }
     if (selected && !openedDirectly) { setSelectedId(null); setEditMode(false); }
     else onClose();
   }
@@ -895,7 +899,7 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
   return (
     <div ref={scrollRef} style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 30, display: "flex", justifyContent: "center", overflowY: "auto" }}>
       <style>{`button { cursor: pointer; }`}</style>
-      <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ width: "100%", maxWidth: wide ? 1180 : 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           {selectMode ? (
             <button onClick={exitSelectMode} aria-label="Cancel" style={smallBtn}>Cancel</button>
@@ -903,7 +907,7 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
             <button onClick={handleBack} aria-label="Back" style={smallBtn}>‹</button>
           )}
           <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>
-            {selectMode ? `${checkedIds.size} SELECTED` : selected ? "WORKOUT" : dateFilterLabel || "HISTORY"}
+            {selectMode ? `${checkedIds.size} SELECTED` : selected && !wide ? "WORKOUT" : dateFilterLabel || "HISTORY"}
           </div>
           {selected ? (
             <button onClick={() => setEditMode(!editMode)} aria-label={editMode ? "Done editing" : "Edit workout"} style={{ ...smallBtn, color: editMode ? "#fff" : T.text, background: editMode ? T.accent : "none", borderColor: editMode ? T.accent : T.line }}>
@@ -933,7 +937,72 @@ export default function WorkoutHistory({ history, initialWorkoutId, dateFilter, 
           </div>
         )}
 
-        {selected ? (
+        {wide ? (
+          <div style={{ display: "flex", alignItems: "flex-start", flex: 1 }}>
+            <div style={{ width: 360, flexShrink: 0, position: "sticky", top: 61, maxHeight: "calc(100vh - 61px)", overflowY: "auto", borderRight: `1px solid ${T.line}`, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: 16, paddingBottom: selectMode ? 90 : 16, flex: 1 }}>
+            {sorted.length === 0 && (
+              <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 20px", border: `1px dashed ${T.line}`, borderRadius: 12 }}>
+                No completed workouts yet.
+              </div>
+            )}
+            {sorted.map((w) => {
+              const dateStr = new Date(w.completed_at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+              const startTimeStr = w.started_at ? formatClockTime(w.started_at, timeFormat) : null;
+              const exCount = (w.workout_exercises || []).filter(isWorkedExercise).length;
+              const checked = checkedIds.has(w.id);
+              return (
+                <div
+                  key={w.id}
+                  style={{ display: "flex", alignItems: "center", gap: 6, background: T.surface, border: `1px solid ${checked || (wide && !selectMode && selected && selected.id === w.id) ? T.accent : T.line}`, borderRadius: 12, marginBottom: 10 }}
+                >
+                  <button
+                    onClick={() => (selectMode ? toggleChecked(w.id) : setSelectedId(w.id))}
+                    style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}
+                  >
+                    {selectMode && (
+                      <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${checked ? T.accent : T.line}`, background: checked ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                        {checked ? <IconCheck size={12} /> : ""}
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>{dateStr}{startTimeStr && <span style={{ color: T.dim, fontWeight: 400, fontSize: 13 }}> · {startTimeStr}</span>}</div>
+                      <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{exCount} exercise{exCount === 1 ? "" : "s"} · {workoutSetCount(w).working} sets · {Math.round(toDisplay(workoutVolume(w), units)).toLocaleString()} {units}</div>
+                    </div>
+                    {!selectMode && <div style={{ color: T.dim, fontSize: 16 }}>›</div>}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0, maxWidth: 760 }}>
+              {selected ? (
+          <DetailView
+            key={selected.id}
+            workout={selected}
+            history={history}
+            prev={prevWorkout}
+            next={nextWorkout}
+            onNavigate={navigateTo}
+            onRepeat={onRepeatWorkout}
+            repeatBlocked={!!(activeWorkout && !activeWorkout.isPaused)}
+            units={units}
+            timeFormat={timeFormat}
+            userId={user.id}
+            editMode={editMode}
+            onRequestDelete={() => setConfirmDeleteIds([selected.id])}
+            onSetUpdated={onSetUpdated}
+            onSetAdded={onSetAdded}
+            onSetRemoved={onSetRemoved}
+            onExerciseAdded={onExerciseAdded}
+            onExerciseRemoved={onExerciseRemoved}
+            onBodyWeightUpdated={onBodyWeightUpdated}
+          />
+              ) : null}
+            </div>
+          </div>
+        ) : selected ? (
           <DetailView
             key={selected.id}
             workout={selected}

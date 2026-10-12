@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useBackLayer } from "./lib/backNav";
 import StartWorkoutSheet from "./StartWorkoutSheet";
+import GroupWorkoutSheet from "./GroupWorkoutSheet";
+import DesktopSidebar from "./DesktopSidebar";
+import { useIsDesktop } from "./lib/useIsDesktop";
+import Friends from "./Friends";
+import { fetchGroupInvites, joinGroupSession, leaveGroupSession, fetchMyHandle, shareDeltaLog, inviteText } from "./lib/social";
 import { supabase } from "./lib/supabaseClient";
 import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
 import { getPrefs, setPref, getChartRange, setChartRange, getHomeCards, setHomeCards, getHomeCardSettings, setHomeCardSettings } from "./lib/prefs";
@@ -27,7 +32,7 @@ import AdminTaxonomyManager from "./AdminTaxonomyManager";
 import AdminBodyMapRegionEditor from "./AdminBodyMapRegionEditor";
 import MachineNamesManager from "./MachineNamesManager";
 import Logo from "./Logo";
-import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX, IconCalendar, IconList, IconBarbell, IconUser, IconSliders, IconInfo, IconLock, IconAlertTriangle } from "./Icons";
+import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX, IconCalendar, IconList, IconBarbell, IconUser, IconSliders, IconInfo, IconLock, IconAlertTriangle, IconUsers, IconShare } from "./Icons";
 import { PROGRAM_LOCKED } from "./lib/features";
 import { SettingsTile, TileGrid, SettingsSectionLabel, ScreenHeader, SettingsSearch } from "./SettingsUI";
 import Templates from "./Templates";
@@ -171,6 +176,70 @@ function buildLastWorkoutInsight(history, programDay) {
 
 export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset, onProgramWorkoutStarted, showUpdateNotice, onApplyUpdate }) {
   const [showStartSheet, setShowStartSheet] = useState(false); // Start Workout sheet (StartWorkoutSheet.jsx)
+  // Group workouts (v1.17.0). groupStartSession is set once a session
+  // exists (host picked friends, or an invite was accepted) and reopens
+  // the Start Workout sheet in group mode.
+  // Desktop layout (v1.18.0): a persistent sidebar plus a content pane.
+  // Every section is one of the screens the phone app already has; the
+  // pane is a containing block (transform) so those full-screen overlays
+  // open inside it, to the right of the sidebar, instead of over it.
+  const isDesktop = useIsDesktop();
+  const [myHandle, setMyHandle] = useState(null);
+  useEffect(() => { if (isDesktop) fetchMyHandle(user.id).then((r) => setMyHandle(r.handle)).catch(() => {}); }, [isDesktop, user.id]);
+  const [showGroupSheet, setShowGroupSheet] = useState(false);
+  const [groupStartSession, setGroupStartSession] = useState(null);
+  const [showFriends, setShowFriends] = useState(false);
+  const [groupInvites, setGroupInvites] = useState([]);
+  const [inviteBusy, setInviteBusy] = useState(null);
+  const [shareNote, setShareNote] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    function load() { fetchGroupInvites().then((r) => { if (!cancelled) setGroupInvites(r); }).catch(() => {}); }
+    load();
+    const channel = supabase
+      .channel(`group-invites-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_session_members", filter: `user_id=eq.${user.id}` }, load)
+      .subscribe();
+    function onVisible() { if (document.visibilityState === "visible") load(); }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { cancelled = true; document.removeEventListener("visibilitychange", onVisible); supabase.removeChannel(channel); };
+  }, [user.id]);
+  async function acceptGroupInvite(inv) {
+    setInviteBusy(inv.session_id);
+    try {
+      if (activeWorkout && !activeWorkout.isPaused) {
+        await joinGroupSession(inv.session_id, activeWorkout.id);
+        setGroupInvites((list) => list.filter((x) => x.session_id !== inv.session_id));
+        onResumeWorkout();
+      } else {
+        await joinGroupSession(inv.session_id);
+        setGroupInvites((list) => list.filter((x) => x.session_id !== inv.session_id));
+        setGroupStartSession(inv.session_id);
+        setShowStartSheet(true);
+      }
+    } catch {
+      setGroupInvites((list) => list.filter((x) => x.session_id !== inv.session_id));
+    } finally {
+      setInviteBusy(null);
+    }
+  }
+  function declineGroupInvite(inv) {
+    setGroupInvites((list) => list.filter((x) => x.session_id !== inv.session_id));
+    leaveGroupSession(inv.session_id, "declined").catch(() => {});
+  }
+  function closeStartSheet() {
+    // Backing out of a group start without starting: leave the session so
+    // friends don't see someone stuck as "Lifting".
+    if (groupStartSession) leaveGroupSession(groupStartSession, "declined").catch(() => {});
+    setGroupStartSession(null);
+    setShowStartSheet(false);
+  }
+  async function shareApp() {
+    let handle = null;
+    try { handle = (await fetchMyHandle(user.id)).handle; } catch { /* share without it */ }
+    const r = await shareDeltaLog({ text: inviteText(handle) });
+    if (r === "copied") { setShareNote("Link copied"); setTimeout(() => setShareNote(null), 2400); }
+  }
   // Each chart that has a Training Range keeps its own independent
   // selection (e.g. Bodyweight pinned to 90 Days while Volume stays at
   // 30 Days) instead of one range controlling all of them -- see
@@ -837,13 +906,38 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     [showTemplates, () => setShowTemplates(false)],
     [showProgramView, () => setShowProgramView(false)],
     [showHomeModulesEditor, () => setShowHomeModulesEditor(false)],
-    [showStartSheet, () => setShowStartSheet(false)],
+    [showFriends, () => setShowFriends(false)],
+    [showGroupSheet, () => setShowGroupSheet(false)],
+    [showStartSheet, () => closeStartSheet()],
     [showMenu, () => setShowMenu(false)],
   ];
   useBackLayer(homeBackLayers.filter(([open]) => !!open).length, () => {
     const top = homeBackLayers.find(([open]) => !!open);
     if (top) top[1]();
   }, 10);
+
+  const desktopSection = showFriends ? "friends"
+    : historyView ? "history"
+    : showTemplates ? "templates"
+    : showExerciseLibraryView ? "library"
+    : showMenu ? "settings"
+    : "dashboard";
+  function goDesktopSection(id) {
+    setHistoryView(null);
+    setShowTemplates(false);
+    setShowExerciseLibraryView(false);
+    setShowFriends(false);
+    setShowMenu(false);
+    setShowPreferencesScreen(false);
+    setShowProfileEditor(false);
+    setShowHelpSupport(false);
+    setMuscleDetail(null);
+    if (id === "history") setHistoryView({});
+    else if (id === "templates") setShowTemplates(true);
+    else if (id === "library") setShowExerciseLibraryView(true);
+    else if (id === "friends") setShowFriends(true);
+    else if (id === "settings") setShowMenu(true);
+  }
 
   if (error) {
     return (
@@ -853,10 +947,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     );
   }
 
-  return (
-    <div style={{ minHeight: "100vh", background: "#0A0B0D", display: "flex", justifyContent: "center" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap'); button { cursor: pointer; }`}</style>
-      <div style={{ width: "100%", maxWidth: 400, background: T.bg, height: "100dvh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+  const homePage = (
+    <div style={{ minHeight: "100vh", background: isDesktop ? T.bg : "#0A0B0D", display: "flex", justifyContent: "center" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap'); button { cursor: pointer; } .home-modules-desktop { column-count: 2; column-gap: 20px; } .home-modules-desktop > * { break-inside: avoid; }`}</style>
+      <div style={{ width: "100%", maxWidth: isDesktop ? 1180 : 400, background: T.bg, height: "100dvh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
 
         {/* Header — a fixed flex sibling above the scrolling content, same pattern as the Start Workout bar below, rather than sticky positioning inside the scroll container (which never reliably stuck: the content div's ancestors only had minHeight set, so the whole page scrolled at the window level instead of the div clipping/scrolling internally). */}
         <div style={{ padding: "16px 16px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", background: T.bg, borderBottom: `1px solid ${T.line}`, flexShrink: 0 }}>
@@ -915,7 +1009,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
             <InlineLoading label="Loading your history…" padding="40px 0" />
           ) : (
             <>
-              <div>
+              <div className={isDesktop ? "home-modules-desktop" : undefined}>
                 {lockedTs != null && (() => {
                   const volPoint = dailyVolume.find((d) => d.ts === lockedTs);
                   const weightPoint = weightHistory.find((d) => d.ts === lockedTs);
@@ -1161,9 +1255,22 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           )}
         </div>
 
-        {/* Start workout */}
+        {/* Start workout (on desktop the sidebar owns Start/Resume; this bar
+            only appears there to carry a group invite) */}
+        {(!isDesktop || groupInvites.length > 0) && (
         <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
-          {activeWorkout && !activeWorkout.isPaused ? (
+          {groupInvites.slice(0, 1).map((inv) => (
+            <div key={inv.session_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 12, borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.08)" }}>
+              <span style={{ color: T.accent, display: "flex", flexShrink: 0 }}><IconUsers size={18} /></span>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inv.host_first_name || `@${inv.host_handle}`} invited you to lift</span>
+                <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap" }}>Group workout · {inv.member_count} {inv.member_count === 1 ? "person" : "people"}</span>
+              </div>
+              <button onClick={() => declineGroupInvite(inv)} aria-label="Decline invite" style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconX size={14} /></button>
+              <button onClick={() => acceptGroupInvite(inv)} disabled={inviteBusy === inv.session_id} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, opacity: inviteBusy === inv.session_id ? 0.6 : 1 }}>Join</button>
+            </div>
+          ))}
+          {isDesktop ? null : activeWorkout && !activeWorkout.isPaused ? (
             <button onClick={onResumeWorkout} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span>Resume Workout</span>
               <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}>{activeWorkoutElapsed}</span>
@@ -1174,14 +1281,26 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
             </button>
           )}
         </div>
+        )}
       </div>
 
       {showStartSheet && (
         <StartWorkoutSheet
           userId={user.id}
           savedWorkout={activeWorkout?.isPaused ? activeWorkout : null}
-          onClose={() => setShowStartSheet(false)}
-          onChoose={(intent) => { setShowStartSheet(false); onStartWorkout(intent); }}
+          groupSessionId={groupStartSession}
+          onStartGroup={() => { setShowStartSheet(false); setShowGroupSheet(true); }}
+          onClose={closeStartSheet}
+          onChoose={(intent) => { setShowStartSheet(false); setGroupStartSession(null); onStartWorkout(intent); }}
+        />
+      )}
+
+      {showGroupSheet && (
+        <GroupWorkoutSheet
+          user={user}
+          onClose={() => setShowGroupSheet(false)}
+          onOpenFriends={() => { setShowGroupSheet(false); setShowFriends(true); }}
+          onSessionCreated={(sid) => { setShowGroupSheet(false); setGroupStartSession(sid); setShowStartSheet(true); }}
         />
       )}
 
@@ -1243,6 +1362,22 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                   subtitle="Rename or remove machines"
                 />
                 )}
+              </TileGrid>
+              </>
+              )}
+
+              {/* Social */}
+              {settingsMatch("friends id handle username social group workout invite add") && (
+              <>
+              <SettingsSectionLabel>Social</SettingsSectionLabel>
+              <TileGrid style={{ marginBottom: 20 }}>
+                <SettingsTile
+                  wide
+                  icon={<IconUsers size={20} />}
+                  onClick={() => setShowFriends(true)}
+                  title="Friends"
+                  subtitle="Your ID, requests, group workouts"
+                />
               </TileGrid>
               </>
               )}
@@ -1367,6 +1502,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               </>
               )}
 
+              <button onClick={shareApp} style={{ width: "100%", minHeight: 52, marginTop: 8, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, whiteSpace: "nowrap" }}>
+                <IconShare size={17} /> {shareNote || "Share DeltaLog"}
+              </button>
+
               <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 16 }}>
                 <button
                   onClick={() => setShowTerms(true)}
@@ -1403,6 +1542,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       )}
 
       {showTemplates && <Templates user={user} onClose={() => setShowTemplates(false)} />}
+      {showFriends && <Friends user={user} onClose={() => setShowFriends(false)} />}
       {showPreferencesScreen && (
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -1659,6 +1799,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       )}
       {historyView && (
         <WorkoutHistory
+          wide={isDesktop}
           history={history || []}
           activeWorkout={activeWorkout}
           onRepeatWorkout={(w) => { setHistoryView(null); onStartWorkout({ kind: "repeat", workout: w }); }}
@@ -1742,6 +1883,25 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           }
         />
       )}
+    </div>
+  );
+
+  if (!isDesktop) return homePage;
+  const resumable = activeWorkout && !activeWorkout.isPaused;
+  return (
+    <div style={{ display: "flex", height: "100dvh", background: T.bg, overflow: "hidden" }}>
+      <DesktopSidebar
+        active={desktopSection}
+        onNavigate={goDesktopSection}
+        onStart={() => (resumable ? onResumeWorkout() : setShowStartSheet(true))}
+        startLabel={resumable ? "Resume Workout" : "Start Workout"}
+        startSub={resumable ? activeWorkoutElapsed : null}
+        name={profile && profile.first_name ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name.charAt(0)}.` : ""}` : null}
+        handle={myHandle}
+      />
+      <div style={{ flex: 1, minWidth: 0, position: "relative", transform: "translateZ(0)", overflow: "hidden" }}>
+        {homePage}
+      </div>
     </div>
   );
 }

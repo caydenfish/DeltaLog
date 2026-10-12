@@ -5,6 +5,29 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.18.0",
+    date: "2026-10-12",
+    items: [
+      "Desktop layout at min-width 1024px (lib/useIsDesktop.js, matchMedia, live on resize). Below that nothing changes.",
+      "New DesktopSidebar.jsx (240px): Dashboard, History, Templates, Exercise Library, Friends, Settings, plus Start/Resume Workout (shows elapsed when resumable) and a profile footer (first name + last initial, @handle) that opens Friends.",
+      "Home: render split into homePage; on desktop it sits in a content pane with transform: translateZ(0), which makes the pane the containing block for every position: fixed overlay, so all existing full-screen screens (Settings, Templates, Library, Friends, History, sheets) open inside the pane instead of covering the sidebar, with no per-screen changes. Sections map to existing state flags (desktopSection derived from showFriends/historyView/showTemplates/showExerciseLibraryView/showMenu; goDesktopSection closes the others plus common Settings sub-screens). Home column widens to 1180px and the modules wrapper uses CSS columns (2, break-inside: avoid). The sticky Start bar is hidden on desktop unless a group invite needs it.",
+      "WorkoutHistory: new wide prop (passed on desktop). List (360px, sticky, own scroll) beside DetailView (max 760px); the newest workout is selected by default and the open one is outlined. Back closes History. Bulk select mode stays on the phone layout.",
+      "The live workout logger is unchanged on desktop (still the phone layout, centered); logging stays phone-first.",
+    ],
+  },
+  {
+    version: "1.17.0",
+    date: "2026-10-12",
+    items: [
+      "migration_076: profiles.handle (unique on lower(handle), 3-20 chars [a-z0-9_.], first char alnum) + handle_changed_at with a 7-day change cooldown enforced in set_my_handle(). New tables friendships (one row per pair, unique on least/greatest, pending/accepted), friend_groups (owner-only, member_ids uuid[]), group_sessions, group_session_members (invited/joined/finished/declined, workout_id link) and group_session_lifts (per session/user/exercise jsonb snapshot of sets in canonical lb). Profiles stay own-row RLS; other people's first name, last initial and handle only come back through security definer RPCs (search_users_by_handle, get_my_friends, get_group_session_members, get_my_group_invites). is_group_member() backs the session RLS to avoid policy recursion. group_session_lifts and group_session_members added to the supabase_realtime publication.",
+      "lib/social.js: RPC wrappers, saved groups, useGroupSession(sessionId) hook (members + lifts, Realtime postgres_changes filtered by session_id, full refetch on SUBSCRIBED, visibilitychange and online so a dropped socket can't leave gaps), groupE1RM/bestGroupE1RM (same RIR-adjusted formula as SetLogger's e1RM, warmups excluded, effective reps capped at 12), shareDeltaLog (Web Share API with clipboard fallback) and Contact Picker detection (Chrome Android only).",
+      "SetLogger: groupSessionId comes from startIntent.groupSessionId (joinGroupSession links the new workout) or, on resume, get_group_session_for_workout(). A debounced effect publishes changed per-exercise snapshots built from allSets (logs, edits, deletes and warmup toggles all covered by snapshot diffing; failed sends retry on the next change or the online event). GroupLiftRow renders under the Volume/Best e1RM line; GroupLiftView is a full-screen overlay opened on the tapped exercise with tabs for every exercise anyone logged, set-by-set working sets and best e1RM per person, member statuses and Leave group. Finish marks the member finished; cancel/discard marks declined; a session ends when no one is joined or invited.",
+      "StartWorkoutSheet: Start Group Workout button (onStartGroup) and a group mode (groupSessionId prop) that hides resume/generate and stamps groupSessionId onto every intent. New GroupWorkoutSheet: handle gate (HandleSetupCard), search friends or an ID (non-friends get Add friend), saved group chips with edit/delete, friend checkboxes (max 7 + you), Save as group, then create_group_session(). Backing out of the group-mode start sheet leaves the session.",
+      "Home: invite banner above Start Workout (get_my_group_invites, refreshed via Realtime on the caller's member rows and on foreground). Join with no active workout opens the start sheet in group mode; with an active workout it links that workout and resumes. Settings gains a Social section (Friends tile) and a Share DeltaLog button above the Terms/Privacy links.",
+      "New Friends.jsx screen: ID card (copy, share, tap to change), Find by ID with Add/Accept/Requested states, incoming requests, friends sorted by last workout with remove confirmation, outgoing requests with cancel, Send an invite (share sheet) and Invite from contacts (Contact Picker -> sms: link, only rendered where supported). Icons: IconUsers, IconCopy.",
+    ],
+  },
+  {
     version: "1.16.0",
     date: "2026-10-06",
     items: [
