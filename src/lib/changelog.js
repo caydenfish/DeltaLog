@@ -9,6 +9,16 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.19.0": {
+    title: "A faster, friendlier start",
+    items: [
+      "New welcome screen: what DeltaLog does in three lines, then Continue with Google or email.",
+      "Setup is now four short steps: who you are and your ID, your body, your training goal, and a page of recommended defaults you can keep with one tap.",
+      "Pick your ID during setup, so friends and group workouts work from day one.",
+      "When you finish, jump straight into your first workout, a template, or finding friends.",
+      "Want to change your answers? Settings has a new Redo setup, filled in with what you picked before.",
+    ],
+  },
   "1.18.0": {
     title: "DeltaLog on your computer",
     items: [

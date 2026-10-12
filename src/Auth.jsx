@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { supabase } from "./lib/supabaseClient";
 import Logo, { Wordmark } from "./Logo";
+import WelcomeScreen from "./onboarding/WelcomeScreen";
+import TermsViewer from "./TermsViewer";
+import PrivacyPolicy from "./PrivacyPolicy";
 
 const T = {
   bg: "#101216",
@@ -23,6 +26,10 @@ export default function Auth() {
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const [errorMsg, setErrorMsg] = useState("");
   const [showWhatIs, setShowWhatIs] = useState(false);
+  // v1.19.0: everyone lands on the welcome screen first (shared with the
+  // Admin onboarding simulator); email sign-up and sign-in open the form.
+  const [stage, setStage] = useState("welcome"); // "welcome" | "form"
+  const [legal, setLegal] = useState(null); // null | "terms" | "privacy"
 
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -107,8 +114,28 @@ export default function Auth() {
     setPassword("");
   }
 
+  if (stage === "welcome") {
+    return (
+      <>
+        <WelcomeScreen
+          onGoogle={signInWithGoogle}
+          onEmail={() => { setIsSignUp(true); setMode("password"); setStage("form"); }}
+          onSignIn={() => { setIsSignUp(false); setMode("password"); setStage("form"); }}
+          onTerms={() => setLegal("terms")}
+          onPrivacy={() => setLegal("privacy")}
+          banner={status === "error" && errorMsg ? <div role="alert" style={{ color: T.accent, fontSize: 13 }}>{errorMsg}</div> : null}
+        />
+        {legal === "terms" && <TermsViewer onClose={() => setLegal(null)} />}
+        {legal === "privacy" && <PrivacyPolicy user={null} onClose={() => setLegal(null)} />}
+      </>
+    );
+  }
+
   return (
-    <div style={{ height: "100dvh", background: T.bg, display: "flex", flexDirection: "column", padding: "calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))", boxSizing: "border-box", overflow: "hidden" }}>
+    <div style={{ position: "relative", height: "100dvh", background: T.bg, display: "flex", flexDirection: "column", padding: "calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px))", boxSizing: "border-box", overflow: "hidden" }}>
+      <button onClick={() => { setStage("welcome"); setStatus("idle"); setErrorMsg(""); }} aria-label="Back" style={{ position: "absolute", top: "calc(12px + env(safe-area-inset-top, 0px))", left: 10, width: 44, height: 44, border: "none", background: "transparent", color: T.text, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+      </button>
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
         <Logo size={120} />
         <Wordmark size={40} />
@@ -125,7 +152,7 @@ export default function Auth() {
 
       <div style={{ flex: 1.3, minHeight: 0, display: "flex", flexDirection: "column", width: "100%", maxWidth: 360, margin: "0 auto", overflowY: "auto" }}>
         <div style={{ color: T.dim, fontSize: 14, marginBottom: 20, textAlign: "center" }}>
-          Sign in to sync your sets across sessions.
+          {isSignUp ? "Create your account to start logging." : "Welcome back. Sign in to pick up where you left off."}
         </div>
 
         {status === "sent" ? (

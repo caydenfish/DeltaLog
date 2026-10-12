@@ -28,12 +28,12 @@ export default function PrivacyPolicy({ user, onClose }) {
         <div style={{ padding: 16, flex: 1, color: T.dim, fontSize: 13, lineHeight: 1.6 }}>
           <PrivacyBody T={T} />
 
-          <button
+          {user && <button
             onClick={() => setShowRequestForm(true)}
             style={{ width: "100%", marginTop: 8, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, fontWeight: 600 }}
           >
             Submit a privacy request
-          </button>
+          </button>}
         </div>
       </div>
 

@@ -32,7 +32,7 @@ import AdminTaxonomyManager from "./AdminTaxonomyManager";
 import AdminBodyMapRegionEditor from "./AdminBodyMapRegionEditor";
 import MachineNamesManager from "./MachineNamesManager";
 import Logo from "./Logo";
-import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX, IconCalendar, IconList, IconBarbell, IconUser, IconSliders, IconInfo, IconLock, IconAlertTriangle, IconUsers, IconShare } from "./Icons";
+import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX, IconCalendar, IconList, IconBarbell, IconUser, IconSliders, IconInfo, IconLock, IconAlertTriangle, IconUsers, IconShare, IconRefresh } from "./Icons";
 import { PROGRAM_LOCKED } from "./lib/features";
 import { SettingsTile, TileGrid, SettingsSectionLabel, ScreenHeader, SettingsSearch } from "./SettingsUI";
 import Templates from "./Templates";
@@ -58,7 +58,8 @@ import PrivacyPolicy from "./PrivacyPolicy";
 import WhatsNew from "./WhatsNew";
 import WhatsNext from "./WhatsNext";
 import HelpSupport from "./HelpSupport";
-import SetupWizard from "./SetupWizard";
+import OnboardingFlow from "./onboarding/OnboardingFlow";
+import OnboardingSimulator from "./onboarding/OnboardingSimulator";
 import VersionHistory from "./VersionHistory";
 import TrainingLoadCard from "./TrainingLoadCard";
 import { version as APP_VERSION } from "../package.json";
@@ -174,7 +175,7 @@ function buildLastWorkoutInsight(history, programDay) {
   return { daysSince, muscles, tip, status, programDay };
 }
 
-export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset, onProgramWorkoutStarted, showUpdateNotice, onApplyUpdate }) {
+export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset, onProgramWorkoutStarted, showUpdateNotice, onApplyUpdate, initialPanel, onInitialPanelUsed }) {
   const [showStartSheet, setShowStartSheet] = useState(false); // Start Workout sheet (StartWorkoutSheet.jsx)
   // Group workouts (v1.17.0). groupStartSession is set once a session
   // exists (host picked friends, or an invite was accepted) and reopens
@@ -189,6 +190,13 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [showGroupSheet, setShowGroupSheet] = useState(false);
   const [groupStartSession, setGroupStartSession] = useState(null);
   const [showFriends, setShowFriends] = useState(false);
+  useEffect(() => {
+    if (!initialPanel) return;
+    if (initialPanel === "friends") setShowFriends(true);
+    if (initialPanel === "templates") setShowTemplates(true);
+    if (onInitialPanelUsed) onInitialPanelUsed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPanel]);
   const [groupInvites, setGroupInvites] = useState([]);
   const [inviteBusy, setInviteBusy] = useState(null);
   const [shareNote, setShareNote] = useState(null);
@@ -347,7 +355,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [showWhatsNext, setShowWhatsNext] = useState(false);
   const [autoWhatsNewEntries, setAutoWhatsNewEntries] = useState(null);
   const [showHelpSupport, setShowHelpSupport] = useState(false);
+  // v1.19.0: Settings > Redo setup (showSetupReplay) and Admin >
+  // Onboarding simulator both run the shared OnboardingFlow.
   const [showSetupReplay, setShowSetupReplay] = useState(false);
+  const [showOnboardingSim, setShowOnboardingSim] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -897,7 +908,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     [showWhatsNew, () => setShowWhatsNew(false)],
     [showWhatsNext, () => setShowWhatsNext(false)],
     [showHelpSupport, () => setShowHelpSupport(false)],
-    [showSetupReplay, () => setShowSetupReplay(false)],
+    [showOnboardingSim, () => setShowOnboardingSim(false)],
     [showVersionHistory, () => setShowVersionHistory(false)],
     [showFAQ, () => setShowFAQ(false)],
     [showInstallGuide, () => setShowInstallGuide(false)],
@@ -1383,7 +1394,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               )}
 
               {/* Profile & Preferences */}
-              {settingsMatch("profile gender age date of birth weight height preferences units weight lb kg pounds kilograms time format 12h 24h clock muscle names generic detailed scientific training focus rep range hypertrophy strength endurance dots percentile deltalog default set entry manual plate calculator logging type big plates bumpers squats deadlifts rest timer seconds") && (
+              {settingsMatch("redo setup onboarding profile gender age date of birth weight height preferences units weight lb kg pounds kilograms time format 12h 24h clock muscle names generic detailed scientific training focus rep range hypertrophy strength endurance dots percentile deltalog default set entry manual plate calculator logging type big plates bumpers squats deadlifts rest timer seconds") && (
               <>
               <SettingsSectionLabel>Profile & Preferences</SettingsSectionLabel>
               <div style={{ marginBottom: 20 }}>
@@ -1406,6 +1417,13 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                       onClick={() => setShowPreferencesScreen(true)}
                       title="Preferences"
                       subtitle="Units, timers, muscles"
+                    />
+                    <SettingsTile
+                      wide
+                      icon={<IconRefresh size={20} />}
+                      onClick={() => setShowSetupReplay(true)}
+                      title="Redo setup"
+                      subtitle="Walk through setup again, answers filled in"
                     />
                   </TileGrid>
                 ) : (
@@ -1575,8 +1593,21 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
         />
       )}
       {showSetupReplay && (
-        <SetupWizard onComplete={() => setShowSetupReplay(false)} onClose={() => setShowSetupReplay(false)} />
+        <OnboardingFlow
+          user={user}
+          profile={profile}
+          mode="redo"
+          onExit={() => {
+            setShowSetupReplay(false);
+            fetchProfile(user.id).then(setProfile).catch(() => {});
+            // Redo saved prefs directly; sync Home's mirrored copies so
+            // Settings and the dashboard reflect the new answers at once.
+            const p = getPrefs();
+            ["units", "muscleNameMode", "scoreDisplay", "trainingIdeology", "targetCalcMethod"].forEach((k) => handlePreferencesChange(k, p[k]));
+          }}
+        />
       )}
+      {showOnboardingSim && <OnboardingSimulator user={user} profile={profile} onClose={() => setShowOnboardingSim(false)} />}
       {showVersionHistory && <VersionHistory onClose={() => setShowVersionHistory(false)} />}
       {showFAQ && <FAQ onClose={() => setShowFAQ(false)} />}
       {showAdminHome && (
@@ -1592,7 +1623,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           onOpenSplits={() => setShowSplitsManager(true)}
           onOpenTaxonomy={() => setShowAdminTaxonomy(true)}
           onOpenBodyMapRegions={() => setShowAdminBodyMapRegions(true)}
-          onSimulateNewUser={() => { setShowAdminHome(false); setShowMenu(false); setShowSetupReplay(true); }}
+          onSimulateNewUser={() => { setShowOnboardingSim(true); }}
           onOpenVersionHistory={() => setShowVersionHistory(true)}
           adminViewMode={adminViewMode}
           onSetAdminViewMode={setAdminViewMode}

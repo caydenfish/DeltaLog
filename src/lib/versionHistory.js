@@ -5,6 +5,20 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.19.0",
+    date: "2026-10-12",
+    items: [
+      "New src/onboarding/: WelcomeScreen, OnboardingFlow, OnboardingSimulator, illustrations.js. OnboardingFlow replaces Onboarding.jsx + SetupWizard.jsx in the app (both files kept, now unused) and runs in three modes: new (App gate), redo (Settings > Redo setup, prefilled from profile + prefs + handle) and simulate (Admin). Steps: welcome (simulate only) > about > body > training > app > finish.",
+      "About: first/last name + handle with live availability (search_users_by_handle exact match, 'mine' when unchanged). New mode upserts the profile row (names only) so set_my_handle and acceptTerms have a row, records terms here (agreement line + links above Continue), then sets the handle. Wrong account? Sign out on the first step.",
+      "Body: sex (Male/Female/Other), birthday (date input), units (moved from the wizard so it sits next to the first weight), optional weight and height (ft/in or cm toggle). Training: goal cards from IDEOLOGIES. App: target method, strength score, muscle names and body map as collapsible rows with recommended defaults (body map defaults from sex). Saving happens on the app step: full saveProfile, prefs, setupWizardSeen.",
+      "Finish: add-to-home-screen card (hidden when already standalone) opening InstallGuide, then Start my first workout (App sets a scratch intent and opens the logger), Build a template first / Find friends (App passes initialPanel to Home), or dashboard. Redo shows Done.",
+      "App gate: !profileComplete or (terms accepted and !setupWizardSeen) runs OnboardingFlow, starting at about, or at training for accounts with a complete profile. TermsGate stays for complete profiles without terms.",
+      "Auth: lands on WelcomeScreen; Continue with email opens the existing form in sign-up mode, I already have an account in sign-in mode, with a back button to the welcome. Terms/Privacy viewable signed out (PrivacyPolicy hides the request button without a user).",
+      "Admin: 'Simulate new-user experience' becomes Onboarding simulator: start at any step, blank or own answers, dry run on by default (no server writes, no prefs), live runs save to the admin's account. A SIMULATION banner with Exit sits on every simulated screen.",
+      "illustrations.js: optional art slots (welcome, strength, hypertrophy, endurance, body, finish) pointing at files in public/onboarding/; null hides them. Single-color silhouettes are inverted to sit on the dark theme.",
+    ],
+  },
+  {
     version: "1.18.0",
     date: "2026-10-12",
     items: [

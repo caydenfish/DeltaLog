@@ -79,7 +79,7 @@ export default function AdminHome({ onClose, onOpenExercises, onOpenFeedback, on
           <Row onClick={onOpenReferralSources} title="Referral Sources" subtitle="Where signups say they heard about DeltaLog" />
           {isCreator && <Row onClick={onOpenRoles} title="Roles" subtitle="Grant or remove Admin and Creator access" />}
           {isCreator && <Row onClick={onOpenUserActivity} title="User Activity" subtitle="Who's opening the app vs. actually logging sets" />}
-          <Row onClick={onSimulateNewUser} title="Simulate new-user experience" subtitle="Runs the setup wizard — same flow a brand-new signup sees" />
+          <Row onClick={onSimulateNewUser} title="Onboarding simulator" subtitle="Run the exact new-user flow from any step, dry or live" />
           <Row onClick={onOpenVersionHistory} title="Version History" subtitle="In-depth, searchable changelog of every release" />
         </div>
       </div>

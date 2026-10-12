@@ -9,9 +9,8 @@ import { setSplitsCache, setSplitExclusionsCache } from "./lib/splits";
 import { getPrefs, initPrefsSync, clearPrefsSync } from "./lib/prefs";
 import Auth from "./Auth";
 import ResetPassword from "./ResetPassword";
-import Onboarding from "./Onboarding";
 import TermsGate from "./TermsGate";
-import SetupWizard from "./SetupWizard";
+import OnboardingFlow from "./onboarding/OnboardingFlow";
 import Home from "./Home";
 import SetLogger from "./SetLogger";
 import AppSplash from "./AppSplash";
@@ -23,6 +22,9 @@ export default function App() {
   const [profile, setProfile] = useState(undefined); // undefined = loading, null = not set up yet
   const [mode, setMode] = useState(null); // null = undecided, "home" | "workout"
   const [startIntent, setStartIntent] = useState(null);
+  // Where the onboarding Finish screen sent a brand-new user on Home
+  // ("templates" | "friends"); consumed once by Home.
+  const [homeInitialPanel, setHomeInitialPanel] = useState(null);
   // Leaving the workout screen without finishing: back to Home with the
   // workout still active on the server, so Home offers to resume it.
   function goHomeFromWorkout() {
@@ -277,12 +279,26 @@ export default function App() {
     content = <ResetPassword onDone={() => setPasswordRecovery(false)} />;
   } else if (profile === undefined) {
     content = null; loadingGate = true;
-  } else if (!profileComplete) {
-    content = <Onboarding user={session.user} profile={profile} onComplete={() => fetchProfile(session.user.id).then(setProfile)} />;
+  } else if (!profileComplete || (profile.terms_accepted_at && !setupSeen)) {
+    // v1.19.0 intro and setup. Brand-new accounts start at About you;
+    // older accounts that finished the profile but never ran setup start
+    // at Training. Terms are agreed on the About you step.
+    content = (
+      <OnboardingFlow
+        user={session.user}
+        profile={profile}
+        mode="new"
+        startStep={profileComplete ? "training" : "about"}
+        onExit={(choice) => {
+          setSetupSeen(true);
+          fetchProfile(session.user.id).then(setProfile).catch(() => {});
+          if (choice === "workout") { setStartIntent({ kind: "scratch" }); setMode("workout"); }
+          else if (choice === "templates" || choice === "friends") setHomeInitialPanel(choice);
+        }}
+      />
+    );
   } else if (!profile.terms_accepted_at) {
     content = <TermsGate user={session.user} onAccepted={() => fetchProfile(session.user.id).then(setProfile)} />;
-  } else if (!setupSeen) {
-    content = <SetupWizard onComplete={() => setSetupSeen(true)} />;
   } else if (resumeWorkout === undefined || mode === null) {
     content = <LoadingScreen />;
   } else {
@@ -308,6 +324,8 @@ export default function App() {
         ) : (
           <Home
             user={session.user}
+            initialPanel={homeInitialPanel}
+            onInitialPanelUsed={() => setHomeInitialPanel(null)}
             activeWorkout={resumeWorkout}
             onStartWorkout={(intent) => { setStartIntent(intent || null); setMode("workout"); }}
             onResumeWorkout={() => setMode("workout")}
