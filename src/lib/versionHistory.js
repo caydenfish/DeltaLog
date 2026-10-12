@@ -5,6 +5,15 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.19.1",
+    date: "2026-10-12",
+    items: [
+      "Invite links: lib/social.js inviteLink(handle) -> APP_URL/?add=<handle>. capturePendingAdd() runs at App module load, validates the handle, stores it in localStorage (deltalog.pendingAdd) and strips the param, so it survives the Google OAuth redirect, sign-up and onboarding. Friends share/SMS and Settings > Share DeltaLog now send the link; previously they sent the bare app URL, so recipients landed on the homepage with nothing to add.",
+      "New AddFriendSheet.jsx (opened by Home when a pending add exists): exact-handle lookup (findUserByHandle over search_users_by_handle), states for loading, not found, own link, already friends / requested, and Add or Accept (send_friend_request accepts a reverse pending request). Clears the pending add on close. Auth's welcome shows '@handle invited you' while one is pending.",
+      "Home always loads the caller's handle (was desktop-only) and shows a 'Pick your ID' card above the start bar when there isn't one; refreshed when Friends closes. Friends search surfaces RPC errors instead of 'No one with that ID yet', and the empty state points to the invite link.",
+    ],
+  },
+  {
     version: "1.19.0",
     date: "2026-10-12",
     items: [

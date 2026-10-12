@@ -11,6 +11,11 @@ import Auth from "./Auth";
 import ResetPassword from "./ResetPassword";
 import TermsGate from "./TermsGate";
 import OnboardingFlow from "./onboarding/OnboardingFlow";
+import { capturePendingAdd } from "./lib/social";
+
+// Invite links (?add=<handle>) are captured before anything renders, so
+// the ID survives sign-in redirects and setup.
+capturePendingAdd();
 import Home from "./Home";
 import SetLogger from "./SetLogger";
 import AppSplash from "./AppSplash";

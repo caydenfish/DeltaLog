@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.19.1": {
+    title: "Invite links that actually add you",
+    items: [
+      "Sharing your ID from Friends now sends a link that opens straight to adding you as a friend, even for someone who doesn't have DeltaLog yet. They sign up, finish setup, and the add screen is waiting.",
+      "No ID yet? A card on Home reminds you to pick one so friends can find you.",
+      "If friend search can't connect, it now says so instead of showing no results.",
+    ],
+  },
   "1.19.0": {
     title: "A faster, friendlier start",
     items: [

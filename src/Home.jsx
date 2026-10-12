@@ -5,7 +5,8 @@ import GroupWorkoutSheet from "./GroupWorkoutSheet";
 import DesktopSidebar from "./DesktopSidebar";
 import { useIsDesktop } from "./lib/useIsDesktop";
 import Friends from "./Friends";
-import { fetchGroupInvites, joinGroupSession, leaveGroupSession, fetchMyHandle, shareDeltaLog, inviteText } from "./lib/social";
+import { fetchGroupInvites, joinGroupSession, leaveGroupSession, fetchMyHandle, shareDeltaLog, inviteText, inviteLink, getPendingAdd, clearPendingAdd } from "./lib/social";
+import AddFriendSheet from "./AddFriendSheet";
 import { supabase } from "./lib/supabaseClient";
 import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
 import { getPrefs, setPref, getChartRange, setChartRange, getHomeCards, setHomeCards, getHomeCardSettings, setHomeCardSettings } from "./lib/prefs";
@@ -186,7 +187,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // open inside it, to the right of the sidebar, instead of over it.
   const isDesktop = useIsDesktop();
   const [myHandle, setMyHandle] = useState(null);
-  useEffect(() => { if (isDesktop) fetchMyHandle(user.id).then((r) => setMyHandle(r.handle)).catch(() => {}); }, [isDesktop, user.id]);
+  const [handleLoaded, setHandleLoaded] = useState(false);
+  useEffect(() => { fetchMyHandle(user.id).then((r) => { setMyHandle(r.handle); setHandleLoaded(true); }).catch(() => {}); }, [user.id]);
+  // Invite link waiting from before sign-in / setup.
+  const [pendingAdd, setPendingAdd] = useState(() => getPendingAdd());
   const [showGroupSheet, setShowGroupSheet] = useState(false);
   const [groupStartSession, setGroupStartSession] = useState(null);
   const [showFriends, setShowFriends] = useState(false);
@@ -245,7 +249,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   async function shareApp() {
     let handle = null;
     try { handle = (await fetchMyHandle(user.id)).handle; } catch { /* share without it */ }
-    const r = await shareDeltaLog({ text: inviteText(handle) });
+    const r = await shareDeltaLog({ text: inviteText(handle), url: inviteLink(handle) });
     if (r === "copied") { setShareNote("Link copied"); setTimeout(() => setShareNote(null), 2400); }
   }
   // Each chart that has a Training Range keeps its own independent
@@ -1266,6 +1270,17 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           )}
         </div>
 
+        {handleLoaded && !myHandle && (
+          <button onClick={() => setShowFriends(true)} style={{ margin: "0 16px 12px", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, textAlign: "left", flexShrink: 0 }}>
+            <span style={{ color: T.accent, display: "flex" }}><IconUsers size={20} /></span>
+            <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>Pick your ID</span>
+              <span style={{ fontSize: 12.5, color: T.dim }}>So friends can find and add you</span>
+            </span>
+            <span style={{ color: T.dim }}>›</span>
+          </button>
+        )}
+
         {/* Start workout (on desktop the sidebar owns Start/Resume; this bar
             only appears there to carry a group invite) */}
         {(!isDesktop || groupInvites.length > 0) && (
@@ -1560,7 +1575,15 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       )}
 
       {showTemplates && <Templates user={user} onClose={() => setShowTemplates(false)} />}
-      {showFriends && <Friends user={user} onClose={() => setShowFriends(false)} />}
+      {showFriends && <Friends user={user} onClose={() => { setShowFriends(false); fetchMyHandle(user.id).then((r) => setMyHandle(r.handle)).catch(() => {}); }} />}
+      {pendingAdd && (
+        <AddFriendSheet
+          userId={user.id}
+          handle={pendingAdd}
+          onClose={() => { clearPendingAdd(); setPendingAdd(null); }}
+          onOpenFriends={() => { clearPendingAdd(); setPendingAdd(null); setShowFriends(true); }}
+        />
+      )}
       {showPreferencesScreen && (
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>

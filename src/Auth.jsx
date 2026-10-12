@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "./lib/supabaseClient";
 import Logo, { Wordmark } from "./Logo";
 import WelcomeScreen from "./onboarding/WelcomeScreen";
+import { getPendingAdd } from "./lib/social";
 import TermsViewer from "./TermsViewer";
 import PrivacyPolicy from "./PrivacyPolicy";
 
@@ -123,7 +124,9 @@ export default function Auth() {
           onSignIn={() => { setIsSignUp(false); setMode("password"); setStage("form"); }}
           onTerms={() => setLegal("terms")}
           onPrivacy={() => setLegal("privacy")}
-          banner={status === "error" && errorMsg ? <div role="alert" style={{ color: T.accent, fontSize: 13 }}>{errorMsg}</div> : null}
+          banner={status === "error" && errorMsg ? <div role="alert" style={{ color: T.accent, fontSize: 13 }}>{errorMsg}</div>
+            : getPendingAdd() ? <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(232,68,46,0.10)", border: `1px solid ${T.accent}`, color: T.text, fontSize: 14, fontWeight: 600 }}>@{getPendingAdd()} invited you. Create an account and you'll be asked to add them.</div>
+            : null}
         />
         {legal === "terms" && <TermsViewer onClose={() => setLegal(null)} />}
         {legal === "privacy" && <PrivacyPolicy user={null} onClose={() => setLegal(null)} />}

@@ -5,7 +5,7 @@ import {
   fetchMyHandle, setMyHandle, normalizeHandle, HANDLE_PATTERN,
   fetchFriends, searchUsersByHandle, sendFriendRequest, respondFriendRequest, removeFriendship,
   displayName, initialOf, colorFor, lastLiftedLabel,
-  shareDeltaLog, inviteText, contactsSupported, pickContacts, APP_URL,
+  shareDeltaLog, inviteText, inviteLink, contactsSupported, pickContacts,
 } from "./lib/social";
 
 const T = {
@@ -109,6 +109,7 @@ export default function Friends({ user, onClose }) {
   const [lists, setLists] = useState(null); // { friends, incoming, outgoing }
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
+  const [searchError, setSearchError] = useState(null);
   const [searching, setSearching] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(null);
@@ -133,8 +134,8 @@ export default function Friends({ user, onClose }) {
     const seq = ++searchSeq.current;
     const t = setTimeout(() => {
       searchUsersByHandle(q)
-        .then((r) => { if (seq === searchSeq.current) setResults(r); })
-        .catch(() => { if (seq === searchSeq.current) setResults([]); })
+        .then((r) => { if (seq === searchSeq.current) { setResults(r); setSearchError(null); } })
+        .catch((err) => { if (seq === searchSeq.current) { setResults([]); setSearchError(err.message || "Search failed"); } })
         .finally(() => { if (seq === searchSeq.current) setSearching(false); });
     }, 250);
     return () => clearTimeout(t);
@@ -172,7 +173,7 @@ export default function Friends({ user, onClose }) {
     try { await navigator.clipboard.writeText(`@${me.handle}`); flash("ID copied"); } catch { flash("Couldn't copy"); }
   }
   async function shareId() {
-    const r = await shareDeltaLog({ text: inviteText(me && me.handle) });
+    const r = await shareDeltaLog({ text: inviteText(me && me.handle), url: inviteLink(me && me.handle) });
     if (r === "copied") flash("Invite link copied");
   }
   async function inviteFromContacts() {
@@ -180,7 +181,7 @@ export default function Friends({ user, onClose }) {
       const picked = await pickContacts();
       const numbers = picked.flatMap((c) => (c.tel || []).slice(0, 1)).filter(Boolean);
       if (numbers.length === 0) { if (picked.length) flash("No phone numbers on those contacts"); return; }
-      const body = encodeURIComponent(`${inviteText(me && me.handle)} ${APP_URL}`);
+      const body = encodeURIComponent(`${inviteText(me && me.handle)} ${inviteLink(me && me.handle)}`);
       window.location.href = `sms:${numbers.join(",")}?&body=${body}`;
     } catch { /* picker dismissed */ }
   }
@@ -236,7 +237,8 @@ export default function Friends({ user, onClose }) {
             {!hasHandle && query && <div style={{ fontSize: 12, color: T.dim }}>Pick your ID first so people know who's adding them.</div>}
             {results && (
               <div style={{ display: "flex", flexDirection: "column" }}>
-                {results.length === 0 && !searching && <div style={{ fontSize: 13, color: T.dim, padding: "8px 2px" }}>No one with that ID yet.</div>}
+                {searchError && <div role="alert" style={{ fontSize: 13, color: "#FF8A78", padding: "8px 2px" }}>Search isn't working right now: {searchError}</div>}
+                {!searchError && results.length === 0 && !searching && <div style={{ fontSize: 13, color: T.dim, padding: "8px 2px", lineHeight: 1.45 }}>No one with that ID yet. If they haven't picked an ID, send them your invite link instead.</div>}
                 {results.map((r) => (
                   <PersonRow key={r.id} person={r} sub={`@${r.handle}`} right={searchAction(r)} />
                 ))}

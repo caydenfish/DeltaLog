@@ -203,9 +203,42 @@ export function bestGroupE1RM(sets) {
 
 // ── Sharing ─────────────────────────────────────────────────────────
 export const APP_URL = "https://deltalog.vercel.app";
+
+// Invite links (v1.19.1): deltalog.vercel.app/?add=<handle>. Opening one
+// remembers the ID (through sign-up and setup if needed) and shows an
+// "Add friend" screen once the person reaches Home.
+const PENDING_ADD_KEY = "deltalog.pendingAdd";
+export function inviteLink(handle) {
+  return handle ? `${APP_URL}/?add=${encodeURIComponent(handle)}` : APP_URL;
+}
+// Call once at startup: moves ?add=… out of the URL into storage.
+export function capturePendingAdd() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const h = normalizeHandle(params.get("add"));
+    if (!h) return;
+    if (HANDLE_PATTERN.test(h)) localStorage.setItem(PENDING_ADD_KEY, h);
+    params.delete("add");
+    const q = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (q ? `?${q}` : "") + window.location.hash);
+  } catch { /* storage or history unavailable: ignore */ }
+}
+export function getPendingAdd() {
+  try { return localStorage.getItem(PENDING_ADD_KEY) || null; } catch { return null; }
+}
+export function clearPendingAdd() {
+  try { localStorage.removeItem(PENDING_ADD_KEY); } catch { /* ignore */ }
+}
+// Exact-ID lookup built on the prefix search.
+export async function findUserByHandle(handle) {
+  const h = normalizeHandle(handle);
+  const rows = await searchUsersByHandle(h);
+  return rows.find((r) => (r.handle || "").toLowerCase() === h) || null;
+}
+
 export function inviteText(handle) {
   return handle
-    ? `I'm logging my lifts on DeltaLog. Add me: @${handle}`
+    ? `I'm logging my lifts on DeltaLog. Add me as a friend (@${handle}):`
     : "I'm logging my lifts on DeltaLog. Come lift with me.";
 }
 // Native share sheet where supported (iOS and Android both), clipboard
