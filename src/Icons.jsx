@@ -563,3 +563,24 @@ export function IconWeight({ size = 16, style }) {
     </svg>
   );
 }
+
+// Two people, for anything social: group workouts, friends.
+export function IconUsers({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5" />
+      <circle cx="17" cy="9" r="2.8" />
+      <path d="M17 14.5c2.4 0 4.1 1.6 4.6 4.3" />
+    </svg>
+  );
+}
+
+export function IconCopy({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "inline-block", verticalAlign: "middle", ...style }} {...base}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V6a2 2 0 0 1 2-2h8" />
+    </svg>
+  );
+}

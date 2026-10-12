@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchTemplates } from "./lib/queries";
-import { IconPlus, IconBolt, IconList } from "./Icons";
+import { IconPlus, IconBolt, IconList, IconUsers } from "./Icons";
 
 const T = {
   bg: "#101216",
@@ -20,7 +20,14 @@ const T = {
 // opens the full template picker. onChoose receives the intent SetLogger
 // applies after boot: { kind: "scratch" | "template" | "templates" |
 // "resume", template? }.
-export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onClose }) {
+//
+// Group mode (v1.17.0): "Start Group Workout" calls onStartGroup, which
+// opens the friend picker. Once a session exists (host) or an invite is
+// accepted (friend), this sheet reopens with groupSessionId set: the
+// group button and saved-workout resume are hidden, and every intent it
+// emits carries groupSessionId so SetLogger joins the session.
+export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onClose, onStartGroup, groupSessionId }) {
+  const choose = (intent) => onChoose(groupSessionId ? { ...intent, groupSessionId } : intent);
   const [templates, setTemplates] = useState(null);
 
   useEffect(() => {
@@ -41,26 +48,39 @@ export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onCl
           <span style={{ display: "block", width: 36, height: 4, borderRadius: 4, background: T.line, margin: "0 auto" }} />
         </button>
 
-        {savedWorkout && (
-          <button onClick={() => onChoose({ kind: "resume" })} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 14px", marginBottom: 10, borderRadius: 12, border: `1px dashed ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.accent, fontSize: 14, fontWeight: 600 }}>
+        {groupSessionId && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "2px 2px 12px", color: T.text, fontSize: 14, fontWeight: 600 }}>
+            <IconUsers size={16} /> Group workout: how do you want to start?
+          </div>
+        )}
+
+        {savedWorkout && !groupSessionId && (
+          <button onClick={() => choose({ kind: "resume" })} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 14px", marginBottom: 10, borderRadius: 12, border: `1px dashed ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.accent, fontSize: 14, fontWeight: 600 }}>
             <span>Resume saved workout</span>
             <span style={{ fontSize: 12, color: T.dim, fontWeight: 500 }}>›</span>
           </button>
         )}
 
-        <button onClick={() => onChoose({ kind: "scratch" })} style={{ width: "100%", padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <button onClick={() => choose({ kind: "scratch" })} style={{ width: "100%", padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           <IconPlus size={16} /> Start from scratch
         </button>
 
-        <button onClick={() => onChoose({ kind: "templates" })} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <button onClick={() => choose({ kind: "templates" })} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}><IconList size={16} /> Templates</span>
           <span style={{ fontSize: 13, color: T.dim, fontWeight: 500 }}>{templates === null ? "" : templates.length === 0 ? "None yet ›" : `${templates.length} saved ›`}</span>
         </button>
 
-        <div aria-disabled="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 12, padding: "12px 14px", borderRadius: 12, border: `1px solid ${T.line}`, color: T.dim, opacity: 0.6 }}>
+        {onStartGroup && !groupSessionId && (
+          <button onClick={onStartGroup} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}><span style={{ color: T.accent, display: "flex" }}><IconUsers size={18} /></span> Start Group Workout</span>
+            <span style={{ fontSize: 13, color: T.dim, fontWeight: 500, whiteSpace: "nowrap" }}>With friends ›</span>
+          </button>
+        )}
+
+        {!groupSessionId && <div aria-disabled="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 12, padding: "12px 14px", borderRadius: 12, border: `1px solid ${T.line}`, color: T.dim, opacity: 0.6 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}><IconBolt size={14} /> Generate workout</span>
           <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, border: `1px solid ${T.line}`, borderRadius: 999, padding: "3px 8px", whiteSpace: "nowrap" }}>Coming soon</span>
-        </div>
+        </div>}
       </div>
     </div>
   );

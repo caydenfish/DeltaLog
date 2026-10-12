@@ -38,6 +38,11 @@ export default defineConfig({
       workbox: {
         // Precache the app shell so it opens even with zero signal at the gym.
         globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+        // The main bundle crossed Workbox's 2 MiB default in v1.17.0.
+        // Anything over the limit is silently left out of the precache,
+        // which would mean the app can't open offline at the gym, so the
+        // ceiling is raised rather than letting the shell fall out.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // cleanupOutdatedCaches: once a new service worker activates,
         // delete any precache storage left over from older versions --
         // without this, stale cache entries from several deploys back

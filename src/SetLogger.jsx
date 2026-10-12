@@ -14,6 +14,8 @@ import { saveSessionState, loadSessionState, clearSessionState } from "./lib/ses
 import { IDEOLOGIES } from "./lib/ideologies";
 import { rangeForSet, isRangeChange, sanitizeScheme, resizeScheme, formatRange } from "./lib/repScheme";
 import RepSchemeEditor from "./RepSchemeEditor";
+import { GroupLiftRow, GroupLiftView } from "./GroupLift";
+import { useGroupSession, joinGroupSession, leaveGroupSession, fetchGroupSessionForWorkout, publishGroupLift } from "./lib/social";
 import ExerciseThumb from "./ExerciseThumb";
 import EditWorkoutCard from "./EditWorkoutCard";
 import CustomExerciseModal from "./CustomExerciseModal";
@@ -1042,6 +1044,72 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   // which is what threw "muscleNameMode is not defined" on every render.
   const muscleNameMode = getPrefs().muscleNameMode;
   const sets = allSets[exIdx] || [];
+
+  // ── Group workout (v1.17.0) ───────────────────────────────────────
+  // A workout belongs to at most one live group session. It comes from
+  // the start intent (host or invite) or, on resume/reload, from the
+  // member row that links this workout to the session.
+  const [groupSessionId, setGroupSessionId] = useState(null);
+  const [groupViewFor, setGroupViewFor] = useState(null); // exercise id the comparison view opened on
+  const group = useGroupSession(groupSessionId);
+  const groupLinkedForRef = useRef(null);
+  useEffect(() => {
+    if (booting || !workoutId || groupLinkedForRef.current === workoutId) return;
+    groupLinkedForRef.current = workoutId;
+    const fromIntent = startIntent && startIntent.groupSessionId && !resumeWorkout ? startIntent.groupSessionId : null;
+    if (fromIntent) {
+      setGroupSessionId(fromIntent);
+      joinGroupSession(fromIntent, workoutId).catch((err) => note(`Couldn't join the group: ${err.message}`));
+    } else {
+      fetchGroupSessionForWorkout(workoutId).then((sid) => { if (sid) setGroupSessionId(sid); }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booting, workoutId]);
+
+  // My sets as group snapshots, keyed by exercise id, canonical lb.
+  // Repeated slots of the same exercise are merged in workout order.
+  function buildMyGroupLifts() {
+    const out = {};
+    workout.forEach((w, i) => {
+      const list = (allSets[i] || []).map((x) => ({ w: toCanonical(x.weight, unit), r: x.reps, rir: x.rir ?? 0, warm: !!x.isWarmup }));
+      if (list.length || !out[w.id]) out[w.id] = [...(out[w.id] || []), ...list];
+    });
+    return out;
+  }
+  const myGroupLifts = groupSessionId ? buildMyGroupLifts() : {};
+
+  // Publishes whatever changed (logs, edits, deletes, warmup toggles) as
+  // one upsert per exercise. Anything that fails to send is retried on the
+  // next change or when the connection comes back.
+  const publishedRef = useRef({});
+  const [publishTick, setPublishTick] = useState(0);
+  useEffect(() => {
+    function onOnline() { publishedRef.current = {}; setPublishTick((t) => t + 1); }
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
+  useEffect(() => {
+    if (!groupSessionId) return;
+    const t = setTimeout(() => {
+      for (const [exId, list] of Object.entries(myGroupLifts)) {
+        const key = JSON.stringify(list);
+        if (publishedRef.current[exId] === key) continue;
+        if (list.length === 0 && publishedRef.current[exId] === undefined) continue;
+        publishedRef.current[exId] = key;
+        publishGroupLift(groupSessionId, user.id, exId, list).catch(() => { delete publishedRef.current[exId]; });
+      }
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupSessionId, allSets, workout, publishTick]);
+
+  function leaveGroup(status = "declined") {
+    const sid = groupSessionId;
+    setGroupViewFor(null);
+    setGroupSessionId(null);
+    publishedRef.current = {};
+    if (sid) leaveGroupSession(sid, status).catch(() => {});
+  }
   const lastWeek = ex ? ex.lastWeek : [];
   const planned = ex ? ex.planned : 0;
   const effIdeology = ex && ex.ideology ? ex.ideology : globalIdeology;
@@ -1309,6 +1377,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
   async function handleDiscardNewWorkout() {
     setDiscardingNewWorkout(true);
+    if (groupSessionId) leaveGroup("declined");
     try {
       await deleteAllIncompleteWorkouts(user.id);
     } catch (err) {
@@ -2032,6 +2101,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     }
     try {
       await completeWorkout(workoutId);
+      if (groupSessionId) leaveGroupSession(groupSessionId, "finished").catch(() => {});
       // Fire-and-forget -- never blocks finishing the workout on
       // Strava being slow/unreachable, and silently no-ops server-side
       // for anyone who hasn't connected Strava at all.
@@ -2047,6 +2117,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
   async function handleConfirmCancel() {
     setCancelling(true);
+    if (groupSessionId) leaveGroup("declined");
     try {
       await deleteAllIncompleteWorkouts(user.id);
     } catch (err) {
@@ -3538,6 +3609,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 <span>Best e1RM <b style={{ color: T.text, fontWeight: 700 }}>{Math.round(todayStats.bestE1RM)}</b> {lastWeek.length > 0 && diffLabel(todayStats.bestE1RM - lastStats.bestE1RM)}</span>
               </div>
             )}
+            {groupSessionId && ex && !deleteMode && (
+              <GroupLiftRow
+                userId={user.id}
+                members={group.members}
+                lifts={group.lifts}
+                exerciseId={ex.id}
+                mySnapshot={myGroupLifts[ex.id]}
+                unit={unit}
+                onOpen={() => setGroupViewFor(ex.id)}
+              />
+            )}
           </div>
             );
           })()}
@@ -3839,6 +3921,20 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           );
         })()}
       </div>
+      {groupSessionId && groupViewFor && (
+        <GroupLiftView
+          userId={user.id}
+          members={group.members}
+          lifts={group.lifts}
+          myLifts={myGroupLifts}
+          exercises={workout.filter((w, i, arr) => arr.findIndex((o) => o.id === w.id) === i).map((w) => ({ id: w.id, name: w.short || w.name }))}
+          nameFor={(id) => { const l = library.find((x) => x.id === id); return l ? (l.short || l.name) : null; }}
+          initialExerciseId={groupViewFor}
+          unit={unit}
+          onClose={() => setGroupViewFor(null)}
+          onLeave={() => leaveGroup("finished")}
+        />
+      )}
     </div>
   );
 }
