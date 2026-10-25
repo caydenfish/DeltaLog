@@ -15,7 +15,7 @@ import { IDEOLOGIES } from "./lib/ideologies";
 import { rangeForSet, isRangeChange, sanitizeScheme, resizeScheme, formatRange } from "./lib/repScheme";
 import RepSchemeEditor from "./RepSchemeEditor";
 import { GroupLiftRow, GroupLiftView } from "./GroupLift";
-import { useGroupSession, joinGroupSession, leaveGroupSession, fetchGroupSessionForWorkout, publishGroupLift } from "./lib/social";
+import { useGroupSession, joinGroupSession, leaveGroupSession, fetchGroupSessionForWorkout, fetchGroupSession, publishGroupLift, setGroupHostExercises, displayName } from "./lib/social";
 import ExerciseThumb from "./ExerciseThumb";
 import EditWorkoutCard from "./EditWorkoutCard";
 import CustomExerciseModal from "./CustomExerciseModal";
@@ -1110,6 +1110,83 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     publishedRef.current = {};
     if (sid) leaveGroupSession(sid, status).catch(() => {});
   }
+
+  // ── Host-led exercise sync (v1.20.0) ──────────────────────────────
+  // The host publishes their exercise list; everyone else gets any
+  // exercise the host adds appended to their own workout. Each host
+  // exercise is only handled once (remembered per session in
+  // localStorage), so something a member removes doesn't come back, and
+  // members' own additions are never touched. Waits for a lobby plan to
+  // finish loading so plan exercises aren't added twice.
+  const [groupPlanReady, setGroupPlanReady] = useState(() => !(startIntent && startIntent.kind === "group" && !resumeWorkout));
+  const isGroupHost = !!group.session && group.session.host_id === user.id;
+  const groupLive = !!group.session && group.session.status === "active";
+
+  const hostPublishedRef = useRef(null);
+  useEffect(() => {
+    if (!groupSessionId || !isGroupHost || !groupLive || !groupPlanReady) return;
+    const seen = new Set();
+    const list = [];
+    for (const w of workout) {
+      if (seen.has(w.id)) continue;
+      seen.add(w.id);
+      list.push({ exercise_id: w.id, planned_sets: w.planned || 3, planned_warmup_sets: w.plannedWarmup || 0 });
+    }
+    const key = JSON.stringify(list);
+    if (hostPublishedRef.current === key) return;
+    const t = setTimeout(() => {
+      hostPublishedRef.current = key;
+      setGroupHostExercises(groupSessionId, list).catch(() => { hostPublishedRef.current = null; });
+    }, 500);
+    return () => clearTimeout(t);
+  }, [groupSessionId, isGroupHost, groupLive, groupPlanReady, workout]);
+
+  const syncKey = groupSessionId ? `deltalog.groupSynced.${groupSessionId}` : null;
+  const syncedRef = useRef({ key: null, ids: new Set() });
+  const syncingRef = useRef(false);
+  const workoutLenRef = useRef(0);
+  workoutLenRef.current = workout.length;
+  useEffect(() => {
+    if (!groupSessionId || isGroupHost || !groupLive || !groupPlanReady || booting || !workoutId || library.length === 0) return;
+    if (syncedRef.current.key !== syncKey) {
+      let ids = [];
+      try { ids = JSON.parse(localStorage.getItem(syncKey) || "[]"); } catch { /* storage unavailable */ }
+      syncedRef.current = { key: syncKey, ids: new Set(ids) };
+    }
+    if (syncingRef.current) return;
+    const hostList = Array.isArray(group.session.host_exercises) ? group.session.host_exercises : [];
+    const mine = new Set(workout.map((w) => w.id));
+    const fresh = hostList.filter((h) => h && h.exercise_id && !syncedRef.current.ids.has(h.exercise_id));
+    if (fresh.length === 0) return;
+    syncingRef.current = true;
+    (async () => {
+      const host = group.members.find((m) => m.is_host);
+      const hostName = host ? (host.first_name || displayName(host)) : "The host";
+      const added = [];
+      for (const h of fresh) {
+        syncedRef.current.ids.add(h.exercise_id);
+        if (mine.has(h.exercise_id)) continue;
+        const libItem = library.find((l) => l.id === h.exercise_id);
+        if (!libItem) continue; // a custom exercise only the host has
+        try {
+          const planned = h.planned_sets || 3;
+          const warm = h.planned_warmup_sets || 0;
+          const dbId = await addWorkoutExercise(workoutId, libItem.id, workoutLenRef.current, planned, "", null, warm);
+          const hydrated = await hydrateExercise(user.id, libItem);
+          const item = newItem(hydrated, dbId, planned, warm);
+          workoutLenRef.current += 1;
+          setWorkout((prev) => [...prev, item]);
+          setAllSets((prev) => [...prev, []]);
+          added.push(libItem.name);
+        } catch { /* skip; the host can add it again */ }
+      }
+      try { localStorage.setItem(syncKey, JSON.stringify([...syncedRef.current.ids])); } catch { /* ignore */ }
+      if (added.length === 1) note(`${hostName} added ${added[0]}`);
+      else if (added.length > 1) note(`${hostName} added ${added.length} exercises`);
+      syncingRef.current = false;
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupSessionId, isGroupHost, groupLive, groupPlanReady, booting, workoutId, library, group.session?.host_exercises]);
   const lastWeek = ex ? ex.lastWeek : [];
   const planned = ex ? ex.planned : 0;
   const effIdeology = ex && ex.ideology ? ex.ideology : globalIdeology;
@@ -1181,14 +1258,50 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   useEffect(() => {
     if (booting || startIntentAppliedRef.current || !startIntent || resumeWorkout) return;
     startIntentAppliedRef.current = true;
-    if (workout.length > 0) return;
+    if (workout.length > 0) { setGroupPlanReady(true); return; }
     if (startIntent.kind === "scratch") { setManageFromScratch(true); setView("manage"); }
     else if (startIntent.kind === "template" && startIntent.template) loadTemplate(startIntent.template);
     else if (startIntent.kind === "templates") openTemplates();
     else if (startIntent.kind === "repeat" && startIntent.workout) loadPastWorkout(startIntent.workout);
     else if (startIntent.kind === "resume" && savedWorkout) handleResumePreviousSaved();
+    else if (startIntent.kind === "group") loadGroupPlan(startIntent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booting, startIntent]);
+
+  // Group lobby start (v1.20.0). Everyone gets the plan the host picked.
+  // The host's own template rows come back under RLS (keeping their notes
+  // and machine setup); members can't read the host's templates, so they
+  // load the snapshot stored on the session. From scratch: the host goes
+  // to the exercise picker as usual, members wait on an empty workout and
+  // the host's exercises arrive through host-led sync.
+  async function loadGroupPlan(intent) {
+    const plan = intent.plan || { kind: "scratch" };
+    try {
+      const sess = await fetchGroupSession(intent.groupSessionId).catch(() => null);
+      const isHost = !!sess && sess.host_id === user.id;
+      if (plan.kind === "template") {
+        let rows = [];
+        if (isHost && plan.template_id) rows = await fetchTemplateExercises(plan.template_id).catch(() => []);
+        const personal = rows.length > 0;
+        if (!personal) rows = plan.exercises || [];
+        const items = await loadExerciseRows(rows, personal);
+        if (items.length > 0) {
+          setWorkout(items);
+          setAllSets(items.map(() => []));
+          setExIdx(0);
+          setView("workout");
+        } else {
+          note("Couldn't load the group's plan. Add exercises as you go.");
+        }
+      } else if (isHost) {
+        setManageFromScratch(true);
+        setView("manage");
+      }
+    } catch (err) {
+      note(`Couldn't load the group's plan: ${err.message}`);
+    }
+    setGroupPlanReady(true);
+  }
 
   async function handleResumePreviousSaved() {
     if (!savedWorkout || resumingSaved) return;
@@ -1468,24 +1581,34 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     }
   }
 
+  // Adds template-shaped rows to the workout and returns the new slots.
+  // personal=false (a group plan snapshot) skips per-template notes and
+  // setup, which belong to whoever owns the template.
+  async function loadExerciseRows(rows, personal = true) {
+    const items = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const libItem = library.find((l) => l.id === row.exercise_id);
+      if (!libItem) continue; // removed from the library since, or someone else's custom exercise
+      const dbId = await addWorkoutExercise(workoutId, libItem.id, items.length, row.planned_sets, "", row.superset_group ?? null, row.planned_warmup_sets || 0, row.rep_scheme || null);
+      const hydrated = await hydrateExercise(user.id, libItem);
+      const item = newItem(hydrated, dbId, row.planned_sets, row.planned_warmup_sets || 0);
+      if (personal) {
+        item.notes = row.notes || item.notes;
+        item.setup = Object.keys(row.setup || {}).length > 0 ? { ...row.setup } : item.setup;
+      }
+      item.supersetGroup = row.superset_group ?? null;
+      item.repScheme = row.rep_scheme || null;
+      items.push(item);
+    }
+    return items;
+  }
+
   async function loadTemplate(template) {
     setLoadingTemplateId(template.id);
     try {
       const rows = await fetchTemplateExercises(template.id);
-      const items = [];
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const libItem = library.find((l) => l.id === row.exercise_id);
-        if (!libItem) continue; // exercise may have been removed from the library since
-        const dbId = await addWorkoutExercise(workoutId, libItem.id, i, row.planned_sets, "", row.superset_group ?? null, row.planned_warmup_sets || 0, row.rep_scheme || null);
-        const hydrated = await hydrateExercise(user.id, libItem);
-        const item = newItem(hydrated, dbId, row.planned_sets, row.planned_warmup_sets || 0);
-        item.notes = row.notes || item.notes;
-        item.setup = Object.keys(row.setup || {}).length > 0 ? { ...row.setup } : item.setup;
-        item.supersetGroup = row.superset_group ?? null;
-        item.repScheme = row.rep_scheme || null;
-        items.push(item);
-      }
+      const items = await loadExerciseRows(rows, true);
       setWorkout(items);
       setAllSets(items.map(() => []));
       setExIdx(0);

@@ -118,6 +118,36 @@ export function fetchGroupInvites() {
 export function fetchGroupSessionForWorkout(workoutId) {
   return rpc("get_group_session_for_workout", { p_workout: workoutId });
 }
+// Lobby (v1.20.0, migration_077)
+export function inviteToGroupSession(sessionId, friendIds) {
+  return rpc("invite_to_group_session", { p_session: sessionId, p_friend_ids: friendIds });
+}
+export function setGroupPlan(sessionId, plan) {
+  return rpc("set_group_plan", { p_session: sessionId, p_plan: plan });
+}
+export function startGroupSession(sessionId) {
+  return rpc("start_group_session", { p_session: sessionId });
+}
+export function setGroupHostExercises(sessionId, exercises) {
+  return rpc("set_group_host_exercises", { p_session: sessionId, p_exercises: exercises });
+}
+export function fetchMyOpenLobby() {
+  return rpc("get_my_open_lobby");
+}
+export function fetchGroupSessionMembers(sessionId) {
+  return rpc("get_group_session_members", { p_session: sessionId }).then((r) => r || []);
+}
+// -> { id, host_id, status, plan, host_exercises, started_at } or null
+export async function fetchGroupSession(sessionId) {
+  const { data, error } = await supabase.from("group_sessions")
+    .select("id, host_id, status, plan, host_exercises, started_at").eq("id", sessionId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+export function planLabel(plan) {
+  if (!plan || plan.kind !== "template") return "From scratch";
+  return plan.name || "Template";
+}
 export async function publishGroupLift(sessionId, userId, exerciseId, sets) {
   const { error } = await supabase.from("group_session_lifts").upsert(
     { session_id: sessionId, user_id: userId, exercise_id: exerciseId, sets, updated_at: new Date().toISOString() },
@@ -130,14 +160,16 @@ export async function publishGroupLift(sessionId, userId, exerciseId, sets) {
 // Realtime pushes changes; a full refetch runs on subscribe, when the app
 // comes back to the foreground and when the connection returns, so a
 // dropped socket at the gym never leaves gaps.
-// -> { members, lifts: { [userId]: { [exerciseId]: sets[] } }, refresh }
+// -> { session, members, lifts: { [userId]: { [exerciseId]: sets[] } }, refresh }
+// session is the group_sessions row (status, plan, host_exercises).
 export function useGroupSession(sessionId) {
+  const [session, setSession] = useState(null);
   const [members, setMembers] = useState([]);
   const [lifts, setLifts] = useState({});
   const refreshRef = useRef(() => {});
 
   useEffect(() => {
-    if (!sessionId) { setMembers([]); setLifts({}); return; }
+    if (!sessionId) { setSession(null); setMembers([]); setLifts({}); return; }
     let cancelled = false;
 
     async function loadMembers() {
@@ -153,7 +185,13 @@ export function useGroupSession(sessionId) {
       for (const row of data || []) (next[row.user_id] ||= {})[row.exercise_id] = row.sets || [];
       setLifts(next);
     }
-    function refresh() { loadMembers(); loadLifts(); }
+    async function loadSession() {
+      try {
+        const row = await fetchGroupSession(sessionId);
+        if (!cancelled && row) setSession(row);
+      } catch { /* keep last known */ }
+    }
+    function refresh() { loadSession(); loadMembers(); loadLifts(); }
     refreshRef.current = refresh;
     refresh();
 
@@ -165,6 +203,10 @@ export function useGroupSession(sessionId) {
         setLifts((prev) => ({ ...prev, [row.user_id]: { ...(prev[row.user_id] || {}), [row.exercise_id]: row.sets || [] } }));
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "group_session_members", filter: `session_id=eq.${sessionId}` }, () => loadMembers())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "group_sessions", filter: `id=eq.${sessionId}` }, (payload) => {
+        if (payload.new && payload.new.id) setSession((prev) => ({ ...(prev || {}), ...payload.new }));
+        else loadSession();
+      })
       .subscribe((status) => { if (status === "SUBSCRIBED") refresh(); });
 
     function onVisible() { if (document.visibilityState === "visible") refresh(); }
@@ -178,7 +220,7 @@ export function useGroupSession(sessionId) {
     };
   }, [sessionId]);
 
-  return { members, lifts, refresh: () => refreshRef.current() };
+  return { session, members, lifts, refresh: () => refreshRef.current() };
 }
 
 // ── Strength math ───────────────────────────────────────────────────

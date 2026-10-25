@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { useBackLayer } from "./lib/backNav";
 import StartWorkoutSheet from "./StartWorkoutSheet";
 import GroupWorkoutSheet from "./GroupWorkoutSheet";
+import GroupLobby from "./GroupLobby";
+import GroupInviteModal from "./GroupInviteModal";
 import DesktopSidebar from "./DesktopSidebar";
 import { useIsDesktop } from "./lib/useIsDesktop";
 import Friends from "./Friends";
-import { fetchGroupInvites, joinGroupSession, leaveGroupSession, fetchMyHandle, shareDeltaLog, inviteText, inviteLink, getPendingAdd, clearPendingAdd } from "./lib/social";
+import { fetchGroupInvites, joinGroupSession, leaveGroupSession, fetchGroupSession, fetchMyOpenLobby, fetchMyHandle, shareDeltaLog, inviteText, inviteLink, getPendingAdd, clearPendingAdd } from "./lib/social";
 import AddFriendSheet from "./AddFriendSheet";
 import { supabase } from "./lib/supabaseClient";
 import { fetchWorkoutHistory, fetchStreak, fetchProfile, saveProfile, fetchUnseenFeedbackCount, markFeedbackViewed, fetchAnnouncements, postAnnouncement, updateAnnouncement, setAnnouncementArchived, deleteAnnouncement, markAnnouncementsViewed, fetchMyNotifications, markNotificationsRead, dismissNotification, fetchDismissedAnnouncementIds, dismissAnnouncementForUser, fetchPollVotes, castPollVote } from "./lib/queries";
@@ -178,9 +180,8 @@ function buildLastWorkoutInsight(history, programDay) {
 
 export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset, onProgramWorkoutStarted, showUpdateNotice, onApplyUpdate, initialPanel, onInitialPanelUsed }) {
   const [showStartSheet, setShowStartSheet] = useState(false); // Start Workout sheet (StartWorkoutSheet.jsx)
-  // Group workouts (v1.17.0). groupStartSession is set once a session
-  // exists (host picked friends, or an invite was accepted) and reopens
-  // the Start Workout sheet in group mode.
+  // Group workouts (v1.17.0, lobby v1.20.0): picking friends or joining
+  // an invite opens GroupLobby; the host starts it for everyone.
   // Desktop layout (v1.18.0): a persistent sidebar plus a content pane.
   // Every section is one of the screens the phone app already has; the
   // pane is a containing block (transform) so those full-screen overlays
@@ -192,7 +193,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   // Invite link waiting from before sign-in / setup.
   const [pendingAdd, setPendingAdd] = useState(() => getPendingAdd());
   const [showGroupSheet, setShowGroupSheet] = useState(false);
-  const [groupStartSession, setGroupStartSession] = useState(null);
+  // Group lobby (v1.20.0): the session whose lobby is open, if any.
+  const [lobbySession, setLobbySession] = useState(null);
+  const [lobbyNote, setLobbyNote] = useState(null);
+  const [dismissedInvites, setDismissedInvites] = useState(() => new Set());
   const [showFriends, setShowFriends] = useState(false);
   useEffect(() => {
     if (!initialPanel) return;
@@ -216,21 +220,44 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     document.addEventListener("visibilitychange", onVisible);
     return () => { cancelled = true; document.removeEventListener("visibilitychange", onVisible); supabase.removeChannel(channel); };
   }, [user.id]);
+  // Back in a lobby after a reload or app switch.
+  useEffect(() => {
+    if (activeWorkout && !activeWorkout.isPaused) return;
+    fetchMyOpenLobby().then((sid) => { if (sid) setLobbySession((cur) => cur || sid); }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id]);
+  function flashLobbyNote(msg) {
+    if (!msg) return;
+    setLobbyNote(msg);
+    setTimeout(() => setLobbyNote(null), 3200);
+  }
+  function startGroupWorkout(sessionId, plan) {
+    setLobbySession(null);
+    onStartWorkout({ kind: "group", groupSessionId: sessionId, plan: plan || { kind: "scratch" } });
+  }
   async function acceptGroupInvite(inv) {
     setInviteBusy(inv.session_id);
+    const drop = () => setGroupInvites((list) => list.filter((x) => x.session_id !== inv.session_id));
     try {
       if (activeWorkout && !activeWorkout.isPaused) {
+        // Already lifting: bring this workout into the group as it is.
         await joinGroupSession(inv.session_id, activeWorkout.id);
-        setGroupInvites((list) => list.filter((x) => x.session_id !== inv.session_id));
+        drop();
         onResumeWorkout();
       } else {
-        await joinGroupSession(inv.session_id);
-        setGroupInvites((list) => list.filter((x) => x.session_id !== inv.session_id));
-        setGroupStartSession(inv.session_id);
-        setShowStartSheet(true);
+        const status = await joinGroupSession(inv.session_id);
+        drop();
+        if (status === "active") {
+          // Late join: skip the lobby and load the plan straight away.
+          const session = await fetchGroupSession(inv.session_id).catch(() => null);
+          startGroupWorkout(inv.session_id, session?.plan);
+        } else {
+          setLobbySession(inv.session_id);
+        }
       }
-    } catch {
-      setGroupInvites((list) => list.filter((x) => x.session_id !== inv.session_id));
+    } catch (e) {
+      drop();
+      flashLobbyNote(e.message || "That group workout has ended");
     } finally {
       setInviteBusy(null);
     }
@@ -239,11 +266,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     setGroupInvites((list) => list.filter((x) => x.session_id !== inv.session_id));
     leaveGroupSession(inv.session_id, "declined").catch(() => {});
   }
+  function dismissInvite(inv) {
+    setDismissedInvites((s) => new Set(s).add(inv.session_id));
+  }
   function closeStartSheet() {
-    // Backing out of a group start without starting: leave the session so
-    // friends don't see someone stuck as "Lifting".
-    if (groupStartSession) leaveGroupSession(groupStartSession, "declined").catch(() => {});
-    setGroupStartSession(null);
     setShowStartSheet(false);
   }
   async function shareApp() {
@@ -1290,7 +1316,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               <span style={{ color: T.accent, display: "flex", flexShrink: 0 }}><IconUsers size={18} /></span>
               <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inv.host_first_name || `@${inv.host_handle}`} invited you to lift</span>
-                <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap" }}>Group workout · {inv.member_count} {inv.member_count === 1 ? "person" : "people"}</span>
+                <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inv.session_status === "active" ? "Already lifting" : `${inv.member_count} in the lobby`}{inv.plan_name ? ` · ${inv.plan_name}` : ""}</span>
               </div>
               <button onClick={() => declineGroupInvite(inv)} aria-label="Decline invite" style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconX size={14} /></button>
               <button onClick={() => acceptGroupInvite(inv)} disabled={inviteBusy === inv.session_id} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, opacity: inviteBusy === inv.session_id ? 0.6 : 1 }}>Join</button>
@@ -1314,10 +1340,9 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
         <StartWorkoutSheet
           userId={user.id}
           savedWorkout={activeWorkout?.isPaused ? activeWorkout : null}
-          groupSessionId={groupStartSession}
           onStartGroup={() => { setShowStartSheet(false); setShowGroupSheet(true); }}
           onClose={closeStartSheet}
-          onChoose={(intent) => { setShowStartSheet(false); setGroupStartSession(null); onStartWorkout(intent); }}
+          onChoose={(intent) => { setShowStartSheet(false); onStartWorkout(intent); }}
         />
       )}
 
@@ -1326,8 +1351,36 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           user={user}
           onClose={() => setShowGroupSheet(false)}
           onOpenFriends={() => { setShowGroupSheet(false); setShowFriends(true); }}
-          onSessionCreated={(sid) => { setShowGroupSheet(false); setGroupStartSession(sid); setShowStartSheet(true); }}
+          onSessionCreated={(sid) => { setShowGroupSheet(false); setLobbySession(sid); }}
         />
+      )}
+
+      {lobbySession && (
+        <GroupLobby
+          key={lobbySession}
+          user={user}
+          sessionId={lobbySession}
+          onStart={(plan) => startGroupWorkout(lobbySession, plan)}
+          onExit={(msg) => { setLobbySession(null); flashLobbyNote(msg); }}
+        />
+      )}
+
+      {(() => {
+        const inv = !lobbySession && !showGroupSheet && !showStartSheet && groupInvites.find((i) => !dismissedInvites.has(i.session_id));
+        return inv ? (
+          <GroupInviteModal
+            key={inv.session_id}
+            invite={inv}
+            busy={inviteBusy === inv.session_id}
+            onJoin={() => acceptGroupInvite(inv)}
+            onDecline={() => declineGroupInvite(inv)}
+            onDismiss={() => dismissInvite(inv)}
+          />
+        ) : null;
+      })()}
+
+      {lobbyNote && (
+        <div role="status" style={{ position: "fixed", left: "50%", bottom: "calc(96px + env(safe-area-inset-bottom, 0px))", transform: "translateX(-50%)", zIndex: 41, maxWidth: "calc(100% - 32px)", padding: "10px 16px", borderRadius: 12, background: T.surface2, border: `1px solid ${T.line}`, color: T.text, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lobbyNote}</div>
       )}
 
       {showMenu && (

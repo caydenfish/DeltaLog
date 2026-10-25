@@ -3,7 +3,7 @@ import { IconSearch, IconX, IconCheck } from "./Icons";
 import { Avatar, HandleSetupCard } from "./Friends";
 import {
   fetchMyHandle, fetchFriends, fetchFriendGroups, saveFriendGroup, deleteFriendGroup,
-  createGroupSession, searchUsersByHandle, sendFriendRequest, normalizeHandle, displayName,
+  createGroupSession, inviteToGroupSession, searchUsersByHandle, sendFriendRequest, normalizeHandle, displayName,
 } from "./lib/social";
 
 const T = {
@@ -20,10 +20,15 @@ const oneLine = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellip
 const label = { fontFamily: condensed, fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.dim };
 const MAX_FRIENDS = 7; // 8 people including you
 
-// Start Group Workout (v1.17.0): pick friends (search by ID first, saved
-// groups as a shortcut), then hand the new session id back so Home can
-// open the normal Start Workout sheet in group mode.
-export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onOpenFriends }) {
+// Group Workout friend picker (v1.17.0): pick friends (search by ID first,
+// saved groups as a shortcut), then hand the new session id back so Home
+// can open the lobby (v1.20.0). With inviteSessionId set it's the lobby's
+// "Invite more" picker instead: people already in are hidden and the
+// picked friends are added to that session.
+export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onOpenFriends, inviteSessionId, excludeIds, onInvited }) {
+  const inviteMode = !!inviteSessionId;
+  const excluded = new Set(excludeIds || []);
+  const maxPick = inviteMode ? Math.max(0, 8 - excluded.size) : MAX_FRIENDS;
   const [me, setMe] = useState(null);
   const [friends, setFriends] = useState(null);
   const [groups, setGroups] = useState([]);
@@ -46,9 +51,11 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
   const q = normalizeHandle(query);
   const shownFriends = useMemo(() => {
     if (!friends) return [];
-    if (!q) return friends;
-    return friends.filter((f) => (f.handle || "").includes(q) || (f.first_name || "").toLowerCase().includes(q));
-  }, [friends, q]);
+    const pool = friends.filter((f) => !excluded.has(f.user_id));
+    if (!q) return pool;
+    return pool.filter((f) => (f.handle || "").includes(q) || (f.first_name || "").toLowerCase().includes(q));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [friends, q, excludeIds]);
 
   // People matching the ID who aren't friends yet: offer a request.
   useEffect(() => {
@@ -62,8 +69,8 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
   }, [q]);
 
   function toggle(id) {
-    if (!selected.has(id) && selected.size >= MAX_FRIENDS) {
-      setError(`Up to ${MAX_FRIENDS} friends per group workout`);
+    if (!selected.has(id) && selected.size >= maxPick) {
+      setError(inviteMode ? `Room for ${maxPick} more` : `Up to ${MAX_FRIENDS} friends per group workout`);
       return;
     }
     setError(null);
@@ -73,7 +80,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
   }
   function pickGroup(g) {
     const friendIds = new Set((friends || []).map((f) => f.user_id));
-    const ids = g.member_ids.filter((id) => friendIds.has(id)).slice(0, MAX_FRIENDS);
+    const ids = g.member_ids.filter((id) => friendIds.has(id) && !excluded.has(id)).slice(0, maxPick);
     setSelected(new Set(ids));
   }
   async function saveGroup() {
@@ -97,8 +104,13 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
     if (selected.size === 0 || starting) return;
     setStarting(true); setError(null);
     try {
-      const sessionId = await createGroupSession([...selected]);
-      onSessionCreated(sessionId);
+      if (inviteMode) {
+        await inviteToGroupSession(inviteSessionId, [...selected]);
+        onInvited();
+      } else {
+        const sessionId = await createGroupSession([...selected]);
+        onSessionCreated(sessionId);
+      }
     } catch (e) {
       setError(e.message);
       setStarting(false);
@@ -117,7 +129,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
           <button onClick={onClose} aria-label="Close" style={{ display: "block", width: 64, height: 26, margin: "0 auto 4px", background: "none", border: "none", padding: 0 }}>
             <span style={{ display: "block", width: 36, height: 4, borderRadius: 4, background: T.line, margin: "0 auto" }} />
           </button>
-          <div style={{ fontFamily: condensed, fontSize: 26, fontWeight: 700, color: T.text, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>Group Workout</div>
+          <div style={{ fontFamily: condensed, fontSize: 26, fontWeight: 700, color: T.text, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>{inviteMode ? "Invite Friends" : "Group Workout"}</div>
         </div>
 
         {me === null ? <div style={{ flex: 1 }} /> : needsHandle ? (
@@ -168,7 +180,10 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
 
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <span style={{ ...label, marginBottom: 6 }}>Friends</span>
-                {friends && friends.length === 0 && (
+                {inviteMode && friends && !q && shownFriends.length === 0 && (
+                  <div style={{ fontSize: 13, color: T.dim, padding: "4px 0 8px" }}>{friends.length === 0 ? "No friends yet. Search an ID above to add someone." : "All your friends are already in this group."}</div>
+                )}
+                {!inviteMode && friends && friends.length === 0 && (
                   <div style={{ fontSize: 13, color: T.dim, padding: "4px 0 8px" }}>
                     No friends yet. Search an ID above, or{" "}
                     <button onClick={onOpenFriends} style={{ background: "none", border: "none", color: T.accent, padding: 0, fontSize: 13, fontWeight: 600 }}>open Friends</button>.
@@ -245,7 +260,9 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
                 </div>
               )}
               <button onClick={start} disabled={selected.size === 0 || starting} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700, opacity: selected.size === 0 || starting ? 0.5 : 1, whiteSpace: "nowrap" }}>
-                {starting ? "Starting..." : selected.size === 0 ? "Continue" : `Continue with ${selected.size} friend${selected.size === 1 ? "" : "s"}`}
+                {inviteMode
+                  ? (starting ? "Inviting..." : selected.size === 0 ? "Invite" : `Invite ${selected.size} friend${selected.size === 1 ? "" : "s"}`)
+                  : (starting ? "Opening lobby..." : selected.size === 0 ? "Open lobby" : `Open lobby with ${selected.size} friend${selected.size === 1 ? "" : "s"}`)}
               </button>
             </div>
           </>

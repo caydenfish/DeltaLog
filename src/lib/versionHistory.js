@@ -5,6 +5,19 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.20.0",
+    date: "2026-10-25",
+    items: [
+      "migration_077: group_sessions.status gains 'lobby' (new default; check constraint rebuilt), plus plan jsonb ({kind:'scratch'} or {kind:'template', template_id, name, exercises:[{exercise_id, planned_sets, planned_warmup_sets, superset_group, rep_scheme}]}, a snapshot so members never read the host's templates), host_exercises jsonb and started_at. New RPCs: invite_to_group_session (host only, re-invites declined members, 8-person cap), set_group_plan (host, lobby only), start_group_session (host, lobby -> active, returns plan), set_group_host_exercises (host, active only), get_my_open_lobby. create_group_session now opens a lobby and ends any older open lobby by the same host. join_group_session returns the session status (dropped and recreated) and refuses ended sessions. leave_group_session: the host leaving a lobby ends it for everyone. get_my_group_invites (dropped and recreated) adds host_id, session_status, plan_name and plan_exercise_count and includes lobby sessions; member_count now counts joined only. group_sessions added to supabase_realtime.",
+      "lib/social.js: wrappers for the new RPCs, fetchGroupSession, fetchGroupSessionMembers, planLabel. useGroupSession also returns the session row, loaded on refresh and patched from Realtime UPDATEs on group_sessions (id filter).",
+      "New GroupLobby.jsx (full screen, z 29, back layer priority 11): plan card (host taps Change for From scratch or a template list; picking fetches template_exercises and stores the snapshot without notes/setup), lifters with Host / Ready / Invited pills, Invite more (GroupWorkoutSheet in invite mode), Start for everyone / Start now, members see a waiting line. Fires onStart(plan) once when status turns active (Realtime or the host's own call) and onExit when ended. Leave confirms first; host copy says it closes the lobby.",
+      "New GroupInviteModal.jsx: centered invite card on Home (host avatar, lobby count or 'already lifting', avatars of joined members, plan row, Join lobby / Join workout, Decline). Tapping outside or X dismisses it for that session; the existing banner above Start Workout stays and now shows lobby count and plan name.",
+      "GroupWorkoutSheet: Continue becomes Open lobby; new invite mode (inviteSessionId, excludeIds, onInvited) hides people already in, caps picks at the remaining room and calls invite_to_group_session. StartWorkoutSheet: Start Group Workout renamed Group Workout; the old group mode (groupSessionId prop) is removed since the plan is picked in the lobby.",
+      "Home: lobbySession state replaces groupStartSession. Open lobby restored on mount via get_my_open_lobby. Accepting an invite with no active workout joins and opens the lobby, or, if the session is already active, fetches the plan and starts straight away (late join). Accepting with an active workout keeps the old behavior (attach and resume). Errors show a short toast.",
+      "SetLogger: new start intent kind 'group' ({groupSessionId, plan}) -> loadGroupPlan: the host reloads their own template rows (keeps notes/setup), members load the plan snapshot through a shared loadExerciseRows (loadTemplate now uses it too). Scratch plans send the host to the picker and leave members on an empty workout. Host-led sync: the host debounces and publishes a deduped [{exercise_id, planned_sets, planned_warmup_sets}] list while the session is active; members append any host exercise they haven't handled yet (tracked per session in localStorage deltalog.groupSynced.<id>, so removed ones never come back and members' own additions are untouched), with a toast naming the host. Sync waits for the lobby plan to finish loading (groupPlanReady) so plan exercises aren't added twice.",
+    ],
+  },
+  {
     version: "1.19.1",
     date: "2026-10-12",
     items: [

@@ -9,6 +9,15 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.20.0": {
+    title: "Group workouts, now with a lobby",
+    items: [
+      "Start Workout now has a Group Workout button. Pick your friends and you land in a lobby together instead of everyone starting their own workout.",
+      "The host picks the plan, from scratch or one of their templates, and can see who's ready and who's still invited. When they tap Start, everyone in the lobby gets the same exercises loaded.",
+      "Exercises the host adds mid-workout show up for everyone. You can still add your own, and removing one won't make it come back.",
+      "Invites now pop up with who sent them, who's already in, and the plan. Running late? Joining after the host starts drops you straight into the workout.",
+    ],
+  },
   "1.19.1": {
     title: "Invite links that actually add you",
     items: [
