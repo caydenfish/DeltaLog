@@ -4,7 +4,7 @@ import { fetchExercises, fetchTemplates, saveWorkoutAsTemplate, deleteTemplate, 
 import { computeMuscleSetCounts } from "./lib/volume";
 import { subscribeTaxonomy, getTaxonomyVersion, genericBucket, MUSCLE_COLORS, isFullBody, CATEGORY_KEYS } from "./lib/muscleTaxonomy";
 import { subscribeBodyMapRegions, getBodyMapRegionVersion } from "./lib/bodyMapRegions";
-import { getPrefs } from "./lib/prefs";
+import { getPrefs, defaultWorkingSets } from "./lib/prefs";
 import { IDEOLOGIES } from "./lib/ideologies";
 import { summarizeScheme, resizeScheme } from "./lib/repScheme";
 import BodyHeatmap from "./BodyHeatmap";
@@ -30,7 +30,7 @@ const display = "'Barlow Condensed', sans-serif";
 const iconBtn = { width: 36, height: 36, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
 const ellipsis = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 };
 
-const newPick = (ex) => ({ id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, rawPrimaryMuscles: ex.rawPrimaryMuscles, rawSecondaryMuscles: ex.rawSecondaryMuscles, planned: 3, plannedWarmup: 0, supersetGroup: null, repScheme: null });
+const newPick = (ex) => ({ id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, rawPrimaryMuscles: ex.rawPrimaryMuscles, rawSecondaryMuscles: ex.rawSecondaryMuscles, planned: defaultWorkingSets(), plannedWarmup: 0, supersetGroup: null, repScheme: null });
 
 function Stepper({ label, value, min, max, onChange }) {
   const btn = (disabled) => ({ width: 34, height: 34, borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: disabled ? "#3A404B" : T.text, fontSize: 17, fontWeight: 700, padding: 0 });
@@ -93,7 +93,12 @@ function Sheet({ children, onClose, full }) {
   );
 }
 
-export default function Templates({ user, onClose, initialPicks }) {
+// startNew (v1.21.0): opened from the Start Workout sheet's "+ New"
+// button. Goes straight into an empty builder, and leaving or saving
+// closes the whole thing (onSaved gets the new template) instead of
+// dropping back to the template list.
+export default function Templates({ user, onClose, initialPicks, startNew, onSaved }) {
+  const oneShot = startNew || (initialPicks && initialPicks.length > 0);
   // Re-render when the taxonomy / body-map region caches land (they're
   // module state, see muscleTaxonomy.js and bodyMapRegions.js).
   const [, setTaxonomyVersion] = useState(getTaxonomyVersion);
@@ -175,6 +180,7 @@ export default function Templates({ user, onClose, initialPicks }) {
   // Seeded from "Create a template from these exercises" elsewhere.
   useEffect(() => {
     if (initialPicks && initialPicks.length > 0) openBuilder({ name: "", picks: initialPicks.map(newPick) });
+    else if (startNew) openBuilder({ name: "", picks: [] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -201,7 +207,7 @@ export default function Templates({ user, onClose, initialPicks }) {
     setConfirmDiscard(false);
     setMode("list");
     setEditingId(null);
-    if (initialPicks && initialPicks.length > 0) onClose();
+    if (oneShot) onClose();
   }
 
   async function startEdit(t) {
@@ -278,11 +284,15 @@ export default function Templates({ user, onClose, initialPicks }) {
     try {
       if (editingId) await updateTemplate(editingId, finalName, picks);
       else await saveWorkoutAsTemplate(user.id, finalName, picks, false);
-      setTemplates(await fetchTemplates(user.id));
+      const fresh = await fetchTemplates(user.id);
+      setTemplates(fresh);
       snapshot.current = JSON.stringify({ n: name, p: picks });
       setMode("list");
       setEditingId(null);
-      if (initialPicks && initialPicks.length > 0) onClose();
+      if (startNew && onSaved) {
+        const saved = fresh.find((t) => t.name === finalName) || null;
+        onSaved(saved);
+      } else if (oneShot) onClose();
     } catch (err) {
       setError(err.message);
     }

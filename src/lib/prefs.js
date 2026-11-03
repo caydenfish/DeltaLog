@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient";
 
 const KEY = "deltalog_prefs";
-const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVolume: 0.8, restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, homeCards: null, homeCardSettings: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both", coverageBreakdownView: "chart", warmupPercentSchemes: {}, pickerLayout: "tiles" };
+const DEFAULTS = { restSeconds: 90, warmupRestSeconds: 60, warmupRestEnabled: true, restTimerSoundEnabled: true, restTimerSound: "chime", restTimerVolume: 0.8, restTimerVibrationEnabled: true, restTimerVibration: "double", restTimerNotificationEnabled: false, units: "lb", muscleNameMode: "generic", scoreDisplay: "percentile", weightEntryMode: "manual", tutorialSeen: false, plate55Scope: "off", installPromptSeen: false, trainingIdeology: "Hypertrophy", setupWizardSeen: false, lastSeenVersion: null, lastWhatsNewDate: null, timeFormat: "12h", adminViewMode: "admin", homeRange: "30d", exportImagePrefs: null, homeModules: null, homeCards: null, homeCardSettings: null, weeklySetGoalsMode: "individual", targetCalcMethod: "rir_autoregulation", muscleBreakdownSetsFilter: "working", muscleBreakdownRoleFilter: "both", coverageBreakdownView: "chart", warmupPercentSchemes: {}, pickerLayout: "tiles", defaultWorkingSets: 3 };
 
 // Backs up preferences to Supabase (migration_071's user_preferences,
 // one jsonb blob per user) so clearing browser data -- cookies, cache,
@@ -117,6 +117,15 @@ export function getPrefs() {
   } catch {
     return { ...DEFAULTS };
   }
+}
+
+// Working sets a newly added exercise starts with (Settings > Training >
+// Logging). Used anywhere an exercise gets added to a workout or a
+// template without a set count of its own; templates, programs, group
+// plans and "Do again" keep the counts they already carry.
+export function defaultWorkingSets() {
+  const n = Math.round(Number(getPrefs().defaultWorkingSets));
+  return Number.isFinite(n) ? Math.min(12, Math.max(1, n)) : 3;
 }
 
 // Independent Training Range per home chart (Volume, Bodyweight, Workout

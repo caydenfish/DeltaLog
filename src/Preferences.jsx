@@ -105,6 +105,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
     targetCalcMethod: getPrefs().targetCalcMethod,
     timeFormat: getPrefs().timeFormat,
     warmupPercentSchemes: getPrefs().warmupPercentSchemes,
+    defaultWorkingSets: getPrefs().defaultWorkingSets,
   }));
   const [showScoreInfo, setShowScoreInfo] = useState(false);
   const [showIdeologyInfo, setShowIdeologyInfo] = useState(false);
@@ -144,6 +145,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
     scoreDisplay: "strength score dots percentile deltalog",
     targetCalcMethod: "target calculation method progression double progression percent e1rm rir autoregulation",
     weightEntryMode: "default set entry manual plate calculator logging type",
+    defaultWorkingSets: "default number of sets per exercise working sets count planned",
     plateSizes: "big plates 55 lb 25 kg bumpers squats deadlifts",
     restSeconds: "rest timer default seconds",
     warmupRestSeconds: "warmup rest timer default seconds",
@@ -160,7 +162,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
   // findable by search without requiring a tap into that sub-screen —
   // shown inline, right in the settings list, while a search is active.
   const unitsSearchMatch = searchActive && ["units", "timeFormat"].some(matches);
-  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "targetCalcMethod", "weightEntryMode", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVolume", "restTimerVibrationEnabled", "restTimerNotificationEnabled", "warmupPercentSchemes"].some(matches);
+  const trainingSearchMatch = searchActive && ["trainingIdeology", "scoreDisplay", "targetCalcMethod", "weightEntryMode", "defaultWorkingSets", "plateSizes", "scientificNames", "restSeconds", "warmupRestSeconds", "warmupRestEnabled", "restTimerSoundEnabled", "restTimerVolume", "restTimerVibrationEnabled", "restTimerNotificationEnabled", "warmupPercentSchemes"].some(matches);
 
   function update(key, val) {
     if (controlled) {
@@ -171,7 +173,8 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
     }
   }
 
-  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVolume, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod, warmupPercentSchemes } = state;
+  const { units, muscleNameMode, bodyModelSex, scoreDisplay, weightEntryMode, restSeconds, warmupRestSeconds, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVolume, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, trainingIdeology, targetCalcMethod, warmupPercentSchemes, defaultWorkingSets: defaultSetsRaw } = state;
+  const defaultSets = Math.min(12, Math.max(1, Math.round(Number(defaultSetsRaw)) || 3));
   // Grouping into "Units" / "Training Preferences" sub-screens only
   // applies to the full/unrestricted Settings usage (no `fields` prop).
   // The in-workout menu passes an explicit fields subset and keeps its
@@ -367,6 +370,19 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
   function renderLoggingFields() {
     return (
       <>
+        {matches("defaultWorkingSets") && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: T.text, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap" }}>Default sets</div>
+            <div style={{ color: T.dim, fontSize: 12.5, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Working sets for newly added exercises</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            <button onClick={() => update("defaultWorkingSets", Math.max(1, defaultSets - 1))} aria-label="Fewer default sets" style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, minWidth: 22, textAlign: "center" }}>{defaultSets}</div>
+            <button onClick={() => update("defaultWorkingSets", Math.min(12, defaultSets + 1))} aria-label="More default sets" style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+          </div>
+        </div>
+        )}
         {matches("weightEntryMode") && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -945,7 +961,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
   const TRAINING_SECTIONS = [
     { key: "focus", title: "Training Focus", subtitle: "Reps, score, targets", icon: <IconTarget size={20} />, value: trainingIdeology, render: renderTrainingFocusFields },
     { key: "muscles", title: "Muscle Names", subtitle: "Name detail level", icon: <IconBody size={20} />, value: nameModeLabel, render: renderMuscleNameFields },
-    { key: "logging", title: "Logging", subtitle: "Set entry, plates, map", icon: <IconBarbell size={20} />, value: weightEntryMode === "plate" ? "Plates" : "Manual", render: renderLoggingFields },
+    { key: "logging", title: "Logging", subtitle: "Sets, entry, plates", icon: <IconBarbell size={20} />, value: weightEntryMode === "plate" ? "Plates" : "Manual", render: renderLoggingFields },
     { key: "restDurations", title: "Rest Timers", subtitle: "Working and warmup", icon: <IconClock size={20} />, value: fmtRest(restSeconds), render: renderRestTimerDurationFields },
     { key: "restAlerts", title: "Timer Alerts", subtitle: "Sound, buzz, notify", icon: <IconBell size={20} />, value: alertsOn ? `${alertsOn} on` : "Off", render: renderRestTimerAlertFields },
     { key: "warmupWeights", title: "Warmup Weights", subtitle: "Percent of top set", icon: <IconChartBar size={20} />, render: renderWarmupWeightFields },
@@ -993,7 +1009,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                     <div style={{ marginBottom: 14 }}>{renderMuscleNameFields()}</div>
                   </>
                 )}
-                {(matches("weightEntryMode") || matches("plateSizes") || matches("bodyModelSex")) && (
+                {(matches("defaultWorkingSets") || matches("weightEntryMode") || matches("plateSizes") || matches("bodyModelSex")) && (
                   <>
                     {inlineHeading("Logging")}
                     {renderLoggingFields()}

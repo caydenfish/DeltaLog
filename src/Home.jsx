@@ -195,6 +195,9 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [showGroupSheet, setShowGroupSheet] = useState(false);
   // Group lobby (v1.20.0): the session whose lobby is open, if any.
   const [lobbySession, setLobbySession] = useState(null);
+  // New template from the Start Workout sheet (v1.21.0).
+  const [showNewTemplate, setShowNewTemplate] = useState(false);
+  const [freshTemplate, setFreshTemplate] = useState(null);
   const [lobbyNote, setLobbyNote] = useState(null);
   const [dismissedInvites, setDismissedInvites] = useState(() => new Set());
   const [showFriends, setShowFriends] = useState(false);
@@ -271,6 +274,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   }
   function closeStartSheet() {
     setShowStartSheet(false);
+    setFreshTemplate(null);
   }
   async function shareApp() {
     let handle = null;
@@ -445,6 +449,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const [targetCalcMethod, setTargetCalcMethodState] = useState(() => getPrefs().targetCalcMethod);
   const [timeFormat, setTimeFormatState] = useState(() => getPrefs().timeFormat);
   const [warmupPercentSchemes, setWarmupPercentSchemesState] = useState(() => getPrefs().warmupPercentSchemes);
+  const [defaultWorkingSetsPref, setDefaultWorkingSetsPref] = useState(() => getPrefs().defaultWorkingSets);
   const [adminViewMode, setAdminViewModeState] = useState(() => getPrefs().adminViewMode);
   function setAdminViewMode(mode) {
     setAdminViewModeState(mode);
@@ -458,7 +463,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     return !q || keywords.toLowerCase().includes(q);
   }
 
-  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, targetCalcMethod, timeFormat, warmupPercentSchemes };
+  const preferencesValue = { units, muscleNameMode, scoreDisplay, weightEntryMode, restSeconds: restDefault, warmupRestSeconds: warmupRestDefault, warmupRestEnabled, restTimerSoundEnabled, restTimerSound, restTimerVibrationEnabled, restTimerVibration, restTimerNotificationEnabled, plate55Scope, trainingIdeology, targetCalcMethod, timeFormat, warmupPercentSchemes, defaultWorkingSets: defaultWorkingSetsPref };
   function handlePreferencesChange(key, val) {
     if (key === "units") setUnits(val);
     else if (key === "muscleNameMode") setMuscleNameMode(val);
@@ -477,6 +482,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     else if (key === "targetCalcMethod") { setTargetCalcMethodState(val); setPref("targetCalcMethod", val); }
     else if (key === "timeFormat") setTimeFormat(val);
     else if (key === "warmupPercentSchemes") setWarmupPercentSchemes(val);
+    else if (key === "defaultWorkingSets") { setDefaultWorkingSetsPref(val); setPref("defaultWorkingSets", val); }
   }
 
   // Greets the person once per calendar day, on whichever login happens
@@ -949,6 +955,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
     [showHomeModulesEditor, () => setShowHomeModulesEditor(false)],
     [showFriends, () => setShowFriends(false)],
     [showGroupSheet, () => setShowGroupSheet(false)],
+    [showNewTemplate, () => { setShowNewTemplate(false); setShowStartSheet(true); }],
     [showStartSheet, () => closeStartSheet()],
     [showMenu, () => setShowMenu(false)],
   ];
@@ -1341,8 +1348,19 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           userId={user.id}
           savedWorkout={activeWorkout?.isPaused ? activeWorkout : null}
           onStartGroup={() => { setShowStartSheet(false); setShowGroupSheet(true); }}
+          onNewTemplate={() => { setShowStartSheet(false); setShowNewTemplate(true); }}
+          freshTemplate={freshTemplate}
           onClose={closeStartSheet}
-          onChoose={(intent) => { setShowStartSheet(false); onStartWorkout(intent); }}
+          onChoose={(intent) => { setShowStartSheet(false); setFreshTemplate(null); onStartWorkout(intent); }}
+        />
+      )}
+
+      {showNewTemplate && (
+        <Templates
+          user={user}
+          startNew
+          onClose={() => { setShowNewTemplate(false); setShowStartSheet(true); }}
+          onSaved={(t) => { setShowNewTemplate(false); setFreshTemplate(t); setShowStartSheet(true); }}
         />
       )}
 

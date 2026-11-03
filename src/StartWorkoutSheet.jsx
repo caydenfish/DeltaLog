@@ -24,7 +24,11 @@ const T = {
 // Group Workout (v1.17.0, reworked v1.20.0): calls onStartGroup, which
 // opens the friend picker and then the lobby. The plan for a group
 // workout is picked in the lobby, so this sheet no longer has a group mode.
-export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onClose, onStartGroup }) {
+//
+// New template (v1.21.0): "+ New" beside Templates calls onNewTemplate,
+// which opens the template builder. When it comes back with a saved
+// template (freshTemplate), a "Start <name>" button leads the sheet.
+export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onClose, onStartGroup, onNewTemplate, freshTemplate }) {
   const choose = onChoose;
   const [templates, setTemplates] = useState(null);
 
@@ -57,10 +61,24 @@ export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onCl
           <IconPlus size={16} /> Start from scratch
         </button>
 
-        <button onClick={() => choose({ kind: "templates" })} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 8 }}><IconList size={16} /> Templates</span>
-          <span style={{ fontSize: 13, color: T.dim, fontWeight: 500 }}>{templates === null ? "" : templates.length === 0 ? "None yet ›" : `${templates.length} saved ›`}</span>
-        </button>
+        {freshTemplate && (
+          <button onClick={() => choose({ kind: "template", template: freshTemplate })} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><span style={{ color: T.accent, display: "flex", flexShrink: 0 }}><IconList size={16} /></span><span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Start {freshTemplate.name}</span></span>
+            <span style={{ fontSize: 13, color: T.dim, fontWeight: 500, whiteSpace: "nowrap" }}>Just saved ›</span>
+          </button>
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <button onClick={() => choose({ kind: "templates" })} style={{ flex: 1, minWidth: 0, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}><IconList size={16} /> Templates</span>
+            <span style={{ fontSize: 13, color: T.dim, fontWeight: 500, whiteSpace: "nowrap" }}>{templates === null ? "" : templates.length === 0 ? "None yet ›" : `${templates.length} saved ›`}</span>
+          </button>
+          {onNewTemplate && (
+            <button onClick={onNewTemplate} aria-label="Build a new template" style={{ flexShrink: 0, padding: "0 14px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+              <span style={{ color: T.accent, display: "flex" }}><IconPlus size={15} /></span> New
+            </button>
+          )}
+        </div>
 
         {onStartGroup && (
           <button onClick={onStartGroup} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>

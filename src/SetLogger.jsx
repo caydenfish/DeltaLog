@@ -9,7 +9,7 @@ import BodyMap from "./BodyMap";
 import Preferences from "./Preferences";
 import { computeMuscleSetCounts, isWorkedExercise } from "./lib/volume";
 import { computeDOTS, dotsBand } from "./lib/dots";
-import { getPrefs, setPref } from "./lib/prefs";
+import { getPrefs, setPref, defaultWorkingSets } from "./lib/prefs";
 import { saveSessionState, loadSessionState, clearSessionState } from "./lib/sessionState";
 import { IDEOLOGIES } from "./lib/ideologies";
 import { rangeForSet, isRangeChange, sanitizeScheme, resizeScheme, formatRange } from "./lib/repScheme";
@@ -256,7 +256,7 @@ function greedyPerSide(total, bar, unit, muscleGroup) {
 // newItem builds a workout slot from a hydrated library exercise (already
 // carrying lastWeek/sessions/savedNotes/savedSetup from hydrateExercise)
 // plus the id of the workout_exercises row that was just created for it.
-const newItem = (hydrated, dbId, planned = 3, plannedWarmup = 0) => ({
+const newItem = (hydrated, dbId, planned = defaultWorkingSets(), plannedWarmup = 0) => ({
   ...hydrated,
   dbId,
   planned,
@@ -714,7 +714,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [templates, setTemplates] = useState(null); // null = not loaded yet
   const [loadingTemplateId, setLoadingTemplateId] = useState(null);
   const [genIdeology, setGenIdeology] = useState("Hypertrophy");
-  const [genSets, setGenSets] = useState(3);
+  const [genSets, setGenSets] = useState(() => defaultWorkingSets());
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [prResults, setPrResults] = useState({ weight: [], reps: [], volume: [] });
   const [expandedPR, setExpandedPR] = useState(null);
@@ -730,6 +730,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   const [showTrainingPrefs, setShowTrainingPrefs] = useState(false); // workout menu's Training preferences shortcut is open
   const trainingPrefsIdeologyRef = useRef(null); // default focus when the shortcut opened, to tell whether it changed
   const [showMenuHeatmap, setShowMenuHeatmap] = useState(false); // workout menu's muscle map expanded from its thumbnail
+  const [menuHeatmapMode, setMenuHeatmapMode] = useState("done"); // "done" (logged so far) | "plan" (if every planned set is done)
   const [confirmDeleteSets, setConfirmDeleteSets] = useState(false); // true once "Delete (n)" is tapped, awaiting the actual confirm
   const pendingCustomPick = useRef(null);
   const rowRefs = useRef([]);
@@ -1130,7 +1131,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     for (const w of workout) {
       if (seen.has(w.id)) continue;
       seen.add(w.id);
-      list.push({ exercise_id: w.id, planned_sets: w.planned || 3, planned_warmup_sets: w.plannedWarmup || 0 });
+      list.push({ exercise_id: w.id, planned_sets: w.planned || defaultWorkingSets(), planned_warmup_sets: w.plannedWarmup || 0 });
     }
     const key = JSON.stringify(list);
     if (hostPublishedRef.current === key) return;
@@ -1169,7 +1170,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         const libItem = library.find((l) => l.id === h.exercise_id);
         if (!libItem) continue; // a custom exercise only the host has
         try {
-          const planned = h.planned_sets || 3;
+          const planned = h.planned_sets || defaultWorkingSets();
           const warm = h.planned_warmup_sets || 0;
           const dbId = await addWorkoutExercise(workoutId, libItem.id, workoutLenRef.current, planned, "", null, warm);
           const hydrated = await hydrateExercise(user.id, libItem);
@@ -1443,9 +1444,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     addingExercisesRef.current = true;
     setAddingExercises(true);
     try {
-      const dbId = await addWorkoutExercise(workoutId, libItem.id, workout.length, 3);
+      const planned = defaultWorkingSets();
+      const dbId = await addWorkoutExercise(workoutId, libItem.id, workout.length, planned);
       const hydrated = await hydrateExercise(user.id, libItem);
-      const item = newItem(hydrated, dbId, 3);
+      const item = newItem(hydrated, dbId, planned);
       setWorkout([...workout, item]);
       setAllSets([...allSets, []]);
     } catch (err) {
@@ -1516,9 +1518,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       let nextWorkout = workout;
       let nextAllSets = allSets;
       for (const libItem of picks) {
-        const dbId = await addWorkoutExercise(workoutId, libItem.id, nextWorkout.length, 3);
+        const planned = defaultWorkingSets();
+        const dbId = await addWorkoutExercise(workoutId, libItem.id, nextWorkout.length, planned);
         const hydrated = await hydrateExercise(user.id, libItem);
-        const item = newItem(hydrated, dbId, 3);
+        const item = newItem(hydrated, dbId, planned);
         nextWorkout = [...nextWorkout, item];
         nextAllSets = [...nextAllSets, []];
       }
@@ -2001,10 +2004,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     else if (nextIsWarmup) {
       const wWeight = warmupWeightFor(target.weight, ex.plannedWarmup, nextWarmupIndex, unit, getPrefs().warmupPercentSchemes, target.step);
       setWeight(String(wWeight)); setReps(String(target.reps)); setRir(null);
-    } else if (lastLogged) {
-      const lw = lastWeek[Math.min(sets.length, lastWeek.length - 1)];
-      setWeight(String(lastLogged.weight)); setReps(String(lw ? lw.reps : target.reps)); setRir(null);
-    } else { setWeight(String(target.weight)); setReps(String(target.reps)); setRir(null); }
+    } else {
+      // New working set: open on the Target pill's weight and reps
+      // (v1.22.0). It used to copy the last logged set instead, which
+      // after warmups meant the first working set opened at the last
+      // warmup's weight. Only falls back to the last logged working set
+      // when there's no usable target (no history and no library weight).
+      const lastWorking = [...sets].reverse().find((s) => !s.isWarmup);
+      const useTarget = target && Number(target.weight) > 0;
+      const w = useTarget ? target.weight : lastWorking ? lastWorking.weight : target ? target.weight : "";
+      setWeight(String(w)); setReps(String(target ? target.reps : lastWorking ? lastWorking.reps : "")); setRir(null);
+    }
     // flushSync forces the wizard's DOM (including the weight input) to
     // commit before we call .focus() — still inside this same tap
     // handler, with no setTimeout/macrotask boundary in between. Mobile
@@ -2137,6 +2147,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   // wrong.
   const liveVolumeEntries = workout.map((w, i) => ({ muscle: w.muscle, primaryMuscles: w.rawPrimaryMuscles, secondaryMuscles: w.rawSecondaryMuscles, sets: (allSets[i] || []).filter((s) => !s.isWarmup) }));
   const { primary: livePrimary, secondary: liveSecondary, fullBodySets: liveFullBodySets } = computeMuscleSetCounts(liveVolumeEntries, muscleNameMode);
+
+  // Plan view (v1.21.0): coverage if every planned working set gets done.
+  // Each exercise counts max(planned working sets, working sets already
+  // logged), so going over the plan still shows, and logged sets stay
+  // in the total.
+  const planVolumeEntries = workout.map((w, i) => {
+    const logged = (allSets[i] || []).filter((x) => !x.isWarmup);
+    const pad = Math.max(0, (w.planned || 0) - logged.length);
+    return { muscle: w.muscle, primaryMuscles: w.rawPrimaryMuscles, secondaryMuscles: w.rawSecondaryMuscles, sets: [...logged, ...Array.from({ length: pad }, () => ({ isWarmup: false, planned: true }))] };
+  });
+  const { primary: planPrimary, secondary: planSecondary, fullBodySets: planFullBodySets } = computeMuscleSetCounts(planVolumeEntries, muscleNameMode);
 
   // Flags sets that look like a typo or wrong-plate mistake rather than a
   // real effort: way outside both what else got logged this session for
@@ -3175,6 +3196,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           const totalSets = allSets.flat().length;
           const totalVolume = Math.round(working.reduce((a, x) => a + x.weight * x.reps, 0));
           const hasMuscleData = Object.keys(livePrimary).length > 0 || Object.keys(liveSecondary).length > 0;
+          const hasPlanData = Object.keys(planPrimary).length > 0 || Object.keys(planSecondary).length > 0 || planFullBodySets > 0;
+          const totalPlannedSets = planVolumeEntries.reduce((n, e) => n + e.sets.length, 0);
+          const loggedWorkingSets = liveVolumeEntries.reduce((n, e) => n + e.sets.length, 0);
           const thumbCounts = computeMuscleSetCounts(liveVolumeEntries, "detailed");
           const rowStyle = { width: "100%", minHeight: 46, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "0 2px", background: "none", border: "none", borderBottom: `1px solid ${T.line}`, color: T.text, fontSize: 14, textAlign: "left" };
           const rowValue = { color: T.dim, fontSize: 13, whiteSpace: "nowrap" };
@@ -3228,12 +3252,28 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
               {showMenuHeatmap ? (
                 <div style={{ marginTop: 14, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 12px 12px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, color: T.dim, whiteSpace: "nowrap" }}>Muscles worked</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <div role="tablist" aria-label="Muscle map view" style={{ display: "flex", padding: 3, borderRadius: 9, background: T.bg, border: `1px solid ${T.line}` }}>
+                      {[["done", "Done"], ["plan", "Full plan"]].map(([key, label]) => (
+                        <button key={key} role="tab" aria-selected={menuHeatmapMode === key} onClick={() => setMenuHeatmapMode(key)} style={{ height: 28, padding: "0 12px", borderRadius: 7, border: "none", background: menuHeatmapMode === key ? T.surface2 : "transparent", color: menuHeatmapMode === key ? T.text : T.dim, fontSize: 13, fontWeight: menuHeatmapMode === key ? 700 : 500, whiteSpace: "nowrap" }}>{label}</button>
+                      ))}
+                    </div>
                     <button onClick={() => setShowMenuHeatmap(false)} aria-label="Hide muscle map" style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><IconX size={16} /></button>
                   </div>
-                  {hasMuscleData ? (
-                    <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} entries={liveVolumeEntries} />
+                  <div style={{ fontSize: 12, color: T.dim, marginBottom: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {menuHeatmapMode === "plan" ? `If you finish all ${totalPlannedSets} planned set${totalPlannedSets === 1 ? "" : "s"}` : `From the ${loggedWorkingSets} working set${loggedWorkingSets === 1 ? "" : "s"} logged so far`}
+                  </div>
+                  {/* Coverage bars (v1.22.0) show logged sets solid and
+                      the rest of the plan faded in both views; only the
+                      body map changes between Done and Full plan. */}
+                  {menuHeatmapMode === "plan" ? (
+                    hasPlanData ? (
+                      <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={planFullBodySets} entries={planVolumeEntries} planned={{ primary: planPrimary, secondary: planSecondary }} />
+                    ) : (
+                      <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 0" }}>Add exercises to see what this workout will cover.</div>
+                    )
+                  ) : hasMuscleData || hasPlanData ? (
+                    <BodyHeatmap primary={livePrimary} secondary={liveSecondary} fullBodySets={liveFullBodySets} entries={liveVolumeEntries} planned={{ primary: planPrimary, secondary: planSecondary }} />
                   ) : (
                     <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "16px 0" }}>Log a set to see it light up here.</div>
                   )}

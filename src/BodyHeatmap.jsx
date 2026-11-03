@@ -65,6 +65,15 @@ function FilterRow({ label, options, value, onChange }) {
   );
 }
 
+// Faded, diagonally striped fill for planned-but-not-done sets, so it
+// reads as "still to come" next to the solid logged segment in the
+// same muscle color. Works for any hex color.
+function plannedFill(color) {
+  return {
+    background: `repeating-linear-gradient(135deg, ${color}66 0 3px, ${color}33 3px 6px)`,
+  };
+}
+
 // The old plain-language breakdown list, now living behind a disclosure
 // below the chart instead of being a chart in its own right — it lists
 // every muscle in the Detailed taxonomy, not just the ones with logged
@@ -84,7 +93,12 @@ function FilterRow({ label, options, value, onChange }) {
 // (Home wires this to a pref, defaulting to "chart" the first time
 // there's nothing persisted yet) -- so a fresh install opens on Chart,
 // but switching to List sticks for next time.
-function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view, onViewChange }) {
+// `planned` (optional, { primary, secondary }) is the full-plan count:
+// everything already logged plus every planned set not yet performed
+// (SetLogger's in-workout menu passes it). When present, each bar shows
+// the logged sets solid and the rest of the plan as a faded extension,
+// so you can see whether the planned volume is enough before doing it.
+function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view, onViewChange, planned }) {
   const [open, setOpen] = useState(false);
   const [localTab, setLocalTab] = useState("chart");
   const tab = view || localTab;
@@ -97,26 +111,36 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
   // when a row is tapped.
   const known = new Set();
   const rows = [];
+  const makeRow = (m) => {
+    const p = primary[m] || 0;
+    const s = secondary[m] || 0;
+    const total = effectiveSets(p, s);
+    const pp = planned ? Math.max(p, (planned.primary || {})[m] || 0) : p;
+    const ps = planned ? Math.max(s, (planned.secondary || {})[m] || 0) : s;
+    return { muscle: m, primary: p, secondary: s, total, plannedPrimary: pp, plannedSecondary: ps, planTotal: Math.max(total, effectiveSets(pp, ps)) };
+  };
   for (const opt of muscleOptionsForMode(nameMode, { excludeCategories: [FULL_BODY] })) {
     if (known.has(opt.key)) continue;
     known.add(opt.key);
-    const p = primary[opt.key] || 0;
-    const s = secondary[opt.key] || 0;
-    rows.push({ muscle: opt.key, primary: p, secondary: s, total: effectiveSets(p, s) });
+    rows.push(makeRow(opt.key));
   }
   // Anything present in the counts but not in the taxonomy list (e.g. a
   // custom/legacy label) still deserves a row.
-  for (const m of [...Object.keys(primary), ...Object.keys(secondary)]) {
+  const extraKeys = [...Object.keys(primary), ...Object.keys(secondary)];
+  if (planned) extraKeys.push(...Object.keys(planned.primary || {}), ...Object.keys(planned.secondary || {}));
+  for (const m of extraKeys) {
     if (known.has(m)) continue;
     known.add(m);
-    const p = primary[m] || 0;
-    const s = secondary[m] || 0;
-    rows.push({ muscle: m, primary: p, secondary: s, total: effectiveSets(p, s) });
+    rows.push(makeRow(m));
   }
 
-  rows.sort((a, b) => b.total - a.total || a.muscle.localeCompare(b.muscle));
-  const trainedCount = rows.filter((r) => r.total > 0).length;
-  const maxTotal = Math.max(1, ...rows.map((r) => r.total));
+  // `total` is logged sets; `planTotal` is logged + still-planned (equal
+  // to total when no plan is passed). Sorting and scaling go by the plan
+  // so a muscle doesn't jump around the list as its sets get logged.
+  rows.sort((a, b) => b.planTotal - a.planTotal || b.total - a.total || a.muscle.localeCompare(b.muscle));
+  const trainedCount = rows.filter((r) => r.planTotal > 0).length;
+  const maxTotal = Math.max(1, ...rows.map((r) => r.planTotal));
+  const showPlan = !!planned && rows.some((r) => r.planTotal > r.total);
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -147,10 +171,22 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
 
           {tab === "chart" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              {showPlan && (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 10.5, color: T.dim, marginBottom: 2, whiteSpace: "nowrap" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 14, height: 7, borderRadius: 3, background: T.dim }} />Done</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 14, height: 7, borderRadius: 3, ...plannedFill(T.dim) }} />Planned</span>
+                </div>
+              )}
               {rows.map((r) => {
                 const clickable = r.total > 0 && !!onSelectMuscle;
                 const color = muscleColor(r.muscle);
-                const pct = Math.max(r.total > 0 ? 6 : 0, Math.round((r.total / maxTotal) * 100));
+                const any = r.planTotal > 0;
+                const planPct = any ? Math.max(6, (r.planTotal / maxTotal) * 100) : 0;
+                const donePct = r.total > 0 ? Math.max(Math.min(6, planPct), (r.total / maxTotal) * 100) : 0;
+                const remaining = r.planTotal - r.total;
+                const label = !any ? "—"
+                  : planned && remaining > 0 ? `${formatSets(r.total)} of ${formatSets(r.planTotal)} sets`
+                  : `${formatSets(r.total)} set${r.total === 1 ? "" : "s"}`;
                 return (
                   <button
                     key={r.muscle}
@@ -159,11 +195,12 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
                     style={{ width: "100%", background: "none", border: "none", padding: 0, textAlign: "left", cursor: clickable ? "pointer" : "default" }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
-                      <span style={{ fontSize: 11.5, color: r.total > 0 ? T.text : T.dim, fontWeight: r.total > 0 ? 600 : 500 }}>{r.muscle}</span>
-                      <span style={{ fontSize: 10.5, color: T.dim, flexShrink: 0, marginLeft: 8 }}>{r.total > 0 ? `${formatSets(r.total)} set${r.total === 1 ? "" : "s"}` : "—"}</span>
+                      <span style={{ fontSize: 11.5, color: any ? T.text : T.dim, fontWeight: any ? 600 : 500, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.muscle}</span>
+                      <span style={{ fontSize: 10.5, color: T.dim, flexShrink: 0, marginLeft: 8, whiteSpace: "nowrap" }}>{label}</span>
                     </div>
-                    <div style={{ width: "100%", height: 7, borderRadius: 4, background: T.surface2, overflow: "hidden" }}>
-                      {r.total > 0 && <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: color }} />}
+                    <div style={{ position: "relative", width: "100%", height: 7, borderRadius: 4, background: T.surface2, overflow: "hidden" }}>
+                      {remaining > 0 && <div style={{ position: "absolute", left: 0, top: 0, width: `${planPct}%`, height: "100%", borderRadius: 4, ...plannedFill(color) }} />}
+                      {r.total > 0 && <div style={{ position: "absolute", left: 0, top: 0, width: `${donePct}%`, height: "100%", borderRadius: 4, background: color }} />}
                     </div>
                   </button>
                 );
@@ -173,6 +210,7 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {rows.map((r) => {
                 const clickable = r.total > 0 && !!onSelectMuscle;
+                const remaining = r.planTotal - r.total;
                 return (
                   <button
                     key={r.muscle}
@@ -184,8 +222,13 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
                       textAlign: "left", cursor: clickable ? "pointer" : "default",
                     }}
                   >
-                    <span style={{ fontSize: 13, color: r.total > 0 ? T.text : T.dim, fontWeight: r.total > 0 ? 600 : 500 }}>{r.muscle}</span>
-                    {r.total > 0 ? (
+                    <span style={{ fontSize: 13, color: r.planTotal > 0 ? T.text : T.dim, fontWeight: r.planTotal > 0 ? 600 : 500, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.muscle}</span>
+                    {planned && remaining > 0 ? (
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: 12, color: T.text, fontWeight: 700, whiteSpace: "nowrap" }}>{formatSets(r.total)} of {formatSets(r.planTotal)} sets</div>
+                        <div style={{ fontSize: 10.5, color: T.dim, marginTop: 1, whiteSpace: "nowrap" }}>{formatSets(remaining)} still planned</div>
+                      </div>
+                    ) : r.total > 0 ? (
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
                         <div style={{ fontSize: 12, color: T.text, fontWeight: 700 }}>{formatSets(r.total)} set{r.total === 1 ? "" : "s"}</div>
                         <div style={{ fontSize: 10.5, color: T.dim, marginTop: 1 }}>{r.primary} primary &middot; {r.secondary} secondary</div>
@@ -218,6 +261,9 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
 // the resolution the underlying anatomical art is drawn at.
 // `fullBodySets`, if present, is shown separately since "Full Body"
 // exercises (carries, complexes) don't map to one muscle region.
+// `planned` ({ primary, secondary }), if passed, is the full-plan count
+// (logged + still-planned sets); the Coverage breakdown then shows the
+// unperformed part of each bar faded. The body map is unaffected.
 // `onSelectMuscle(muscle)`, if passed, wires the Coverage breakdown's
 // rows to a drill-in sheet.
 // `setsFilter`/`roleFilter` + their onChange callbacks are optional --
@@ -231,12 +277,13 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
 export default function BodyHeatmap({
   primary = {}, secondary = {}, fullBodySets = 0, entries, onSelectMuscle,
   setsFilter = "working", roleFilter = "both", onSetsFilterChange, onRoleFilterChange,
-  coverageView, onCoverageViewChange, mapMaxWidth,
+  coverageView, onCoverageViewChange, mapMaxWidth, planned,
 }) {
   const showFilters = !!(onSetsFilterChange && onRoleFilterChange);
   const nameMode = getPrefs().muscleNameMode;
 
   const names = new Set([...Object.keys(primary), ...Object.keys(secondary)]);
+  if (planned) for (const m of [...Object.keys(planned.primary || {}), ...Object.keys(planned.secondary || {})]) names.add(m);
   const hasAnyData = names.size > 0 || fullBodySets > 0;
 
   const detailed = entries ? computeMuscleSetCounts(entries, "detailed", setsFilter) : { primary: {}, secondary: {} };
@@ -262,7 +309,7 @@ export default function BodyHeatmap({
         </div>
       )}
 
-      {hasAnyData && <CoverageBreakdown primary={primary} secondary={secondary} nameMode={nameMode} onSelectMuscle={onSelectMuscle} view={coverageView} onViewChange={onCoverageViewChange} />}
+      {hasAnyData && <CoverageBreakdown primary={primary} secondary={secondary} nameMode={nameMode} onSelectMuscle={onSelectMuscle} view={coverageView} onViewChange={onCoverageViewChange} planned={planned} />}
     </div>
   );
 }

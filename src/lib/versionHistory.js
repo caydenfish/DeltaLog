@@ -5,6 +5,26 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.22.0",
+    date: "2026-11-03",
+    items: [
+      "BodyHeatmap/CoverageBreakdown: new optional `planned` prop ({ primary, secondary }, full-plan counts = logged + unperformed planned sets). Rows carry total (logged) and planTotal (max(logged, planned) per role, then effectiveSets); sort and bar scale use planTotal so rows don't reorder as sets get logged. Chart tab draws an absolutely positioned striped plannedFill(color) segment to planTotal under the solid logged segment, label 'X of Y sets', plus a Done/Planned legend; List tab shows 'X of Y sets' / 'N still planned'. hasAnyData also counts planned keys. Callers without `planned` (Home module, template Coverage panel) render exactly as before.",
+      "SetLogger workout menu: both Done and Full plan views pass planned={planPrimary/planSecondary} with primary=livePrimary, so the bars are identical between tabs and only the body map differs (live vs planVolumeEntries). Done view now renders when hasPlanData even with nothing logged (blank map, planned-only bars) instead of the 'Log a set' empty state.",
+      "SetLogger openWizard: new (non-draft, non-prefill, non-warmup) sets now prefill target.weight/target.reps instead of lastLogged.weight + lastWeek reps. Fixes the first working set after warmups opening at the last warmup's weight (lastLogged was the warmup). Falls back to the last logged working set only when target.weight is not > 0. 'Copy previous set' chip unchanged.",
+      "New pref defaultWorkingSets (default 3, synced in the user_preferences blob, no migration) + lib/prefs.js defaultWorkingSets() helper clamped 1-12. Replaces hardcoded 3s in SetLogger newItem default, addExercise, addSelectedExercises, genSets initial state, group host publish fallback and group member sync fallback, and Templates.jsx newPick. Template/program/'Do again'/group-plan counts are untouched since they carry their own planned_sets. Preferences: 'Default sets' stepper at the top of Training > Logging (searchable; tile subtitle now 'Sets, entry, plates'); Home's controlled preferencesValue/handlePreferencesChange gained the key. ProgramSetup and WorkoutHistory's add-to-past-workout still use 3 (program generator is locked; past-workout planned count is cosmetic).",
+    ],
+  },
+  {
+    version: "1.21.0",
+    date: "2026-10-25",
+    items: [
+      "StartWorkoutSheet: Templates row split into the existing button plus a '+ New' button (onNewTemplate). New freshTemplate prop renders a 'Start <name>' row that emits { kind: 'template', template }. Home: showNewTemplate opens Templates with startNew; onSaved sets freshTemplate and reopens the start sheet, onClose reopens it without one; added to the Home back layers.",
+      "Templates.jsx: startNew prop opens an empty builder on mount (picker opens automatically). oneShot (startNew or initialPicks) makes leaving the builder close the component; with startNew, save calls onSaved(template) with the matching row from the refetched list.",
+      "SetLogger: planVolumeEntries pads each exercise to max(planned working sets, logged working sets) with placeholder non-warmup sets and runs computeMuscleSetCounts over it. The workout menu's expanded muscle map gets a Done / Full plan segmented toggle (menuHeatmapMode, session-only) with a caption ('From the N working sets logged so far' / 'If you finish all N planned sets'). The collapsed thumbnail still shows Done.",
+      "OnboardingFlow: 'How did you hear about DeltaLog?' restored on the About step (hidden in redo). Chips: Reddit, A friend, Search, Instagram, TikTok, Other (+ free text, 60 chars). Saved to profiles.heard_about_us with the About step's saveProfile, mode 'new' only, so Admin > Referral Sources starts receiving data again (the v1.19 flow had dropped the field). answersFrom maps a stored value back to a chip or Other.",
+    ],
+  },
+  {
     version: "1.20.0",
     date: "2026-10-25",
     items: [

@@ -9,6 +9,22 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.22.0": {
+    title: "Planned sets, right in the muscle bars",
+    items: [
+      "The muscle breakdown in the workout menu now shows sets you haven't done yet. Logged sets are solid and the rest of your plan is striped, so you can tell if you've planned enough volume for a muscle before you start.",
+      "Logging a set now opens on your target weight and reps, including your first working set after warmups.",
+      "New Default sets setting (Settings, Training, Logging). Pick how many working sets a newly added exercise starts with, from 1 to 12.",
+    ],
+  },
+  "1.21.0": {
+    title: "Build templates from Start Workout",
+    items: [
+      "Start Workout has a new + New button next to Templates. Build a template right there, and once it's saved you can start it with one tap.",
+      "The muscle map in the workout menu has a Full plan view. It shows what this workout will cover if you finish every planned set, so you can spot a muscle you're missing before you're done.",
+      "New accounts get a quick, optional question during setup about how they found DeltaLog.",
+    ],
+  },
   "1.20.0": {
     title: "Group workouts, now with a lobby",
     items: [

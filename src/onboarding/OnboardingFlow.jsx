@@ -39,6 +39,7 @@ function blankAnswers() {
     firstName: "", lastName: "", handle: "",
     gender: "", dob: "", units: "lb", weight: "", heightUnit: "ftin", heightFt: "", heightIn: "", heightCm: "",
     trainingIdeology: "Hypertrophy", targetCalcMethod: "rir_autoregulation", scoreDisplay: "percentile", muscleNameMode: "generic", bodyModelSex: null,
+    heardFrom: "", heardOther: "",
   };
 }
 function answersFrom(profile, handle) {
@@ -53,7 +54,24 @@ function answersFrom(profile, handle) {
     heightCm: profile?.height_unit === "cm" && profile?.height ? String(profile.height) : "",
     trainingIdeology: p.trainingIdeology || "Hypertrophy", targetCalcMethod: p.targetCalcMethod || "rir_autoregulation",
     scoreDisplay: p.scoreDisplay || "percentile", muscleNameMode: p.muscleNameMode || "generic", bodyModelSex: p.bodyModelSex || null,
+    ...heardFromProfile(profile?.heard_about_us),
   };
+}
+
+// "How did you hear about us?" (restored v1.21.0; the v1.19 flow dropped
+// it). Optional, new accounts only. Stored as plain text in
+// profiles.heard_about_us, which Admin > Referral Sources groups
+// case-insensitively, so the fixed options keep the buckets clean.
+export const HEARD_FROM_OPTIONS = ["Reddit", "A friend", "Search", "Instagram", "TikTok", "Other"];
+function heardFromProfile(stored) {
+  const v = (stored || "").trim();
+  if (!v) return { heardFrom: "", heardOther: "" };
+  const hit = HEARD_FROM_OPTIONS.find((o) => o !== "Other" && o.toLowerCase() === v.toLowerCase());
+  return hit ? { heardFrom: hit, heardOther: "" } : { heardFrom: "Other", heardOther: v };
+}
+function heardFromValue(a) {
+  if (a.heardFrom === "Other") return a.heardOther.trim() || "Other";
+  return a.heardFrom || null;
 }
 
 function Segmented({ options, value, onChange, label }) {
@@ -150,7 +168,10 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
       if (step === "about" && write) {
         // New accounts need a profile row before the ID or terms can be
         // stored on it; saveProfile upserts, and only sends the fields given.
-        await saveProfile(user.id, { firstName: a.firstName.trim(), lastName: a.lastName.trim(), weightUnit: a.units });
+        await saveProfile(user.id, {
+          firstName: a.firstName.trim(), lastName: a.lastName.trim(), weightUnit: a.units,
+          ...(mode === "new" ? { heardAboutUs: heardFromValue(a) } : {}),
+        });
         if (mode === "new" && !profile?.terms_accepted_at) await acceptTerms(user.id);
         const h = normalizeHandle(a.handle);
         if (h !== (savedHandle || "").toLowerCase()) setSavedHandle(await setMyHandle(h));
@@ -230,6 +251,21 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
             {status && <span style={{ display: "flex", alignItems: "center", gap: 4, color: status.c, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{status.ok && <CheckIcon />}{status.t}</span>}
           </div>
         </Field>
+        {mode !== "redo" && (
+          <Field label="How did you find DeltaLog?" hint="Optional. Helps a solo dev know what's working.">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {HEARD_FROM_OPTIONS.map((o) => {
+                const sel = a.heardFrom === o;
+                return (
+                  <button key={o} type="button" onClick={() => set({ heardFrom: sel ? "" : o })} aria-pressed={sel} style={{ height: 36, padding: "0 14px", borderRadius: 18, border: sel ? `1.5px solid ${T.accent}` : `1px solid ${T.line}`, background: sel ? "rgba(232,68,46,0.12)" : T.surface, color: T.text, fontSize: 14, fontWeight: sel ? 700 : 500, whiteSpace: "nowrap" }}>{o}</button>
+                );
+              })}
+            </div>
+            {a.heardFrom === "Other" && (
+              <input aria-label="Where did you hear about DeltaLog?" value={a.heardOther} onChange={(e) => set({ heardOther: e.target.value })} maxLength={60} placeholder="A podcast, a gym, a forum" style={inputStyle} />
+            )}
+          </Field>
+        )}
       </>
     );
     cta = "Continue";
