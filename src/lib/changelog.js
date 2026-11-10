@@ -9,6 +9,14 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.23.0": {
+    title: "Your workout stays put",
+    items: [
+      "Fixed a bug where reopening the app near the end of a workout could open a blank new workout instead of the one you were in. Your workout now comes back every time, including after a pause.",
+      "Sets logged with no signal are now saved on your phone and sync on their own once you're back online, instead of being lost.",
+      "You can now change the date, start time and duration of any past workout. Open it in History, tap Edit, then tap the date or the minutes.",
+    ],
+  },
   "1.22.0": {
     title: "Planned sets, right in the muscle bars",
     items: [

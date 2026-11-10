@@ -5,6 +5,18 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.23.0",
+    date: "2026-11-09",
+    items: [
+      "Lost-workout fix. queries.deleteAllIncompleteWorkouts (deleted every completed_at IS NULL workout for the user) replaced by discardWorkout(userId, workoutId): deletes only that workout plus other unfinished workouts with zero workout_exercises. Every SetLogger caller switched (Cancel, discard new workout, empty-screen back). handleResumePreviousSaved used to fire the delete-all while resuming a paused workout, which cascade-deleted the very workout being resumed (rows and sets) and left the session writing to dead workout_exercise ids; it now discards only the throwaway row and only when its id differs from savedWorkout.id.",
+      "fetchActiveWorkout now reads up to 20 unfinished workouts (newest first, with workout_exercises(id)) and resumes the newest one that has exercises. Previously it took only the single newest row and returned null if that row was empty, so any empty row created after the real workout (a fresh start, or SetLogger's boot-time startWorkout while a paused workout was pending) hid it permanently and Home showed no Resume.",
+      "App launch: paused workouts now resume directly into the workout (resumePausedDirect, still paused) instead of booting SetLogger with savedWorkout, which created a new empty workout and showed the 'Start a workout' screen. Cleared on onFinished/onGoHome, so Save for later still works from inside the app.",
+      "App launch lookup (loadActiveWorkout): flushes the set outbox (4s cap), then retries fetchActiveWorkout at 0/0.7/1.8/3.5s before treating the result as none. A single failed request on resume from background used to set resumeWorkout=null. While on Home, visibilitychange/online/focus re-check the active workout.",
+      "New lib/setOutbox.js: logSet/updateSet failures in SetLogger are queued in localStorage (dl_pending_sets) instead of only toasting. Replays as upsert keyed on (workout_exercise_id, set_number), so replays are idempotent; drops on 23503/22P02/23502 or after 14 days. Flushed at launch, on focus/online, and every 20s while non-empty. fetchActiveWorkout merges pending writes into resumed sets. handleConfirmFinish flushes first and blocks finishing while anything is pending, since completeWorkout prunes slots with no server-side sets. Live single-set delete drops that slot's queued write.",
+      "Workout history edit mode: the date line and the min stat open an inline editor (date, start time, duration in minutes, 1 to 1440, start not in the future). queries.updateWorkoutTiming writes started_at, completed_at = start + duration, paused_total_sec = 0 and paused_at = null. Home.onTimingUpdated patches and re-sorts history by completed_at. Progress photos stay on their original taken_on date.",
+    ],
+  },
+  {
     version: "1.22.0",
     date: "2026-11-03",
     items: [

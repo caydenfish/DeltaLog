@@ -1935,6 +1935,13 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           user={user}
           onClose={() => setHistoryView(null)}
           onDeleted={(id) => setHistory((prev) => (prev || []).filter((w) => w.id !== id))}
+          onTimingUpdated={(workoutId, startedAt, completedAt) =>
+            // Re-sorted since everything else on Home expects history in
+            // completed_at order, and a date edit can move it anywhere.
+            setHistory((prev) => (prev || []).map((w) => (
+              w.id !== workoutId ? w : { ...w, started_at: startedAt, completed_at: completedAt, paused_total_sec: 0 }
+            )).sort((a, b) => (a.completed_at || "").localeCompare(b.completed_at || "")))
+          }
           onSetUpdated={(workoutId, weId, setNumber, patch) =>
             setHistory((prev) => (prev || []).map((w) => (
               w.id !== workoutId ? w : {

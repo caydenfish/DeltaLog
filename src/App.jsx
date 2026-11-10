@@ -7,6 +7,7 @@ import { setMuscleTaxonomyCache } from "./lib/muscleTaxonomy";
 import { setBodyMapRegionCache } from "./lib/bodyMapRegions";
 import { setSplitsCache, setSplitExclusionsCache } from "./lib/splits";
 import { getPrefs, initPrefsSync, clearPrefsSync } from "./lib/prefs";
+import { flushPendingSets, hasPendingSetWrites } from "./lib/setOutbox";
 import Auth from "./Auth";
 import ResetPassword from "./ResetPassword";
 import TermsGate from "./TermsGate";
@@ -22,6 +23,28 @@ import AppSplash from "./AppSplash";
 import SharedWorkoutView from "./SharedWorkoutView";
 import LoadingScreen from "./LoadingSpinner";
 
+// Active-workout lookup that survives a flaky first request (v1.23.0).
+// Coming back to a backgrounded PWA, the very first network call often
+// fires before the phone's connection is back. That one failure used to
+// be read as "no workout in progress", so the app opened to Home with no
+// Resume button even though the workout was sitting on the server. Now:
+// replay any queued offline sets first, then retry a few times before
+// giving up.
+async function loadActiveWorkout(userId) {
+  try { await Promise.race([flushPendingSets(), new Promise((r) => setTimeout(r, 4000))]); } catch { /* best effort */ }
+  const delays = [0, 700, 1800, 3500];
+  let lastErr = null;
+  for (const d of delays) {
+    if (d) await new Promise((r) => setTimeout(r, d));
+    try {
+      return await fetchActiveWorkout(userId);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error("Couldn't check for an active workout.");
+}
+
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = loading, null = signed out
   const [profile, setProfile] = useState(undefined); // undefined = loading, null = not set up yet
@@ -35,9 +58,16 @@ export default function App() {
   function goHomeFromWorkout() {
     setMode("home");
     setStartIntent(null);
-    if (session && session.user) fetchActiveWorkout(session.user.id).then(setResumeWorkout).catch(() => {});
+    setResumePausedDirect(false);
+    if (session && session.user) loadActiveWorkout(session.user.id).then(setResumeWorkout).catch(() => {});
   } // how Home's Start Workout sheet chose to start (see StartWorkoutSheet)
   const [resumeWorkout, setResumeWorkout] = useState(undefined); // undefined = not checked, null = none, object = found
+  // True when the app launched straight into a workout that was paused.
+  // Launch resumes it directly (still paused) instead of opening a fresh
+  // empty workout with "Resume previous workout" tucked underneath --
+  // that screen is what made a reload mid-workout look like the workout
+  // had vanished (v1.23.0). Cleared whenever the workout screen is left.
+  const [resumePausedDirect, setResumePausedDirect] = useState(false);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [setupSeen, setSetupSeen] = useState(() => getPrefs().setupWizardSeen);
   // A ?shared=CODE link should render the read-only shared-workout view
@@ -250,16 +280,51 @@ export default function App() {
   useEffect(() => {
     if (!session) { setResumeWorkout(undefined); return; }
     let cancelled = false;
-    fetchActiveWorkout(session.user.id)
+    loadActiveWorkout(session.user.id)
       .then((w) => { if (!cancelled) setResumeWorkout(w); })
       .catch(() => { if (!cancelled) setResumeWorkout(null); });
     return () => { cancelled = true; };
   }, [session]);
 
   useEffect(() => {
-    if (resumeWorkout === undefined) return;
-    setMode((m) => (m === null ? (resumeWorkout ? "workout" : "home") : m));
+    if (resumeWorkout === undefined || modeRef.current !== null) return;
+    if (resumeWorkout) {
+      setResumePausedDirect(!!resumeWorkout.isPaused);
+      setMode("workout");
+    } else {
+      setMode("home");
+    }
   }, [resumeWorkout]);
+
+  // Re-check for an in-progress workout whenever the app comes back to
+  // the foreground or regains a connection while sitting on Home, so a
+  // lookup that failed earlier doesn't strand the Resume button. Also
+  // replays any queued offline sets at those moments.
+  const userId = session && session.user ? session.user.id : null;
+  useEffect(() => {
+    if (!userId) return;
+    let busy = false;
+    const recheck = () => {
+      if (document.visibilityState === "hidden") return;
+      if (hasPendingSetWrites()) flushPendingSets().catch(() => {});
+      if (modeRef.current !== "home" || busy) return;
+      busy = true;
+      fetchActiveWorkout(userId)
+        .then((w) => { if (modeRef.current === "home") setResumeWorkout(w); })
+        .catch(() => {})
+        .finally(() => { busy = false; });
+    };
+    const tick = setInterval(() => { if (hasPendingSetWrites()) flushPendingSets().catch(() => {}); }, 20000);
+    document.addEventListener("visibilitychange", recheck);
+    window.addEventListener("online", recheck);
+    window.addEventListener("focus", recheck);
+    return () => {
+      clearInterval(tick);
+      document.removeEventListener("visibilitychange", recheck);
+      window.removeEventListener("online", recheck);
+      window.removeEventListener("focus", recheck);
+    };
+  }, [userId]);
 
   const profileComplete = profile && profile.gender && profile.date_of_birth && profile.first_name && profile.last_name;
   // True once we know exactly what to show — every async gate below has
@@ -312,10 +377,10 @@ export default function App() {
         {mode === "workout" ? (
           <SetLogger
             user={session.user}
-            resumeWorkout={resumeWorkout?.isPaused ? null : resumeWorkout}
-            savedWorkout={resumeWorkout?.isPaused ? resumeWorkout : null}
+            resumeWorkout={resumeWorkout?.isPaused && !resumePausedDirect ? null : resumeWorkout}
+            savedWorkout={resumeWorkout?.isPaused && !resumePausedDirect ? resumeWorkout : null}
             startIntent={startIntent}
-            onFinished={() => { setResumeWorkout(null); setStartIntent(null); setMode("home"); setTimeout(applyUpdateIfWaiting, 0); }}
+            onFinished={() => { setResumePausedDirect(false); setResumeWorkout(null); setStartIntent(null); setMode("home"); setTimeout(applyUpdateIfWaiting, 0); }}
             onGoHome={() => {
               setTimeout(applyUpdateIfWaiting, 0);
               // Unlike onFinished, the workout itself isn't touched — it's
@@ -323,7 +388,8 @@ export default function App() {
               // offer "Resume workout" instead of losing track of it.
               setMode("home");
               setStartIntent(null);
-              fetchActiveWorkout(session.user.id).then(setResumeWorkout).catch(() => {});
+              setResumePausedDirect(false);
+              loadActiveWorkout(session.user.id).then(setResumeWorkout).catch(() => {});
             }}
           />
         ) : (

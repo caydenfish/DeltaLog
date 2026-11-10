@@ -11,7 +11,7 @@ import { formatClockTime, toLocalDateStr } from "./lib/time";
 import {
   deleteWorkout, updateSet, deleteSet, logSet, addWorkoutExercise, removeWorkoutExercise,
   fetchExercises, uploadProgressPhoto, fetchProgressPhoto, deleteProgressPhoto, setSetWarmup, shareWorkout, saveWorkoutSummary,
-  saveWorkoutAsTemplate,
+  saveWorkoutAsTemplate, updateWorkoutTiming,
 } from "./lib/queries";
 
 // Labels a sorted sets array for display: warmup sets count independently
@@ -151,7 +151,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
   );
 }
 
-function DetailView({ workout, history, units, timeFormat, userId, editMode, prev, next, onNavigate, onRepeat, repeatBlocked, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
+function DetailView({ workout, history, units, timeFormat, userId, editMode, prev, next, onNavigate, onRepeat, repeatBlocked, onRequestDelete, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated, onTimingUpdated }) {
   const dateStr = new Date(workout.completed_at).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const startTimeStr = workout.started_at ? formatClockTime(workout.started_at, timeFormat) : null;
   const isoDate = toLocalDateStr(workout.completed_at);
@@ -240,6 +240,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
   function startEditBodyWeight() {
     setBodyWeightDraft(workout.body_weight != null ? String(workout.body_weight) : "");
     setBodyWeightError(null);
+    setEditingTiming(false);
     setEditingBodyWeight(true);
   }
 
@@ -259,6 +260,51 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
       setBodyWeightError(err.message);
     }
     setSavingBodyWeight(false);
+  }
+
+  // ---- Date / start time / duration (v1.23.0) ----
+  // History derives the workout's day from completed_at and its duration
+  // from completed_at - started_at, so the editor works in those terms:
+  // pick the day and start time (local), type a duration, and both
+  // timestamps are rewritten together.
+  const [editingTiming, setEditingTiming] = useState(false);
+  const [timingDate, setTimingDate] = useState("");
+  const [timingTime, setTimingTime] = useState("");
+  const [timingDuration, setTimingDuration] = useState("");
+  const [savingTiming, setSavingTiming] = useState(false);
+  const [timingError, setTimingError] = useState(null);
+
+  function startEditTiming() {
+    const start = workout.started_at ? new Date(workout.started_at) : new Date(new Date(workout.completed_at).getTime() - (duration || 60) * 60000);
+    const pad = (n) => String(n).padStart(2, "0");
+    setTimingDate(toLocalDateStr(start));
+    setTimingTime(`${pad(start.getHours())}:${pad(start.getMinutes())}`);
+    setTimingDuration(duration != null ? String(duration) : "60");
+    setTimingError(null);
+    setEditingBodyWeight(false);
+    setEditingTiming(true);
+  }
+
+  async function saveTimingEdit() {
+    const [y, mo, d] = timingDate.split("-").map((n) => parseInt(n, 10));
+    const [h, mi] = timingTime.split(":").map((n) => parseInt(n, 10));
+    const dur = parseInt(timingDuration, 10);
+    if ([y, mo, d].some((n) => isNaN(n))) { setTimingError("Pick a date."); return; }
+    if ([h, mi].some((n) => isNaN(n))) { setTimingError("Pick a start time."); return; }
+    if (isNaN(dur) || dur < 1 || dur > 1440) { setTimingError("Duration must be between 1 and 1440 minutes."); return; }
+    const start = new Date(y, mo - 1, d, h, mi, 0, 0);
+    const end = new Date(start.getTime() + dur * 60000);
+    if (start.getTime() > Date.now()) { setTimingError("Start time can't be in the future."); return; }
+    setSavingTiming(true);
+    setTimingError(null);
+    try {
+      await updateWorkoutTiming(workout.id, start.toISOString(), end.toISOString());
+      onTimingUpdated && onTimingUpdated(workout.id, start.toISOString(), end.toISOString());
+      setEditingTiming(false);
+    } catch (err) {
+      setTimingError(err.message);
+    }
+    setSavingTiming(false);
   }
 
   function startEdit(we, s) {
@@ -459,6 +505,8 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
     : [];
   const showChanges = !editMode && stats && stats.hasHistory && (changes.length > 0 || (stats.compare && stats.compare.volumePct != null));
   const statCol = { flex: 1, minWidth: 0, textAlign: "center" };
+  const timingLab = { fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, whiteSpace: "nowrap" };
+  const timingInput = { width: "100%", minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 8px", outline: "none", boxSizing: "border-box", colorScheme: "dark", fontFamily: "inherit" };
   const statVal = { fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, whiteSpace: "nowrap" };
   const statLab = { fontSize: 11, color: T.dim, whiteSpace: "nowrap" };
   const navBtn = { background: "none", border: "none", color: T.dim, fontSize: 13, padding: "6px 2px", whiteSpace: "nowrap" };
@@ -472,13 +520,25 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
       </div>
 
       <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, lineHeight: 1.05, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
-      <div style={{ color: T.dim, fontSize: 12.5, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dateStr}{startTimeStr ? ` · ${startTimeStr}` : ""}</div>
+      {editMode ? (
+        <button onClick={startEditTiming} aria-label="Edit date, time and duration" style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: "100%", background: "none", border: "none", padding: 0, marginTop: 3, color: T.text, fontSize: 12.5, textAlign: "left" }}>
+          <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dateStr}{startTimeStr ? ` · ${startTimeStr}` : ""}</span>
+          <span style={{ color: T.accent, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>Edit</span>
+        </button>
+      ) : (
+        <div style={{ color: T.dim, fontSize: 12.5, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dateStr}{startTimeStr ? ` · ${startTimeStr}` : ""}</div>
+      )}
       {editMode && (
         <div style={{ color: T.dim, fontSize: 11.5, marginTop: 6 }}>Tap any set to correct it, or add and remove sets and exercises.</div>
       )}
 
       <div style={{ display: "flex", gap: 6, marginTop: 14, marginBottom: 14, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 4px" }}>
-        {duration != null && (
+        {editMode ? (
+          <button onClick={startEditTiming} style={{ ...statCol, background: "none", border: "none", padding: 0 }}>
+            <div style={{ ...statVal, color: duration != null ? T.text : T.dim }}>{duration != null ? duration : "+ Add"}</div>
+            <div style={statLab}>min</div>
+          </button>
+        ) : duration != null && (
           <div style={statCol}><div style={statVal}>{duration}</div><div style={statLab}>min</div></div>
         )}
         <div style={statCol}>
@@ -519,6 +579,30 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
             );
           })}
           {changes.length > 5 && <div style={{ fontSize: 11.5, color: T.dim, marginTop: 2 }}>+{changes.length - 5} more below</div>}
+        </div>
+      )}
+
+      {editMode && editingTiming && (
+        <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10, marginBottom: 16, marginTop: -8 }}>
+          <div style={{ display: "flex", gap: 6 }}>
+            <label style={{ flex: 1.4, minWidth: 0 }}>
+              <div style={timingLab}>Date</div>
+              <input type="date" value={timingDate} max={toLocalDateStr(new Date())} onChange={(e) => setTimingDate(e.target.value)} style={timingInput} />
+            </label>
+            <label style={{ flex: 1, minWidth: 0 }}>
+              <div style={timingLab}>Start</div>
+              <input type="time" value={timingTime} onChange={(e) => setTimingTime(e.target.value)} style={timingInput} />
+            </label>
+            <label style={{ flex: 0.8, minWidth: 0 }}>
+              <div style={timingLab}>Min</div>
+              <input inputMode="numeric" value={timingDuration} onChange={(e) => setTimingDuration(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))} placeholder="60" style={timingInput} />
+            </label>
+          </div>
+          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", marginTop: 8 }}>
+            <button onClick={() => setEditingTiming(false)} disabled={savingTiming} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "8px 10px", fontSize: 12, whiteSpace: "nowrap" }}>Cancel</button>
+            <button onClick={saveTimingEdit} disabled={savingTiming} style={{ background: T.accent, border: "none", color: "#fff", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>{savingTiming ? "…" : "Save"}</button>
+          </div>
+          {timingError && <div style={{ color: T.accent, fontSize: 11, marginTop: 6 }}>{timingError}</div>}
         </div>
       )}
 
@@ -818,7 +902,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
 // opened straight into a specific workout (e.g. from tapping a calendar
 // day) via `initialWorkoutId`, in which case the back arrow closes
 // directly instead of returning to the list.
-export default function WorkoutHistory({ wide = false, history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, activeWorkout, onRepeatWorkout, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated }) {
+export default function WorkoutHistory({ wide = false, history, initialWorkoutId, dateFilter, units = "lb", timeFormat, user, activeWorkout, onRepeatWorkout, onClose, onDeleted, onSetUpdated, onSetAdded, onSetRemoved, onExerciseAdded, onExerciseRemoved, onBodyWeightUpdated, onTimingUpdated }) {
   const [selectedId, setSelectedId] = useState(initialWorkoutId || null);
   const [confirmDeleteIds, setConfirmDeleteIds] = useState(null); // null | array of workout ids pending delete confirmation
   const [deleting, setDeleting] = useState(false);
@@ -998,6 +1082,7 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
             onExerciseAdded={onExerciseAdded}
             onExerciseRemoved={onExerciseRemoved}
             onBodyWeightUpdated={onBodyWeightUpdated}
+            onTimingUpdated={onTimingUpdated}
           />
               ) : null}
             </div>
@@ -1023,6 +1108,7 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
             onExerciseAdded={onExerciseAdded}
             onExerciseRemoved={onExerciseRemoved}
             onBodyWeightUpdated={onBodyWeightUpdated}
+            onTimingUpdated={onTimingUpdated}
           />
         ) : (
           <div style={{ padding: 16, paddingBottom: selectMode ? 90 : 16, flex: 1 }}>

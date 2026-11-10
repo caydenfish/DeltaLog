@@ -3,6 +3,7 @@ import { normalizeMuscleList } from "./muscleTaxonomy";
 import { getPrefs } from "./prefs";
 import { toDisplay } from "./weight";
 import { toLocalDateStr } from "./time";
+import { pendingSetWrites } from "./setOutbox";
 
 // The picker's equipment filter works off one bucket per exercise
 // (Barbell/Dumbbell/Cable/Machine/Kettlebell/Bodyweight/Other), but the
@@ -773,9 +774,42 @@ export async function deleteWorkout(workoutId) {
   if (error) throw error;
 }
 
-export async function deleteAllIncompleteWorkouts(userId) {
+// Throws away one in-progress workout (Cancel, backing out of an empty
+// new workout, swapping a throwaway row for a saved one) plus any other
+// unfinished workouts that never got an exercise added -- orphaned empty
+// rows left behind by abandoned starts. It deliberately never touches a
+// different unfinished workout that has exercises in it. The old
+// version (deleteAllIncompleteWorkouts) wiped every unfinished workout
+// on the account, so backing out of a fresh empty workout, or tapping
+// "Resume previous workout", also deleted the real workout being
+// resumed, sets and all (v1.23.0).
+export async function discardWorkout(userId, workoutId) {
   await supabase.auth.getSession();
-  const { error } = await supabase.from("workouts").delete().eq("user_id", userId).is("completed_at", null);
+  const { data, error: listErr } = await supabase
+    .from("workouts")
+    .select("id, workout_exercises(id)")
+    .eq("user_id", userId)
+    .is("completed_at", null);
+  if (listErr) throw listErr;
+  const ids = (data || [])
+    .filter((w) => w.id === workoutId || !w.workout_exercises || w.workout_exercises.length === 0)
+    .map((w) => w.id);
+  if (workoutId && !ids.includes(workoutId)) ids.push(workoutId);
+  if (ids.length === 0) return;
+  const { error } = await supabase.from("workouts").delete().eq("user_id", userId).in("id", ids);
+  if (error) throw error;
+}
+
+// Retroactive timing edit from workout history: moves a finished
+// workout's start and finish timestamps (date, start time, duration).
+// History derives duration as completed_at - started_at, so both move
+// together. paused_total_sec is cleared since the duration entered is
+// the duration wanted, with no pause time to subtract.
+export async function updateWorkoutTiming(workoutId, startedAtISO, completedAtISO) {
+  const { error } = await supabase
+    .from("workouts")
+    .update({ started_at: startedAtISO, completed_at: completedAtISO, paused_total_sec: 0, paused_at: null })
+    .eq("id", workoutId);
   if (error) throw error;
 }
 
@@ -1521,15 +1555,21 @@ export async function submitFeedback(userId, type, message, context) {
 // backgrounding the browser mid-workout (which can fully unload the page
 // on mobile) never loses where someone was.
 export async function fetchActiveWorkout(userId) {
-  const { data: workout, error } = await supabase
+  // Looks past empty rows. A fresh start creates its workout row before
+  // any exercise is added, so an abandoned start (or the throwaway row
+  // created while a paused workout is waiting to be resumed) used to sit
+  // on top as the "newest" unfinished workout. Only checking that one
+  // row meant the real in-progress workout underneath was never found,
+  // and Home showed no Resume button (v1.23.0).
+  const { data: candidates, error } = await supabase
     .from("workouts")
-    .select("id, ideology, started_at, paused_at, paused_total_sec")
+    .select("id, ideology, started_at, paused_at, paused_total_sec, workout_exercises(id)")
     .eq("user_id", userId)
     .is("completed_at", null)
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(20);
   if (error) throw error;
+  const workout = (candidates || []).find((w) => w.workout_exercises && w.workout_exercises.length > 0);
   if (!workout) return null;
 
   const weBase = "id, position, planned_sets, planned_warmup_sets, superset_group, program_id, program_week, prescribed_weight, prescribed_reps, progression_reason, exercises (*), sets (set_number, weight, reps, rir, is_warmup)";
@@ -1542,6 +1582,23 @@ export async function fetchActiveWorkout(userId) {
   // An empty in-progress workout (e.g. someone backed out before adding
   // anything) isn't worth resuming into — treat it as if none exists.
   if (!exRows || exRows.length === 0) return null;
+
+  // Fold in any set writes still waiting in the offline outbox, so a
+  // reload with no connection resumes with every set that was logged.
+  const pending = pendingSetWrites();
+  const units = getPrefs().units;
+  const applyPending = (weId, sets) => {
+    const mine = pending.filter((p) => p.weId === weId).sort((a, b) => a.setNumber - b.setNumber);
+    if (mine.length === 0) return sets;
+    const out = [...sets];
+    for (const p of mine) {
+      const entry = { weight: toDisplay(Number(p.weight), units), reps: p.reps, rir: p.rir, isWarmup: !!p.isWarmup };
+      const idx = p.setNumber - 1;
+      if (idx < out.length) out[idx] = { ...out[idx], ...entry };
+      else if (idx === out.length) out.push(entry);
+    }
+    return out;
+  };
 
   return {
     id: workout.id,
@@ -1562,7 +1619,7 @@ export async function fetchActiveWorkout(userId) {
       prescribedReps: row.prescribed_reps,
       progressionReason: row.progression_reason,
       exercise: normalizeExercise(row.exercises),
-      sets: [...row.sets].sort((a, b) => a.set_number - b.set_number).map((s) => ({ weight: toDisplay(Number(s.weight), getPrefs().units), reps: s.reps, rir: s.rir, isWarmup: !!s.is_warmup })),
+      sets: applyPending(row.id, [...row.sets].sort((a, b) => a.set_number - b.set_number).map((s) => ({ weight: toDisplay(Number(s.weight), getPrefs().units), reps: s.reps, rir: s.rir, isWarmup: !!s.is_warmup }))),
     })),
   };
 }

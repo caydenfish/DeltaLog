@@ -11,6 +11,7 @@ import { computeMuscleSetCounts, isWorkedExercise } from "./lib/volume";
 import { computeDOTS, dotsBand } from "./lib/dots";
 import { getPrefs, setPref, defaultWorkingSets } from "./lib/prefs";
 import { saveSessionState, loadSessionState, clearSessionState } from "./lib/sessionState";
+import { queueSetWrite, dropQueuedSet, flushPendingSets } from "./lib/setOutbox";
 import { IDEOLOGIES } from "./lib/ideologies";
 import { rangeForSet, isRangeChange, sanitizeScheme, resizeScheme, formatRange } from "./lib/repScheme";
 import RepSchemeEditor from "./RepSchemeEditor";
@@ -56,7 +57,7 @@ import {
   deleteSet,
   updateSet,
   completeWorkout,
-  deleteAllIncompleteWorkouts,
+  discardWorkout,
   pauseWorkout,
   resumeWorkoutFromPause,
   saveExerciseDefaults,
@@ -1308,8 +1309,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     if (!savedWorkout || resumingSaved) return;
     setResumingSaved(true);
     try {
-      if (workoutId) deleteAllIncompleteWorkouts(user.id).catch(() => {});
-      clearSessionState(workoutId);
+      // Only the throwaway empty row goes. The saved workout being
+      // resumed is unfinished too, and the old delete-everything-
+      // unfinished call took it (and every set in it) down with it.
+      if (workoutId && workoutId !== savedWorkout.id) {
+        discardWorkout(user.id, workoutId).catch(() => {});
+        clearSessionState(workoutId);
+      }
       const items = [];
       const setsArr = [];
       for (const row of savedWorkout.exerciseRows) {
@@ -1494,10 +1500,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     setDiscardingNewWorkout(true);
     if (groupSessionId) leaveGroup("declined");
     try {
-      await deleteAllIncompleteWorkouts(user.id);
+      await discardWorkout(user.id, workoutId);
     } catch (err) {
       try {
-        await deleteAllIncompleteWorkouts(user.id);
+        await discardWorkout(user.id, workoutId);
       } catch (err2) {
         note(`Couldn't fully delete on the server: ${err2.message}`);
       }
@@ -1725,6 +1731,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
   function deleteLoggedSet(i, setIdx) {
     setAllSets(allSets.map((arr, k) => (k === i ? arr.filter((_, j) => j !== setIdx) : arr)));
+    dropQueuedSet(workout[i].dbId, setIdx + 1);
     deleteSet(workout[i].dbId, setIdx + 1).catch((err) => note(`Couldn't remove set: ${err.message}`));
   }
   // Batch version backing the set-list "select sets, then delete" flow.
@@ -2089,7 +2096,12 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
       setDrafts((d) => { const { [draftKey(editIndex)]: _drop, ...rest } = d; return rest; });
       setWizardOpen(false); setShowCalc(false); setEditIndex(null);
       note(`Set ${editIndex + 1} updated.`, "e1rm", 3000);
-      updateSet(ex.dbId, editIndex + 1, toCanonical(w, unit), r, rir).catch((err) => note(`Set updated locally, but didn't sync: ${err.message}`));
+      const editedWarmup = !!(sets[editIndex] && sets[editIndex].isWarmup);
+      const editedSetNumber = editIndex + 1;
+      updateSet(ex.dbId, editedSetNumber, toCanonical(w, unit), r, rir).catch(() => {
+        queueSetWrite({ weId: ex.dbId, setNumber: editedSetNumber, weight: toCanonical(w, unit), reps: r, rir, isWarmup: editedWarmup });
+        note("No connection. Saved on this device, it'll sync automatically.");
+      });
       return;
     }
     // New sets default to warmup while they're still within the planned
@@ -2119,7 +2131,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     if (nextSets.length === planned && lastWeek.length >= planned && r >= lastWeek[planned - 1].reps + 2) {
       note(`Final set beat last session by ${r - lastWeek[planned - 1].reps} reps. Do it again next workout and the target moves up.`, "progress", 5000);
     }
-    logSet(ex.dbId, nextSets.length, toCanonical(w, unit), r, rir, isWarmup).catch((err) => note(`Set logged locally, but didn't sync: ${err.message}`));
+    // A failed write goes to the durable outbox instead of being dropped
+    // (v1.23.0); it replays on reconnect, app focus and next launch.
+    const loggedSetNumber = nextSets.length;
+    logSet(ex.dbId, loggedSetNumber, toCanonical(w, unit), r, rir, isWarmup).catch(() => {
+      queueSetWrite({ weId: ex.dbId, setNumber: loggedSetNumber, weight: toCanonical(w, unit), reps: r, rir, isWarmup });
+      note("No connection. Set saved on this device, it'll sync automatically.");
+    });
   }
 
   const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -2219,6 +2237,16 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   }
 
   async function handleConfirmFinish() {
+    // Finishing prunes exercise slots with no sets on the server, so any
+    // set still waiting in the outbox has to land first or its slot (and
+    // the set) would be deleted out from under it.
+    try {
+      const stillPending = await flushPendingSets();
+      if (stillPending > 0) {
+        note(`${stillPending} set${stillPending === 1 ? " hasn't" : "s haven't"} synced yet. Check your connection, then finish again.`, "e1rm", 5000);
+        return;
+      }
+    } catch { /* fall through; the finish below will surface a real error */ }
     try {
       const exerciseIds = [...new Set(workout.map((w) => w.id))];
       const baselines = await fetchExercisePRBaselines(user.id, exerciseIds, workoutId);
@@ -2263,10 +2291,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     setCancelling(true);
     if (groupSessionId) leaveGroup("declined");
     try {
-      await deleteAllIncompleteWorkouts(user.id);
+      await discardWorkout(user.id, workoutId);
     } catch (err) {
       try {
-        await deleteAllIncompleteWorkouts(user.id);
+        await discardWorkout(user.id, workoutId);
       } catch (err2) {
         setCancelling(false);
         note(`Couldn't cancel: ${err2.message}. It's still on your account -- try again.`);
@@ -3093,7 +3121,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <style>{`${fontImport} button { cursor: pointer; }`}</style>
         <div style={frame}>
           <div style={{ padding: "16px 16px 0" }}>
-            <button onClick={() => { deleteAllIncompleteWorkouts(user.id).catch(() => {}); clearSessionState(workoutId); onFinished(); }} aria-label="Back to home" style={smallBtn}>‹</button>
+            <button onClick={() => { discardWorkout(user.id, workoutId).catch(() => {}); clearSessionState(workoutId); onFinished(); }} aria-label="Back to home" style={smallBtn}>‹</button>
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 24, textAlign: "center" }}>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text }}>Start a workout</div>
