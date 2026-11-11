@@ -1,32 +1,35 @@
 import { useId } from "react";
 import { T, tc } from "./lib/theme";
 
-// Mark, final (v1.25.0): the "Forged" body (heavy miter delta, square
-// plates, 120x100 grid) with the "Scan" glitch. At exactly half the
-// delta's height one band tears right, a thin gold band tears left, with
-// two faint scanlines. Below ~32px the tears turn to noise, so `plain`
-// drops them and thickens the strokes (tiny icons).
+// Mark (v1.25.0): the "Forged" body (heavy miter delta, square plates,
+// 120x100 grid). `plain` thickens the delta for tiny icons.
 //
-// v1.27.0: `live` animates the glitch for loading states. The mark sits
-// still in its resting pose; every 2.8s a ~400ms burst jumps the tears
-// in steps, opens a third tear lower down, flashes a green channel ghost
-// and flickers the scanlines, then snaps back. Off for reduced motion.
+// v1.28.0: the mark rests clean (a solid delta, no tears) everywhere.
+// `live` is for loading states only: it rests clean too, and every 2.8s
+// a ~400ms burst tears it at half height (bone band right, gold band
+// left, a third tear lower down, a green channel ghost, scanlines) in
+// hard steps, then snaps back to clean. Off for reduced motion.
 const DELTA = "60,12 90,64 30,64";
 const GREEN = tc("#82AD93");
 
+// Every keyframe rests at 0 / hidden, so the idle pose is the clean mark.
 const GLITCH_CSS = `
-@keyframes dl-ga { 0%, 79% { transform: translateX(0); } 80% { transform: translateX(5px); } 83% { transform: translateX(-4px); } 86% { transform: translateX(8px); } 90% { transform: translateX(2px); } 93%, 100% { transform: translateX(0); } }
-@keyframes dl-gb { 0%, 79% { transform: translateX(0); } 80% { transform: translateX(-5px); } 83% { transform: translateX(3px); } 86% { transform: translateX(-8px); } 90% { transform: translateX(-2px); } 93%, 100% { transform: translateX(0); } }
+@keyframes dl-ga { 0%, 79% { transform: translateX(0); } 80% { transform: translateX(5.5px); } 83% { transform: translateX(-4px); } 86% { transform: translateX(8px); } 90% { transform: translateX(3px); } 93%, 100% { transform: translateX(0); } }
+@keyframes dl-gb { 0%, 79% { transform: translateX(0); } 80% { transform: translateX(-4px); } 83% { transform: translateX(3px); } 86% { transform: translateX(-8px); } 90% { transform: translateX(-2px); } 93%, 100% { transform: translateX(0); } }
 @keyframes dl-gc { 0%, 82% { transform: translateX(0); } 83% { transform: translateX(-6px); } 86% { transform: translateX(4px); } 90% { transform: translateX(-3px); } 93%, 100% { transform: translateX(0); } }
+@keyframes dl-on { 0%, 79% { opacity: 0; } 80%, 92% { opacity: 1; } 93%, 100% { opacity: 0; } }
+@keyframes dl-off { 0%, 79% { opacity: 1; } 80%, 92% { opacity: 0; } 93%, 100% { opacity: 1; } }
 @keyframes dl-gg { 0%, 79% { opacity: 0; transform: translateX(0); } 80% { opacity: 0.9; transform: translateX(3px); } 86% { opacity: 0.9; transform: translateX(-4px); } 90% { opacity: 0.6; transform: translateX(5px); } 93%, 100% { opacity: 0; transform: translateX(0); } }
-@keyframes dl-gs { 0%, 79% { opacity: 1; transform: translateX(0); } 80% { opacity: 1; transform: translateX(7px); } 83% { opacity: 0.2; } 86% { opacity: 1; transform: translateX(-6px); } 90% { opacity: 0.4; transform: translateX(3px); } 93%, 100% { opacity: 1; transform: translateX(0); } }
+@keyframes dl-gs { 0%, 79% { opacity: 0; transform: translateX(0); } 80% { opacity: 1; transform: translateX(7px); } 83% { opacity: 0.2; } 86% { opacity: 1; transform: translateX(-6px); } 90% { opacity: 0.4; transform: translateX(3px); } 93%, 100% { opacity: 0; transform: translateX(0); } }
 .dl-live .dl-ga { animation: dl-ga 2.8s steps(1, end) infinite; }
 .dl-live .dl-gb { animation: dl-gb 2.8s steps(1, end) infinite; }
 .dl-live .dl-gc { animation: dl-gc 2.8s steps(1, end) infinite; }
+.dl-live .dl-on { animation: dl-on 2.8s steps(1, end) infinite; }
+.dl-live .dl-off { animation: dl-off 2.8s steps(1, end) infinite; }
 .dl-live .dl-gg { animation: dl-gg 2.8s steps(1, end) infinite; }
 .dl-live .dl-gs { animation: dl-gs 2.8s steps(1, end) infinite; }
-.dl-gg { opacity: 0; }
-@media (prefers-reduced-motion: reduce) { .dl-live .dl-ga, .dl-live .dl-gb, .dl-live .dl-gc, .dl-live .dl-gg, .dl-live .dl-gs { animation: none; } }
+.dl-on, .dl-gg, .dl-gs { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .dl-live * { animation: none !important; } }
 `;
 
 export function MarkBarbell() {
@@ -44,12 +47,12 @@ export function MarkBarbell() {
 export function MarkDelta({ plain = false, live = false }) {
   const id = useId().replace(/:/g, "");
   const tri = { fill: "none", strokeWidth: plain ? 11 : 9, strokeLinejoin: "miter", strokeMiterlimit: 10 };
-  if (plain) return <polygon points={DELTA} {...tri} stroke={T.text} />;
+  if (!live) return <polygon points={DELTA} {...tri} stroke={T.text} />;
   const band = (key, y, h) => <clipPath id={`${id}${key}`}><rect x="-20" y={y} width="160" height={h} /></clipPath>;
   const clip = (key) => `url(#${id}${key})`;
   return (
-    <g className={live ? "dl-live" : undefined}>
-      {live && <style>{GLITCH_CSS}</style>}
+    <g className="dl-live">
+      <style>{GLITCH_CSS}</style>
       <defs>
         {band("t", -20, 52.5)}
         {band("a", 32.5, 3)}
@@ -61,11 +64,16 @@ export function MarkDelta({ plain = false, live = false }) {
       </defs>
       <polygon points={DELTA} {...tri} stroke={T.text} clipPath={clip("t")} />
       <g clipPath={clip("a")}>
-        {live && <g className="dl-gg"><polygon points={DELTA} {...tri} stroke={GREEN} transform="translate(9.5 0)" /></g>}
-        <g className="dl-ga"><polygon points={DELTA} {...tri} stroke={T.text} transform="translate(5.5 0)" /></g>
+        <g className="dl-gg"><polygon points={DELTA} {...tri} stroke={GREEN} transform="translate(4 0)" /></g>
+        <g className="dl-ga"><polygon points={DELTA} {...tri} stroke={T.text} /></g>
       </g>
       <polygon points={DELTA} {...tri} stroke={T.text} clipPath={clip("m")} />
-      <g clipPath={clip("b")}><g className="dl-gb"><polygon points={DELTA} {...tri} stroke={T.accent} transform="translate(-4 0)" /></g></g>
+      <g clipPath={clip("b")}>
+        <g className="dl-gb">
+          <g className="dl-off"><polygon points={DELTA} {...tri} stroke={T.text} /></g>
+          <g className="dl-on"><polygon points={DELTA} {...tri} stroke={T.accent} /></g>
+        </g>
+      </g>
       <polygon points={DELTA} {...tri} stroke={T.text} clipPath={clip("z")} />
       <g clipPath={clip("c")}><g className="dl-gc"><polygon points={DELTA} {...tri} stroke={T.text} /></g></g>
       <polygon points={DELTA} {...tri} stroke={T.text} clipPath={clip("y")} />

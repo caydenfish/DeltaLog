@@ -1,58 +1,32 @@
 import { useEffect, useState } from "react";
 import { themed } from "./lib/theme";
-import { MarkBarbell, MarkDelta } from "./Logo";
+import Logo from "./Logo";
 
-const T = themed({
-  bg: "#121418",
-  text: "#E6E3D9",
-  accent: "#C4A35A",
-  danger: "#D0614C",
-  accentDeep: "#8A6F33",
-  spruce: "#3F6E55",
-});
+const T = themed({ bg: "#121418" });
 
-// Timing for each phase. MIN_LOADING_MS keeps the splash from flashing by
-// for a single frame on a fast/cached load — there's always at least a
-// beat of the logo on screen before it starts animating away.
+// MIN_LOADING_MS keeps the splash from flashing by for a single frame on
+// a fast/cached load. FADE_MS is the hand-off to the app.
 const MIN_LOADING_MS = 550;
-const EXTEND_MS = 480;
-const HORIZON_MS = 700;
-const SEPARATE_MS = 520;
+const FADE_MS = 320;
 
 // Shown while App.jsx is still resolving session/profile/setup/resume
-// state, as the logo with its glitch bursting (v1.27.0). Once `ready`
-// flips true: the barbell stretches horizontally off
-// both edges of the screen, a Tron-style perspective grid horizon fades
-// in below the bar for a beat, then the barbell/grid and triangle slide
-// apart vertically (down and up respectively) while the backdrop fades,
-// so the real app appears to be revealed from behind the logo.
+// state (v1.28.0): the logo sits still, glitching every few seconds
+// (Logo `live`), then the whole splash fades out once `ready` flips. The
+// old barbell-stretch / grid-horizon / split reveal is gone.
 export default function AppSplash({ ready }) {
-  const [phase, setPhase] = useState("loading"); // loading -> extend -> horizon -> separate -> done
+  const [phase, setPhase] = useState("loading"); // loading -> fade -> done
   const [mountedAt] = useState(() => Date.now());
 
   useEffect(() => {
     if (!ready || phase !== "loading") return;
-    const elapsed = Date.now() - mountedAt;
-    const wait = Math.max(0, MIN_LOADING_MS - elapsed);
-    const t = setTimeout(() => setPhase("extend"), wait);
+    const wait = Math.max(0, MIN_LOADING_MS - (Date.now() - mountedAt));
+    const t = setTimeout(() => setPhase("fade"), wait);
     return () => clearTimeout(t);
   }, [ready, phase, mountedAt]);
 
   useEffect(() => {
-    if (phase !== "extend") return;
-    const t = setTimeout(() => setPhase("horizon"), EXTEND_MS);
-    return () => clearTimeout(t);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== "horizon") return;
-    const t = setTimeout(() => setPhase("separate"), HORIZON_MS);
-    return () => clearTimeout(t);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== "separate") return;
-    const t = setTimeout(() => setPhase("done"), SEPARATE_MS);
+    if (phase !== "fade") return;
+    const t = setTimeout(() => setPhase("done"), FADE_MS);
     return () => clearTimeout(t);
   }, [phase]);
 
@@ -61,7 +35,6 @@ export default function AppSplash({ ready }) {
   return (
     <div
       aria-hidden="true"
-      className={`dl-splash-${phase}`}
       style={{
         position: "fixed",
         inset: 0,
@@ -70,105 +43,12 @@ export default function AppSplash({ ready }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        overflow: "hidden",
         pointerEvents: "none",
-        opacity: phase === "separate" ? 0 : 1,
-        transition: phase === "separate" ? `opacity ${SEPARATE_MS}ms ease ${SEPARATE_MS * 0.25}ms` : "none",
+        opacity: phase === "fade" ? 0 : 1,
+        transition: `opacity ${FADE_MS}ms ease`,
       }}
     >
-      <style>{`
-        @keyframes dl-horizon-scroll { from { background-position: 0 0, 0 0; } to { background-position: 0 0, 0 46px; } }
-        .dl-splash-barbell, .dl-splash-triangle { transform-box: fill-box; }
-        .dl-splash-barbell {
-          transform-origin: 50% 50%;
-          transition: transform ${EXTEND_MS}ms cubic-bezier(0.5,0,0.2,1);
-        }
-        .dl-splash-triangle {
-          transform-origin: 50% 34%;
-          transition: transform ${SEPARATE_MS}ms cubic-bezier(0.5,0,0.2,1);
-        }
-        .dl-splash-extend .dl-splash-barbell,
-        .dl-splash-horizon .dl-splash-barbell,
-        .dl-splash-separate .dl-splash-barbell {
-          transform: scaleX(18);
-        }
-        .dl-splash-separate .dl-splash-barbell {
-          transition: transform ${SEPARATE_MS}ms cubic-bezier(0.5,0,0.2,1);
-          transform: scaleX(18) translateY(140vh);
-        }
-        .dl-splash-separate .dl-splash-triangle {
-          transform: translateY(-140vh);
-        }
-
-        /* Tron-style perspective grid horizon, anchored to the barbell's
-           bar line (46px below viewport center at this SVG's fixed
-           220x183 render size). Fades in as the bar finishes extending,
-           holds through the "horizon" dwell phase, then rides down with
-           the bar during the split/reveal. */
-        .dl-splash-horizon-wrap {
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: calc(50% + 46px);
-          bottom: 0;
-          overflow: hidden;
-          opacity: 0;
-          transition: opacity ${EXTEND_MS}ms ease;
-        }
-        .dl-splash-extend .dl-splash-horizon-wrap,
-        .dl-splash-horizon .dl-splash-horizon-wrap {
-          opacity: 1;
-        }
-        .dl-splash-separate .dl-splash-horizon-wrap {
-          opacity: 0;
-          transform: translateY(140vh);
-          transition: transform ${SEPARATE_MS}ms cubic-bezier(0.5,0,0.2,1), opacity ${SEPARATE_MS}ms ease;
-        }
-        .dl-splash-horizon-glow {
-          position: absolute;
-          top: 0;
-          left: 50%;
-          width: min(140vw, 1100px);
-          height: 160px;
-          transform: translate(-50%, -50%);
-          background: radial-gradient(ellipse at center, rgba(196,163,90,0.55) 0%, rgba(196,163,90,0.18) 40%, rgba(196,163,90,0) 72%);
-          filter: blur(2px);
-        }
-        .dl-splash-horizon-floor {
-          position: absolute;
-          top: 0;
-          left: 50%;
-          width: 320vw;
-          height: 140vh;
-          transform-origin: top center;
-          transform: translateX(-50%) perspective(240px) rotateX(66deg);
-          background-image:
-            linear-gradient(90deg, rgba(196,163,90,0.55) 1px, transparent 1px),
-            linear-gradient(rgba(196,163,90,0.4) 1px, transparent 1px);
-          background-size: 46px 46px, 46px 46px;
-          -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,1) 12%);
-          mask-image: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,1) 12%);
-          animation: dl-horizon-scroll 900ms linear infinite;
-        }
-      `}</style>
-      <div className="dl-splash-horizon-wrap">
-        <div className="dl-splash-horizon-glow" />
-        <div className="dl-splash-horizon-floor" />
-      </div>
-      <svg
-        className={`dl-splash-${phase}`}
-        width={220}
-        height={183}
-        viewBox="0 0 120 100"
-        style={{ overflow: "visible", position: "relative" }}
-      >
-        <g className="dl-splash-barbell">
-          <MarkBarbell />
-        </g>
-        <g className="dl-splash-triangle">
-          <MarkDelta live={phase === "loading"} />
-        </g>
-      </svg>
+      <Logo size={168} live />
     </div>
   );
 }

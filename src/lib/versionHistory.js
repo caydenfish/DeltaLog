@@ -5,6 +5,18 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.28.0",
+    date: "2026-11-11",
+    items: [
+      "Logo: MarkDelta rests clean (solid delta, no tears) everywhere; icons regenerated clean. `live` rests clean too and bursts every 2.8s: tear bands are untransformed at rest and offset only by keyframes; the gold band swaps bone -> gold via dl-off/dl-on opacity steps; green ghost and scanlines hidden at rest.",
+      "AppSplash rewritten: loading -> fade -> done. Just <Logo size=168 live> on T.bg, 550ms minimum, 320ms fade. Barbell stretch, perspective grid horizon and split reveal removed.",
+      "Home header date: userSelect/WebkitUserSelect none + WebkitTouchCallout none so Android Chrome's Touch to Search no longer fires a Google search on tap. Start card: Templates shortcut removed (Templates stays in Start Workout sheet and Settings).",
+      "Today card: the days-ago + tip block is replaced by a recovery board from computeRecovery(history): hours since each muscle_group last got a working set (isWorkedExercise), split at 48h into Ready / Recovering chips, groups untrained for 28+ days omitted; recomputed on nowTick. Last-workout line plus an info toggle citing MacDougall 1995 (MPS window) and Schoenfeld 2016 (2x/week frequency). insight.tip still shows when there's no history. Editor label renamed to Recovery.",
+      "Streak: computeWeekStreak(history) counts consecutive Mon-Sun weeks with 2+ completed workouts; the current week adds once it hits 2 and never breaks the run. Shown as 'N-week streak' on Today and Calendar. Server fetchStreak result is no longer displayed.",
+      "Trends: the volume chart is tonnage (sum of weight x reps), which collided with the app's other meaning of volume (weekly hard sets). Tab, title, tooltip and editor label renamed to Tonnage.",
+    ],
+  },
+  {
     version: "1.27.0",
     date: "2026-11-11",
     items: [

@@ -66,7 +66,7 @@ import OnboardingSimulator from "./onboarding/OnboardingSimulator";
 import VersionHistory from "./VersionHistory";
 import TrainingLoadCard from "./TrainingLoadCard";
 import { version as APP_VERSION } from "../package.json";
-import { themed } from "./lib/theme";
+import { themed, tc } from "./lib/theme";
 
 const T = themed({
   bg: "#121418",
@@ -180,6 +180,54 @@ function buildLastWorkoutInsight(history, programDay) {
   }
 
   return { daysSince, muscles, tip, status, programDay };
+}
+
+// Consecutive weeks (Mon to Sun) with 2+ completed workouts. The current
+// week counts once it reaches 2; until then it doesn't break the run.
+function computeWeekStreak(history) {
+  if (!history || history.length === 0) return 0;
+  const weekStart = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+  const counts = new Map();
+  for (const w of history) {
+    if (!w.completed_at) continue;
+    const k = weekStart(w.completed_at).getTime();
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  const cursor = weekStart(Date.now());
+  let n = (counts.get(cursor.getTime()) || 0) >= 2 ? 1 : 0;
+  for (;;) {
+    cursor.setDate(cursor.getDate() - 7);
+    if ((counts.get(cursor.getTime()) || 0) >= 2) n += 1;
+    else break;
+  }
+  return n;
+}
+
+// Hours since each muscle group (category) last got a working set, split
+// at 48h into ready / recovering. Groups untouched for 4+ weeks are left
+// out so the board only shows what someone actually trains.
+function computeRecovery(history) {
+  if (!history || history.length === 0) return null;
+  const now = Date.now();
+  const last = new Map();
+  for (const w of history) {
+    const t = new Date(w.completed_at).getTime();
+    if (!t) continue;
+    for (const we of w.workout_exercises || []) {
+      if (!isWorkedExercise(we)) continue;
+      const g = we.exercises?.muscle_group;
+      if (g && (!last.has(g) || last.get(g) < t)) last.set(g, t);
+    }
+  }
+  const rows = [...last.entries()]
+    .map(([group, t]) => ({ group, hours: (now - t) / 3.6e6 }))
+    .filter((r) => r.hours < 28 * 24)
+    .map((r) => ({ ...r, ago: r.hours < 24 ? `${Math.max(1, Math.round(r.hours))}h` : `${Math.floor(r.hours / 24)}d` }));
+  if (rows.length === 0) return null;
+  return {
+    ready: rows.filter((r) => r.hours >= 48).sort((a, b) => b.hours - a.hours),
+    recovering: rows.filter((r) => r.hours < 48).sort((a, b) => a.hours - b.hours),
+  };
 }
 
 export default function Home({ user, onStartWorkout, onResumeWorkout, activeWorkout, onDataReset, onProgramWorkoutStarted, showUpdateNotice, onApplyUpdate, initialPanel, onInitialPanelUsed }) {
@@ -907,6 +955,14 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const programForecastDates = useMemo(() => computeProgramForecastDates(activeProgramForCalendar, calendarByDate), [activeProgramForCalendar, calendarByDate]);
   const insight = useMemo(() => buildLastWorkoutInsight(history, programDay), [history, programDay]);
   const trainingLoadSummary = useMemo(() => computeTrainingLoad(history || []), [history]);
+  // v1.28.0: consistency in weeks, not days. A week counts when it has 2+
+  // workouts (each muscle about twice a week beats once for growth:
+  // Schoenfeld, Ogborn & Krieger, Sports Med 2016). The current week
+  // only adds once it reaches 2, so an unfinished week never breaks it.
+  // Day streaks punished the rest days a split depends on.
+  const weekStreak = useMemo(() => computeWeekStreak(history), [history]);
+  const recovery = useMemo(() => computeRecovery(history), [history, nowTick]);
+  const [showRecoveryInfo, setShowRecoveryInfo] = useState(false);
 
   function handleDayClick(dateStr) {
     const workouts = workoutsByDate[dateStr];
@@ -1006,7 +1062,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
         {/* Header — a fixed flex sibling above the scrolling content, same pattern as the Start Workout bar below, rather than sticky positioning inside the scroll container (which never reliably stuck: the content div's ancestors only had minHeight set, so the whole page scrolled at the window level instead of the div clipping/scrolling internally). */}
         <div style={{ padding: "14px 12px 10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: T.bg, flexShrink: 0 }}>
-          <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 15, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: T.dim, whiteSpace: "nowrap" }}>
+          <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 15, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: T.dim, whiteSpace: "nowrap", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}>
             {new Date(nowTick).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
           </span>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -1053,10 +1109,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 {resumable ? (
                   <button onClick={onResumeWorkout} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Resume workout</button>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
-                    <button onClick={() => setShowStartSheet(true)} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Start workout</button>
-                    <button onClick={() => setShowTemplates(true)} style={{ height: 52, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 600 }}>Templates</button>
-                  </div>
+                  <button onClick={() => setShowStartSheet(true)} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Start workout</button>
                 )}
               </div>
             );
@@ -1136,26 +1189,45 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                         <div key="today" style={{ background: T.surface, border: `1px solid ${T.line}`, borderLeft: `3px solid ${statusColor}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: cs.lastWorkout ? 10 : 0 }}>
                             <span style={{ fontSize: 15, fontWeight: 700, color: T.text }}>Today</span>
-                            {cs.streak && streak > 0 && <span style={{ fontSize: 12.5, color: T.accent, fontWeight: 600 }}>{streak} day streak</span>}
+                            {cs.streak && weekStreak > 0 && <span style={{ fontSize: 12.5, color: T.accent, fontWeight: 600, whiteSpace: "nowrap" }}>{weekStreak}-week streak</span>}
                           </div>
                           {cs.lastWorkout && (
                             <>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
-                              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1, color: insight.status === "overdue" ? T.accent : T.text }}>
-                                {insight.daysSince === null ? "—" : insight.daysSince}
-                              </div>
-                              <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>day{insight.daysSince === 1 ? "" : "s"} ago</div>
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0, borderLeft: `1px solid ${T.line}`, paddingLeft: 12 }}>
-                              {insight.muscles.length > 0 && (
-                                <div style={{ fontSize: 12, color: T.text, fontWeight: 600, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  {insight.muscles.map((mus) => muscleLabel(mus, muscleNameMode)).join(" · ")}
+                            {!recovery ? (
+                              <div style={{ fontSize: 13, color: T.dim }}>{insight.tip}</div>
+                            ) : (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                {[
+                                  { key: "ready", label: "Ready", hint: "48h+ rest", color: T.green, rows: recovery.ready },
+                                  { key: "recovering", label: "Recovering", hint: "under 48h", color: tc("#D9894A"), rows: recovery.recovering },
+                                ].filter((grp) => grp.rows.length > 0).map((grp) => (
+                                  <div key={grp.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                                      <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: grp.color }}>{grp.label}</span>
+                                      <span style={{ fontSize: 11.5, color: T.dim }}>{grp.hint}</span>
+                                    </div>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                      {grp.rows.map((r) => (
+                                        <span key={r.group} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 30, padding: "0 10px", borderRadius: 999, background: T.surface2, border: `1px solid ${T.line}`, fontSize: 13, color: T.text, whiteSpace: "nowrap" }}>
+                                          <span style={{ width: 7, height: 7, borderRadius: 4, background: grp.color }} />
+                                          {r.group}
+                                          <span style={{ color: T.dim, fontVariantNumeric: "tabular-nums" }}>{r.ago}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                  <span style={{ fontSize: 12, color: T.dim }}>Last workout {insight.daysSince === 0 ? "today" : insight.daysSince === 1 ? "yesterday" : `${insight.daysSince} days ago`}</span>
+                                  <button onClick={(e) => { e.stopPropagation(); setShowRecoveryInfo((v) => !v); }} aria-expanded={showRecoveryInfo} aria-label="How recovery is worked out" style={{ width: 44, height: 32, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "flex-end", padding: 0 }}><IconInfo size={15} /></button>
                                 </div>
-                              )}
-                              <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.4 }}>{insight.tip}</div>
-                            </div>
-                          </div>
+                                {showRecoveryInfo && (
+                                  <div style={{ fontSize: 12, lineHeight: 1.45, color: T.dim, background: T.surface2, borderRadius: 10, padding: "10px 12px" }}>
+                                    Time since each muscle group last got a working set. Muscle protein synthesis stays raised for about 24 to 48 hours after training (MacDougall et al., 1995), and hitting a muscle about twice a week grows it more than once (Schoenfeld et al., 2016). So 48h is the line for training it hard again. Only groups you've trained in the last 4 weeks show.
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           {programDay && !PROGRAM_LOCKED && (
                             <button
                               onClick={() => setShowProgramView(true)}
@@ -1185,16 +1257,16 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                     }
                     case "trends": {
                       const charts = [
-                        cs.volume && { key: "volume", label: "Volume", el: (
+                        cs.volume && { key: "volume", label: "Tonnage", el: (
                         <HomeChartCard
                           key="volume"
-                          title="Volume over time"
+                          title="Tonnage (weight × reps)"
                           data={dailyVolume}
                           dataKey="volume"
                           color={T.accent}
                           range={volumeRange}
                           onRangeChange={setVolumeRange}
-                          tooltipLabel="Volume"
+                          tooltipLabel="Tonnage"
                           valueFormatter={(v) => `${v.toLocaleString()} ${units}`}
                           emptyMessage="No completed workouts in this range yet."
                           lockedTs={lockedTs}
@@ -1269,9 +1341,9 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                               <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
                                 {calendarMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}
                               </div>
-                              {streak > 0 && homeCardSettings.calendar.streak && (
+                              {weekStreak > 0 && homeCardSettings.calendar.streak && (
                                 <div style={{ fontSize: 10, color: T.accent, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginTop: 1 }}>
-                                  {streak} day streak
+                                  {weekStreak}-week streak
                                 </div>
                               )}
                             </div>

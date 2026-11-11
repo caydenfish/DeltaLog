@@ -9,6 +9,15 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.28.0": {
+    title: "Recovery at a glance",
+    items: [
+      "Home shows which muscle groups are ready to train and which are still recovering, based on when you last hit them. Tap the i to see why.",
+      "Streaks now count weeks with 2+ workouts, so rest days never break them.",
+      "The volume-over-time chart is now called Tonnage, so it isn't confused with weekly sets.",
+      "Cleaner logo and a simpler launch screen.",
+    ],
+  },
   "1.27.0": {
     title: "New loading screens",
     items: [

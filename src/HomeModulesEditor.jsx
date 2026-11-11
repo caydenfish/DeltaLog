@@ -20,9 +20,9 @@ const T = themed({
 
 // What each card's row says it contains, from its current settings.
 function describe(id, s) {
-  if (id === "today") return [s.lastWorkout && "Last workout", s.trainingLoad && "training load", s.streak && "streak"].filter(Boolean).join(", ") || "Nothing selected";
+  if (id === "today") return [s.lastWorkout && "Recovery", s.trainingLoad && "training load", s.streak && "streak"].filter(Boolean).join(", ") || "Nothing selected";
   if (id === "trends") {
-    const charts = [s.volume && "Volume", s.weight && "bodyweight", s.workoutTime && "time"].filter(Boolean);
+    const charts = [s.volume && "Tonnage", s.weight && "bodyweight", s.workoutTime && "time"].filter(Boolean);
     return charts.length ? `${charts.join(", ")} · ${s.layout === "separate" ? "separate cards" : "one card"}` : "No charts selected";
   }
   if (id === "weeklyVolume") {
@@ -126,14 +126,14 @@ export default function HomeModulesEditor({ cards, settings, onChange, onSetting
             <div style={{ borderTop: `1px solid ${T.line}` }}>
               {editing === "today" && (
                 <>
-                  <SettingRow label="Last workout & recovery"><Toggle on={s.lastWorkout} onClick={() => set("today", { lastWorkout: !s.lastWorkout })} label="Last workout" /></SettingRow>
+                  <SettingRow label="Recovery"><Toggle on={s.lastWorkout} onClick={() => set("today", { lastWorkout: !s.lastWorkout })} label="Last workout" /></SettingRow>
                   <SettingRow label="Training load"><Toggle on={s.trainingLoad} onClick={() => set("today", { trainingLoad: !s.trainingLoad })} label="Training load" /></SettingRow>
                   <SettingRow label="Streak"><Toggle on={s.streak} onClick={() => set("today", { streak: !s.streak })} label="Streak" /></SettingRow>
                 </>
               )}
               {editing === "trends" && (
                 <>
-                  <SettingRow label="Volume over time"><Toggle on={s.volume} onClick={() => set("trends", { volume: !s.volume })} label="Volume" /></SettingRow>
+                  <SettingRow label="Tonnage over time"><Toggle on={s.volume} onClick={() => set("trends", { volume: !s.volume })} label="Volume" /></SettingRow>
                   <SettingRow label="Bodyweight"><Toggle on={s.weight} onClick={() => set("trends", { weight: !s.weight })} label="Bodyweight" /></SettingRow>
                   <SettingRow label="Workout time"><Toggle on={s.workoutTime} onClick={() => set("trends", { workoutTime: !s.workoutTime })} label="Workout time" /></SettingRow>
                   <div style={{ padding: "14px 0 4px" }}>
