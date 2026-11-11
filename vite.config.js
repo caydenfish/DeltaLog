@@ -19,8 +19,11 @@ export default defineConfig({
     VitePWA({
       registerType: "prompt",
       injectRegister: null,
-      includeAssets: ["favicon.ico", "apple-touch-icon.png"],
+      includeAssets: ["favicon.ico", "favicon.svg", "apple-touch-icon-v2.png"],
       manifest: {
+        // Stable identity, so a changed icon list reads as an update to the
+        // same installed app rather than a different one.
+        id: "/",
         name: "DeltaLog",
         short_name: "DeltaLog",
         description: "Log sets, track load, hit the target.",
@@ -30,9 +33,13 @@ export default defineConfig({
         orientation: "portrait",
         start_url: "/",
         icons: [
-          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png" },
-          { src: "icon-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
+          // Versioned filenames (v1.29.0): Android Chrome decides whether
+          // to refresh an installed app's icon by comparing the manifest's
+          // icon URLs, so new art needs a new name. Bump -vN on any icon
+          // change; the old files stay so stale manifests still resolve.
+          { src: "icon-192-v2.png", sizes: "192x192", type: "image/png" },
+          { src: "icon-512-v2.png", sizes: "512x512", type: "image/png" },
+          { src: "icon-512-maskable-v2.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
         ]
       },
       workbox: {

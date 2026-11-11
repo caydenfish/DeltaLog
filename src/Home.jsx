@@ -963,6 +963,18 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   const weekStreak = useMemo(() => computeWeekStreak(history), [history]);
   const recovery = useMemo(() => computeRecovery(history), [history, nowTick]);
   const [showRecoveryInfo, setShowRecoveryInfo] = useState(false);
+  const [iconNotice, setIconNotice] = useState(() => {
+    try {
+      const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      return ios && window.navigator.standalone === true && localStorage.getItem("dl_icon_notice") !== "v2";
+    } catch {
+      return false;
+    }
+  });
+  function dismissIconNotice() {
+    try { localStorage.setItem("dl_icon_notice", "v2"); } catch { /* ignore */ }
+    setIconNotice(false);
+  }
 
   function handleDayClick(dateStr) {
     const workouts = workoutsByDate[dateStr];
@@ -1083,6 +1095,17 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 24px" }} onScroll={handleHomeScroll} onClick={() => setLockedTs(null)}>
 
+          {/* v1.29.0: iOS never refreshes a home-screen icon, so installed
+              iPhone users get one notice explaining how to pick up the new one. */}
+          {iconNotice && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 12px 12px 14px", marginBottom: 12, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface }}>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>New app icon</span>
+                <span style={{ fontSize: 13, color: T.dim, lineHeight: 1.4 }}>iPhone keeps the old one until you remove DeltaLog from your home screen and add it again from Safari (Share, Add to Home Screen). Your workouts are saved to your account.</span>
+              </div>
+              <button onClick={dismissIconNotice} aria-label="Dismiss" style={{ width: 44, height: 44, marginTop: -6, marginRight: -6, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconX size={14} /></button>
+            </div>
+          )}
           {/* v1.26.0 Home: start card at the top replaces the sticky Start bar. */}
           {groupInvites.slice(0, 1).map((inv) => (
             <div key={inv.session_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 12, borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.08)" }}>

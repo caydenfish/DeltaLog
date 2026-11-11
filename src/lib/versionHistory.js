@@ -5,6 +5,15 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.29.0",
+    date: "2026-11-11",
+    items: [
+      "Icon propagation. Android Chrome refreshes an installed WebAPK's icon by comparing manifest icon URLs, so icons are now versioned: icon-192-v2 / icon-512-v2 / icon-512-maskable-v2 / apple-touch-icon-v2 in the manifest and index.html (old filenames kept, holding the new art, for stale manifests). Manifest gains an explicit id '/' so the changed manifest reads as an update to the same app. favicon.svg ?v=2, favicon.ico ?v=5. Bump -vN on any future icon change.",
+      "iOS never refreshes home-screen icons. Home shows a one-time dismissible notice to iOS standalone users (UA/iPadOS check + navigator.standalone) explaining remove and re-add from Safari; dismissal stored as localStorage dl_icon_notice = v2.",
+      "Open Graph / Twitter meta in index.html with public/og-image.png (1200x628, from the brand asset set) so shared links unfurl on Reddit, iMessage, Discord.",
+    ],
+  },
+  {
     version: "1.28.0",
     date: "2026-11-11",
     items: [

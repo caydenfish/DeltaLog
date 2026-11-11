@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.29.0": {
+    title: "New icon, everywhere",
+    items: [
+      "The new app icon now reaches installed apps on Android on their own. iPhone users get a one-time note on how to refresh it.",
+      "Sharing a DeltaLog link now shows a proper preview image.",
+    ],
+  },
   "1.28.0": {
     title: "Recovery at a glance",
     items: [
