@@ -414,7 +414,7 @@ function compareSets(today, last) {
   if (!today || !last || !!today.isWarmup !== !!last.isWarmup) return null;
   const d = Math.round(e1RM(today.weight, today.reps, today.rir)) - Math.round(e1RM(last.weight, last.reps, last.rir));
   if (d > 0) return { glyph: "↑", color: T.green, label: "Beat last time" };
-  if (d < 0) return { glyph: "↓", color: "#E8752E", label: "Below last time" };
+  if (d < 0) return { glyph: "↓", color: tc("#D9894A"), label: "Below last time" };
   return { glyph: "=", color: T.dim, label: "Matched last time" };
 }
 

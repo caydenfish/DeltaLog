@@ -1,7 +1,7 @@
 import { FRONT_REGIONS, BACK_REGIONS, OUTLINE_FRONT, OUTLINE_BACK, VIEWBOX_FRONT, VIEWBOX_BACK } from "./lib/bodyMapData";
 import { SECONDARY_SET_WEIGHT, effectiveSets, formatSets } from "./lib/volume";
 import { resolveRegions } from "./lib/bodyMapRegions";
-import { statusColorFor, PLAN_NEUTRAL } from "./lib/planStatus";
+import { statusColorFor, PLAN_NEUTRAL, PLAN_ORANGE, PLAN_GREEN, PLAN_BLUE } from "./lib/planStatus";
 import { getDetailedTaxonomyEntries } from "./lib/muscleTaxonomy";
 import { themed, tc, IS_LIGHT } from "./lib/theme";
 
@@ -105,22 +105,22 @@ function intensityTierLegend(maxTotal) {
   const hiMin = Math.min(maxTotal, modMax + 1);
   return [
     { key: "none", color: NEUTRAL, label: "0" },
-    { key: "low", color: "#C9A227", label: lowMax === 1 ? "1" : `1–${lowMax}` },
-    { key: "moderate", color: "#E8752E", label: modMax === lowMax + 1 ? `${modMax}` : `${lowMax + 1}–${modMax}` },
-    { key: "high", color: T.accent, label: hiMin >= maxTotal ? formatSets(maxTotal) : `${hiMin}–${formatSets(maxTotal)}` },
+    { key: "low", color: TIERS[1].color, label: lowMax === 1 ? "1" : `1–${lowMax}` },
+    { key: "moderate", color: TIERS[2].color, label: modMax === lowMax + 1 ? `${modMax}` : `${lowMax + 1}–${modMax}` },
+    { key: "high", color: TIERS[3].color, label: hiMin >= maxTotal ? formatSets(maxTotal) : `${hiMin}–${formatSets(maxTotal)}` },
   ];
 }
 
 const PLAN_TIERS = [
   { key: "none", label: "Not started", color: PLAN_NEUTRAL },
-  { key: "under", label: "Under target", color: "#E8752E" },
-  { key: "met", label: "Target met", color: tc("#6A9E80") },
+  { key: "under", label: "Under target", color: PLAN_ORANGE },
+  { key: "met", label: "Target met", color: PLAN_GREEN },
 ];
 const PLAN_TIERS_RANGE = [
   { key: "none", label: "None", color: PLAN_NEUTRAL },
-  { key: "under", label: "Under", color: "#E8752E" },
-  { key: "met", label: "On track", color: tc("#6A9E80") },
-  { key: "over", label: "Over", color: "#5B8DEF" },
+  { key: "under", label: "Under", color: PLAN_ORANGE },
+  { key: "met", label: "On track", color: PLAN_GREEN },
+  { key: "over", label: "Over", color: PLAN_BLUE },
 ];
 
 function tierFor(total, max) {

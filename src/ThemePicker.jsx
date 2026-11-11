@@ -28,7 +28,7 @@ function Preview({ theme, on, onPick }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px 2px" }}>
         <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, textTransform: "uppercase", color: T.text, lineHeight: 1.1 }}>{theme.name}</span>
-          <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{theme.blurb}</span>
+          <span style={{ fontSize: 12, color: T.dim, lineHeight: 1.3 }}>{theme.blurb}</span>
         </span>
         <span style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 10, boxSizing: "border-box", border: `2px solid ${on ? T.accent : T.line}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {on && <span style={{ width: 10, height: 10, borderRadius: 5, background: T.accent }} />}

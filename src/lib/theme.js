@@ -54,7 +54,7 @@ export const THEMES = [
   {
     id: "iron",
     name: "Iron",
-    blurb: "Graphite, bone and gold",
+    blurb: "Graphite and gold",
     light: false,
     preview: { bg: "#121418", surface: "#1B1E23", line: "#2F343B", text: "#E6E3D9", dim: "#8F949C", accent: "#C4A35A", onAccent: "#121418", track: "#24282E", green: "#3F6E55" },
     map: {},
@@ -62,7 +62,7 @@ export const THEMES = [
   {
     id: "chalk",
     name: "Chalk",
-    blurb: "Bone, black and bronze",
+    blurb: "Bone and bronze",
     light: true,
     preview: { bg: "#D9D5CA", surface: "#E4E0D6", line: "#BFB9AB", text: "#15171B", dim: "#4F5257", accent: "#6E5420", onAccent: "#D9D5CA", track: "#CDC8BB", green: "#335C46" },
     map: {
@@ -97,14 +97,47 @@ export const THEMES = [
       "#6A6A64": "#7D786C",
     },
   },
+  {
+    id: "legacy",
+    name: "Legacy",
+    blurb: "The original orange",
+    light: false,
+    preview: { bg: "#101216", surface: "#1A1D23", line: "#2C313B", text: "#F2F1EC", dim: "#8B919D", accent: "#E8442E", onAccent: "#101216", track: "#22262E", green: "#3BA55D" },
+    map: {
+      "#121418": "#101216",
+      "#1B1E23": "#1A1D23",
+      "#24282E": "#22262E",
+      "#2F343B": "#2C313B",
+      "#3B4049": "#3A404B",
+      "#4A4F57": "#4A505B",
+      "#575B61": "#565C68",
+      "#1D2025": "#1C1F24",
+      "#E6E3D9": "#F2F1EC",
+      "#8F949C": "#8B919D",
+      "#A5A6A3": "#A3A9B4",
+      "#BEBDB6": "#B8BDC7",
+      "#CFCDC5": "#C9CDD3",
+      "#C4A35A": "#E8442E",
+      "#8A6F33": "#A8321F",
+      "#D8BF83": "#FFD166",
+      "#3A3220": "#3A1F1A",
+      "#3F6E55": "#2F7A48",
+      "#6A9E80": "#3BA55D",
+      "#82AD93": "#7BD69B",
+      "#1F3329": "#1A3324",
+      "#D0614C": "#E8442E",
+      "#E08A78": "#FF8A78",
+      "#D9894A": "#E8A82E",
+    },
+  },
 ];
 
-const LEGACY = { dark: "iron", light: "chalk" }; // pre-release ids
+const OLD_IDS = { dark: "iron", light: "chalk" }; // pre-release ids
 
 function readTheme() {
   try {
     const raw = localStorage.getItem(THEME_KEY);
-    const id = LEGACY[raw] || raw;
+    const id = OLD_IDS[raw] || raw;
     return THEMES.some((t) => t.id === id) ? id : "iron";
   } catch {
     return "iron";

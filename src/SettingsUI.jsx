@@ -1,11 +1,10 @@
+import { Children, cloneElement, isValidElement } from "react";
 import { IconChevronLeft, IconChevronRight, IconSearch } from "./Icons";
 import { themed, tc } from "./lib/theme";
 
-// Shared building blocks for every Settings screen, matching the exercise
-// picker's tile language: 16px-radius tiles, a tinted icon square, a
-// condensed uppercase title, one short non-wrapping subtitle, and the
-// tile's current value in the top-right corner (the same slot the picker
-// uses for counts). Kept in one file so Home's Settings hub and every
+// Shared building blocks for every Settings screen: grouped cards of
+// full-width rows (tinted icon square, title, short subtitle, current
+// value, chevron). Kept in one file so Home's Settings hub and every
 // Preferences sub-screen can't drift apart visually.
 
 const T = themed({
@@ -25,65 +24,45 @@ const T = themed({
 const condensed = "'Saira Condensed', sans-serif";
 const oneLine = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
-// A navigation tile. Two per row by default (the caller's grid does the
-// layout). `wide` spans both columns and switches to a horizontal layout
-// with a trailing chevron, for sections with a single destination.
-// `value` is the setting's current state ("Region", "2:00", "lb"),
-// shown top-right. `disabled` renders it inert (e.g. Strava, locked).
-export function SettingsTile({ title, subtitle, icon, value, badge, onClick, wide, danger, disabled }) {
-  const edge = danger ? `${T.danger}80` : T.line;
+// A navigation row (v1.26.0). Settings used to be a two-up tile grid,
+// which truncated titles and subtitles with ellipses; every destination
+// is now a full-width row inside a grouped card (TileGrid), so text has
+// the room it needs. Titles never truncate; subtitles wrap rather than
+// clip if a phone is very narrow. `value` is the setting's current state
+// ("Region", "2:00", "lb"), shown before the chevron. `wide` is accepted
+// for old callers and ignored. `disabled` renders it inert.
+export function SettingsTile({ title, subtitle, icon, value, badge, onClick, danger, disabled, divider }) {
   const titleColor = danger ? T.danger : T.text;
-  const iconBox = (
-    <div style={{ width: 36, height: 36, borderRadius: 10, background: danger ? `${T.danger}1F` : T.surface2, display: "flex", alignItems: "center", justifyContent: "center", color: danger ? T.danger : T.text, flexShrink: 0 }}>
-      {icon}
-    </div>
-  );
-  const common = {
-    gridColumn: wide ? "1 / -1" : "auto",
-    background: T.surface,
-    border: `1px solid ${edge}`,
-    borderRadius: 16,
-    textAlign: "left",
-    opacity: disabled ? 0.55 : 1,
-    cursor: disabled ? "default" : "pointer",
-    minWidth: 0,
-    boxSizing: "border-box",
-  };
-
-  if (wide) {
-    return (
-      <button onClick={disabled ? undefined : onClick} disabled={disabled} style={{ ...common, display: "flex", alignItems: "center", gap: 12, minHeight: 76, padding: "12px 14px" }}>
-        {iconBox}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: titleColor, ...oneLine }}>{title}</span>
-            {badge}
-          </div>
-          {subtitle && <span style={{ fontSize: 13, color: danger ? T.danger : T.dim, ...oneLine }}>{subtitle}</span>}
-        </div>
-        {value && <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 600, color: T.soft, flexShrink: 0, ...oneLine }}>{value}</span>}
-        {!disabled && <IconChevronRight size={16} style={{ color: T.dim, flexShrink: 0 }} />}
-      </button>
-    );
-  }
-
   return (
-    <button onClick={disabled ? undefined : onClick} disabled={disabled} style={{ ...common, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 14, minHeight: 118, padding: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: 8 }}>
-        {iconBox}
-        {badge || (value && <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 600, color: T.soft, minWidth: 0, ...oneLine }}>{value}</span>)}
+    <button
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", minHeight: 64, padding: "10px 14px", background: "transparent", border: "none", borderTop: divider ? `1px solid ${T.line}` : "none", textAlign: "left", opacity: disabled ? 0.55 : 1, cursor: disabled ? "default" : "pointer", boxSizing: "border-box" }}
+    >
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: danger ? `${T.danger}1F` : T.surface2, display: "flex", alignItems: "center", justifyContent: "center", color: danger ? T.danger : T.text, flexShrink: 0 }}>
+        {icon}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, width: "100%", minWidth: 0 }}>
-        <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: titleColor, ...oneLine }}>{title}</span>
-        {subtitle && <span style={{ fontSize: 13, color: danger ? T.danger : T.dim, ...oneLine }}>{subtitle}</span>}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 17, fontWeight: 600, color: titleColor, lineHeight: 1.2 }}>{title}</span>
+          {badge}
+        </div>
+        {subtitle && <span style={{ fontSize: 13, color: danger ? T.danger : T.dim, lineHeight: 1.3 }}>{subtitle}</span>}
       </div>
+      {value && <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 600, color: T.soft, flexShrink: 0, whiteSpace: "nowrap" }}>{value}</span>}
+      {!disabled && <IconChevronRight size={16} style={{ color: T.dim, flexShrink: 0 }} />}
     </button>
   );
 }
 
-// Two-column tile grid.
+// Grouped card holding a section's rows, with dividers between them.
 export function TileGrid({ children, style }) {
-  return <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, ...style }}>{children}</div>;
+  const rows = Children.toArray(children).filter(Boolean);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 16, overflow: "hidden", ...style }}>
+      {rows.map((c, i) => (isValidElement(c) && c.type === SettingsTile ? cloneElement(c, { divider: i > 0 }) : c))}
+    </div>
+  );
 }
 
 // Small uppercase group label above a TileGrid.

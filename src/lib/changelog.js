@@ -9,6 +9,21 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.27.0": {
+    title: "New loading screens",
+    items: [
+      "Loading screens now show the DeltaLog logo with a quick glitch every few seconds.",
+      "New Legacy theme: the original orange look. Settings, Theme.",
+    ],
+  },
+  "1.26.0": {
+    title: "A fresh Home",
+    items: [
+      "Start your workout from the card at the top of Home. Home, History, Library and Friends are now tabs along the bottom.",
+      "Settings is a clean list, with nothing cut off.",
+      "Calmer, darker colors on the muscle map.",
+    ],
+  },
   "1.25.0": {
     title: "Themes",
     items: [

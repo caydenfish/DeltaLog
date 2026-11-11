@@ -5,6 +5,24 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.27.0",
+    date: "2026-11-11",
+    items: [
+      "Logo.jsx split into MarkBarbell + MarkDelta (plain | live) with Logo composing them. `live` adds a 2.8s CSS cycle (steps(1,end), so it jumps rather than tweens): rest pose for ~80%, then a ~400ms burst where tear A and the gold tear jump in opposite directions, a third tear opens at y 46-48.5 (bottom clip split to make room), a green channel ghost (tc('#82AD93')) flashes behind tear A, and the scanlines flicker and slide. Transforms are on wrapper <g>s so the resting offsets on the polygons stay put. prefers-reduced-motion disables it.",
+      "LoadingSpinner is now <Logo live>, replacing the filling-wave triangle everywhere it was used (InlineLoading in ~20 screens, LoadingScreen). InlineLoading default size 22 -> 34 and LoadingScreen 72 -> 96 so the glitch reads. AppSplash: logo redrawn with MarkBarbell/MarkDelta on the 120x100 grid (220x183 render), live only during the loading phase; the old opacity pulse is gone; barbell transform-origin re-centred on the bar and the horizon anchor moved to 46px below centre to stay on the bar line.",
+      "Legacy theme: third THEMES entry mapping every Iron key back to the pre-1.24 palette (bg #101216, text #F2F1EC, accent #E8442E, green #3BA55D, PR yellow #FFD166, amber #E8A82E, danger = accent as it was). Logo follows it (red barbell). Hardcoded gold rgba() tints (selection washes) are not remapped and stay gold. index.html early-paint map gains legacy. Theme blurbs shortened and allowed to wrap (no ellipsis); pre-release id alias renamed OLD_IDS.",
+    ],
+  },
+  {
+    version: "1.26.0",
+    date: "2026-11-11",
+    items: [
+      "Home (mobile) restructure from the Home v2 mockup: header is now the date (Saira Condensed eyebrow) plus Announcements and Settings; the logo and Customize button moved to the bottom of the scroll as 'Customize home' + Logo (no wordmark). New start card at the top of the scroll: Today/Ready to lift with last-session line from buildLastWorkoutInsight, Start workout (opens StartWorkoutSheet) + Templates; switches to In progress/Resume workout with elapsed time when an unpaused workout exists. Group invite rows moved from the sticky bar to the top of the scroll (desktop too). The sticky Start bar is gone; mobile gets a bottom nav (Home, History, Library, Friends) that routes through goDesktopSection, the same destinations as the desktop sidebar. Desktop unchanged otherwise (sidebar owns Start/Resume).",
+      "SettingsUI: SettingsTile is now always a full-width row (icon, Chakra Petch 17 title, Saira 13 subtitle that wraps instead of clipping, value, chevron); TileGrid is a grouped card that injects dividers between SettingsTile children. `wide` is ignored. No ellipses anywhere in tiles. Shortened two subtitles (Redo setup, Profile search result).",
+      "planStatus: PLAN_ORANGE/GREEN/BLUE/NEUTRAL are muted, darker and theme-aware (Iron #B8652E/#3F8A5E/#4F72B5/#3A404B, Chalk #A3561F/#2F6B4A/#3D5E9E/#8E887B). BodyMap plan tiers now import these instead of hardcoding; the intensity legend reuses TIERS colors so legend and map always match. SetLogger 'Below last time' uses themed amber.",
+    ],
+  },
+  {
     version: "1.25.0",
     date: "2026-11-11",
     items: [

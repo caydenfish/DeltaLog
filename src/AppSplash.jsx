@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { themed } from "./lib/theme";
+import { MarkBarbell, MarkDelta } from "./Logo";
 
 const T = themed({
   bg: "#121418",
@@ -19,7 +20,8 @@ const HORIZON_MS = 700;
 const SEPARATE_MS = 520;
 
 // Shown while App.jsx is still resolving session/profile/setup/resume
-// state. Once `ready` flips true: the barbell stretches horizontally off
+// state, as the logo with its glitch bursting (v1.27.0). Once `ready`
+// flips true: the barbell stretches horizontally off
 // both edges of the screen, a Tron-style perspective grid horizon fades
 // in below the bar for a beat, then the barbell/grid and triangle slide
 // apart vertically (down and up respectively) while the backdrop fades,
@@ -75,20 +77,15 @@ export default function AppSplash({ ready }) {
       }}
     >
       <style>{`
-        @keyframes dl-splash-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         @keyframes dl-horizon-scroll { from { background-position: 0 0, 0 0; } to { background-position: 0 0, 0 46px; } }
         .dl-splash-barbell, .dl-splash-triangle { transform-box: fill-box; }
         .dl-splash-barbell {
-          transform-origin: 50% 78%;
+          transform-origin: 50% 50%;
           transition: transform ${EXTEND_MS}ms cubic-bezier(0.5,0,0.2,1);
         }
         .dl-splash-triangle {
           transform-origin: 50% 34%;
           transition: transform ${SEPARATE_MS}ms cubic-bezier(0.5,0,0.2,1);
-        }
-        .dl-splash-loading .dl-splash-barbell,
-        .dl-splash-loading .dl-splash-triangle {
-          animation: dl-splash-pulse 1.7s ease-in-out infinite;
         }
         .dl-splash-extend .dl-splash-barbell,
         .dl-splash-horizon .dl-splash-barbell,
@@ -104,15 +101,15 @@ export default function AppSplash({ ready }) {
         }
 
         /* Tron-style perspective grid horizon, anchored to the barbell's
-           bar line (44px below viewport center at this SVG's fixed
-           220x154 render size). Fades in as the bar finishes extending,
+           bar line (46px below viewport center at this SVG's fixed
+           220x183 render size). Fades in as the bar finishes extending,
            holds through the "horizon" dwell phase, then rides down with
            the bar during the split/reveal. */
         .dl-splash-horizon-wrap {
           position: absolute;
           left: 0;
           right: 0;
-          top: calc(50% + 44px);
+          top: calc(50% + 46px);
           bottom: 0;
           overflow: hidden;
           opacity: 0;
@@ -161,19 +158,15 @@ export default function AppSplash({ ready }) {
       <svg
         className={`dl-splash-${phase}`}
         width={220}
-        height={154}
-        viewBox="0 0 100 70"
+        height={183}
+        viewBox="0 0 120 100"
         style={{ overflow: "visible", position: "relative" }}
       >
         <g className="dl-splash-barbell">
-          <line x1="0" y1="55" x2="100" y2="55" stroke={T.accent} strokeWidth="3" vectorEffect="non-scaling-stroke" />
-          <rect x="0" y="43" width="7.5" height="24" rx="1.5" fill={T.accent} />
-          <rect x="8.5" y="40" width="9.5" height="30" rx="1.5" fill={T.accent} />
-          <rect x="92.5" y="43" width="7.5" height="24" rx="1.5" fill={T.accent} />
-          <rect x="82" y="40" width="9.5" height="30" rx="1.5" fill={T.accent} />
+          <MarkBarbell />
         </g>
         <g className="dl-splash-triangle">
-          <polygon points="50,0.5 79,47 21,47" fill="none" stroke={T.text} strokeWidth="4.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          <MarkDelta live={phase === "loading"} />
         </g>
       </svg>
     </div>

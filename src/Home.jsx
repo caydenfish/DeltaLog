@@ -35,7 +35,7 @@ import AdminTaxonomyManager from "./AdminTaxonomyManager";
 import AdminBodyMapRegionEditor from "./AdminBodyMapRegionEditor";
 import MachineNamesManager from "./MachineNamesManager";
 import Logo from "./Logo";
-import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX, IconCalendar, IconList, IconBarbell, IconUser, IconSliders, IconInfo, IconLock, IconAlertTriangle, IconUsers, IconShare, IconRefresh } from "./Icons";
+import { IconBell, IconMenu, IconPlus, IconArchive, IconPencil, IconX, IconCalendar, IconList, IconBarbell, IconUser, IconSliders, IconInfo, IconLock, IconAlertTriangle, IconUsers, IconShare, IconRefresh, IconHome } from "./Icons";
 import { PROGRAM_LOCKED } from "./lib/features";
 import { SettingsTile, TileGrid, SettingsSectionLabel, ScreenHeader, SettingsSearch } from "./SettingsUI";
 import Templates from "./Templates";
@@ -1005,13 +1005,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       <div style={{ width: "100%", maxWidth: isDesktop ? 1180 : 400, background: T.bg, height: "100dvh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
 
         {/* Header — a fixed flex sibling above the scrolling content, same pattern as the Start Workout bar below, rather than sticky positioning inside the scroll container (which never reliably stuck: the content div's ancestors only had minHeight set, so the whole page scrolled at the window level instead of the div clipping/scrolling internally). */}
-        <div style={{ padding: "16px 16px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", background: T.bg, borderBottom: `1px solid ${T.line}`, flexShrink: 0 }}>
-          <div>
-            <button onClick={() => setShowHomeModulesEditor(true)} aria-label="Customize home" style={ghostIconBtn}>
-              <IconPencil size={19} />
-            </button>
-          </div>
-          <Logo size={64} />
+        <div style={{ padding: "14px 12px 10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: T.bg, flexShrink: 0 }}>
+          <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 15, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: T.dim, whiteSpace: "nowrap" }}>
+            {new Date(nowTick).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+          </span>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
             <button onClick={openAnnouncements} aria-label="Announcements" style={{ ...ghostIconBtn, position: "relative" }}>
               <IconBell size={19} />
@@ -1028,7 +1025,42 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 100px" }} onScroll={handleHomeScroll} onClick={() => setLockedTs(null)}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 24px" }} onScroll={handleHomeScroll} onClick={() => setLockedTs(null)}>
+
+          {/* v1.26.0 Home: start card at the top replaces the sticky Start bar. */}
+          {groupInvites.slice(0, 1).map((inv) => (
+            <div key={inv.session_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 12, borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.08)" }}>
+              <span style={{ color: T.accent, display: "flex", flexShrink: 0 }}><IconUsers size={18} /></span>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{inv.host_first_name || `@${inv.host_handle}`} invited you</span>
+                <span style={{ fontSize: 12, color: T.dim }}>{inv.session_status === "active" ? "Already lifting" : `${inv.member_count} in the lobby`}</span>
+              </div>
+              <button onClick={() => declineGroupInvite(inv)} aria-label="Decline invite" style={{ width: 44, height: 44, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconX size={14} /></button>
+              <button onClick={() => acceptGroupInvite(inv)} disabled={inviteBusy === inv.session_id} style={{ height: 44, padding: "0 16px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700, flexShrink: 0 }}>Join</button>
+            </div>
+          ))}
+          {!isDesktop && (() => {
+            const resumable = activeWorkout && !activeWorkout.isPaused;
+            const ds = insight ? insight.daysSince : null;
+            const sub = resumable ? `Running ${activeWorkoutElapsed}`
+              : ds === null || ds === undefined ? "Log your first workout"
+              : ds === 0 ? "Last session today" : ds === 1 ? "Last session yesterday" : `Last session ${ds} days ago`;
+            return (
+              <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 16, padding: 18, marginBottom: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 14, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: T.dim }}>{resumable ? "In progress" : "Today"}</span>
+                <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 30, fontWeight: 700, lineHeight: 1, color: T.text }}>{resumable ? "Keep going" : ds === 0 ? "Trained today" : "Ready to lift"}</span>
+                <span style={{ fontSize: 14, color: T.dim, fontVariantNumeric: "tabular-nums" }}>{sub}</span>
+                {resumable ? (
+                  <button onClick={onResumeWorkout} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Resume workout</button>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+                    <button onClick={() => setShowStartSheet(true)} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Start workout</button>
+                    <button onClick={() => setShowTemplates(true)} style={{ height: 52, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 600 }}>Templates</button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
 
           {showUpdateNotice && (
@@ -1303,6 +1335,12 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                   }
                 })}
               </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "8px 0 4px" }}>
+                <button onClick={() => setShowHomeModulesEditor(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 44, padding: "0 16px", borderRadius: 10, border: `1px solid ${T.line}`, background: "transparent", color: T.dim, fontSize: 14, fontWeight: 600 }}>
+                  <IconPencil size={15} /> Customize home
+                </button>
+                <Logo size={52} />
+              </div>
             </>
           )}
         </div>
@@ -1318,32 +1356,25 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           </button>
         )}
 
-        {/* Start workout (on desktop the sidebar owns Start/Resume; this bar
-            only appears there to carry a group invite) */}
-        {(!isDesktop || groupInvites.length > 0) && (
-        <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
-          {groupInvites.slice(0, 1).map((inv) => (
-            <div key={inv.session_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 12, borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.08)" }}>
-              <span style={{ color: T.accent, display: "flex", flexShrink: 0 }}><IconUsers size={18} /></span>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inv.host_first_name || `@${inv.host_handle}`} invited you to lift</span>
-                <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inv.session_status === "active" ? "Already lifting" : `${inv.member_count} in the lobby`}{inv.plan_name ? ` · ${inv.plan_name}` : ""}</span>
-              </div>
-              <button onClick={() => declineGroupInvite(inv)} aria-label="Decline invite" style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconX size={14} /></button>
-              <button onClick={() => acceptGroupInvite(inv)} disabled={inviteBusy === inv.session_id} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, opacity: inviteBusy === inv.session_id ? 0.6 : 1 }}>Join</button>
-            </div>
-          ))}
-          {isDesktop ? null : activeWorkout && !activeWorkout.isPaused ? (
-            <button onClick={onResumeWorkout} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, letterSpacing: 0.3, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-              <span>Resume Workout</span>
-              <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}>{activeWorkoutElapsed}</span>
-            </button>
-          ) : (
-            <button onClick={() => setShowStartSheet(true)} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
-              Start Workout
-            </button>
-          )}
-        </div>
+        {/* v1.26.0 bottom nav (mobile). Same destinations as the desktop
+            sidebar, via goDesktopSection; each opens as its own screen. */}
+        {!isDesktop && (
+          <nav style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", borderTop: `1px solid ${T.line}`, background: T.surface, padding: "6px 0 calc(6px + env(safe-area-inset-bottom, 0px))", flexShrink: 0 }}>
+            {[
+              { id: "dashboard", label: "Home", icon: <IconHome size={22} /> },
+              { id: "history", label: "History", icon: <IconCalendar size={22} /> },
+              { id: "library", label: "Library", icon: <IconBarbell size={22} /> },
+              { id: "friends", label: "Friends", icon: <IconUsers size={22} /> },
+            ].map((t) => {
+              const on = desktopSection === t.id;
+              return (
+                <button key={t.id} onClick={() => goDesktopSection(t.id)} aria-current={on ? "page" : undefined} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, minHeight: 52, border: "none", background: "transparent", color: on ? T.accent : T.dim, fontSize: 12, fontWeight: on ? 700 : 500 }}>
+                  {t.icon}
+                  {t.label}
+                </button>
+              );
+            })}
+          </nav>
         )}
       </div>
 
@@ -1513,7 +1544,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                       icon={<IconRefresh size={20} />}
                       onClick={() => setShowSetupReplay(true)}
                       title="Redo setup"
-                      subtitle="Walk through setup again, answers filled in"
+                      subtitle="Run setup again, answers kept"
                     />
                   </TileGrid>
                 ) : (
@@ -1525,7 +1556,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           icon={<IconUser size={20} />}
                           onClick={() => setShowProfileEditor(true)}
                           title="Profile"
-                          subtitle="Gender, age, weight, height for scoring"
+                          subtitle="Body stats for scoring"
                         />
                       </TileGrid>
                     )}

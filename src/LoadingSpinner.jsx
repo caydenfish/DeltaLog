@@ -1,4 +1,5 @@
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect } from "react";
+import Logo from "./Logo";
 import { themed, tc } from "./lib/theme";
 
 const T = themed({
@@ -11,51 +12,17 @@ const T = themed({
   spruce: "#3F6E55",
 });
 
-// The triangle mark stays put — the loading motion is an orange wave
-// that rises and drains inside the outline, its surface rippling
-// sideways the whole time so it reads like a flag filling rather than a
-// liquid gauge. Two independent animations layered in nested <g>s: one
-// group translates vertically (the fill level), one translates the wave
-// path horizontally (the ripple), both clipped to the triangle shape.
+// v1.27.0: every loading state is the logo, still, with its glitch
+// bursting every few seconds (Logo `live`). Replaces the old filling
+// triangle.
 export function LoadingSpinner({ size = 28 }) {
-  const clipId = `dl-loader-clip-${useId()}`;
-  return (
-    <svg width={size} height={size * 0.7} viewBox="0 0 100 70" style={{ overflow: "visible", display: "block" }}>
-      <style>{`
-        @keyframes dl-loader-fill {
-          0%, 100% { transform: translateY(52px); }
-          50% { transform: translateY(-8px); }
-        }
-        @keyframes dl-loader-ripple {
-          from { transform: translateX(0); }
-          to { transform: translateX(-40px); }
-        }
-        .dl-loader-fillgroup { animation: dl-loader-fill 2.8s ease-in-out infinite; }
-        .dl-loader-wave { animation: dl-loader-ripple 1.1s linear infinite; }
-      `}</style>
-      <defs>
-        <clipPath id={clipId}>
-          <polygon points="50,0.5 79,47 21,47" />
-        </clipPath>
-      </defs>
-      <g clipPath={`url(#${clipId})`}>
-        <g className="dl-loader-fillgroup">
-          <path
-            className="dl-loader-wave"
-            fill={T.accent}
-            d="M -20,0 C -10,-4 0,4 10,0 C 20,-4 30,4 40,0 C 50,-4 60,4 70,0 C 80,-4 90,4 100,0 C 110,-4 120,4 130,0 L 130,80 L -20,80 Z"
-          />
-        </g>
-      </g>
-      <polygon points="50,0.5 79,47 21,47" fill="none" stroke={T.text} strokeWidth="4.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
+  return <Logo size={size} live />;
 }
 
 // Drop-in replacement for the old bare "Loading…" text blocks scattered
 // through lists and panels. Same footprint/spacing, just with the spinner
 // above the label.
-export function InlineLoading({ label = "Loading…", size = 22, padding = "24px 0" }) {
+export function InlineLoading({ label = "Loading…", size = 34, padding = "24px 0" }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding }}>
       <LoadingSpinner size={size} />
@@ -79,7 +46,7 @@ export default function LoadingScreen({ label }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, zIndex: 40 }}>
-      <LoadingSpinner size={72} />
+      <LoadingSpinner size={96} />
       {label && <div style={{ color: T.dim, fontSize: 13 }}>{label}</div>}
       {stuck && (
         <button

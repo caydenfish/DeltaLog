@@ -124,7 +124,7 @@
       (function () {
         try {
           // Keep in sync with THEMES[].preview.bg in src/lib/theme.js.
-          var bg = { chalk: "#D9D5CA", light: "#D9D5CA" }[localStorage.getItem("dl_theme")];
+          var bg = { chalk: "#D9D5CA", light: "#D9D5CA", legacy: "#101216" }[localStorage.getItem("dl_theme")];
           if (bg) {
             document.body.style.background = bg;
             var m = document.querySelector('meta[name="theme-color"]');
