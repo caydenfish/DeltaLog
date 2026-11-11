@@ -2,6 +2,7 @@ import { useState } from "react";
 import { IconX } from "./Icons";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -45,7 +46,7 @@ export default function InstallGuide({ onClose }) {
       <div style={{ width: "100%", maxWidth: 400, maxHeight: "88vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
           <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>Put DeltaLog on your home screen</div>
-          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13, flexShrink: 0, marginLeft: 8 }}><IconX size={12} /></button>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "4px 10px", fontSize: 13, flexShrink: 0, marginLeft: 8, borderRadius: BTN_RADIUS }}><IconX size={12} /></button>
         </div>
         <div style={{ color: T.dim, fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
           DeltaLog works like a native app once it's installed — full-screen, its own icon, no browser bar. Takes about 10 seconds.
@@ -56,11 +57,7 @@ export default function InstallGuide({ onClose }) {
             <button
               key={opt.key}
               onClick={() => setPlatform(opt.key)}
-              style={{
-                flex: 1, padding: "9px 0", borderRadius: 7, fontSize: 13, fontWeight: 600, border: "none",
-                background: platform === opt.key ? T.accent : "transparent",
-                color: platform === opt.key ? T.bg : T.dim,
-              }}
+              style={{ flex: 1, padding: "9px 0", fontSize: 14, fontWeight: 600, border: "none", background: platform === opt.key ? T.accent : "transparent", color: platform === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               {opt.label}
             </button>
@@ -76,7 +73,7 @@ export default function InstallGuide({ onClose }) {
           ))}
         </div>
 
-        <button onClick={onClose} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>
+        <button onClick={onClose} style={{ width: "100%", padding: "13px 0", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
           Got it
         </button>
       </div>

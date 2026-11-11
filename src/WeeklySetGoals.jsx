@@ -6,6 +6,7 @@ import { InlineLoading } from "./LoadingSpinner";
 import { IconX } from "./Icons";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -37,7 +38,7 @@ function Stepper({ value, onChange, min = MIN_TARGET, max = MAX_TARGET }) {
         onClick={() => step(-1)}
         disabled={value <= min}
         aria-label="Decrease"
-        style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: value <= min ? tc("#3B4049") : T.text, fontSize: 16, flexShrink: 0 }}
+        style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface2, color: value <= min ? tc("#3B4049") : T.text, fontSize: 16, flexShrink: 0, borderRadius: BTN_RADIUS }}
       >
         −
       </button>
@@ -55,7 +56,7 @@ function Stepper({ value, onChange, min = MIN_TARGET, max = MAX_TARGET }) {
         onClick={() => step(1)}
         disabled={value >= max}
         aria-label="Increase"
-        style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: value >= max ? tc("#3B4049") : T.text, fontSize: 16, flexShrink: 0 }}
+        style={{ width: 30, height: 30, border: `1px solid ${T.line}`, background: T.surface2, color: value >= max ? tc("#3B4049") : T.text, fontSize: 16, flexShrink: 0, borderRadius: BTN_RADIUS }}
       >
         +
       </button>
@@ -171,7 +172,7 @@ export function WeeklySetGoalsEditor({ userId, onClose, nameMode }) {
                   key={opt.key}
                   onClick={() => switchMode(opt.key)}
                   aria-pressed={mode === opt.key}
-                  style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12.5, fontWeight: 600, border: "none", background: mode === opt.key ? T.accent : "transparent", color: mode === opt.key ? T.bg : T.dim }}
+                  style={{ flex: 1, padding: "8px 0", fontSize: 13.5, fontWeight: 600, border: "none", background: mode === opt.key ? T.accent : "transparent", color: mode === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                 >
                   {opt.label}
                 </button>

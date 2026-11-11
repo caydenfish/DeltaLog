@@ -9,6 +9,7 @@ import {
 } from "./lib/social";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -36,7 +37,7 @@ export function Avatar({ person, size = 34 }) {
 
 function PillButton({ children, onClick, primary, disabled, ariaLabel }) {
   return (
-    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel} style={{ minWidth: 36, height: 36, padding: "0 14px", borderRadius: 9, border: primary ? "none" : `1px solid ${T.line}`, background: primary ? T.accent : T.surface2, color: primary ? T.bg : T.text, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.5 : 1, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel} style={{ minWidth: 36, height: 36, padding: "0 14px", border: primary ? "none" : `1px solid ${T.line}`, background: primary ? T.accent : T.surface2, color: primary ? T.bg : T.text, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.5 : 1, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
       {children}
     </button>
   );
@@ -100,7 +101,7 @@ export function HandleSetupCard({ initial = "", onSaved, title = "Pick your ID",
       <div style={{ fontSize: 12, color: error ? T.danger : T.dim, minHeight: 16, ...oneLine }}>
         {error || (value && !valid ? "3-20 characters: letters, numbers, _ and ." : "")}
       </div>
-      <button onClick={save} disabled={!valid || saving} style={{ height: 48, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, opacity: !valid || saving ? 0.5 : 1 }}>
+      <button onClick={save} disabled={!valid || saving} style={{ height: 48, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: !valid || saving ? 0.5 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
         {saving ? "Saving..." : "Save ID"}
       </button>
     </div>
@@ -218,7 +219,7 @@ export default function Friends({ user, onClose }) {
                 <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, ...oneLine }}>@{me.handle}</span>
               </button>
               <button onClick={copyId} aria-label="Copy your ID" style={{ width: 44, height: 44, borderRadius: 10, border: "none", background: T.surface2, color: T.text, display: "flex", alignItems: "center", justifyContent: "center" }}><IconCopy size={18} /></button>
-              <button onClick={shareId} aria-label="Share your ID" style={{ width: 44, height: 44, borderRadius: 10, border: "none", background: T.accent, color: T.bg, display: "flex", alignItems: "center", justifyContent: "center" }}><IconShare size={18} /></button>
+              <button onClick={shareId} aria-label="Share your ID" style={{ width: 44, height: 44, border: "none", background: T.accent, color: T.bg, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: BTN_RADIUS }}><IconShare size={18} /></button>
             </div>
           )}
 
@@ -290,11 +291,11 @@ export default function Friends({ user, onClose }) {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <SettingsSectionLabel>Invite to DeltaLog</SettingsSectionLabel>
-            <button onClick={shareId} style={{ height: 52, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <button onClick={shareId} style={{ height: 52, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               <IconShare size={16} /> Send an invite
             </button>
             {contactsSupported() && (
-              <button onClick={inviteFromContacts} style={{ height: 52, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button onClick={inviteFromContacts} style={{ height: 52, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 <IconUsers size={16} /> Invite from contacts
               </button>
             )}

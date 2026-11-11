@@ -7,6 +7,7 @@ import TermsViewer from "./TermsViewer";
 import PrivacyPolicy from "./PrivacyPolicy";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS, BTN_HERO } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -151,7 +152,7 @@ export default function Auth() {
         </div>
         <button
           onClick={() => setShowWhatIs(true)}
-          style={{ background: "none", border: `1px solid ${T.line}`, borderRadius: 999, color: T.dim, fontSize: 12, fontWeight: 600, padding: "5px 14px", marginTop: 2 }}
+          style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, fontSize: 13, fontWeight: 600, padding: "5px 14px", marginTop: 2, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >
           What is DeltaLog? <span style={{ color: T.accent }}>›</span>
         </button>
@@ -183,7 +184,7 @@ export default function Auth() {
           <>
             <button
               onClick={signInWithGoogle}
-              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600, marginBottom: 18 }}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "13px 0", border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600, marginBottom: 18, borderRadius: BTN_RADIUS }}
             >
               <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.28-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
               Continue with Google
@@ -209,12 +210,7 @@ export default function Auth() {
                 <button
                   type="submit"
                   disabled={status === "sending" || !email.trim()}
-                  style={{
-                    width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-                    background: status === "sending" || !email.trim() ? T.surface2 : T.accent,
-                    color: status === "sending" || !email.trim() ? T.dim : T.bg,
-                    fontSize: 16, fontWeight: 700, marginBottom: 12,
-                  }}
+                  style={{ width: "100%", padding: "14px 0", border: "none", background: status === "sending" || !email.trim() ? T.surface2 : T.accent, color: status === "sending" || !email.trim() ? T.dim : T.bg, fontSize: 17, fontWeight: 700, marginBottom: 12, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                 >
                   {status === "sending" ? "Sending…" : "Send reset link"}
                 </button>
@@ -238,12 +234,7 @@ export default function Auth() {
                 <button
                   type="submit"
                   disabled={status === "sending" || !email.trim()}
-                  style={{
-                    width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-                    background: status === "sending" || !email.trim() ? T.surface2 : T.accent,
-                    color: status === "sending" || !email.trim() ? T.dim : T.bg,
-                    fontSize: 16, fontWeight: 700, marginBottom: 12,
-                  }}
+                  style={{ width: "100%", padding: "14px 0", border: "none", background: status === "sending" || !email.trim() ? T.surface2 : T.accent, color: status === "sending" || !email.trim() ? T.dim : T.bg, fontSize: 17, fontWeight: 700, marginBottom: 12, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                 >
                   {status === "sending" ? "Sending…" : "Send magic link"}
                 </button>
@@ -281,12 +272,7 @@ export default function Auth() {
                 <button
                   type="submit"
                   disabled={status === "sending" || !email.trim() || !password}
-                  style={{
-                    width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-                    background: status === "sending" || !email.trim() || !password ? T.surface2 : T.accent,
-                    color: status === "sending" || !email.trim() || !password ? T.dim : T.bg,
-                    fontSize: 16, fontWeight: 700, marginBottom: 12,
-                  }}
+                  style={{ width: "100%", padding: "14px 0", border: "none", background: status === "sending" || !email.trim() || !password ? T.surface2 : T.accent, color: status === "sending" || !email.trim() || !password ? T.dim : T.bg, fontSize: 16, fontWeight: 700, marginBottom: 12, ...BTN_HERO }}
                 >
                   {status === "sending" ? "Please wait…" : isSignUp ? "Create account" : "Sign in"}
                 </button>
@@ -336,7 +322,7 @@ export default function Auth() {
             ))}
             <button
               onClick={() => setShowWhatIs(false)}
-              style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, marginTop: 8 }}
+              style={{ width: "100%", padding: "13px 0", border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, marginTop: 8, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               Let's go
             </button>

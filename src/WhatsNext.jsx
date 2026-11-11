@@ -2,6 +2,7 @@ import { WHATS_NEXT } from "./lib/whatsNext";
 import { IconX } from "./Icons";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -15,8 +16,7 @@ const T = themed({
   spruce: "#3F6E55",
 });
 
-const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 };
-
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 14, ...BTN_TEXT };
 // Customer-facing roadmap — what's planned but not shipped yet. Pairs
 // with WhatsNew.jsx (what already shipped); this one has no version
 // numbers since nothing here has a release yet.

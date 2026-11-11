@@ -2,6 +2,7 @@ import { useState } from "react";
 import { submitFeedback } from "./lib/queries";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -51,13 +52,13 @@ export default function FeedbackModal({ user, context, fixedType, onClose }) {
             <div style={{ color: T.dim, fontSize: 13, marginBottom: 16 }}>
               {fixedType === "privacy" ? "We'll take a look and follow up in the app if needed." : "Appreciate you taking the time to report it."}
             </div>
-            <button onClick={onClose} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>Done</button>
+            <button onClick={onClose} style={{ width: "100%", padding: "13px 0", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Done</button>
           </div>
         ) : (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{titles[type]}</div>
-              <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
+              <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "4px 10px", fontSize: 13, borderRadius: BTN_RADIUS }}>‹</button>
             </div>
 
             {!fixedType && (
@@ -66,11 +67,7 @@ export default function FeedbackModal({ user, context, fixedType, onClose }) {
                   <button
                     key={opt.key}
                     onClick={() => setType(opt.key)}
-                    style={{
-                      flex: 1, padding: "9px 0", borderRadius: 7, fontSize: 13, fontWeight: 600, border: "none",
-                      background: type === opt.key ? T.accent : "transparent",
-                      color: type === opt.key ? T.bg : T.dim,
-                    }}
+                    style={{ flex: 1, padding: "9px 0", fontSize: 14, fontWeight: 600, border: "none", background: type === opt.key ? T.accent : "transparent", color: type === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                   >
                     {opt.label}
                   </button>
@@ -92,12 +89,7 @@ export default function FeedbackModal({ user, context, fixedType, onClose }) {
             <button
               onClick={handleSubmit}
               disabled={!message.trim() || status === "sending"}
-              style={{
-                width: "100%", padding: "13px 0", borderRadius: 12, border: "none",
-                background: !message.trim() || status === "sending" ? T.surface2 : T.accent,
-                color: !message.trim() || status === "sending" ? T.dim : T.bg,
-                fontSize: 14, fontWeight: 700,
-              }}
+              style={{ width: "100%", padding: "13px 0", border: "none", background: !message.trim() || status === "sending" ? T.surface2 : T.accent, color: !message.trim() || status === "sending" ? T.dim : T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               {status === "sending" ? "Sending…" : "Send"}
             </button>

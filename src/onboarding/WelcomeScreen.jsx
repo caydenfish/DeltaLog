@@ -1,6 +1,7 @@
 import { ILLUSTRATIONS } from "./illustrations";
 import { themed, tc, IS_LIGHT } from "../lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "../lib/buttons";
 const T = themed({ bg: "#121418", surface: "#1B1E23", line: "#2F343B", line2: "#3B4049", text: "#E6E3D9", dim: "#A5A6A3", faint: "#8F949C", accent: "#C4A35A", danger: "#D0614C", accentDeep: "#8A6F33", spruce: "#3F6E55" });
 const condensed = "'Saira Condensed', sans-serif";
 
@@ -44,11 +45,11 @@ export default function WelcomeScreen({ onGoogle, onEmail, onSignIn, onTerms, on
         </div>
         <div style={{ flex: 1, minHeight: 28 }} />
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={onGoogle} style={{ height: 54, border: "none", borderRadius: 14, background: T.text, color: T.bg, fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, whiteSpace: "nowrap" }}>
+          <button onClick={onGoogle} style={{ height: 54, border: "none", borderRadius: BTN_RADIUS, background: T.text, color: T.bg, fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, whiteSpace: "nowrap" }}>
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" /><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" /><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z" /><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" /></svg>
             Continue with Google
           </button>
-          <button onClick={onEmail} style={{ height: 54, border: `1px solid ${T.line2}`, borderRadius: 14, background: "transparent", color: T.text, fontSize: 17, fontWeight: 600, whiteSpace: "nowrap" }}>
+          <button onClick={onEmail} style={{ height: 54, border: `1px solid ${T.line2}`, background: "transparent", color: T.text, fontSize: 18, fontWeight: 600, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
             Continue with email
           </button>
           <button onClick={onSignIn} style={{ height: 44, border: "none", background: "transparent", color: T.dim, fontSize: 15, fontWeight: 600 }}>

@@ -5,6 +5,7 @@ import Logo from "./Logo";
 import IntroShell from "./IntroShell";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -49,7 +50,7 @@ export default function TermsGate({ user, onAccepted }) {
           <button
             onClick={handleAccept}
             disabled={!checked || saving}
-            style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: !checked || saving ? T.surface2 : T.accent, color: !checked || saving ? T.dim : T.bg, fontSize: 15, fontWeight: 700 }}
+            style={{ width: "100%", padding: "14px 0", border: "none", background: !checked || saving ? T.surface2 : T.accent, color: !checked || saving ? T.dim : T.bg, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             {saving ? "Saving…" : "Accept & Continue"}
           </button>

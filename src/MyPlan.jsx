@@ -8,6 +8,7 @@ import { statusColorFor } from "./lib/planStatus";
 import { InlineLoading } from "./LoadingSpinner";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   surface: "#1B1E23",
   surface2: "#24282E",
@@ -147,8 +148,8 @@ export default function MyPlan({ userId, history }) {
             Your active program suggests weekly set targets for {Object.keys(suggestion.byMuscle).length} muscle group{Object.keys(suggestion.byMuscle).length === 1 ? "" : "s"}. Applying won't change anything else here — you can still adjust any slider afterward.
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={applySuggestion} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.accent, color: T.bg, fontSize: 12.5, fontWeight: 700 }}>Apply suggestion</button>
-            <button onClick={dismissSuggestion} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Dismiss</button>
+            <button onClick={applySuggestion} style={{ flex: 1, padding: "8px 0", border: "none", background: T.accent, color: T.bg, fontSize: 13.5, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Apply suggestion</button>
+            <button onClick={dismissSuggestion} style={{ flex: 1, padding: "8px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13.5, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Dismiss</button>
           </div>
         </div>
       )}

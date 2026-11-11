@@ -8,6 +8,7 @@ import { getPrefs } from "./lib/prefs";
 import { PLAN_NEUTRAL, PLAN_ORANGE, PLAN_GREEN, PLAN_BLUE } from "./lib/planStatus";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -204,11 +205,11 @@ export default function WeeklyVolumeCard({ userId, history, nameMode, settings, 
 
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         {ordered.length > limit && (
-          <button onClick={() => setShowAll(!showAll)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600 }}>
+          <button onClick={() => setShowAll(!showAll)} style={{ flex: 1, padding: "10px 0", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
             {showAll ? "Show less" : `All muscles (${rows.length})`}
           </button>
         )}
-        <button onClick={() => setShowEditor(true)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600 }}>
+        <button onClick={() => setShowEditor(true)} style={{ flex: 1, padding: "10px 0", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
           Edit targets
         </button>
       </div>
@@ -282,7 +283,7 @@ export function WeeklyTargetsEditor({ userId, options, saved, onClose }) {
   }
   useEffect(() => () => { Object.keys(pending.current).forEach(saveNow); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const stepBtn = { width: 36, height: 36, borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 17, flexShrink: 0 };
+  const stepBtn = { width: 36, height: 36, borderRadius: BTN_RADIUS, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 17, flexShrink: 0 };
   const stepper = (label, value, onDec, onInc) => (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0" }}>
       <span style={{ fontSize: 13, color: T.dim }}>{label}</span>
@@ -337,7 +338,7 @@ export function WeeklyTargetsEditor({ userId, options, saved, onClose }) {
                     )}
                     <button
                       onClick={() => update(o.key, r.tracked ? { min: 0, max: 0, tracked: false } : { ...fallback, tracked: true })}
-                      style={{ marginTop: 6, background: "none", border: `1px solid ${T.line}`, borderRadius: 999, color: T.dim, fontSize: 12.5, padding: "6px 12px" }}
+                      style={{ marginTop: 6, background: "none", border: `1px solid ${T.line}`, color: T.dim, fontSize: 13.5, padding: "6px 12px", ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                     >
                       {r.tracked ? "Stop tracking this muscle" : "Track this muscle"}
                     </button>

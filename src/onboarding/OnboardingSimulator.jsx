@@ -3,6 +3,7 @@ import { ScreenHeader } from "../SettingsUI";
 import OnboardingFlow, { ONBOARDING_STEPS, STEP_LABELS } from "./OnboardingFlow";
 import { themed, tc } from "../lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "../lib/buttons";
 const T = themed({ bg: "#121418", surface: "#1B1E23", surface2: "#24282E", line: "#2F343B", text: "#E6E3D9", dim: "#A5A6A3", accent: "#C4A35A", green: "#6A9E80", danger: "#D0614C", accentDeep: "#8A6F33", spruce: "#3F6E55" });
 const eyebrow = { fontFamily: "'Saira Condensed', sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: T.dim };
 
@@ -31,7 +32,7 @@ export default function OnboardingSimulator({ user, profile, onClose }) {
             <span style={eyebrow}>Start at</span>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {ONBOARDING_STEPS.map((s) => (
-                <button key={s} onClick={() => setStart(s)} aria-pressed={start === s} style={{ height: 38, padding: "0 12px", borderRadius: 19, border: start === s ? "none" : `1px solid ${T.line}`, background: start === s ? T.accent : T.surface, color: start === s ? T.bg : tc("#CFCDC5"), fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>{STEP_LABELS[s]}</button>
+                <button key={s} onClick={() => setStart(s)} aria-pressed={start === s} style={{ height: 38, padding: "0 12px", border: start === s ? "none" : `1px solid ${T.line}`, background: start === s ? T.accent : T.surface, color: start === s ? T.bg : tc("#CFCDC5"), fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{STEP_LABELS[s]}</button>
               ))}
             </div>
           </div>
@@ -40,7 +41,7 @@ export default function OnboardingSimulator({ user, profile, onClose }) {
             <span style={eyebrow}>Fill with</span>
             <div role="group" aria-label="Fill with" style={{ display: "flex", gap: 4, padding: 4, borderRadius: 12, background: T.surface2 }}>
               {[["blank", "Blank, like a new user"], ["mine", "My answers"]].map(([k, l]) => (
-                <button key={k} onClick={() => setFill(k)} aria-pressed={fill === k} style={{ flex: 1, height: 44, border: "none", borderRadius: 9, background: fill === k ? T.accent : "transparent", color: fill === k ? T.bg : T.dim, fontSize: 14.5, fontWeight: 700, whiteSpace: "nowrap" }}>{l}</button>
+                <button key={k} onClick={() => setFill(k)} aria-pressed={fill === k} style={{ flex: 1, height: 44, border: "none", background: fill === k ? T.accent : "transparent", color: fill === k ? T.bg : T.dim, fontSize: 15.5, fontWeight: 700, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{l}</button>
               ))}
             </div>
           </div>
@@ -59,7 +60,7 @@ export default function OnboardingSimulator({ user, profile, onClose }) {
           )}
 
           <div style={{ flex: 1 }} />
-          <button onClick={() => { setRunKey((k) => k + 1); setRunning(true); }} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700 }}>Launch simulation</button>
+          <button onClick={() => { setRunKey((k) => k + 1); setRunning(true); }} style={{ height: 54, border: "none", background: T.accent, color: T.bg, fontSize: 18, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Launch simulation</button>
         </div>
       </div>
     </div>

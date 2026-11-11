@@ -8,6 +8,7 @@ import { buildExportStats, autoTitle } from "./lib/exportStats";
 import { ExportFrame, LAYOUTS, FORMATS, ACCENTS, W, heightFor, photoBoxFor } from "./exportLayouts";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -210,7 +211,7 @@ export default function ExportWorkoutModal({ data, onClose, userId, history: his
       <div style={{ width: "100%", maxWidth: 440, maxHeight: "94vh", display: "flex", flexDirection: "column", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0" }}>
         <div style={{ padding: "16px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>Save as image</div>
-          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}><IconX size={12} /></button>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "4px 10px", fontSize: 13, borderRadius: BTN_RADIUS }}><IconX size={12} /></button>
         </div>
 
         <div ref={containerRef} style={{ flex: 1, overflowY: "auto", padding: "0 16px 16px" }}>
@@ -252,7 +253,7 @@ export default function ExportWorkoutModal({ data, onClose, userId, history: his
           <div style={sectionLabel}>Format</div>
           <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 14 }}>
             {FORMATS.map((f) => (
-              <button key={f.key} onClick={() => setFormat(f.key)} aria-pressed={format === f.key} style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", whiteSpace: "nowrap", background: format === f.key ? T.accent : "transparent", color: format === f.key ? T.bg : T.dim }}>
+              <button key={f.key} onClick={() => setFormat(f.key)} aria-pressed={format === f.key} style={{ flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 600, border: "none", whiteSpace: "nowrap", background: format === f.key ? T.accent : "transparent", color: format === f.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 {f.label} <span style={{ opacity: 0.7, fontWeight: 500 }}>{f.sub}</span>
               </button>
             ))}
@@ -297,11 +298,11 @@ export default function ExportWorkoutModal({ data, onClose, userId, history: his
           {saveError && <div style={{ color: T.danger, fontSize: 12.5, marginBottom: 10, textAlign: "center" }}>{saveError}</div>}
           <div style={{ display: "flex", gap: 8 }}>
             {canShareFiles && (
-              <button onClick={handleShare} disabled={!!saving} style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, whiteSpace: "nowrap", opacity: saving ? 0.7 : 1 }}>
+              <button onClick={handleShare} disabled={!!saving} style={{ flex: 1, padding: "14px 0", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, whiteSpace: "nowrap", opacity: saving ? 0.7 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 <IconShare size={15} /> {saving === "share" ? "Preparing…" : "Share"}
               </button>
             )}
-            <button onClick={handleSave} disabled={!!saving} style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, whiteSpace: "nowrap", opacity: saving ? 0.7 : 1 }}>
+            <button onClick={handleSave} disabled={!!saving} style={{ flex: 1, padding: "14px 0", border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, whiteSpace: "nowrap", opacity: saving ? 0.7 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               <IconDownload size={15} /> {saving === "save" ? "Generating…" : "Save image"}
             </button>
           </div>

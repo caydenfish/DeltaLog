@@ -3,6 +3,7 @@ import { PrivacyBody } from "./lib/privacyContent";
 import FeedbackModal from "./FeedbackModal";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -16,8 +17,7 @@ const T = themed({
   spruce: "#3F6E55",
 });
 
-const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 };
-
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 14, ...BTN_TEXT };
 export default function PrivacyPolicy({ user, onClose }) {
   const [showRequestForm, setShowRequestForm] = useState(false);
 
@@ -34,7 +34,7 @@ export default function PrivacyPolicy({ user, onClose }) {
 
           {user && <button
             onClick={() => setShowRequestForm(true)}
-            style={{ width: "100%", marginTop: 8, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, fontWeight: 600 }}
+            style={{ width: "100%", marginTop: 8, padding: "13px 0", border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             Submit a privacy request
           </button>}

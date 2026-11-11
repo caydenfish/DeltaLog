@@ -2,6 +2,7 @@ import Logo from "./Logo";
 import IntroShell from "./IntroShell";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -35,7 +36,7 @@ export default function Welcome({ onContinue }) {
         </div>
         <button
           onClick={onContinue}
-          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}
+          style={{ width: "100%", padding: "16px 0", border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >
           Get started
         </button>

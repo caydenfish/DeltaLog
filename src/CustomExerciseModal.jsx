@@ -6,6 +6,7 @@ import { EQUIPMENT_LIST } from "./ExercisePicker";
 import { IconX, IconCheck, IconChevronDown, IconChevronLeft } from "./Icons";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -130,7 +131,7 @@ function MuscleTagSheet({ title, options, values, onToggle, onClose, renderLabel
         <div style={{ width: 36, height: 4, borderRadius: 2, background: T.line, margin: "10px auto 6px", flexShrink: 0 }} />
         <div style={{ padding: "4px 16px 10px", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           <div style={{ flex: 1, minWidth: 0, fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: T.text, ...ONE_LINE }}>{title}</div>
-          <button onClick={onClose} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: tc("#C4A35A"), color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase" }}>Done</button>
+          <button onClick={onClose} style={{ height: 40, padding: "0 16px", border: "none", background: tc("#C4A35A"), color: T.bg, fontSize: 17, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Done</button>
         </div>
         {values.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 16px 10px", flexShrink: 0 }}>
@@ -221,7 +222,7 @@ function MusclePickerSheet({ title, options, values, onToggle, onClose, renderLa
         <div style={{ width: 36, height: 4, borderRadius: 2, background: T.line, margin: "10px auto 6px", flexShrink: 0 }} />
         <div style={{ padding: "6px 16px 10px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 8, flexShrink: 0 }}>
           <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{title}</div>
-          <button onClick={onClose} aria-label="Done" style={{ background: "none", border: `1px solid ${T.accent}`, color: T.text, borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 700 }}><IconCheck size={12} /> Done</button>
+          <button onClick={onClose} aria-label="Done" style={{ background: "none", border: `1px solid ${T.accent}`, color: T.text, padding: "5px 12px", fontSize: 13, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}><IconCheck size={12} /> Done</button>
         </div>
         <div style={{ padding: "10px 16px", flexShrink: 0 }}>
           <input
@@ -338,7 +339,7 @@ function MatchPanel({ title, items, onUse }) {
               {muscleLabelsFor(ex.rawPrimaryMuscles, getPrefs().muscleNameMode).slice(0, 2).join(", ") || muscleLabel(ex.muscle, "generic")} · {ex.equipment}{ex.sessions > 0 ? " · Performed" : ""}
             </div>
           </div>
-          {onUse && <button onClick={() => onUse(ex)} style={{ flexShrink: 0, height: 40, padding: "0 12px", borderRadius: 10, background: T.surface2, border: `1px solid ${tc("#4A4F57")}`, color: T.text, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Use this</button>}
+          {onUse && <button onClick={() => onUse(ex)} style={{ flexShrink: 0, height: 40, padding: "0 12px", background: T.surface2, border: `1px solid ${tc("#4A4F57")}`, color: T.text, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Use this</button>}
         </div>
       ))}
     </div>
@@ -621,7 +622,7 @@ export default function CustomExerciseModal({ onClose, onCreate, onSave, initial
           <button
             onClick={handleSubmit}
             disabled={!name.trim() || saving}
-            style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: !name.trim() || saving ? T.surface2 : T.accent, color: !name.trim() || saving ? T.dim : T.bg, fontSize: 15, fontWeight: 700 }}
+            style={{ width: "100%", padding: "14px 0", border: "none", background: !name.trim() || saving ? T.surface2 : T.accent, color: !name.trim() || saving ? T.dim : T.bg, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             {saving ? (isEdit ? "Saving…" : "Creating…") : (isEdit ? "Save changes" : hasMatches ? "Create anyway" : "Create & Add")}
           </button>

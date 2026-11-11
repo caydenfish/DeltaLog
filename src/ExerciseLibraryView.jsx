@@ -13,6 +13,7 @@ import MyCustomExercises from "./MyCustomExercises";
 import { IconX, IconGear, IconPencil, IconCheck, IconSearch } from "./Icons";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -26,7 +27,7 @@ const T = themed({
   spruce: "#3F6E55",
 });
 
-const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 12, ...BTN_TEXT };
 const pillAddBtn = { width: 26, height: 26, borderRadius: "50%", border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, cursor: "pointer", flexShrink: 0 };
 const filledPill = { display: "flex", alignItems: "center", gap: 6, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 999, padding: "5px 6px 5px 12px" };
 const candidatePill = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 999, padding: "5px 12px", fontSize: 12, cursor: "pointer" };
@@ -101,7 +102,7 @@ function ExerciseDefaultsEditor({ userId, exercise }) {
         <button
           onClick={() => updateSetup(`${field}__text`, isText ? "" : "1")}
           title={isText ? "Switch to numeric" : 'Switch to text, e.g. "top notch"'}
-          style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: isText ? "rgba(196,163,90,0.12)" : "none", color: isText ? T.text : T.dim, fontSize: 10, fontWeight: 700, padding: 0, flexShrink: 0 }}
+          style={{ width: 24, height: 24, border: `1px solid ${T.line}`, background: isText ? "rgba(196,163,90,0.12)" : "none", color: isText ? T.text : T.dim, fontSize: 11, fontWeight: 700, padding: 0, flexShrink: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >{isText ? "Abc" : "#"}</button>
       </>
     );
@@ -575,7 +576,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
                   <button
                     key={m}
                     onClick={() => pickGroup(m)}
-                    style={{ padding: "22px 10px", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 700, fontFamily: "'Saira Condensed', sans-serif", letterSpacing: 0.5 }}
+                    style={{ padding: "22px 10px", border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                   >
                     {muscleLabel(m, "generic")}
                   </button>
@@ -583,13 +584,13 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
               </div>
               <button
                 onClick={() => pickGroup("ALL")}
-                style={{ width: "100%", padding: "16px 10px", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, fontFamily: "'Saira Condensed', sans-serif", letterSpacing: 0.5, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "16px 10px", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, boxSizing: "border-box", ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 View All
               </button>
               <button
                 onClick={() => setShowMyCustom(true)}
-                style={{ width: "100%", padding: "14px 10px", borderRadius: 14, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600, marginTop: 10, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "14px 10px", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600, marginTop: 10, boxSizing: "border-box", ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 My Custom Exercises
               </button>
@@ -603,7 +604,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
                   <button
                     key={d}
                     onClick={() => setBrowseDetail(d)}
-                    style={{ padding: "18px 10px", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, fontWeight: 700, fontFamily: "'Saira Condensed', sans-serif", letterSpacing: 0.5 }}
+                    style={{ padding: "18px 10px", border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                   >
                     {d}
                   </button>
@@ -611,7 +612,7 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
               </div>
               <button
                 onClick={() => setBrowseDetail("ALL")}
-                style={{ width: "100%", padding: "16px 10px", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, fontFamily: "'Saira Condensed', sans-serif", letterSpacing: 0.5, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "16px 10px", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, boxSizing: "border-box", ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 View All {muscleLabel(browseGroup, "generic")}
               </button>
@@ -743,8 +744,8 @@ export default function ExerciseLibraryView({ muscleNameMode, onClose, isAdmin, 
 
             {error && <div style={{ color: T.danger, fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setEditingId(null); setDraft(null); }} disabled={saving} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
-              <button onClick={saveDraft} disabled={saving || !draft.name.trim()} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>{saving ? "Saving..." : "Save"}</button>
+              <button onClick={() => { setEditingId(null); setDraft(null); }} disabled={saving} style={{ flex: 1, padding: "12px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+              <button onClick={saveDraft} disabled={saving || !draft.name.trim()} style={{ flex: 2, padding: "12px 0", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{saving ? "Saving..." : "Save"}</button>
             </div>
           </div>
         </div>

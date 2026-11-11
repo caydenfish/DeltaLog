@@ -4,6 +4,7 @@ import { IconX, IconTrash, IconCheck, IconPencil } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -17,8 +18,7 @@ const T = themed({
   spruce: "#3F6E55",
 });
 
-const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
-
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 12, ...BTN_TEXT };
 // Every custom machine name (Hammer Strength, Life Fitness, etc.) is
 // saved per-exercise inside that exercise's setup — there's no separate
 // machines table. Fixing a typo or standardizing a name used to mean
@@ -107,7 +107,7 @@ export default function MachineNamesManager({ user, onClose }) {
                       <div style={{ color: T.text, fontSize: 13, marginBottom: 8 }}>Delete "{name}" and its saved setup from every exercise?</div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => setConfirmingDelete(null)} style={{ flex: 1, ...smallBtn, padding: "8px 0" }}>Cancel</button>
-                        <button onClick={() => confirmDelete(name)} disabled={busyName === name} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12, fontWeight: 700 }}>
+                        <button onClick={() => confirmDelete(name)} disabled={busyName === name} style={{ flex: 1, padding: "8px 0", border: "none", background: T.danger, color: T.bg, fontSize: 13, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                           {busyName === name ? "…" : "Delete"}
                         </button>
                       </div>

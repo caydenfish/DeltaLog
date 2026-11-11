@@ -15,6 +15,7 @@ import ExercisePicker, { splitGroupFor, filterLibrary } from "./ExercisePicker";
 import CustomExerciseModal from "./CustomExerciseModal";
 import { useDragReorder, InsertionLine } from "./DragReorder";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 // ============================================================================
 // Templates: list + builder.
 //
@@ -27,7 +28,7 @@ import { useDragReorder, InsertionLine } from "./DragReorder";
 // ============================================================================
 
 const display = "'Saira Condensed', sans-serif";
-const iconBtn = { width: 36, height: 36, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
+const iconBtn = { width: 36, height: 36, borderRadius: BTN_RADIUS, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
 const ellipsis = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 };
 
 const newPick = (ex) => ({ id: ex.id, name: ex.name, short: ex.short, muscle: ex.muscle, primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles, rawPrimaryMuscles: ex.rawPrimaryMuscles, rawSecondaryMuscles: ex.rawSecondaryMuscles, planned: defaultWorkingSets(), plannedWarmup: 0, supersetGroup: null, repScheme: null });
@@ -469,7 +470,7 @@ export default function Templates({ user, onClose, initialPicks, startNew, onSav
           <button
             onClick={handleSave}
             disabled={picks.length === 0 || saving}
-            style={{ flexShrink: 0, height: 36, padding: "0 16px", borderRadius: 10, border: "none", background: picks.length === 0 ? T.surface2 : T.accent, color: picks.length === 0 ? T.dim : T.bg, fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}
+            style={{ flexShrink: 0, height: 36, padding: "0 16px", border: "none", background: picks.length === 0 ? T.surface2 : T.accent, color: picks.length === 0 ? T.dim : T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -492,7 +493,7 @@ export default function Templates({ user, onClose, initialPicks, startNew, onSav
 
         {mode === "list" ? (
           <div style={{ padding: 16, flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))" }}>
-            <button onClick={() => openBuilder({})} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <button onClick={() => openBuilder({})} style={{ width: "100%", padding: "14px 0", border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               <IconPlus size={16} /> New template
             </button>
             {templates === null && <InlineLoading />}
@@ -539,7 +540,7 @@ export default function Templates({ user, onClose, initialPicks, startNew, onSav
                       <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text, ...ellipsis }}>{t.name}</div>
                       <div style={{ fontSize: 12, color: T.dim }}>{t.exerciseCount} exercise{t.exerciseCount === 1 ? "" : "s"}</div>
                     </div>
-                    <button onClick={() => handleUnarchive(t)} disabled={busyId === t.id} style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${T.green}`, background: "none", color: T.green, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>Restore</button>
+                    <button onClick={() => handleUnarchive(t)} disabled={busyId === t.id} style={{ padding: "7px 12px", border: `1px solid ${T.green}`, background: "none", color: T.green, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Restore</button>
                     <button onClick={() => setConfirmDeleteFor(t)} aria-label={`Delete ${t.name}`} style={{ ...iconBtn, color: T.danger }}><IconTrash size={15} /></button>
                   </div>
                 ))}
@@ -668,7 +669,7 @@ export default function Templates({ user, onClose, initialPicks, startNew, onSav
                     </button>
                   </div>
                 )}
-                <button onClick={() => openPicker({ kind: "add" })} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <button onClick={() => openPicker({ kind: "add" })} style={{ width: "100%", padding: "13px 0", border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                   <IconPlus size={15} /> Add exercises
                 </button>
               </div>
@@ -714,7 +715,7 @@ export default function Templates({ user, onClose, initialPicks, startNew, onSav
               <button
                 onClick={() => confirmAdd()}
                 disabled={selected.length === 0}
-                style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: selected.length ? T.accent : T.surface2, color: selected.length ? T.bg : T.dim, fontSize: 15, fontWeight: 700 }}
+                style={{ width: "100%", padding: "14px 0", border: "none", background: selected.length ? T.accent : T.surface2, color: selected.length ? T.bg : T.dim, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {selected.length === 0 ? "Select exercises" : `Add ${selected.length} exercise${selected.length === 1 ? "" : "s"}`}
               </button>
@@ -759,7 +760,7 @@ export default function Templates({ user, onClose, initialPicks, startNew, onSav
           {shareState.code && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
               <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, letterSpacing: 3, flex: 1 }}>{shareState.code}</div>
-              <button onClick={() => navigator.clipboard?.writeText(shareState.code)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.text, borderRadius: 8, padding: "6px 12px", fontSize: 12 }}>Copy</button>
+              <button onClick={() => navigator.clipboard?.writeText(shareState.code)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.text, padding: "6px 12px", fontSize: 13, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Copy</button>
             </div>
           )}
         </Dialog>
@@ -824,9 +825,9 @@ function Dialog({ title, body, children, onCancel, onConfirm, cancelLabel = "Can
         {body && <div style={{ color: T.dim, fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>{body}</div>}
         {children}
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>{cancelLabel}</button>
+          <button onClick={onCancel} style={{ flex: 1, padding: "12px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{cancelLabel}</button>
           {onConfirm && (
-            <button onClick={onConfirm} disabled={confirmDisabled || busy} style={{ flex: 1.4, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700, opacity: confirmDisabled || busy ? 0.55 : 1 }}>
+            <button onClick={onConfirm} disabled={confirmDisabled || busy} style={{ flex: 1.4, padding: "12px 0", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, opacity: confirmDisabled || busy ? 0.55 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               {busy ? "…" : confirmLabel}
             </button>
           )}

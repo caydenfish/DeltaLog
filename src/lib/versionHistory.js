@@ -5,6 +5,15 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.31.0",
+    date: "2026-11-11",
+    items: [
+      "Button system. New src/lib/buttons.js: BTN_TEXT (Saira Condensed, uppercase, 0.6 tracking), BTN_RADIUS (4), BTN_HERO (Chakra Petch, uppercase, clip-path notch on top-left/bottom-right corners) and notch(n). Spread at the end of a button's style object.",
+      "Codemod across 55 non-admin files (~270 buttons): accent/danger-filled and 1px-bordered action buttons with text labels get BTN_TEXT + BTN_RADIUS (font size +1 where they weren't already condensed); icon-only bordered buttons get BTN_RADIUS only; circles, list rows, cards (buttons containing divs), left-aligned rows and borderless text links untouched. Shared consts updated: smallBtn, actionBtn (text + radius), stepBtn, roundBtn, iconBtn, arrowBtn (radius), Friends PillButton.",
+      "BTN_HERO on the main CTA per key screen: Home Start/Resume workout, Start sheet Start from scratch, empty-workout Start from scratch, finish confirm Yes, finish, summary Done, Auth sign-in submit (font size -1 for Chakra Petch's width). Google sign-in buttons keep sentence case (brand), radius 4. Segmented tabs (Tonnage/Bodyweight/Time etc.) and selection chips left as-is.",
+    ],
+  },
+  {
     version: "1.30.0",
     date: "2026-11-11",
     items: [

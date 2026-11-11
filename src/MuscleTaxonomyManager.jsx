@@ -7,6 +7,7 @@ import {
 import { IconX } from "./Icons";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -21,7 +22,7 @@ const T = themed({
   spruce: "#3F6E55",
 });
 
-const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 12, ...BTN_TEXT };
 const iconBtn = { background: "none", border: "none", color: T.dim, padding: "4px 6px", cursor: "pointer" };
 const pillAddBtn = { width: 24, height: 24, borderRadius: "50%", border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, cursor: "pointer", flexShrink: 0 };
 const chevron = (open) => ({ display: "inline-block", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "rotate(0deg)", color: T.dim, fontSize: 12, width: 14 });
@@ -338,10 +339,10 @@ export default function MuscleTaxonomyManager({ muscleGroups, muscleDetailed, ta
               If you're trying to tag an exercise with this scientific name, expand down to the correct Region below and use its own "+" to add the scientific name there instead.
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setNameWarning(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600 }}>Cancel</button>
+              <button onClick={() => setNameWarning(null)} style={{ flex: 1, padding: "10px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
               <button
                 onClick={confirmNameWarning}
-                style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.12)", color: T.accent, fontSize: 13, fontWeight: 700 }}
+                style={{ flex: 1, padding: "10px 0", border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.12)", color: T.accent, fontSize: 14, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 Add anyway
               </button>

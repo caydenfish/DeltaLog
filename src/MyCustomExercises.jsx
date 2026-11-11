@@ -7,6 +7,7 @@ import { IconCheck, IconChevronUp, IconChevronDown } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -136,7 +137,7 @@ export default function MyCustomExercises({ user, onClose }) {
         <div style={{ display: "flex", gap: 6, marginBottom: confirmDeleteId === r.id ? 10 : 0 }}>
           <button
             onClick={() => { setEditing(r); setConfirmDeleteId(null); setDeleteError(null); }}
-            style={{ flex: 1, background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "6px 0", fontSize: 12, fontWeight: 600 }}
+            style={{ flex: 1, background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "6px 0", fontSize: 13, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             Edit
           </button>
@@ -144,7 +145,7 @@ export default function MyCustomExercises({ user, onClose }) {
             <button
               onClick={() => handleUnarchive(r)}
               disabled={busyId === r.id}
-              style={{ flex: 1, background: "none", border: `1px solid ${T.green}`, color: T.green, borderRadius: 8, padding: "6px 0", fontSize: 12, fontWeight: 600 }}
+              style={{ flex: 1, background: "none", border: `1px solid ${T.green}`, color: T.green, padding: "6px 0", fontSize: 13, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               {busyId === r.id ? "…" : "Unarchive"}
             </button>
@@ -152,7 +153,7 @@ export default function MyCustomExercises({ user, onClose }) {
             <button
               onClick={() => handleArchive(r)}
               disabled={busyId === r.id}
-              style={{ flex: 1, background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "6px 0", fontSize: 12, fontWeight: 600 }}
+              style={{ flex: 1, background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "6px 0", fontSize: 13, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               {busyId === r.id ? "…" : "Archive"}
             </button>
@@ -160,7 +161,7 @@ export default function MyCustomExercises({ user, onClose }) {
           <button
             onClick={() => { setConfirmDeleteId(confirmDeleteId === r.id ? null : r.id); setDeleteError(null); }}
             aria-label="Delete exercise"
-            style={{ flex: 1, background: "none", border: `1px solid ${T.line}`, color: T.accent, borderRadius: 8, padding: "6px 0", fontSize: 12, fontWeight: 600 }}
+            style={{ flex: 1, background: "none", border: `1px solid ${T.line}`, color: T.accent, padding: "6px 0", fontSize: 13, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             Delete
           </button>
@@ -172,8 +173,8 @@ export default function MyCustomExercises({ user, onClose }) {
               <>
                 <div style={{ color: T.text, fontSize: 12.5, lineHeight: 1.5, marginBottom: 10 }}>{deleteError}</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => { setConfirmDeleteId(null); setDeleteError(null); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Close</button>
-                  {!archived && <button onClick={() => { handleArchive(r); setConfirmDeleteId(null); setDeleteError(null); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12.5, fontWeight: 700 }}>Archive instead</button>}
+                  <button onClick={() => { setConfirmDeleteId(null); setDeleteError(null); }} style={{ flex: 1, padding: "8px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13.5, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Close</button>
+                  {!archived && <button onClick={() => { handleArchive(r); setConfirmDeleteId(null); setDeleteError(null); }} style={{ flex: 1, padding: "8px 0", border: "none", background: T.danger, color: T.bg, fontSize: 13.5, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Archive instead</button>}
                 </div>
               </>
             ) : (
@@ -181,8 +182,8 @@ export default function MyCustomExercises({ user, onClose }) {
                 <div style={{ color: T.text, fontSize: 12.5, fontWeight: 600, marginBottom: 4 }}>Delete "{r.name}"{archived ? " for good" : ""}?</div>
                 <div style={{ color: T.dim, fontSize: 11.5, marginBottom: 10, lineHeight: 1.4 }}>Can't be undone. Only possible if you've never logged a set with it.</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Cancel</button>
-                  <button onClick={() => handleDelete(r.id, archived)} disabled={busyId === r.id} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12.5, fontWeight: 700 }}>
+                  <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, padding: "8px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13.5, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+                  <button onClick={() => handleDelete(r.id, archived)} disabled={busyId === r.id} style={{ flex: 1, padding: "8px 0", border: "none", background: T.danger, color: T.bg, fontSize: 13.5, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                     {busyId === r.id ? "Deleting…" : "Delete"}
                   </button>
                 </div>
@@ -204,7 +205,7 @@ export default function MyCustomExercises({ user, onClose }) {
           <button
             onClick={selectMode ? () => { setSelectMode(false); setSelectedIds(new Set()); } : onClose}
             aria-label={selectMode ? "Cancel" : "Close"}
-            style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}
+            style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "4px 10px", fontSize: 14, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             {selectMode ? "Cancel" : "‹"}
           </button>
@@ -305,12 +306,7 @@ export default function MyCustomExercises({ user, onClose }) {
             <button
               onClick={() => setShowTemplateBuilder(true)}
               disabled={selectedIds.size === 0}
-              style={{
-                width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-                background: selectedIds.size === 0 ? T.surface2 : T.accent,
-                color: selectedIds.size === 0 ? T.dim : T.bg,
-                fontSize: 15, fontWeight: 700,
-              }}
+              style={{ width: "100%", padding: "14px 0", border: "none", background: selectedIds.size === 0 ? T.surface2 : T.accent, color: selectedIds.size === 0 ? T.dim : T.bg, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               Create Template{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
             </button>

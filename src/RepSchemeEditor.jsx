@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { T } from "./lib/theme";
 import { SCHEME_PRESETS, resizeScheme, cleanRange, formatRange } from "./lib/repScheme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 // Per-set rep targets for one exercise. Used by the template builder and
 // the in-workout target menu, so both edit schemes the same way.
 //
@@ -69,7 +70,7 @@ export default function RepSchemeEditor({ planned, scheme, fallback, focusLabel,
                 key={p.key}
                 type="button"
                 onClick={() => onChange(p.build(planned, fallback))}
-                style={{ flexShrink: 0, whiteSpace: "nowrap", padding: "5px 11px", borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 12, fontWeight: 600 }}
+                style={{ flexShrink: 0, whiteSpace: "nowrap", padding: "5px 11px", border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 13, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {p.label}
               </button>

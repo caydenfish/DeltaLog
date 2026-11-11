@@ -3,6 +3,7 @@ import { fetchStravaConnection, connectStrava, disconnectStrava } from "./lib/st
 import { InlineLoading } from "./LoadingSpinner";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   surface: "#1B1E23",
   surface2: "#24282E",
@@ -106,8 +107,8 @@ export default function StravaSettings({ user }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "rgba(232,90,90,0.12)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: "10px 12px" }}>
           <span style={{ fontSize: 12.5, color: T.text }}>Disconnect Strava? Future workouts won't be pushed until you reconnect.</span>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button onClick={() => setConfirmDisconnect(false)} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13 }}>Cancel</button>
-            <button onClick={handleDisconnect} disabled={disconnecting} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: T.accent, color: T.bg, fontSize: 13, fontWeight: 700, opacity: disconnecting ? 0.7 : 1 }}>
+            <button onClick={() => setConfirmDisconnect(false)} style={{ padding: "8px 14px", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+            <button onClick={handleDisconnect} disabled={disconnecting} style={{ padding: "8px 14px", border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700, opacity: disconnecting ? 0.7 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               {disconnecting ? "Disconnecting…" : "Disconnect"}
             </button>
           </div>
@@ -115,7 +116,7 @@ export default function StravaSettings({ user }) {
       ) : (
         <button
           onClick={() => setConfirmDisconnect(true)}
-          style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, fontSize: 13.5, fontWeight: 600 }}
+          style={{ width: "100%", padding: "12px 0", border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, fontSize: 14.5, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >
           Disconnect
         </button>

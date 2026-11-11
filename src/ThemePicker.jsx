@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { T, THEME, THEMES, setTheme } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 // Theme chooser (v1.25.0). Full screen once per device before anything
 // else after sign-in (new users ahead of setup, existing users on their
 // next launch); the same cards appear in setup and Settings > Theme.
@@ -71,7 +72,7 @@ export default function ThemePicker({ onDone }) {
           <span style={{ fontSize: 15, color: T.dim }}>Change it anytime in Settings.</span>
         </div>
         <ThemeChoice value={choice} onChange={setChoice} />
-        <button onClick={confirm} style={{ marginTop: "auto", height: 52, borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Continue</button>
+        <button onClick={confirm} style={{ marginTop: "auto", height: 52, border: "none", background: T.accent, color: T.bg, fontSize: 19, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Continue</button>
       </div>
     </div>
   );

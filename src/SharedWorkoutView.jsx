@@ -4,6 +4,7 @@ import { fetchSharedWorkout } from "./lib/queries";
 import { InlineLoading } from "./LoadingSpinner";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -87,7 +88,7 @@ export default function SharedWorkoutView({ code, onDone }) {
           </>
         )}
 
-        <button onClick={onDone} style={{ marginTop: 20, width: "100%", padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>
+        <button onClick={onDone} style={{ marginTop: 20, width: "100%", padding: "14px 0", border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 16, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
           Open DeltaLog
         </button>
       </div>

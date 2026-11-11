@@ -5,6 +5,7 @@ import { toDisplay } from "./lib/weight";
 import { bestGroupE1RM, colorFor, displayName, initialOf, GROUP_E1RM_MAX_EFFECTIVE_REPS } from "./lib/social";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -118,7 +119,7 @@ export function GroupLiftView({ userId, members, lifts, myLifts, exercises, name
 
         <div className="no-scrollbar" style={{ display: "flex", gap: 8, padding: "0 16px 12px", overflowX: "auto", flexShrink: 0 }}>
           {ids.map((id) => (
-            <button key={id} onClick={() => setCurrent(id)} style={{ height: 36, padding: "0 14px", borderRadius: 18, border: "none", flexShrink: 0, background: id === current ? T.accent : T.surface, color: id === current ? T.bg : tc("#CFCDC5"), fontSize: 14, fontWeight: id === current ? 700 : 500, whiteSpace: "nowrap" }}>
+            <button key={id} onClick={() => setCurrent(id)} style={{ height: 36, padding: "0 14px", border: "none", flexShrink: 0, background: id === current ? T.accent : T.surface, color: id === current ? T.bg : tc("#CFCDC5"), fontSize: 15, fontWeight: id === current ? 700 : 500, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               {label(id)}
             </button>
           ))}
@@ -167,11 +168,11 @@ export function GroupLiftView({ userId, members, lifts, myLifts, exercises, name
 
           {confirmLeave ? (
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, height: 48, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, fontWeight: 600 }}>Stay</button>
-              <button onClick={onLeave} style={{ flex: 1, height: 48, borderRadius: 12, border: "none", background: T.danger, color: T.bg, fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}>Leave, keep logging</button>
+              <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, height: 48, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Stay</button>
+              <button onClick={onLeave} style={{ flex: 1, height: 48, border: "none", background: T.danger, color: T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Leave, keep logging</button>
             </div>
           ) : (
-            <button onClick={() => setConfirmLeave(true)} style={{ height: 48, borderRadius: 12, border: `1px solid ${T.line}`, background: "transparent", color: T.dim, fontSize: 14, fontWeight: 600 }}>Leave group</button>
+            <button onClick={() => setConfirmLeave(true)} style={{ height: 48, border: `1px solid ${T.line}`, background: "transparent", color: T.dim, fontSize: 15, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Leave group</button>
           )}
         </div>
       </div>

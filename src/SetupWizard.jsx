@@ -7,6 +7,7 @@ import IntroShell from "./IntroShell";
 import { NAME_MODES } from "./lib/muscleTaxonomy";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -27,17 +28,7 @@ function PillRow({ options, value, onChange, columns }) {
         <button
           key={opt.key}
           onClick={() => onChange(opt.key)}
-          style={{
-            // Columns mode fixes the row count; otherwise each option
-            // takes an equal share but can drop to its own line (basis
-            // 96px) instead of overflowing on a 320-375px iPhone.
-            flex: columns ? `1 1 calc(${100 / columns}% - 4px)` : "1 1 96px",
-            minWidth: 0,
-            padding: "13px 6px", borderRadius: 9, fontSize: 14, fontWeight: 700, border: "none",
-            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-            background: value === opt.key ? T.accent : "transparent",
-            color: value === opt.key ? T.bg : T.dim,
-          }}
+          style={{ // Columns mode fixes the row count; otherwise each option // takes an equal share but can drop to its own line (basis // 96px) instead of overflowing on a 320-375px iPhone. flex: columns ? `1 1 calc(${100 / columns}% - 4px)` : "1 1 96px", minWidth: 0, padding: "13px 6px", fontSize: 15, fontWeight: 700, border: "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", background: value === opt.key ? T.accent : "transparent", color: value === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >
           {opt.label}
         </button>
@@ -164,7 +155,7 @@ export default function SetupWizard({ onComplete, onClose }) {
       footer={
         <button
           onClick={handleNext}
-          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}
+          style={{ width: "100%", padding: "16px 0", border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >
           {isLast ? "Finish setup" : "Continue"}
         </button>

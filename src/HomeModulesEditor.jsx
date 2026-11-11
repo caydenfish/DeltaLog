@@ -5,6 +5,7 @@ import { IconDragHandle } from "./Icons";
 import { useDragReorder, InsertionLine } from "./DragReorder";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -39,7 +40,7 @@ function Toggle({ on, onClick, label }) {
       onClick={onClick}
       aria-label={label}
       aria-pressed={on}
-      style={{ width: 42, height: 24, borderRadius: 999, border: `1px solid ${on ? T.accent : T.line}`, background: on ? "rgba(196,163,90,0.2)" : T.surface2, position: "relative", flexShrink: 0, padding: 0 }}
+      style={{ width: 42, height: 24, border: `1px solid ${on ? T.accent : T.line}`, background: on ? "rgba(196,163,90,0.2)" : T.surface2, position: "relative", flexShrink: 0, padding: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
     >
       <span style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 18, height: 18, borderRadius: 999, background: on ? T.accent : T.dim, transition: "left 0.15s" }} />
     </button>
@@ -59,7 +60,7 @@ function Segmented({ value, options, onChange }) {
   return (
     <div style={{ display: "flex", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: 3, gap: 3 }}>
       {options.map(([v, label]) => (
-        <button key={v} onClick={() => onChange(v)} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "none", background: value === v ? T.accent : "none", color: value === v ? T.bg : T.dim, fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }}>{label}</button>
+        <button key={v} onClick={() => onChange(v)} style={{ flex: 1, padding: "7px 10px", border: "none", background: value === v ? T.accent : "none", color: value === v ? T.bg : T.dim, fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{label}</button>
       ))}
     </div>
   );
@@ -93,7 +94,7 @@ export default function HomeModulesEditor({ cards, settings, onChange, onSetting
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>Customize home</div>
-              <button onClick={onClose} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>Done</button>
+              <button onClick={onClose} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "6px 12px", fontSize: 14, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Done</button>
             </div>
             <div style={{ fontSize: 13, color: T.dim, marginBottom: 14 }}>Drag to reorder. Tap a card to choose what's in it.</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

@@ -3,6 +3,7 @@ import { version as APP_VERSION } from "../package.json";
 import { IconX, IconCheck } from "./Icons";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -35,7 +36,7 @@ export default function WhatsNew({ onClose, entries }) {
             </div>
             {!multi && <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>{list[0].items ? list[0].title : "You're up to date"}</div>}
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13, flexShrink: 0, marginLeft: 8 }}><IconX size={12} /></button>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "4px 10px", fontSize: 13, flexShrink: 0, marginLeft: 8, borderRadius: BTN_RADIUS }}><IconX size={12} /></button>
         </div>
 
         <div style={{ marginTop: multi ? 12 : 16, marginBottom: 20, display: "flex", flexDirection: "column", gap: multi ? 18 : 12 }}>
@@ -63,7 +64,7 @@ export default function WhatsNew({ onClose, entries }) {
           ))}
         </div>
 
-        <button onClick={onClose} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>
+        <button onClick={onClose} style={{ width: "100%", padding: "13px 0", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
           Got it
         </button>
       </div>

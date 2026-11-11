@@ -3,6 +3,7 @@ import { supabase } from "./lib/supabaseClient";
 import Logo from "./Logo";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -88,12 +89,7 @@ export default function ResetPassword({ onDone }) {
           <button
             type="submit"
             disabled={status === "saving"}
-            style={{
-              width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-              background: status === "saving" ? T.surface2 : T.accent,
-              color: status === "saving" ? T.dim : T.bg,
-              fontSize: 16, fontWeight: 700, marginTop: 4,
-            }}
+            style={{ width: "100%", padding: "14px 0", border: "none", background: status === "saving" ? T.surface2 : T.accent, color: status === "saving" ? T.dim : T.bg, fontSize: 17, fontWeight: 700, marginTop: 4, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             {status === "saving" ? "Saving…" : "Save new password"}
           </button>

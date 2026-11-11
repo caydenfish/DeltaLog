@@ -9,6 +9,13 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.31.0": {
+    title: "Sharper buttons",
+    items: [
+      "Buttons across the app now match the new look: squared corners and bold condensed labels.",
+      "The main action on key screens, like Start workout and Finish, gets the notched shape from the logo.",
+    ],
+  },
   "1.30.0": {
     title: "Focus that sticks",
     items: [

@@ -7,6 +7,7 @@ import { fetchTemplates, fetchTemplateExercises } from "./lib/queries";
 import { useGroupSession, setGroupPlan, startGroupSession, leaveGroupSession, displayName, planLabel } from "./lib/social";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -203,8 +204,8 @@ export default function GroupLobby({ user, sessionId, onStart, onExit }) {
             <>
               <div style={{ fontSize: 13, color: T.dim, textAlign: "center" }}>{isHost ? "Leaving closes the lobby for everyone." : "You can rejoin if the host invites you again."}</div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, height: 50, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Stay</button>
-                <button onClick={leave} style={{ flex: 1, height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>{isHost ? "Close lobby" : "Leave lobby"}</button>
+                <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, height: 50, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 16, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Stay</button>
+                <button onClick={leave} style={{ flex: 1, height: 50, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{isHost ? "Close lobby" : "Leave lobby"}</button>
               </div>
             </>
           ) : isHost ? (
@@ -212,7 +213,7 @@ export default function GroupLobby({ user, sessionId, onStart, onExit }) {
               <div style={{ fontSize: 12.5, color: T.dim, textAlign: "center", ...oneLine }}>
                 {othersReady === 0 ? "No one's ready yet. Friends can still join after you start." : "Anyone still invited can join after you start."}
               </div>
-              <button onClick={start} disabled={starting || !session} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: starting || !session ? 0.6 : 1, whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button onClick={start} disabled={starting || !session} style={{ height: 52, border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, opacity: starting || !session ? 0.6 : 1, whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 <IconUsers size={18} /> {starting ? "Starting..." : othersReady === 0 ? "Start now" : "Start for everyone"}
               </button>
             </>
@@ -222,7 +223,7 @@ export default function GroupLobby({ user, sessionId, onStart, onExit }) {
                 <span className="lobby-pulse" style={{ width: 8, height: 8, borderRadius: 4, background: T.ready }} />
                 Waiting for {hostName} to start
               </div>
-              <button onClick={() => setConfirmLeave(true)} style={{ height: 48, borderRadius: 12, border: `1px solid ${T.line}`, background: "transparent", color: T.dim, fontSize: 14, fontWeight: 600 }}>Leave lobby</button>
+              <button onClick={() => setConfirmLeave(true)} style={{ height: 48, border: `1px solid ${T.line}`, background: "transparent", color: T.dim, fontSize: 15, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Leave lobby</button>
             </>
           )}
         </div>

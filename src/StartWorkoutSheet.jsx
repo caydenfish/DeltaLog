@@ -3,6 +3,7 @@ import { fetchTemplates } from "./lib/queries";
 import { IconPlus, IconBolt, IconList, IconUsers } from "./Icons";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS, BTN_HERO } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -61,7 +62,7 @@ export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onCl
           </button>
         )}
 
-        <button onClick={() => choose({ kind: "scratch" })} style={{ width: "100%", padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <button onClick={() => choose({ kind: "scratch" })} style={{ width: "100%", padding: "15px 0", border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, ...BTN_HERO }}>
           <IconPlus size={16} /> Start from scratch
         </button>
 
@@ -78,7 +79,7 @@ export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onCl
             <span style={{ fontSize: 13, color: T.dim, fontWeight: 500, whiteSpace: "nowrap" }}>{templates === null ? "" : templates.length === 0 ? "None yet ›" : `${templates.length} saved ›`}</span>
           </button>
           {onNewTemplate && (
-            <button onClick={onNewTemplate} aria-label="Build a new template" style={{ flexShrink: 0, padding: "0 14px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+            <button onClick={onNewTemplate} aria-label="Build a new template" style={{ flexShrink: 0, padding: "0 14px", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               <span style={{ color: T.accent, display: "flex" }}><IconPlus size={15} /></span> New
             </button>
           )}

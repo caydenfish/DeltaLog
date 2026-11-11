@@ -4,6 +4,7 @@ import { InlineLoading } from "./LoadingSpinner";
 import { IconX } from "./Icons";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -106,7 +107,7 @@ export default function StravaManualLinkModal({ workoutId, onClose, onLinked, on
         </div>
 
         <div style={{ padding: 16, borderTop: `1px solid ${T.line}` }}>
-          <button onClick={handleDismiss} disabled={dismissing} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, fontSize: 13.5, fontWeight: 600 }}>
+          <button onClick={handleDismiss} disabled={dismissing} style={{ width: "100%", padding: "12px 0", border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, fontSize: 14.5, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
             {dismissing ? "…" : "None of these / don't ask again for this workout"}
           </button>
         </div>

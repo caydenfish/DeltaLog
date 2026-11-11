@@ -2,6 +2,7 @@ import { IconPlus, IconCalendar, IconList, IconBarbell, IconUsers, IconGear, Ico
 import Logo from "./Logo";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   side: "#14161B",
   surface2: "#24282E",
@@ -48,7 +49,7 @@ export default function DesktopSidebar({ active, onNavigate, onStart, startLabel
         );
       })}
       <div style={{ flex: 1 }} />
-      <button onClick={onStart} style={{ minHeight: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, whiteSpace: "nowrap" }}>
+      <button onClick={onStart} style={{ minHeight: 50, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>{!startSub && <IconPlus size={15} />}{startLabel}</span>
         {startSub && <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}>{startSub}</span>}
       </button>

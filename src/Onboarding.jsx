@@ -7,6 +7,7 @@ import Logo from "./Logo";
 import IntroShell from "./IntroShell";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -64,12 +65,7 @@ export default function Onboarding({ user, profile, onComplete }) {
       center={false}
       footer={
         <>
-          <button onClick={handleSave} disabled={!valid || saving} style={{
-            width: "100%", padding: "15px 0", borderRadius: 14, border: "none",
-            background: !valid || saving ? T.surface2 : T.accent,
-            color: !valid || saving ? T.dim : T.bg,
-            fontSize: 16, fontWeight: 700,
-          }}>
+          <button onClick={handleSave} disabled={!valid || saving} style={{ width: "100%", padding: "15px 0", border: "none", background: !valid || saving ? T.surface2 : T.accent, color: !valid || saving ? T.dim : T.bg, fontSize: 17, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
             {saving ? "Saving…" : valid ? "Continue" : "Add name, gender, and birthday"}
           </button>
           {error && <div style={{ color: T.danger, fontSize: 13, marginTop: 10, textAlign: "center" }}>{error}</div>}
@@ -106,12 +102,7 @@ export default function Onboarding({ user, profile, onComplete }) {
         <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Gender</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
           {["Male", "Female", "Other"].map((g) => (
-            <button key={g} onClick={() => setGender(g)} style={{
-              flex: 1, padding: "10px 0", borderRadius: 10, fontSize: 13, fontWeight: 600,
-              border: `1px solid ${gender === g ? T.accent : T.line}`,
-              background: gender === g ? "rgba(196,163,90,0.12)" : T.surface,
-              color: gender === g ? T.text : T.dim,
-            }}>{g}</button>
+            <button key={g} onClick={() => setGender(g)} style={{ flex: 1, padding: "10px 0", fontSize: 14, fontWeight: 600, border: `1px solid ${gender === g ? T.accent : T.line}`, background: gender === g ? "rgba(196,163,90,0.12)" : T.surface, color: gender === g ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{g}</button>
           ))}
         </div>
         {gender === "Other" && (
@@ -133,12 +124,7 @@ export default function Onboarding({ user, profile, onComplete }) {
           <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>Body weight <span style={{ textTransform: "none" }}>(optional)</span></div>
           <div style={{ display: "flex", gap: 4 }}>
             {["lb", "kg"].map((u) => (
-              <button key={u} onClick={() => setWeightUnit(u)} style={{
-                padding: "3px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
-                border: `1px solid ${weightUnit === u ? T.accent : T.line}`,
-                background: weightUnit === u ? "rgba(196,163,90,0.12)" : T.surface2,
-                color: weightUnit === u ? T.text : T.dim,
-              }}>{u}</button>
+              <button key={u} onClick={() => setWeightUnit(u)} style={{ padding: "3px 10px", fontSize: 12, fontWeight: 600, border: `1px solid ${weightUnit === u ? T.accent : T.line}`, background: weightUnit === u ? "rgba(196,163,90,0.12)" : T.surface2, color: weightUnit === u ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{u}</button>
             ))}
           </div>
         </div>
@@ -156,12 +142,7 @@ export default function Onboarding({ user, profile, onComplete }) {
         <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Height <span style={{ textTransform: "none" }}>(optional)</span></div>
         <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
           {HEIGHT_UNITS.map((u) => (
-            <button key={u} onClick={() => setHeightUnit(u)} style={{
-              flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, fontWeight: 600, textAlign: "center",
-              border: `1px solid ${heightUnit === u ? T.accent : T.line}`,
-              background: heightUnit === u ? "rgba(196,163,90,0.12)" : T.surface2,
-              color: heightUnit === u ? T.text : T.dim,
-            }}>{HEIGHT_UNIT_LABELS[u]}</button>
+            <button key={u} onClick={() => setHeightUnit(u)} style={{ flex: 1, padding: "6px 0", fontSize: 12, fontWeight: 600, textAlign: "center", border: `1px solid ${heightUnit === u ? T.accent : T.line}`, background: heightUnit === u ? "rgba(196,163,90,0.12)" : T.surface2, color: heightUnit === u ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{HEIGHT_UNIT_LABELS[u]}</button>
           ))}
         </div>
         {heightUnit === "ftin" ? (

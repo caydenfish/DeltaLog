@@ -1,4 +1,5 @@
 import { themed } from "./lib/theme";
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -12,8 +13,7 @@ const T = themed({
   spruce: "#3F6E55",
 });
 
-const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 };
-
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 14, ...BTN_TEXT };
 function Row({ onClick, href, title, subtitle, external }) {
   const style = { display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", boxSizing: "border-box", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 12, textAlign: "left", textDecoration: "none" };
   const content = (

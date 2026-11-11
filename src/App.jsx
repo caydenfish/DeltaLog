@@ -26,6 +26,7 @@ import SharedWorkoutView from "./SharedWorkoutView";
 import LoadingScreen from "./LoadingSpinner";
 import { tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 // Active-workout lookup that survives a flaky first request (v1.23.0).
 // Coming back to a backgrounded PWA, the very first network call often
 // fires before the phone's connection is back. That one failure used to
@@ -447,7 +448,7 @@ export default function App() {
             <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "0 24px 32px", display: "flex", justifyContent: "center", zIndex: 10000 }}>
               <button
                 onClick={() => window.location.reload()}
-                style={{ background: tc("#1B1E23"), border: `1px solid ${tc("#2F343B")}`, color: tc("#8F949C"), borderRadius: 999, padding: "10px 18px", fontSize: 13 }}
+                style={{ background: tc("#1B1E23"), border: `1px solid ${tc("#2F343B")}`, color: tc("#8F949C"), padding: "10px 18px", fontSize: 14, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 Taking longer than usual — tap to reload
               </button>

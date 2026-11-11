@@ -3,6 +3,7 @@ import { muscleLabel, isRealMuscle, isFullBody } from "./lib/muscleTaxonomy";
 import { formatWeight } from "./lib/weight";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 function isWarmupSet(s) {
   return !!(s.is_warmup ?? s.isWarmup);
 }
@@ -129,7 +130,7 @@ export default function MuscleSetsDetail({ muscle, entries, nameMode, units, onC
           })}
         </div>
 
-        <button onClick={onClose} style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>Close</button>
+        <button onClick={onClose} style={{ width: "100%", marginTop: 12, padding: "12px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Close</button>
       </div>
     </div>
   );

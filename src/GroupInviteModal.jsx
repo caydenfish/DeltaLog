@@ -4,6 +4,7 @@ import { Avatar } from "./Friends";
 import { fetchGroupSessionMembers, displayName } from "./lib/social";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   surface: "#1B1E23",
   surface2: "#24282E",
@@ -67,7 +68,7 @@ export default function GroupInviteModal({ invite, busy, onJoin, onDecline, onDi
           <span style={{ fontSize: 12.5, color: T.dim, whiteSpace: "nowrap" }}>{isTemplate ? `${invite.plan_exercise_count} exercises` : `${invite.host_first_name || "Host"} picks`}</span>
         </div>
 
-        <button onClick={onJoin} disabled={busy} style={{ marginTop: 16, width: "100%", height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: busy ? 0.6 : 1, whiteSpace: "nowrap" }}>
+        <button onClick={onJoin} disabled={busy} style={{ marginTop: 16, width: "100%", height: 50, border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, opacity: busy ? 0.6 : 1, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
           {busy ? "Joining..." : live ? "Join workout" : "Join lobby"}
         </button>
         <button onClick={onDecline} style={{ marginTop: 6, height: 40, padding: "0 16px", border: "none", background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>Decline</button>

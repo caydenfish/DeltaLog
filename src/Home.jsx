@@ -68,6 +68,7 @@ import TrainingLoadCard from "./TrainingLoadCard";
 import { version as APP_VERSION } from "../package.json";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS, BTN_HERO } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -1114,8 +1115,8 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{inv.host_first_name || `@${inv.host_handle}`} invited you</span>
                 <span style={{ fontSize: 12, color: T.dim }}>{inv.session_status === "active" ? "Already lifting" : `${inv.member_count} in the lobby`}</span>
               </div>
-              <button onClick={() => declineGroupInvite(inv)} aria-label="Decline invite" style={{ width: 44, height: 44, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconX size={14} /></button>
-              <button onClick={() => acceptGroupInvite(inv)} disabled={inviteBusy === inv.session_id} style={{ height: 44, padding: "0 16px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700, flexShrink: 0 }}>Join</button>
+              <button onClick={() => declineGroupInvite(inv)} aria-label="Decline invite" style={{ width: 44, height: 44, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, borderRadius: BTN_RADIUS }}><IconX size={14} /></button>
+              <button onClick={() => acceptGroupInvite(inv)} disabled={inviteBusy === inv.session_id} style={{ height: 44, padding: "0 16px", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, flexShrink: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Join</button>
             </div>
           ))}
           {!isDesktop && (() => {
@@ -1130,9 +1131,9 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 30, fontWeight: 700, lineHeight: 1, color: T.text }}>{resumable ? "Keep going" : ds === 0 ? "Trained today" : "Ready to lift"}</span>
                 <span style={{ fontSize: 14, color: T.dim, fontVariantNumeric: "tabular-nums" }}>{sub}</span>
                 {resumable ? (
-                  <button onClick={onResumeWorkout} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Resume workout</button>
+                  <button onClick={onResumeWorkout} style={{ height: 52, border: "none", background: T.accent, color: T.bg, fontSize: 18, fontWeight: 700, ...BTN_HERO }}>Resume workout</button>
                 ) : (
-                  <button onClick={() => setShowStartSheet(true)} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Start workout</button>
+                  <button onClick={() => setShowStartSheet(true)} style={{ height: 52, border: "none", background: T.accent, color: T.bg, fontSize: 18, fontWeight: 700, ...BTN_HERO }}>Start workout</button>
                 )}
               </div>
             );
@@ -1145,7 +1146,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 <div style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 2 }}>A new version is ready</div>
                 <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.4 }}>Close DeltaLog completely and reopen it to update — or tap Reload now.</div>
               </div>
-              <button onClick={onApplyUpdate} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 12, fontWeight: 700 }}>
+              <button onClick={onApplyUpdate} style={{ flexShrink: 0, padding: "8px 14px", border: "none", background: T.accent, color: T.bg, fontSize: 13, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 Reload now
               </button>
             </div>
@@ -1159,7 +1160,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 </div>
                 <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.4 }}>No matching activity was found automatically. Pick it manually, or dismiss.</div>
               </div>
-              <button onClick={() => setStravaModalWorkoutId(unlinkedStravaWorkouts[0].workout_id)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 12, fontWeight: 700 }}>
+              <button onClick={() => setStravaModalWorkoutId(unlinkedStravaWorkouts[0].workout_id)} style={{ flexShrink: 0, padding: "8px 14px", border: "none", background: T.accent, color: T.bg, fontSize: 13, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 Link
               </button>
             </div>
@@ -1254,7 +1255,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           {programDay && !PROGRAM_LOCKED && (
                             <button
                               onClick={() => setShowProgramView(true)}
-                              style={{ width: "100%", marginTop: 10, padding: "9px 0", borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                              style={{ width: "100%", marginTop: 10, padding: "9px 0", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                             >
                               Open Program — {programDay.dayLabel}{programDay.deload ? " (deload)" : ""} <span style={{ color: T.dim }}>›</span>
                             </button>
@@ -1395,14 +1396,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                                         ? "Forecasted program day"
                                         : undefined
                                   }
-                                  style={{
-                                    aspectRatio: "1", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: 10, color: hasWorkout ? T.bg : isForecast ? T.accent : T.dim,
-                                    background: hasWorkout ? T.accent : T.surface2,
-                                    opacity: 1,
-                                    border: cell.isToday ? `1px solid ${T.text}` : isForecast ? `1px dashed ${T.accent}` : "none",
-                                    padding: 0, cursor: clickable ? "pointer" : "default",
-                                  }}
+                                  style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: hasWorkout ? T.bg : isForecast ? T.accent : T.dim, background: hasWorkout ? T.accent : T.surface2, opacity: 1, border: cell.isToday ? `1px solid ${T.text}` : isForecast ? `1px dashed ${T.accent}` : "none", padding: 0, cursor: clickable ? "pointer" : "default", borderRadius: BTN_RADIUS }}
                                 >
                                   {cell.day}
                                 </button>
@@ -1418,7 +1412,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                           {homeCardSettings.calendar.history && (
                           <button
                             onClick={() => setHistoryView({})}
-                            style={{ width: "100%", marginTop: 12, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                            style={{ width: "100%", marginTop: 12, padding: "10px 0", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                           >
                             View full history <span style={{ color: T.dim }}>›</span>
                           </button>
@@ -1431,7 +1425,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 })}
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "8px 0 4px" }}>
-                <button onClick={() => setShowHomeModulesEditor(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 44, padding: "0 16px", borderRadius: 10, border: `1px solid ${T.line}`, background: "transparent", color: T.dim, fontSize: 14, fontWeight: 600 }}>
+                <button onClick={() => setShowHomeModulesEditor(true)} style={{ display: "flex", alignItems: "center", gap: 8, height: 44, padding: "0 16px", border: `1px solid ${T.line}`, background: "transparent", color: T.dim, fontSize: 15, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                   <IconPencil size={15} /> Customize home
                 </button>
                 <Logo size={52} />
@@ -1712,7 +1706,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 {(!user.app_metadata?.provider || user.app_metadata.provider === "email") && (
                   <div style={{ height: 8 }} />
                 )}
-                <button onClick={() => supabase.auth.signOut()} style={{ width: "100%", minHeight: 48, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.1)", color: T.accent, fontSize: 14, fontWeight: 700 }}>
+                <button onClick={() => supabase.auth.signOut()} style={{ width: "100%", minHeight: 48, padding: "12px 0", border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.1)", color: T.accent, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                   Sign out
                 </button>
               </div>
@@ -1736,7 +1730,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               </>
               )}
 
-              <button onClick={shareApp} style={{ width: "100%", minHeight: 52, marginTop: 8, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, whiteSpace: "nowrap" }}>
+              <button onClick={shareApp} style={{ width: "100%", minHeight: 52, marginTop: 8, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 <IconShare size={17} /> {shareNote || "Share DeltaLog"}
               </button>
 
@@ -1909,10 +1903,10 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
         <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 25, display: "flex", justifyContent: "center", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
-              <button onClick={() => setShowAnnouncements(false)} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
+              <button onClick={() => setShowAnnouncements(false)} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "4px 10px", fontSize: 13, borderRadius: BTN_RADIUS }}>‹</button>
               <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>ANNOUNCEMENTS</div>
               {effectiveIsAdmin ? (
-                <button onClick={() => openComposeAnnouncement()} aria-label="New announcement" style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <button onClick={() => openComposeAnnouncement()} aria-label="New announcement" style={{ width: 32, height: 32, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: BTN_RADIUS }}>
                   <IconPlus size={16} />
                 </button>
               ) : (
@@ -1957,7 +1951,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                   )}
                   {announcements && announcements.length > 1 && (
                     <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-                      <button onClick={dismissAllAnnouncements} disabled={dismissingAll} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "5px 10px", fontSize: 12 }}>
+                      <button onClick={dismissAllAnnouncements} disabled={dismissingAll} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "5px 10px", fontSize: 13, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                         {dismissingAll ? "Dismissing…" : "Dismiss all"}
                       </button>
                     </div>
@@ -2025,7 +2019,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                       style={{ flex: 1, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box" }}
                     />
                     {composeAnnouncement.poll.options.length > 2 && (
-                      <button onClick={() => removeComposePollOption(i)} aria-label="Remove option" style={{ width: 34, borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>×</button>
+                      <button onClick={() => removeComposePollOption(i)} aria-label="Remove option" style={{ width: 34, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, borderRadius: BTN_RADIUS }}>×</button>
                     )}
                   </div>
                 ))}
@@ -2044,11 +2038,11 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 !composeAnnouncement.message.trim() ||
                 (composeAnnouncement.poll && (!composeAnnouncement.poll.question.trim() || composeAnnouncement.poll.options.filter((o) => o.trim()).length < 2))
               }
-              style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 13, fontWeight: 700, opacity: savingAnnouncement ? 0.6 : 1, marginBottom: 8 }}
+              style={{ width: "100%", padding: "10px 0", border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700, opacity: savingAnnouncement ? 0.6 : 1, marginBottom: 8, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               {savingAnnouncement ? "Saving…" : composeAnnouncement.id ? "Save changes" : "Post to all users"}
             </button>
-            <button onClick={closeComposeAnnouncement} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600 }}>Cancel</button>
+            <button onClick={closeComposeAnnouncement} style={{ width: "100%", padding: "10px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
           </div>
         </div>
       )}

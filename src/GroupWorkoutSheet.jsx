@@ -7,6 +7,7 @@ import {
 } from "./lib/social";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -223,7 +224,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
                           {sent ? (
                             <span style={{ fontSize: 13, color: T.dim, whiteSpace: "nowrap" }}>Requested</span>
                           ) : (
-                            <button onClick={() => request(s)} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Add friend</button>
+                            <button onClick={() => request(s)} style={{ height: 36, padding: "0 14px", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Add friend</button>
                           )}
                         </div>
                       );
@@ -247,8 +248,8 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
                     maxLength={30}
                     style={{ flex: 1, minWidth: 0, height: 44, padding: "0 12px", borderRadius: 10, background: T.bg, border: `1px solid ${T.line}`, color: T.text, fontSize: 16, outline: "none" }}
                   />
-                  <button onClick={() => setNaming(false)} style={{ height: 44, padding: "0 12px", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14 }}>Cancel</button>
-                  <button onClick={saveGroup} disabled={!groupName.trim()} style={{ height: 44, padding: "0 14px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 600, opacity: groupName.trim() ? 1 : 0.5 }}>Save</button>
+                  <button onClick={() => setNaming(false)} style={{ height: 44, padding: "0 12px", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+                  <button onClick={saveGroup} disabled={!groupName.trim()} style={{ height: 44, padding: "0 14px", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 600, opacity: groupName.trim() ? 1 : 0.5, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Save</button>
                 </div>
               ) : (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: 32, gap: 10 }}>
@@ -263,7 +264,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
                   )}
                 </div>
               )}
-              <button onClick={start} disabled={selected.size === 0 || starting} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: selected.size === 0 || starting ? 0.5 : 1, whiteSpace: "nowrap" }}>
+              <button onClick={start} disabled={selected.size === 0 || starting} style={{ height: 52, border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, opacity: selected.size === 0 || starting ? 0.5 : 1, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 {inviteMode
                   ? (starting ? "Inviting..." : selected.size === 0 ? "Invite" : `Invite ${selected.size} friend${selected.size === 1 ? "" : "s"}`)
                   : (starting ? "Opening lobby..." : selected.size === 0 ? "Open lobby" : `Open lobby with ${selected.size} friend${selected.size === 1 ? "" : "s"}`)}

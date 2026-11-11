@@ -11,6 +11,7 @@ import { NAME_MODES } from "./lib/muscleTaxonomy";
 import StravaSettings from "./StravaSettings";
 import { themed, tc, THEME_META } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -202,12 +203,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
           </div>
           <div style={{ display: "flex", gap: 4 }}>
             {["lb", "kg"].map((u) => (
-              <button key={u} onClick={() => update("units", u)} style={{
-                minWidth: 52, minHeight: 40, padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                border: `1px solid ${units === u ? T.accent : T.line}`,
-                background: units === u ? "rgba(196,163,90,0.12)" : T.surface2,
-                color: units === u ? T.text : T.dim,
-              }}>{u}</button>
+              <button key={u} onClick={() => update("units", u)} style={{ minWidth: 52, minHeight: 40, padding: "8px 14px", fontSize: 14, fontWeight: 600, border: `1px solid ${units === u ? T.accent : T.line}`, background: units === u ? "rgba(196,163,90,0.12)" : T.surface2, color: units === u ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{u}</button>
             ))}
           </div>
         </div>
@@ -221,12 +217,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
           </div>
           <div style={{ display: "flex", gap: 4 }}>
             {[{ key: "12h", label: "12h" }, { key: "24h", label: "24h" }].map((opt) => (
-              <button key={opt.key} onClick={() => update("timeFormat", opt.key)} style={{
-                minWidth: 52, minHeight: 40, padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                border: `1px solid ${state.timeFormat === opt.key ? T.accent : T.line}`,
-                background: state.timeFormat === opt.key ? "rgba(196,163,90,0.12)" : T.surface2,
-                color: state.timeFormat === opt.key ? T.text : T.dim,
-              }}>{opt.label}</button>
+              <button key={opt.key} onClick={() => update("timeFormat", opt.key)} style={{ minWidth: 52, minHeight: 40, padding: "8px 14px", fontSize: 14, fontWeight: 600, border: `1px solid ${state.timeFormat === opt.key ? T.accent : T.line}`, background: state.timeFormat === opt.key ? "rgba(196,163,90,0.12)" : T.surface2, color: state.timeFormat === opt.key ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{opt.label}</button>
             ))}
           </div>
         </div>
@@ -262,11 +253,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={name}
                 onClick={() => update("trainingIdeology", name)}
                 aria-pressed={trainingIdeology === name}
-                style={{
-                  flex: 1, padding: "11px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none",
-                  background: trainingIdeology === name ? T.accent : "transparent",
-                  color: trainingIdeology === name ? T.bg : T.dim,
-                }}
+                style={{ flex: 1, padding: "11px 0", fontSize: 14, fontWeight: 600, border: "none", background: trainingIdeology === name ? T.accent : "transparent", color: trainingIdeology === name ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {name}
               </button>
@@ -297,11 +284,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={opt.key}
                 onClick={() => update("scoreDisplay", opt.key)}
                 aria-pressed={scoreDisplay === opt.key}
-                style={{
-                  flex: 1, padding: "11px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none",
-                  background: scoreDisplay === opt.key ? T.accent : "transparent",
-                  color: scoreDisplay === opt.key ? T.bg : T.dim,
-                }}
+                style={{ flex: 1, padding: "11px 0", fontSize: 14, fontWeight: 600, border: "none", background: scoreDisplay === opt.key ? T.accent : "transparent", color: scoreDisplay === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {opt.label}
               </button>
@@ -337,11 +320,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={key}
                 onClick={() => update("targetCalcMethod", key)}
                 aria-pressed={targetCalcMethod === key}
-                style={{
-                  padding: "11px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none",
-                  background: targetCalcMethod === key ? T.accent : "transparent",
-                  color: targetCalcMethod === key ? T.bg : T.dim,
-                }}
+                style={{ padding: "11px 0", fontSize: 14, fontWeight: 600, border: "none", background: targetCalcMethod === key ? T.accent : "transparent", color: targetCalcMethod === key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {label}
               </button>
@@ -382,9 +361,9 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
             <div style={{ color: T.dim, fontSize: 12.5, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Working sets for newly added exercises</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <button onClick={() => update("defaultWorkingSets", Math.max(1, defaultSets - 1))} aria-label="Fewer default sets" style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+            <button onClick={() => update("defaultWorkingSets", Math.max(1, defaultSets - 1))} aria-label="Fewer default sets" style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>−</button>
             <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, minWidth: 22, textAlign: "center" }}>{defaultSets}</div>
-            <button onClick={() => update("defaultWorkingSets", Math.min(12, defaultSets + 1))} aria-label="More default sets" style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+            <button onClick={() => update("defaultWorkingSets", Math.min(12, defaultSets + 1))} aria-label="More default sets" style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>+</button>
           </div>
         </div>
         )}
@@ -402,11 +381,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={opt.key}
                 onClick={() => update("weightEntryMode", opt.key)}
                 aria-pressed={weightEntryMode === opt.key}
-                style={{
-                  flex: 1, padding: "11px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none",
-                  background: weightEntryMode === opt.key ? T.accent : "transparent",
-                  color: weightEntryMode === opt.key ? T.bg : T.dim,
-                }}
+                style={{ flex: 1, padding: "11px 0", fontSize: 14, fontWeight: 600, border: "none", background: weightEntryMode === opt.key ? T.accent : "transparent", color: weightEntryMode === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {opt.label}
               </button>
@@ -427,11 +402,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={opt.key}
                 onClick={() => update("plate55Scope", opt.key)}
                 aria-pressed={state.plate55Scope === opt.key}
-                style={{
-                  flex: 1, padding: "11px 4px", borderRadius: 8, fontSize: 12.5, fontWeight: 600, border: "none",
-                  background: state.plate55Scope === opt.key ? T.accent : "transparent",
-                  color: state.plate55Scope === opt.key ? T.bg : T.dim,
-                }}
+                style={{ flex: 1, padding: "11px 4px", fontSize: 13.5, fontWeight: 600, border: "none", background: state.plate55Scope === opt.key ? T.accent : "transparent", color: state.plate55Scope === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {opt.label}
               </button>
@@ -454,7 +425,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={opt.key}
                 onClick={() => update("bodyModelSex", opt.key)}
                 aria-pressed={bodyModelSex === opt.key}
-                style={{ flex: 1, padding: "11px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", background: bodyModelSex === opt.key ? T.accent : "transparent", color: bodyModelSex === opt.key ? T.bg : T.dim }}
+                style={{ flex: 1, padding: "11px 0", fontSize: 14, fontWeight: 600, border: "none", background: bodyModelSex === opt.key ? T.accent : "transparent", color: bodyModelSex === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {opt.label}
               </button>
@@ -487,11 +458,11 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
               <div style={{ color: T.dim, fontSize: 12.5, marginTop: 2 }}>{warmupRestEnabled ? "Starts a new workout's rest countdown for working sets" : "Starts a new workout's rest countdown for every set"}</div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={() => update("restSeconds", Math.max(15, restSeconds - 15))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+              <button onClick={() => update("restSeconds", Math.max(15, restSeconds - 15))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>−</button>
               <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
                 {Math.floor(restSeconds / 60)}:{String(restSeconds % 60).padStart(2, "0")}
               </div>
-              <button onClick={() => update("restSeconds", Math.min(600, restSeconds + 15))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+              <button onClick={() => update("restSeconds", Math.min(600, restSeconds + 15))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>+</button>
             </div>
           </div>
           <div style={{ color: T.dim, fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
@@ -507,11 +478,11 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
               <div style={{ color: T.dim, fontSize: 12.5, marginTop: 2 }}>Used after a set marked as warmup</div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={() => update("warmupRestSeconds", Math.max(15, warmupRestSeconds - 15))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+              <button onClick={() => update("warmupRestSeconds", Math.max(15, warmupRestSeconds - 15))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>−</button>
               <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
                 {Math.floor(warmupRestSeconds / 60)}:{String(warmupRestSeconds % 60).padStart(2, "0")}
               </div>
-              <button onClick={() => update("warmupRestSeconds", Math.min(600, warmupRestSeconds + 15))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+              <button onClick={() => update("warmupRestSeconds", Math.min(600, warmupRestSeconds + 15))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>+</button>
             </div>
           </div>
           <div style={{ color: T.dim, fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
@@ -547,7 +518,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
               key={opt.key}
               onClick={() => { update("restTimerSound", opt.key); playRestTimerSound(opt.key, restTimerVolume); }}
               aria-pressed={restTimerSound === opt.key}
-              style={{ flex: 1, padding: "11px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", background: restTimerSound === opt.key ? T.accent : "transparent", color: restTimerSound === opt.key ? T.bg : T.dim }}
+              style={{ flex: 1, padding: "11px 0", fontSize: 14, fontWeight: 600, border: "none", background: restTimerSound === opt.key ? T.accent : "transparent", color: restTimerSound === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               {opt.label}
             </button>
@@ -588,7 +559,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
               key={opt.key}
               onClick={() => { update("restTimerVibration", opt.key); triggerRestTimerVibration(opt.key); }}
               aria-pressed={restTimerVibration === opt.key}
-              style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 11, fontWeight: 600, border: "none", background: restTimerVibration === opt.key ? T.accent : "transparent", color: restTimerVibration === opt.key ? T.bg : T.dim }}
+              style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 600, border: "none", background: restTimerVibration === opt.key ? T.accent : "transparent", color: restTimerVibration === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               {opt.label}
             </button>
@@ -616,7 +587,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
         {restTimerNotificationEnabled && notifPermission === "granted" && (
           <button
             onClick={() => showRestTimerNotification()}
-            style={{ marginTop: 10, padding: "8px 0", width: "100%", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12, fontWeight: 600 }}
+            style={{ marginTop: 10, padding: "8px 0", width: "100%", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             Send a test notification
           </button>
@@ -664,9 +635,9 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
             <div style={{ color: T.dim, fontSize: 12.5, marginTop: 2 }}>Edit percentages for this count</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button onClick={() => setWarmupSchemeCount((c) => Math.max(1, c - 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+            <button onClick={() => setWarmupSchemeCount((c) => Math.max(1, c - 1))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>−</button>
             <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 20, textAlign: "center" }}>{warmupSchemeCount}</div>
-            <button onClick={() => setWarmupSchemeCount((c) => Math.min(6, c + 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+            <button onClick={() => setWarmupSchemeCount((c) => Math.min(6, c + 1))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>+</button>
           </div>
         </div>
 
@@ -674,9 +645,9 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
           <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ color: T.text, fontSize: 15, fontWeight: 600 }}>Warmup {i + 1}{i === percents.length - 1 ? " (last before top set)" : ""}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={() => updatePercent(i, p - 5)} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+              <button onClick={() => updatePercent(i, p - 5)} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>−</button>
               <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>{p}%</div>
-              <button onClick={() => updatePercent(i, p + 5)} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+              <button onClick={() => updatePercent(i, p + 5)} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>+</button>
             </div>
           </div>
         ))}
@@ -684,7 +655,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
         {isCustomized && (
           <button
             onClick={resetToRecommended}
-            style={{ marginTop: 8, padding: "8px 0", width: "100%", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12, fontWeight: 600 }}
+            style={{ marginTop: 8, padding: "8px 0", width: "100%", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             Reset to recommended ({defaultWarmupPercents(warmupSchemeCount).join("/")}%)
           </button>
@@ -706,12 +677,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
           </div>
           <div style={{ display: "flex", gap: 4 }}>
             {["lb", "kg"].map((u) => (
-              <button key={u} onClick={() => update("units", u)} style={{
-                minWidth: 52, minHeight: 40, padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                border: `1px solid ${units === u ? T.accent : T.line}`,
-                background: units === u ? "rgba(196,163,90,0.12)" : T.surface2,
-                color: units === u ? T.text : T.dim,
-              }}>{u}</button>
+              <button key={u} onClick={() => update("units", u)} style={{ minWidth: 52, minHeight: 40, padding: "8px 14px", fontSize: 14, fontWeight: 600, border: `1px solid ${units === u ? T.accent : T.line}`, background: units === u ? "rgba(196,163,90,0.12)" : T.surface2, color: units === u ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{u}</button>
             ))}
           </div>
         </div>
@@ -725,12 +691,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
           </div>
           <div style={{ display: "flex", gap: 4 }}>
             {[{ key: "12h", label: "12h" }, { key: "24h", label: "24h" }].map((opt) => (
-              <button key={opt.key} onClick={() => update("timeFormat", opt.key)} style={{
-                minWidth: 52, minHeight: 40, padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                border: `1px solid ${state.timeFormat === opt.key ? T.accent : T.line}`,
-                background: state.timeFormat === opt.key ? "rgba(196,163,90,0.12)" : T.surface2,
-                color: state.timeFormat === opt.key ? T.text : T.dim,
-              }}>{opt.label}</button>
+              <button key={opt.key} onClick={() => update("timeFormat", opt.key)} style={{ minWidth: 52, minHeight: 40, padding: "8px 14px", fontSize: 14, fontWeight: 600, border: `1px solid ${state.timeFormat === opt.key ? T.accent : T.line}`, background: state.timeFormat === opt.key ? "rgba(196,163,90,0.12)" : T.surface2, color: state.timeFormat === opt.key ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{opt.label}</button>
             ))}
           </div>
         </div>
@@ -762,11 +723,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={opt.key}
                 onClick={() => update("scoreDisplay", opt.key)}
                 aria-pressed={scoreDisplay === opt.key}
-                style={{
-                  flex: 1, padding: "11px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none",
-                  background: scoreDisplay === opt.key ? T.accent : "transparent",
-                  color: scoreDisplay === opt.key ? T.bg : T.dim,
-                }}
+                style={{ flex: 1, padding: "11px 0", fontSize: 14, fontWeight: 600, border: "none", background: scoreDisplay === opt.key ? T.accent : "transparent", color: scoreDisplay === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {opt.label}
               </button>
@@ -803,11 +760,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={name}
                 onClick={() => update("trainingIdeology", name)}
                 aria-pressed={trainingIdeology === name}
-                style={{
-                  flex: 1, padding: "11px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none",
-                  background: trainingIdeology === name ? T.accent : "transparent",
-                  color: trainingIdeology === name ? T.bg : T.dim,
-                }}
+                style={{ flex: 1, padding: "11px 0", fontSize: 14, fontWeight: 600, border: "none", background: trainingIdeology === name ? T.accent : "transparent", color: trainingIdeology === name ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {name}
               </button>
@@ -830,11 +783,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={opt.key}
                 onClick={() => update("weightEntryMode", opt.key)}
                 aria-pressed={weightEntryMode === opt.key}
-                style={{
-                  flex: 1, padding: "11px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none",
-                  background: weightEntryMode === opt.key ? T.accent : "transparent",
-                  color: weightEntryMode === opt.key ? T.bg : T.dim,
-                }}
+                style={{ flex: 1, padding: "11px 0", fontSize: 14, fontWeight: 600, border: "none", background: weightEntryMode === opt.key ? T.accent : "transparent", color: weightEntryMode === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {opt.label}
               </button>
@@ -855,11 +804,7 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 key={opt.key}
                 onClick={() => update("plate55Scope", opt.key)}
                 aria-pressed={state.plate55Scope === opt.key}
-                style={{
-                  flex: 1, padding: "11px 4px", borderRadius: 8, fontSize: 12.5, fontWeight: 600, border: "none",
-                  background: state.plate55Scope === opt.key ? T.accent : "transparent",
-                  color: state.plate55Scope === opt.key ? T.bg : T.dim,
-                }}
+                style={{ flex: 1, padding: "11px 4px", fontSize: 13.5, fontWeight: 600, border: "none", background: state.plate55Scope === opt.key ? T.accent : "transparent", color: state.plate55Scope === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {opt.label}
               </button>
@@ -890,11 +835,11 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 <div style={{ color: T.dim, fontSize: 12.5, marginTop: 2 }}>{warmupRestEnabled ? "Starts a new workout's rest countdown for working sets" : "Starts a new workout's rest countdown"}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={() => update("restSeconds", Math.max(15, restSeconds - 15))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+                <button onClick={() => update("restSeconds", Math.max(15, restSeconds - 15))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>−</button>
                 <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
                   {Math.floor(restSeconds / 60)}:{String(restSeconds % 60).padStart(2, "0")}
                 </div>
-                <button onClick={() => update("restSeconds", Math.min(600, restSeconds + 15))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+                <button onClick={() => update("restSeconds", Math.min(600, restSeconds + 15))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>+</button>
               </div>
             </div>
             {!controlled && (
@@ -912,11 +857,11 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 <div style={{ color: T.text, fontSize: 12.5, fontWeight: 600, marginBottom: 4 }}>Apply {Math.floor(restSeconds / 60)}:{String(restSeconds % 60).padStart(2, "0")} to every exercise?</div>
                 <div style={{ color: T.dim, fontSize: 11.5, marginBottom: 10, lineHeight: 1.4 }}>This overwrites any exercise-specific rest times you've set in this workout, including warmup rest. Can't be undone.</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setConfirmApplyAll(false)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Cancel</button>
+                  <button onClick={() => setConfirmApplyAll(false)} style={{ flex: 1, padding: "8px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13.5, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
                   <button
                     onClick={async () => { setApplyingAll(true); await onApplyRestToAll(restSeconds); setApplyingAll(false); setConfirmApplyAll(false); }}
                     disabled={applyingAll}
-                    style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.accent, color: T.bg, fontSize: 12.5, fontWeight: 700 }}
+                    style={{ flex: 1, padding: "8px 0", border: "none", background: T.accent, color: T.bg, fontSize: 13.5, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                   >
                     {applyingAll ? "Applying…" : "Apply to all"}
                   </button>
@@ -934,11 +879,11 @@ export default function Preferences({ user, value, onChange, fields, onApplyRest
                 <div style={{ color: T.dim, fontSize: 12.5, marginTop: 2 }}>Used after a set marked as warmup</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={() => update("warmupRestSeconds", Math.max(15, warmupRestSeconds - 15))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>−</button>
+                <button onClick={() => update("warmupRestSeconds", Math.max(15, warmupRestSeconds - 15))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>−</button>
                 <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, minWidth: 44, textAlign: "center" }}>
                   {Math.floor(warmupRestSeconds / 60)}:{String(warmupRestSeconds % 60).padStart(2, "0")}
                 </div>
-                <button onClick={() => update("warmupRestSeconds", Math.min(600, warmupRestSeconds + 15))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700 }}>+</button>
+                <button onClick={() => update("warmupRestSeconds", Math.min(600, warmupRestSeconds + 15))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, borderRadius: BTN_RADIUS }}>+</button>
               </div>
             </div>
             {!controlled && (

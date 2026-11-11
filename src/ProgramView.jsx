@@ -18,6 +18,7 @@ import { IconX, IconSearch } from "./Icons";
 import ProgramSetup from "./ProgramSetup";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -190,7 +191,7 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
             <div style={{ color: T.dim, fontSize: 13, marginBottom: 20 }}>
               Build a multi-week program and get a prescribed weight and reps for every session, with progression built in.
             </div>
-            <button onClick={() => setShowSetup(true)} style={{ padding: "12px 24px", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontWeight: 700, fontSize: 14 }}>
+            <button onClick={() => setShowSetup(true)} style={{ padding: "12px 24px", border: "none", background: T.accent, color: T.bg, fontWeight: 700, fontSize: 15, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               Build a Program
             </button>
           </div>
@@ -258,10 +259,10 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
                   <div style={{ border: `1px solid ${T.line}`, borderRadius: 10, padding: 12 }}>
                     <div style={{ color: T.dim, fontSize: 12, marginBottom: 10 }}>Abandon this program? Your progress on it won't be recoverable.</div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => setConfirmingAbandon(false)} disabled={abandoning} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 12, fontWeight: 600 }}>
+                      <button onClick={() => setConfirmingAbandon(false)} disabled={abandoning} style={{ flex: 1, padding: "9px 0", border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 13, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                         Keep going
                       </button>
-                      <button onClick={abandonProgram} disabled={abandoning} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 12, fontWeight: 600, opacity: abandoning ? 0.6 : 1 }}>
+                      <button onClick={abandonProgram} disabled={abandoning} style={{ flex: 1, padding: "9px 0", border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 13, fontWeight: 600, opacity: abandoning ? 0.6 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                         {abandoning ? "Abandoning…" : "Yes, abandon it"}
                       </button>
                     </div>
@@ -279,7 +280,7 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
                 <button
                   onClick={startSession}
                   disabled={starting || todaysExercises.length === 0}
-                  style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontWeight: 700, fontSize: 15, opacity: starting || todaysExercises.length === 0 ? 0.6 : 1 }}
+                  style={{ width: "100%", padding: 14, border: "none", background: T.accent, color: T.bg, fontWeight: 700, fontSize: 16, opacity: starting || todaysExercises.length === 0 ? 0.6 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                 >
                   {starting ? "Starting…" : "Start Today's Session"}
                 </button>

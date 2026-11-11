@@ -6,6 +6,7 @@ import { IconChevronUp, IconChevronDown } from "./Icons";
 import BodyMap from "./BodyMap";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   surface2: "#24282E",
   line: "#2F343B",
@@ -46,20 +47,7 @@ function FilterRow({ label, options, value, onChange }) {
             key={o.key}
             onClick={() => onChange(o.key)}
             aria-pressed={value === o.key}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              background: value === o.key ? T.accent : "transparent",
-              border: "none",
-              borderRadius: 7,
-              padding: "7px 0",
-              fontSize: 11.5,
-              fontWeight: 600,
-              color: value === o.key ? T.bg : T.dim,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
+            style={{ flex: 1, minWidth: 0, background: value === o.key ? T.accent : "transparent", border: "none", padding: "7px 0", fontSize: 12.5, fontWeight: 600, color: value === o.key ? T.bg : T.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             {o.label}
           </button>
@@ -163,10 +151,7 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
                 key={o.key}
                 onClick={() => setTab(o.key)}
                 aria-pressed={tab === o.key}
-                style={{
-                  flex: 1, background: tab === o.key ? T.accent : "transparent", border: "none", borderRadius: 7,
-                  padding: "6px 0", fontSize: 11.5, fontWeight: 600, color: tab === o.key ? T.bg : T.dim,
-                }}
+                style={{ flex: 1, background: tab === o.key ? T.accent : "transparent", border: "none", padding: "6px 0", fontSize: 12.5, fontWeight: 600, color: tab === o.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {o.label}
               </button>

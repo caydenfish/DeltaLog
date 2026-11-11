@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Logo from "./Logo";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   text: "#E6E3D9",
@@ -51,7 +52,7 @@ export default function LoadingScreen({ label }) {
       {stuck && (
         <button
           onClick={() => window.location.reload()}
-          style={{ position: "absolute", bottom: 32, background: tc("#1B1E23"), border: `1px solid ${tc("#2F343B")}`, color: T.dim, borderRadius: 999, padding: "10px 18px", fontSize: 13 }}
+          style={{ position: "absolute", bottom: 32, background: tc("#1B1E23"), border: `1px solid ${tc("#2F343B")}`, color: T.dim, padding: "10px 18px", fontSize: 14, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >
           Taking longer than usual — tap to reload
         </button>

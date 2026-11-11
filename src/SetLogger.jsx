@@ -292,6 +292,7 @@ const newItem = (hydrated, dbId, planned = defaultWorkingSets(), plannedWarmup =
 import ExercisePicker, { ExerciseRow, EQUIPMENT_LIST, exerciseMatchesOption, filterLibrary } from "./ExercisePicker";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS, BTN_HERO } from "./lib/buttons";
 // A left/right arrow selector standing in for a <select>, used anywhere
 // someone steps through a short, ordered list of options.
 function ArrowSelect({ options, value, onChange, renderLabel }) {
@@ -542,7 +543,7 @@ function HoldToConfirm({ label, onConfirm, duration = 1000, disabled }) {
       onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") stop(); }}
       disabled={disabled}
       aria-label={`${label} (press and hold)`}
-      style={{ position: "relative", width: "100%", overflow: "hidden", padding: "15px 0", borderRadius: 12, border: `1px solid ${T.accent}`, background: "none", color: T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
+      style={{ position: "relative", width: "100%", overflow: "hidden", padding: "15px 0", border: `1px solid ${T.accent}`, background: "none", color: T.bg, fontSize: 16, fontWeight: 700, whiteSpace: "nowrap", touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", ...BTN_TEXT, borderRadius: BTN_RADIUS }}
     >
       <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${progress * 100}%`, background: T.accent }} />
       <span style={{ position: "relative" }}>{label}</span>
@@ -1913,7 +1914,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <button
           onClick={() => updateMachineField(`${field}__text`, isText ? "" : "1")}
           title={isText ? "Switch to numeric" : "Switch to text, e.g. \"top notch\""}
-          style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: isText ? "rgba(196,163,90,0.12)" : "none", color: isText ? T.text : T.dim, fontSize: 10, fontWeight: 700, padding: 0, flexShrink: 0 }}
+          style={{ width: 24, height: 24, border: `1px solid ${T.line}`, background: isText ? "rgba(196,163,90,0.12)" : "none", color: isText ? T.text : T.dim, fontSize: 11, fontWeight: 700, padding: 0, flexShrink: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >{isText ? "Abc" : "#"}</button>
       </>
     );
@@ -2359,8 +2360,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
 
 
   const inputStyle = { width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontFamily: "'Chakra Petch', sans-serif", fontSize: 34, fontWeight: 600, textAlign: "center", padding: "6px 8px", outline: "none", boxSizing: "border-box" };
-  const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" };
-  const arrowBtn = (disabled) => ({ width: 34, height: 34, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: disabled ? tc("#3B4049") : T.dim, fontSize: 16, flexShrink: 0, cursor: disabled ? "default" : "pointer" });
+  const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 12, whiteSpace: "nowrap", ...BTN_TEXT };
+  const arrowBtn = (disabled) => ({ width: 34, height: 34, borderRadius: BTN_RADIUS, border: `1px solid ${T.line}`, background: T.surface, color: disabled ? tc("#3B4049") : T.dim, fontSize: 16, flexShrink: 0, cursor: disabled ? "default" : "pointer" });
   const fontImport = `@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Saira+Condensed:wght@500;600;700&family=Saira:wght@400;500;600;700&display=swap');`;
   const frame = { width: "100%", maxWidth: 400, background: T.bg, height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" };
   const outer = { height: "100dvh", background: "#0A0B0D", display: "flex", justifyContent: "center", overflow: "hidden" };
@@ -2415,7 +2416,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               {Object.keys(getSplits()).map((splitName) => {
                 const active = isSplitActive(splitName, genMuscles, muscleNameMode);
                 return (
-                  <button key={splitName} onClick={() => applySplit(splitName)} style={{ padding: "9px 2px", borderRadius: 10, fontSize: 12, fontWeight: 700, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(196,163,90,0.15)" : T.surface, color: active ? T.text : T.dim }}>
+                  <button key={splitName} onClick={() => applySplit(splitName)} style={{ padding: "9px 2px", fontSize: 13, fontWeight: 700, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(196,163,90,0.15)" : T.surface, color: active ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                     {splitName}
                   </button>
                 );
@@ -2429,7 +2430,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   {genMuscles.map((m) => {
                     const opt = optionFor(m);
                     return (
-                      <button key={m} onClick={() => toggleGenMuscle(m)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", borderRadius: 12, fontSize: 12, fontWeight: 600, border: `1px solid ${opt.color}`, background: `${opt.color}22`, color: T.text }}>
+                      <button key={m} onClick={() => toggleGenMuscle(m)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", fontSize: 13, fontWeight: 600, border: `1px solid ${opt.color}`, background: `${opt.color}22`, color: T.text, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                         {opt.label}
                       </button>
                     );
@@ -2449,7 +2450,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 20 }}>
               {muscleOptions.filter((o) => !genMuscles.includes(o.key)).filter((o) => !genMuscleQ || o.label.toLowerCase().includes(genMuscleQ)).map((o) => (
-                <button key={o.key} onClick={() => toggleGenMuscle(o.key)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", borderRadius: 12, fontSize: 12, fontWeight: 600, border: `1px solid ${T.line}`, background: T.surface, color: T.dim }}>
+                <button key={o.key} onClick={() => toggleGenMuscle(o.key)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 6px", fontSize: 13, fontWeight: 600, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                   {o.label}
                 </button>
               ))}
@@ -2513,15 +2514,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 </div>
                 <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Sets per exercise</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
-                  <button onClick={() => setGenSets(Math.max(1, genSets - 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 20, fontWeight: 700 }}>−</button>
+                  <button onClick={() => setGenSets(Math.max(1, genSets - 1))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 20, fontWeight: 700, borderRadius: BTN_RADIUS }}>−</button>
                   <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, minWidth: 28, textAlign: "center" }}>{genSets}</div>
-                  <button onClick={() => setGenSets(Math.min(8, genSets + 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 20, fontWeight: 700 }}>+</button>
+                  <button onClick={() => setGenSets(Math.min(8, genSets + 1))} style={{ width: 40, height: 40, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 20, fontWeight: 700, borderRadius: BTN_RADIUS }}>+</button>
                 </div>
               </>
             )}
           </div>
           <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface }}>
-            <button onClick={generateWorkout} disabled={genPicks.length === 0} style={{ width: "100%", padding: "15px 0", borderRadius: 14, border: "none", background: genPicks.length === 0 ? T.surface2 : T.accent, color: genPicks.length === 0 ? T.dim : T.bg, fontSize: 16, fontWeight: 700 }}>
+            <button onClick={generateWorkout} disabled={genPicks.length === 0} style={{ width: "100%", padding: "15px 0", border: "none", background: genPicks.length === 0 ? T.surface2 : T.accent, color: genPicks.length === 0 ? T.dim : T.bg, fontSize: 17, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               {genPicks.length === 0 ? "Pick at least one exercise" : `Generate workout (${genPicks.length} picked, ${genSets} sets each)`}
             </button>
             <div style={{ fontSize: 11, color: T.dim, textAlign: "center", marginTop: 8 }}>This replaces the current workout.</div>
@@ -2542,7 +2543,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 12px 10px", borderBottom: `1px solid ${T.line}` }}>
             <button onClick={handleManageBack} aria-label="Back" style={{ width: 44, height: 44, borderRadius: 10, background: "transparent", border: "none", color: T.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconChevronLeft size={22} /></button>
             <div style={{ flex: 1, minWidth: 0, fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Edit Workout</div>
-            <button onClick={finishEditing} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: tc("#C4A35A"), color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", flexShrink: 0 }}>Done</button>
+            <button onClick={finishEditing} style={{ height: 40, padding: "0 16px", border: "none", background: tc("#C4A35A"), color: T.bg, fontSize: 17, fontWeight: 700, flexShrink: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Done</button>
           </div>
           <div style={{ flex: 1, padding: 16, overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {workout.length === 0 && (
@@ -2553,7 +2554,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             {linkingFrom !== null && (
               <div style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 12, padding: "8px 8px 8px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Tap Superset on another exercise</span>
-                <button onClick={() => setLinkingFrom(null)} style={{ height: 36, padding: "0 12px", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 13, flexShrink: 0 }}>Cancel</button>
+                <button onClick={() => setLinkingFrom(null)} style={{ height: 36, padding: "0 12px", border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 14, flexShrink: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
               </div>
             )}
             {workout.map((w, i) => {
@@ -2601,7 +2602,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 </div>
               );
             })}
-            <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} style={{ marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", flexShrink: 0 }}>
+            <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} style={{ marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 18, fontWeight: 700, flexShrink: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               <IconPlus size={16} /> Add exercises
             </button>
           </div>
@@ -2672,12 +2673,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               <button
                 onClick={addSelectedExercises}
                 disabled={pickerMultiSelected.length === 0 || addingExercises}
-                style={{
-                  width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
-                  background: pickerMultiSelected.length === 0 || addingExercises ? T.surface2 : T.accent,
-                  color: pickerMultiSelected.length === 0 || addingExercises ? T.dim : T.bg,
-                  fontSize: 15, fontWeight: 700,
-                }}
+                style={{ width: "100%", padding: "14px 0", border: "none", background: pickerMultiSelected.length === 0 || addingExercises ? T.surface2 : T.accent, color: pickerMultiSelected.length === 0 || addingExercises ? T.dim : T.bg, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
               >
                 {addingExercises
                   ? "Adding…"
@@ -2708,8 +2704,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 })()}
               </div>
               <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setDiscardNewWorkoutConfirm(false)} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Keep going</button>
-                <button onClick={handleDiscardNewWorkout} disabled={discardingNewWorkout} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.danger, color: T.bg, fontSize: 15, fontWeight: 700 }}>
+                <button onClick={() => setDiscardNewWorkoutConfirm(false)} style={{ flex: 1, padding: "12px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 16, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Keep going</button>
+                <button onClick={handleDiscardNewWorkout} disabled={discardingNewWorkout} style={{ flex: 2, padding: "12px 0", border: "none", background: T.danger, color: T.bg, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                   {discardingNewWorkout ? "Deleting…" : "Yes, discard it"}
                 </button>
               </div>
@@ -2920,8 +2916,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             )}
           </div>
           <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface, display: "flex", gap: 8 }}>
-            <button onClick={() => setShowExportImage(true)} aria-label="Save as image" style={{ flex: "0 0 auto", padding: "0 16px", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><IconImage size={15} /> Image</button>
-            <button onClick={onFinished} style={{ flex: 1, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}>Done</button>
+            <button onClick={() => setShowExportImage(true)} aria-label="Save as image" style={{ flex: "0 0 auto", padding: "0 16px", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}><IconImage size={15} /> Image</button>
+            <button onClick={onFinished} style={{ flex: 1, padding: "15px 0", border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, ...BTN_HERO }}>Done</button>
           </div>
         </div>
         {showExportImage && (
@@ -2973,7 +2969,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
     const ciSets = allSets.flat();
     const ciVolume = Math.round(ciSets.filter((x) => !x.isWarmup).reduce((v, x) => v + x.weight * x.reps, 0));
     const ciMinutes = Math.max(1, Math.round((Date.now() - startTime.current) / 60000));
-    const stepBtn = { width: 44, height: 44, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 20, flexShrink: 0 };
+    const stepBtn = { width: 44, height: 44, borderRadius: BTN_RADIUS, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 20, flexShrink: 0 };
     const ciRow = { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, minHeight: 50, padding: "0 2px", background: "none", border: "none", borderBottom: `1px solid ${T.line}`, color: T.text, fontSize: 14.5, textAlign: "left" };
     return (
       <div style={outer}>
@@ -3081,7 +3077,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             </div>
           </div>
           <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface }}>
-            <button onClick={handleSavePostWorkout} disabled={savingSummary} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: savingSummary ? T.surface2 : T.accent, color: savingSummary ? T.dim : T.bg, fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
+            <button onClick={handleSavePostWorkout} disabled={savingSummary} style={{ width: "100%", padding: "16px 0", border: "none", background: savingSummary ? T.surface2 : T.accent, color: savingSummary ? T.dim : T.bg, fontSize: 18, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               {savingSummary ? "Saving…" : "See summary"}
             </button>
           </div>
@@ -3114,7 +3110,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{t.name}</div>
                   <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{t.exerciseCount} exercise{t.exerciseCount === 1 ? "" : "s"}</div>
                 </div>
-                <button onClick={() => loadTemplate(t)} disabled={loadingTemplateId === t.id} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>
+                <button onClick={() => loadTemplate(t)} disabled={loadingTemplateId === t.id} style={{ padding: "10px 16px", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                   {loadingTemplateId === t.id ? "Loading…" : "Use"}
                 </button>
               </div>
@@ -3137,8 +3133,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 24, textAlign: "center" }}>
             <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 28, fontWeight: 700, color: T.text }}>Start a workout</div>
             <div style={{ color: T.dim, fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>Build it yourself or start from one of your templates.</div>
-            <button onClick={() => { setManageFromScratch(true); setView("manage"); }} style={{ width: "100%", maxWidth: 280, marginTop: 24, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}>Start from scratch</button>
-            <button onClick={openTemplates} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 15 }}>Use a Template</button>
+            <button onClick={() => { setManageFromScratch(true); setView("manage"); }} style={{ width: "100%", maxWidth: 280, marginTop: 24, padding: "15px 0", border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, ...BTN_HERO }}>Start from scratch</button>
+            <button onClick={openTemplates} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 16, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Use a Template</button>
             <div style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, color: T.dim, fontSize: 15, opacity: 0.6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><IconBolt size={14} /> Generate workout <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, border: `1px solid ${T.line}`, borderRadius: 999, padding: "2px 7px" }}>Coming soon</span></div>
             {savedWorkout && (
               <button onClick={handleResumePreviousSaved} disabled={resumingSaved} style={{ width: "100%", maxWidth: 280, marginTop: 18, padding: "13px 0", borderRadius: 12, border: `1px dashed ${T.accent}`, background: "rgba(196,163,90,0.08)", color: T.accent, fontSize: 15, fontWeight: 600 }}>
@@ -3345,8 +3341,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     <span style={{ fontSize: 13, color: T.text }}>Include current notes & setup for each exercise</span>
                   </button>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => { setShowSaveTemplate(false); setTemplateName(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
-                    <button onClick={handleSaveTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : T.bg, fontSize: 14, fontWeight: 700 }}>
+                    <button onClick={() => { setShowSaveTemplate(false); setTemplateName(""); }} style={{ flex: 1, padding: "10px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+                    <button onClick={handleSaveTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                       {savingTemplate ? "Saving…" : "Save Template"}
                     </button>
                   </div>
@@ -3373,14 +3369,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                           Logged <b style={{ color: T.text }}>{f.weight} {unit} × {f.reps}</b>, {f.direction === "high" ? "well above" : "well below"} your usual ~{f.avg} {unit}
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => dismissFlag(f)} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Looks right</button>
-                          <button onClick={() => editFlaggedSet(f)} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.1)", color: T.accent, fontSize: 12.5, fontWeight: 700 }}>Edit set</button>
-                          <button onClick={() => deleteFlaggedSet(f)} aria-label="Delete set" title="Delete set" style={{ padding: "7px 10px", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}><IconTrash size={13} /></button>
+                          <button onClick={() => dismissFlag(f)} style={{ flex: 1, padding: "7px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13.5, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Looks right</button>
+                          <button onClick={() => editFlaggedSet(f)} style={{ flex: 1, padding: "7px 0", border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.1)", color: T.accent, fontSize: 13.5, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Edit set</button>
+                          <button onClick={() => deleteFlaggedSet(f)} aria-label="Delete set" title="Delete set" style={{ padding: "7px 10px", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5, borderRadius: BTN_RADIUS }}><IconTrash size={13} /></button>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <button onClick={handleConfirmFinish} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>
+                  <button onClick={handleConfirmFinish} style={{ width: "100%", padding: "12px 0", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                     Finish workout anyway
                   </button>
                 </div>
@@ -3389,9 +3385,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               {!finishConfirm ? (
                 <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                   {isPaused ? (
-                    <button onClick={handleResumeFromPause} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>Resume</button>
+                    <button onClick={handleResumeFromPause} style={{ flex: 1, padding: "15px 0", border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Resume</button>
                   ) : (
-                    <button onClick={handlePause} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap" }}>Pause</button>
+                    <button onClick={handlePause} style={{ flex: 1, padding: "15px 0", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 16, fontWeight: 600, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Pause</button>
                   )}
                   <button onClick={() => { setFinishConfirm(true); setCancelConfirm(false); }} style={{ flex: 1.3, padding: "15px 0", borderRadius: 12, border: "none", background: T.green, color: T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>Finish</button>
                 </div>
@@ -3402,8 +3398,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     {allSets.flat().length} set{allSets.flat().length === 1 ? "" : "s"} logged. You can still review it after, but it'll be marked complete.
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => { setFinishConfirm(false); setOutlierReview(null); }} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
-                    <button onClick={handleFinishClick} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Yes, finish</button>
+                    <button onClick={() => { setFinishConfirm(false); setOutlierReview(null); }} style={{ flex: 1, padding: "12px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 16, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+                    <button onClick={handleFinishClick} style={{ flex: 2, padding: "12px 0", border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, ...BTN_HERO }}>Yes, finish</button>
                   </div>
                 </div>
               )}
@@ -3467,19 +3463,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           {!wizardOpen && (
           <>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "stretch" }}>
-            <button onClick={() => { setShowIdeology(!showIdeology); setShowTargetInfo(false); }} style={{ flex: "0 1 auto", minHeight: 40, fontSize: 12, color: T.text, background: T.surface2, border: `1px solid ${showIdeology ? T.accent : T.line}`, borderRadius: 999, padding: "3px 10px", display: "flex", alignItems: "center", gap: 5 }}>
+            <button onClick={() => { setShowIdeology(!showIdeology); setShowTargetInfo(false); }} style={{ flex: "0 1 auto", minHeight: 40, fontSize: 13, color: T.text, background: T.surface2, border: `1px solid ${showIdeology ? T.accent : T.line}`, padding: "3px 10px", display: "flex", alignItems: "center", gap: 5, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               {hasScheme ? <>Set {setNum} · {formatRange(setRange)} reps</> : <>{effIdeology} · {ideo.low}-{ideo.high} reps</>}
               {(ex.ideology || hasScheme) && <span style={{ width: 5, height: 5, borderRadius: 3, background: T.accent, display: "inline-block" }} title="Override for this exercise" />}
               <span style={{ fontSize: 9, color: T.dim }}>▾</span>
             </button>
           <button
             onClick={() => setShowTargetInfo(!showTargetInfo)}
-            style={{
-              flex: "1 1 150px", minWidth: 0, padding: "8px 12px", borderRadius: 12, flexWrap: "wrap",
-              border: `1px solid ${nextWarmupIndex != null ? tc("#D9894A") : showTargetInfo ? T.accent : T.line}`,
-              background: nextWarmupIndex != null ? "rgba(217,137,74,0.12)" : "rgba(196,163,90,0.08)",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            }}
+            style={{ flex: "1 1 150px", minWidth: 0, padding: "8px 12px", flexWrap: "wrap", border: `1px solid ${nextWarmupIndex != null ? tc("#D9894A") : showTargetInfo ? T.accent : T.line}`, background: nextWarmupIndex != null ? "rgba(217,137,74,0.12)" : "rgba(196,163,90,0.08)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             <span style={{ fontSize: 11, color: nextWarmupIndex != null ? tc("#D9894A") : T.dim, fontWeight: nextWarmupIndex != null ? 700 : 400 }}>
               {nextWarmupIndex != null ? `Warmup ${nextWarmupIndex + 1} of ${ex.plannedWarmup}` : "Target"}
@@ -3560,7 +3551,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   {machineSetupSummary && <button onClick={clearMachineSetup} style={{ background: "none", border: "none", color: T.accent, fontSize: 11 }}>Clear</button>}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                  <button onClick={() => setActiveMachine("")} style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${!activeMachine ? T.accent : T.line}`, background: !activeMachine ? "rgba(196,163,90,0.12)" : T.surface, color: !activeMachine ? T.text : T.dim }}>Default</button>
+                  <button onClick={() => setActiveMachine("")} style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", border: `1px solid ${!activeMachine ? T.accent : T.line}`, background: !activeMachine ? "rgba(196,163,90,0.12)" : T.surface, color: !activeMachine ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Default</button>
                   {savedMachines.map((m) =>
                     renamingMachine === m ? (
                       <div key={m} style={{ display: "flex", gap: 4, alignItems: "center" }}>
@@ -3577,7 +3568,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                         <button onClick={() => { if (renameDraft.trim()) { renameMachine(m, renameDraft); } setRenamingMachine(null); }} aria-label="Save name" style={{ background: "none", border: "none", color: T.accent, fontSize: 11 }}><IconCheck size={11} /></button>
                       </div>
                     ) : (
-                      <button key={m} onClick={() => setActiveMachine(m)} onDoubleClick={() => { setRenamingMachine(m); setRenameDraft(m); }} title="Double-tap to rename" style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${activeMachine === m ? T.accent : T.line}`, background: activeMachine === m ? "rgba(196,163,90,0.12)" : T.surface, color: activeMachine === m ? T.text : T.dim, display: "flex", alignItems: "center", gap: 5 }}>
+                      <button key={m} onClick={() => setActiveMachine(m)} onDoubleClick={() => { setRenamingMachine(m); setRenameDraft(m); }} title="Double-tap to rename" style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", border: `1px solid ${activeMachine === m ? T.accent : T.line}`, background: activeMachine === m ? "rgba(196,163,90,0.12)" : T.surface, color: activeMachine === m ? T.text : T.dim, display: "flex", alignItems: "center", gap: 5, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                         {m}
                         <span onClick={(e) => { e.stopPropagation(); removeMachine(m); }} role="button" aria-label={`Remove ${m}`} style={{ color: T.dim, fontSize: 10 }}>✕</span>
                       </button>
@@ -3604,16 +3595,16 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                       <button
                         onClick={() => { if (newMachineName.trim()) { addMachine(newMachineName); setAddingMachine(false); } }}
                         disabled={!newMachineName.trim()}
-                        style={{ padding: "0 14px", borderRadius: 8, border: "none", background: newMachineName.trim() ? T.accent : T.surface2, color: newMachineName.trim() ? T.bg : T.dim, fontSize: 13, fontWeight: 700 }}
+                        style={{ padding: "0 14px", border: "none", background: newMachineName.trim() ? T.accent : T.surface2, color: newMachineName.trim() ? T.bg : T.dim, fontSize: 14, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                       >Add</button>
-                      <button onClick={() => setAddingMachine(false)} aria-label="Cancel" style={{ padding: "0 10px", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13 }}>✕</button>
+                      <button onClick={() => setAddingMachine(false)} aria-label="Cancel" style={{ padding: "0 10px", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, borderRadius: BTN_RADIUS }}>✕</button>
                     </div>
                     {knownMachineNames.filter((n) => !savedMachines.includes(n) && n.toLowerCase().includes(newMachineName.trim().toLowerCase())).length > 0 && (
                       <div style={{ marginTop: 8 }}>
                         <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Previously used</div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                           {knownMachineNames.filter((n) => !savedMachines.includes(n) && n.toLowerCase().includes(newMachineName.trim().toLowerCase())).map((n) => (
-                            <button key={n} onClick={() => { addMachine(n); setAddingMachine(false); }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface2, color: T.text }}>{n}</button>
+                            <button key={n} onClick={() => { addMachine(n); setAddingMachine(false); }} style={{ fontSize: 12, padding: "4px 10px", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{n}</button>
                           ))}
                         </div>
                       </div>
@@ -3717,7 +3708,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                           deleteLoggedSets(exIdx, selectedForDelete);
                           setDeleteMode(false); setSelectedForDelete(new Set()); setConfirmDeleteSets(false);
                         }}
-                        style={{ ...smallBtn, background: T.accent, color: T.bg, borderColor: T.accent }}
+                        style={{ ...smallBtn, background: T.accent, color: T.bg, borderColor: T.accent, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                       >
                         Delete
                       </button>
@@ -3948,8 +3939,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 // you can read at arm's length. Tapping a number opens the
                 // keypad (auto-replace, v1.13.5); steppers sit around it at
                 // full 44px touch size.
-                const stepBtn = { flex: 1, minWidth: 0, height: 44, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 };
-                const roundBtn = { width: 48, height: 48, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 22, fontWeight: 500, flexShrink: 0 };
+                const stepBtn = { flex: 1, minWidth: 0, height: 44, borderRadius: BTN_RADIUS, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 };
+                const roundBtn = { width: 48, height: 48, borderRadius: BTN_RADIUS, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 22, fontWeight: 500, flexShrink: 0 };
                 const bigNum = (missing) => ({ width: "100%", background: "none", border: `1px solid ${missing ? T.accent : "transparent"}`, borderRadius: 12, color: T.text, fontFamily: "'Chakra Petch', sans-serif", fontSize: 52, fontWeight: 700, lineHeight: 1.05, textAlign: "center", padding: "2px 0", cursor: "pointer", outline: "none", boxShadow: missing ? "0 0 0 2px rgba(196,163,90,0.25)" : "none" });
                 return (
                   <>
@@ -4030,15 +4021,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                           <button
                             key={i}
                             onClick={() => (k === "⌫" ? backspace() : digit(k))}
-                            style={{ padding: "13px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}
+                            style={{ padding: "13px 0", border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 19, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                           >
                             {k}
                           </button>
                         ))}
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => setExactEntryField(null)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
-                        <button onClick={commit} style={{ flex: 2, padding: "12px 0", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Done</button>
+                        <button onClick={() => setExactEntryField(null)} style={{ flex: 1, padding: "12px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+                        <button onClick={commit} style={{ flex: 2, padding: "12px 0", border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Done</button>
                       </div>
                     </div>
                   </div>
@@ -4062,7 +4053,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     </div>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       {BAR_PRESETS[unit].map((b) => (
-                        <button key={b} onClick={() => { setBarMode(b); setWeight(String(b + 2 * stackSum)); saveStartingWeight(b); }} style={{ padding: "4px 12px", borderRadius: 8, fontSize: 12, border: `1px solid ${barMode === b ? T.accent : T.line}`, background: barMode === b ? "rgba(196,163,90,0.12)" : "none", color: barMode === b ? T.text : T.dim }}>{b} {unit}</button>
+                        <button key={b} onClick={() => { setBarMode(b); setWeight(String(b + 2 * stackSum)); saveStartingWeight(b); }} style={{ padding: "4px 12px", fontSize: 13, border: `1px solid ${barMode === b ? T.accent : T.line}`, background: barMode === b ? "rgba(196,163,90,0.12)" : "none", color: barMode === b ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{b} {unit}</button>
                       ))}
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <input inputMode="decimal" placeholder="Custom" value={customBar}
@@ -4114,12 +4105,12 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {[0, 1, 2, 3, 4].map((v) => (
-                    <button key={v} onClick={() => { setRir(v); setHighlightMissing((h) => ({ ...h, rir: false })); }} style={{ flex: 1, padding: "12px 0", borderRadius: 10, fontSize: 17, fontWeight: 700, border: `1px solid ${rir === v ? T.accent : (highlightMissing.rir ? T.accent : T.line)}`, background: rir === v ? "rgba(196,163,90,0.15)" : T.surface2, color: rir === v ? T.text : T.dim }}>{v === 4 ? "4+" : v}</button>
+                    <button key={v} onClick={() => { setRir(v); setHighlightMissing((h) => ({ ...h, rir: false })); }} style={{ flex: 1, padding: "12px 0", fontSize: 18, fontWeight: 700, border: `1px solid ${rir === v ? T.accent : (highlightMissing.rir ? T.accent : T.line)}`, background: rir === v ? "rgba(196,163,90,0.15)" : T.surface2, color: rir === v ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{v === 4 ? "4+" : v}</button>
                   ))}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={saveSet} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}>
+                <button onClick={saveSet} style={{ flex: 1, padding: "15px 0", border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                   {editIndex !== null ? "Save changes" : "Log set"}
                 </button>
               </div>

@@ -6,6 +6,7 @@ import { getSplits } from "./lib/splits";
 import { IconStar, IconCheck, IconSearch, IconX, IconClock, IconBody, IconBarbell, IconRefresh, IconSuperset, IconPencil, IconFilter, IconChevronLeft, IconChevronRight, IconPlus } from "./Icons";
 import ExerciseThumb from "./ExerciseThumb";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 // The equipment filter's fixed set of buckets — see deriveEquipmentBucket
 // in lib/queries.js for how a raw equipment list gets mapped onto one of these.
 export const EQUIPMENT_LIST = ["Barbell", "Dumbbell", "Cable", "Machine", "Kettlebell", "Bodyweight", "Other"];
@@ -191,7 +192,7 @@ function SectionHeader({ label, count, color }) {
 function Chip({ label, active, color, onClick, square }) {
   const c = color || T.accent;
   return (
-    <button onClick={onClick} style={{ flexShrink: 0, height: 36, padding: "0 14px", borderRadius: square ? 10 : 999, border: `1px solid ${active ? c : T.line}`, background: active ? `${c}2E` : T.surface, color: active ? T.text : SOFT, fontSize: 14, fontWeight: active ? 600 : 500, whiteSpace: "nowrap" }}>
+    <button onClick={onClick} style={{ flexShrink: 0, height: 36, padding: "0 14px", border: `1px solid ${active ? c : T.line}`, background: active ? `${c}2E` : T.surface, color: active ? T.text : SOFT, fontSize: 15, fontWeight: active ? 600 : 500, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
       {label}
     </button>
   );
@@ -452,7 +453,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
     return (
       <>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <button onClick={back} aria-label="Back" style={{ width: 40, height: 40, borderRadius: 10, background: T.surface, border: `1px solid ${T.line}`, color: T.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <button onClick={back} aria-label="Back" style={{ width: 40, height: 40, background: T.surface, border: `1px solid ${T.line}`, color: T.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, borderRadius: BTN_RADIUS }}>
             <IconChevronLeft size={18} />
           </button>
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
@@ -512,7 +513,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
                 const on = v.key === current;
                 const c = v.color || T.accent;
                 return (
-                  <button key={v.key} onClick={() => openValue(v.key)} style={{ display: "flex", alignItems: "center", gap: 6, height: 40, padding: "0 10px", borderRadius: 10, border: `1px solid ${on ? c : T.line}`, background: on ? `${c}2E` : T.surface, color: on ? T.text : SOFT, fontSize: 13, fontWeight: 600, minWidth: 0 }}>
+                  <button key={v.key} onClick={() => openValue(v.key)} style={{ display: "flex", alignItems: "center", gap: 6, height: 40, padding: "0 10px", border: `1px solid ${on ? c : T.line}`, background: on ? `${c}2E` : T.surface, color: on ? T.text : SOFT, fontSize: 14, fontWeight: 600, minWidth: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                     {v.color && <span style={{ width: 8, height: 8, borderRadius: 4, background: v.color, flexShrink: 0 }} />}
                     <span style={ONE_LINE}>{v.label}</span>
                   </button>
@@ -606,7 +607,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
           {q && <button onClick={() => onSearchChange("")} aria-label="Clear search" style={{ width: 28, height: 28, border: "none", background: "none", color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><IconX size={14} /></button>}
         </label>
         {onToggleFilters && (
-          <button onClick={onToggleFilters} aria-label="Filters" style={{ position: "relative", width: 46, height: 46, borderRadius: 12, background: T.surface, border: `1px solid ${activeCount ? T.accent : T.line}`, color: activeCount ? T.text : T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <button onClick={onToggleFilters} aria-label="Filters" style={{ position: "relative", width: 46, height: 46, background: T.surface, border: `1px solid ${activeCount ? T.accent : T.line}`, color: activeCount ? T.text : T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
             <IconFilter size={17} />
             {activeCount > 0 && <span style={{ position: "absolute", top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, background: T.accent, color: T.bg, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>}
           </button>

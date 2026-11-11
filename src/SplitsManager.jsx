@@ -6,6 +6,7 @@ import { IconX } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -20,8 +21,7 @@ const T = themed({
   spruce: "#3F6E55",
 });
 
-const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 };
-
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 13, ...BTN_TEXT };
 // Admin-only CRUD for which muscle_groups belong to each split (Push,
 // Pull, Legs, etc), plus which Regions within an included Category are
 // carved back out (split_muscle_exclusions, migration_064) -- e.g. Push
@@ -156,7 +156,7 @@ export default function SplitsManager({ onClose }) {
                             key={g.key}
                             disabled={busy}
                             onClick={() => run(() => (active ? removeSplitMuscle(s.id, g.key) : addSplitMuscle(s.id, g.key)))}
-                            style={{ padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(196,163,90,0.15)" : T.surface2, color: active ? T.text : T.dim }}
+                            style={{ padding: "6px 11px", fontSize: 13, fontWeight: 600, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(196,163,90,0.15)" : T.surface2, color: active ? T.text : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                           >
                             {muscleLabel(g.key, "generic")}
                           </button>
@@ -181,7 +181,7 @@ export default function SplitsManager({ onClose }) {
                                   key={d.key}
                                   disabled={busy}
                                   onClick={() => run(() => (excluded ? removeSplitExclusion(s.id, d.key) : addSplitExclusion(s.id, d.key)))}
-                                  style={{ padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${excluded ? T.accent : T.line}`, background: excluded ? "rgba(196,163,90,0.15)" : "transparent", color: excluded ? T.text : T.dim, textDecoration: excluded ? "line-through" : "none" }}
+                                  style={{ padding: "6px 11px", fontSize: 13, fontWeight: 600, border: `1px solid ${excluded ? T.accent : T.line}`, background: excluded ? "rgba(196,163,90,0.15)" : "transparent", color: excluded ? T.text : T.dim, textDecoration: excluded ? "line-through" : "none", ...BTN_TEXT, borderRadius: BTN_RADIUS }}
                                 >
                                   {d.label}
                                 </button>

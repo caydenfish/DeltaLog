@@ -15,6 +15,7 @@ import {
 } from "./lib/queries";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 // Labels a sorted sets array for display: warmup sets count independently
 // as W1, W2… and the first working set restarts the count at 1, mirroring
 // the same convention used in the live workout view.
@@ -39,10 +40,9 @@ const T = themed({
 });
 
 const prTag = { fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(196,163,90,0.18)", color: tc("#C4A35A"), whiteSpace: "nowrap", flexShrink: 0 };
-const actionBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" };
+const actionBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px 0", borderRadius: BTN_RADIUS, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", ...BTN_TEXT };
 const menuItem = { display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: tc("#E6E3D9"), fontSize: 14, padding: "10px 12px", borderRadius: 8, whiteSpace: "nowrap" };
-const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13, whiteSpace: "nowrap" };
-
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 14, whiteSpace: "nowrap", ...BTN_TEXT };
 function workoutVolume(w) {
   return Math.round((w.workout_exercises || []).reduce(
     (sum, we) => sum + (we.sets || []).filter((set) => !set.is_warmup).reduce((s, set) => s + (set.weight || 0) * (set.reps || 0), 0),
@@ -603,8 +603,8 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
             </label>
           </div>
           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", marginTop: 8 }}>
-            <button onClick={() => setEditingTiming(false)} disabled={savingTiming} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "8px 10px", fontSize: 12, whiteSpace: "nowrap" }}>Cancel</button>
-            <button onClick={saveTimingEdit} disabled={savingTiming} style={{ background: T.accent, border: "none", color: T.bg, borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>{savingTiming ? "…" : "Save"}</button>
+            <button onClick={() => setEditingTiming(false)} disabled={savingTiming} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "8px 10px", fontSize: 13, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+            <button onClick={saveTimingEdit} disabled={savingTiming} style={{ background: T.accent, border: "none", color: T.bg, padding: "8px 10px", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{savingTiming ? "…" : "Save"}</button>
           </div>
           {timingError && <div style={{ color: T.danger, fontSize: 11, marginTop: 6 }}>{timingError}</div>}
         </div>
@@ -622,8 +622,8 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
               placeholder="e.g. 178"
               style={{ flex: 1, minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 10px", outline: "none", boxSizing: "border-box" }}
             />
-            <button onClick={() => setEditingBodyWeight(false)} disabled={savingBodyWeight} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "8px 10px", fontSize: 12 }}>Cancel</button>
-            <button onClick={saveBodyWeightEdit} disabled={savingBodyWeight} style={{ background: T.accent, border: "none", color: T.bg, borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 700 }}>{savingBodyWeight ? "…" : "Save"}</button>
+            <button onClick={() => setEditingBodyWeight(false)} disabled={savingBodyWeight} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "8px 10px", fontSize: 13, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+            <button onClick={saveBodyWeightEdit} disabled={savingBodyWeight} style={{ background: T.accent, border: "none", color: T.bg, padding: "8px 10px", fontSize: 13, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{savingBodyWeight ? "…" : "Save"}</button>
           </div>
           {bodyWeightError && <div style={{ color: T.danger, fontSize: 11, marginTop: 6 }}>{bodyWeightError}</div>}
         </div>
@@ -686,8 +686,8 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
               <div style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 8, padding: 10, marginBottom: 8 }}>
                 <div style={{ color: T.text, fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>Remove {ex.name || ex.short} and all its logged sets from this workout?</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setRemovingWeId(null)} disabled={removingBusy} style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12 }}>Cancel</button>
-                  <button onClick={confirmRemoveExercise} disabled={removingBusy} style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12, fontWeight: 700 }}>{removingBusy ? "…" : "Remove"}</button>
+                  <button onClick={() => setRemovingWeId(null)} disabled={removingBusy} style={{ flex: 1, padding: "6px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+                  <button onClick={confirmRemoveExercise} disabled={removingBusy} style={{ flex: 1, padding: "6px 0", border: "none", background: T.danger, color: T.bg, fontSize: 13, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{removingBusy ? "…" : "Remove"}</button>
                 </div>
               </div>
             )}
@@ -709,8 +709,8 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
                           <input inputMode="numeric" value={editReps} onChange={(e) => setEditReps(e.target.value.replace(/[^0-9]/g, ""))} placeholder="reps" style={{ width: 44, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 6, color: T.text, fontSize: 13, padding: "4px 6px", outline: "none", textAlign: "center" }} />
                           <input inputMode="numeric" value={editRir} onChange={(e) => setEditRir(e.target.value.replace(/[^0-9]/g, ""))} placeholder="RIR" style={{ width: 40, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 6, color: T.text, fontSize: 13, padding: "4px 6px", outline: "none", textAlign: "center" }} />
                           <div style={{ flex: 1 }} />
-                          <button onClick={() => setEditing(null)} disabled={saving} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "4px 8px", fontSize: 12 }}>Cancel</button>
-                          <button onClick={saveEdit} disabled={saving} style={{ background: T.accent, border: "none", color: T.bg, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 700 }}>{saving ? "…" : "Save"}</button>
+                          <button onClick={() => setEditing(null)} disabled={saving} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "4px 8px", fontSize: 13, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+                          <button onClick={saveEdit} disabled={saving} style={{ background: T.accent, border: "none", color: T.bg, padding: "4px 8px", fontSize: 13, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{saving ? "…" : "Save"}</button>
                         </div>
                         {saveError && <div style={{ color: T.danger, fontSize: 11 }}>{saveError}</div>}
                       </div>
@@ -720,8 +720,8 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
                     return (
                       <div key={j} style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 8, padding: 8, display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: T.text, fontSize: 12.5, flex: 1 }}>Remove set {labels[j]}?</span>
-                        <button onClick={() => setRemovingSet(null)} disabled={removingBusy} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "4px 8px", fontSize: 12 }}>Cancel</button>
-                        <button onClick={confirmRemoveSet} disabled={removingBusy} style={{ background: T.danger, border: "none", color: T.bg, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 700 }}>{removingBusy ? "…" : "Remove"}</button>
+                        <button onClick={() => setRemovingSet(null)} disabled={removingBusy} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "4px 8px", fontSize: 13, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+                        <button onClick={confirmRemoveSet} disabled={removingBusy} style={{ background: T.danger, border: "none", color: T.bg, padding: "4px 8px", fontSize: 13, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{removingBusy ? "…" : "Remove"}</button>
                       </div>
                     );
                   }
@@ -766,8 +766,8 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
                   <input inputMode="numeric" value={editReps} onChange={(e) => setEditReps(e.target.value.replace(/[^0-9]/g, ""))} placeholder="reps" style={{ width: 44, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 6, color: T.text, fontSize: 13, padding: "4px 6px", outline: "none", textAlign: "center" }} />
                   <input inputMode="numeric" value={editRir} onChange={(e) => setEditRir(e.target.value.replace(/[^0-9]/g, ""))} placeholder="RIR" style={{ width: 40, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 6, color: T.text, fontSize: 13, padding: "4px 6px", outline: "none", textAlign: "center" }} />
                   <div style={{ flex: 1 }} />
-                  <button onClick={() => setAddingSetFor(null)} disabled={saving} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "4px 8px", fontSize: 12 }}>Cancel</button>
-                  <button onClick={() => saveNewSet(we)} disabled={saving} style={{ background: T.accent, border: "none", color: T.bg, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 700 }}>{saving ? "…" : "Add"}</button>
+                  <button onClick={() => setAddingSetFor(null)} disabled={saving} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "4px 8px", fontSize: 13, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+                  <button onClick={() => saveNewSet(we)} disabled={saving} style={{ background: T.accent, border: "none", color: T.bg, padding: "4px 8px", fontSize: 13, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>{saving ? "…" : "Add"}</button>
                 </div>
                 {saveError && <div style={{ color: T.danger, fontSize: 11 }}>{saveError}</div>}
               </div>
@@ -785,7 +785,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
         <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Add exercise</div>
-            <button onClick={() => { setShowAddExercise(false); setAddExerciseSearch(""); }} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "2px 8px", fontSize: 12 }}><IconX size={12} /></button>
+            <button onClick={() => { setShowAddExercise(false); setAddExerciseSearch(""); }} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, padding: "2px 8px", fontSize: 12, borderRadius: BTN_RADIUS }}><IconX size={12} /></button>
           </div>
           <input
             value={addExerciseSearch}
@@ -819,7 +819,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
       ))}
 
       {editMode && (
-        <button onClick={onRequestDelete} style={{ width: "100%", marginTop: 10, padding: "12px 0", borderRadius: 10, border: `1px solid ${T.danger}`, background: "none", color: T.danger, fontSize: 13, fontWeight: 600 }}>Delete entire workout</button>
+        <button onClick={onRequestDelete} style={{ width: "100%", marginTop: 10, padding: "12px 0", border: `1px solid ${T.danger}`, background: "none", color: T.danger, fontSize: 14, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Delete entire workout</button>
       )}
 
       {workout.session_notes && (
@@ -838,7 +838,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
             onClick={() => onRepeat && !repeatBlocked && onRepeat(workout)}
             disabled={repeatBlocked}
             title={repeatBlocked ? "Finish your current workout first" : undefined}
-            style={{ flex: 1.4, padding: "12px 0", borderRadius: 12, border: "none", background: repeatBlocked ? T.surface2 : T.accent, color: repeatBlocked ? T.dim : T.bg, fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}
+            style={{ flex: 1.4, padding: "12px 0", border: "none", background: repeatBlocked ? T.surface2 : T.accent, color: repeatBlocked ? T.dim : T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}
           >
             {repeatBlocked ? "Workout in progress" : "Do again"}
           </button>
@@ -867,9 +867,9 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
             <div style={{ color: T.dim, fontSize: 13, marginBottom: 12 }}>Anyone with this link can view this workout — no account needed.</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 16, wordBreak: "break-all" }}>
               <div style={{ fontSize: 12, color: T.text, flex: 1 }}>{shareUrl}</div>
-              <button onClick={() => navigator.clipboard?.writeText(shareUrl)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.text, borderRadius: 6, padding: "4px 8px", fontSize: 12, flexShrink: 0 }}>Copy</button>
+              <button onClick={() => navigator.clipboard?.writeText(shareUrl)} style={{ background: "none", border: `1px solid ${T.line}`, color: T.text, padding: "4px 8px", fontSize: 13, flexShrink: 0, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Copy</button>
             </div>
-            <button onClick={() => setShareUrl(null)} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>Done</button>
+            <button onClick={() => setShareUrl(null)} style={{ width: "100%", padding: "12px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Done</button>
           </div>
         </div>
       )}
@@ -889,8 +889,8 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
             />
             {templateSaveError && <div style={{ color: T.danger, fontSize: 12, marginBottom: 10 }}>{templateSaveError}</div>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setShowSaveTemplate(false); setTemplateName(""); setTemplateSaveError(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
-              <button onClick={handleSaveAsTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : T.bg, fontSize: 14, fontWeight: 700 }}>
+              <button onClick={() => { setShowSaveTemplate(false); setTemplateName(""); setTemplateSaveError(null); }} style={{ flex: 1, padding: "10px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+              <button onClick={handleSaveAsTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 {savingTemplate ? "Saving…" : templateSaved ? <><IconCheck size={13} /> Saved</> : "Save Template"}
               </button>
             </div>
@@ -998,7 +998,7 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
             {selectMode ? `${checkedIds.size} SELECTED` : selected && !wide ? "WORKOUT" : dateFilterLabel || "HISTORY"}
           </div>
           {selected ? (
-            <button onClick={() => setEditMode(!editMode)} aria-label={editMode ? "Done editing" : "Edit workout"} style={{ ...smallBtn, color: editMode ? T.bg : T.text, background: editMode ? T.accent : "none", borderColor: editMode ? T.accent : T.line }}>
+            <button onClick={() => setEditMode(!editMode)} aria-label={editMode ? "Done editing" : "Edit workout"} style={{ ...smallBtn, color: editMode ? T.bg : T.text, background: editMode ? T.accent : "none", borderColor: editMode ? T.accent : T.line, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
               {editMode ? "Done" : "Edit"}
             </button>
           ) : !selectMode && sorted.length > 0 ? (
@@ -1017,8 +1017,8 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
               This permanently removes {confirmDeleteIds.length === 1 ? "the workout and every set logged in it" : "these workouts and every set logged in them"}. Can't be undone.
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setConfirmDeleteIds(null)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Cancel</button>
-              <button onClick={() => handleDeleteMany(confirmDeleteIds)} disabled={deleting} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12.5, fontWeight: 700 }}>
+              <button onClick={() => setConfirmDeleteIds(null)} style={{ flex: 1, padding: "8px 0", border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13.5, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Cancel</button>
+              <button onClick={() => handleDeleteMany(confirmDeleteIds)} disabled={deleting} style={{ flex: 1, padding: "8px 0", border: "none", background: T.danger, color: T.bg, fontSize: 13.5, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                 {deleting ? "Deleting…" : "Delete"}
               </button>
             </div>
@@ -1156,14 +1156,14 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
           <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16, display: "flex", gap: 10 }}>
             <button
               onClick={() => setCheckedIds(checkedIds.size === sorted.length ? new Set() : new Set(sorted.map((w) => w.id)))}
-              style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 14, fontWeight: 600 }}
+              style={{ flex: 1, padding: "12px 0", border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 15, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               {checkedIds.size === sorted.length ? "Deselect All" : "Select All"}
             </button>
             <button
               onClick={() => setConfirmDeleteIds([...checkedIds])}
               disabled={checkedIds.size === 0}
-              style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: checkedIds.size === 0 ? T.surface2 : T.accent, color: checkedIds.size === 0 ? T.dim : T.bg, fontSize: 14, fontWeight: 700 }}
+              style={{ flex: 1, padding: "12px 0", border: "none", background: checkedIds.size === 0 ? T.surface2 : T.accent, color: checkedIds.size === 0 ? T.dim : T.bg, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
             >
               Delete {checkedIds.size > 0 ? `(${checkedIds.size})` : ""}
             </button>

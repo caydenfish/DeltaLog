@@ -16,6 +16,7 @@ import PrivacyPolicy from "../PrivacyPolicy";
 import { themed, tc, IS_LIGHT, THEME, setTheme } from "../lib/theme";
 import { ThemeChoice } from "../ThemePicker";
 
+import { BTN_TEXT, BTN_RADIUS } from "../lib/buttons";
 // Intro and setup (v1.19.0). One component, three modes, so new users,
 // people redoing setup and devs simulating it all see the same screens:
 //   "new"      first run after sign-in. Saves as it goes; App gates on it.
@@ -84,7 +85,7 @@ function Segmented({ options, value, onChange, label }) {
         const text = typeof o === "string" ? o : o.label;
         const on = key === value;
         return (
-          <button key={key} onClick={() => onChange(key)} aria-pressed={on} style={{ flex: 1, minWidth: 0, height: 44, border: "none", borderRadius: 9, background: on ? T.accent : "transparent", color: on ? T.bg : T.dim, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <button key={key} onClick={() => onChange(key)} aria-pressed={on} style={{ flex: 1, minWidth: 0, height: 44, border: "none", background: on ? T.accent : "transparent", color: on ? T.bg : T.dim, fontSize: 16, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
             {text}
           </button>
         );
@@ -414,19 +415,19 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
                 <span style={{ fontSize: 15, fontWeight: 700 }}>Add to your home screen</span>
                 <span style={{ fontSize: 13, lineHeight: 1.4, color: T.dim }}>Opens full screen and works offline.</span>
               </span>
-              <button onClick={() => setShowInstall(true)} style={{ height: 40, padding: "0 14px", borderRadius: 10, border: `1px solid ${T.line2}`, background: "transparent", color: T.text, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Show me</button>
+              <button onClick={() => setShowInstall(true)} style={{ height: 40, padding: "0 14px", border: `1px solid ${T.line2}`, background: "transparent", color: T.text, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Show me</button>
             </div>
           )}
           {mode === "redo" ? (
             <>
               <div style={{ flex: 1 }} />
-              <button onClick={() => done("dashboard")} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700 }}>Done</button>
+              <button onClick={() => done("dashboard")} style={{ height: 54, border: "none", background: T.accent, color: T.bg, fontSize: 18, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Done</button>
             </>
           ) : (
             <>
               <span style={{ ...eyebrow, marginTop: 26, letterSpacing: "0.1em" }}>Where do you want to start?</span>
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-                <button onClick={() => done("workout")} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, whiteSpace: "nowrap" }}>Start my first workout</button>
+                <button onClick={() => done("workout")} style={{ height: 54, border: "none", background: T.accent, color: T.bg, fontSize: 18, fontWeight: 700, whiteSpace: "nowrap", ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Start my first workout</button>
                 <button onClick={() => done("templates")} style={secondary}>Build a template first</button>
                 <button onClick={() => done("friends")} style={secondary}>Find friends</button>
               </div>
@@ -468,7 +469,7 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
             <button onClick={() => setShowPrivacy(true)} style={{ background: "none", border: "none", padding: 0, color: tc("#C4A35A"), fontSize: 12.5, textDecoration: "underline" }}>Privacy Policy</button>.
           </p>
         )}
-        <button onClick={next} disabled={!canContinue || busy} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, whiteSpace: "nowrap", opacity: !canContinue || busy ? 0.5 : 1 }}>
+        <button onClick={next} disabled={!canContinue || busy} style={{ height: 54, border: "none", background: T.accent, color: T.bg, fontSize: 18, fontWeight: 700, whiteSpace: "nowrap", opacity: !canContinue || busy ? 0.5 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
           {busy ? "Saving..." : cta}
         </button>
         {mode === "new" && idx === 0 && (

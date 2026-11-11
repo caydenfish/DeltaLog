@@ -25,6 +25,7 @@ import { InlineLoading } from "./LoadingSpinner";
 import Logo from "./Logo";
 import { themed } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({
   bg: "#121418",
   surface: "#1B1E23",
@@ -38,8 +39,7 @@ const T = themed({
   spruce: "#3F6E55",
 });
 
-const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
-
+const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: BTN_RADIUS, padding: "4px 10px", fontSize: 12, ...BTN_TEXT };
 const EXPERIENCE_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const DURATIONS = [4, 6, 8, 12];
 
@@ -55,12 +55,7 @@ function PillRow({ options, value, onChange, columns }) {
         <button
           key={String(opt.key)}
           onClick={() => onChange(opt.key)}
-          style={{
-            flex: columns ? `1 1 calc(${100 / columns}% - 4px)` : 1,
-            padding: "14px 6px", borderRadius: 9, fontSize: 14, fontWeight: 700, border: "none",
-            background: value === opt.key ? T.accent : "transparent",
-            color: value === opt.key ? T.bg : T.dim,
-          }}
+          style={{ flex: columns ? `1 1 calc(${100 / columns}% - 4px)` : 1, padding: "14px 6px", fontSize: 15, fontWeight: 700, border: "none", background: value === opt.key ? T.accent : "transparent", color: value === opt.key ? T.bg : T.dim, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >
           {opt.label}
         </button>
@@ -128,9 +123,9 @@ function DaySection({ dayIndex, label, picks, onReorder, onRemove, onAdjustSets,
               <button onClick={() => onRemove(p.id)} aria-label={`Remove ${p.name}`} title="Remove" style={{ ...smallBtn, color: T.danger, borderColor: T.danger, fontSize: 15, padding: "3px 10px", flexShrink: 0 }}>&minus;</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-              <button onClick={() => onAdjustSets(p.id, Math.max(1, (p.plannedSets ?? 3) - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>&minus;</button>
+              <button onClick={() => onAdjustSets(p.id, Math.max(1, (p.plannedSets ?? 3) - 1))} style={{ width: 24, height: 24, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>&minus;</button>
               <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, minWidth: 16, textAlign: "center" }}>{p.plannedSets ?? 3}</div>
-              <button onClick={() => onAdjustSets(p.id, Math.min(12, (p.plannedSets ?? 3) + 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
+              <button onClick={() => onAdjustSets(p.id, Math.min(12, (p.plannedSets ?? 3) + 1))} style={{ width: 24, height: 24, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700, borderRadius: BTN_RADIUS }}>+</button>
               <div style={{ fontSize: 11, color: T.dim, marginLeft: 2 }}>sets</div>
             </div>
           </div>
@@ -466,7 +461,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
         <button
           onClick={() => (step === 0 ? onClose() : setStep(step - 1))}
           aria-label={step === 0 ? "Close" : "Back"}
-          style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 14 }}
+          style={{ width: 32, height: 32, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, fontSize: 15, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >
           {step === 0 ? "×" : "‹"}
         </button>
@@ -497,7 +492,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
         <button
           onClick={handleNext}
           disabled={saving || (isLast && totalPicked === 0)}
-          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: saving || (isLast && totalPicked === 0) ? 0.6 : 1 }}
+          style={{ width: "100%", padding: "16px 0", border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, opacity: saving || (isLast && totalPicked === 0) ? 0.6 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}
         >
           {saving ? "Building…" : isLast ? "Create Program" : "Continue"}
         </button>

@@ -3,6 +3,7 @@ import ExerciseThumb from "./ExerciseThumb";
 import { muscleColor } from "./lib/muscleTaxonomy";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 // One exercise on the Edit Workout screen (v1.13.4). Collapsed it's a
 // single clean row: drag handle, thumb, name, and a one-line summary
 // ("3 sets · 1 warmup · 2:00 rest"). Tap to expand into labeled steppers
@@ -47,7 +48,7 @@ function Stepper({ label, value, onMinus, onPlus, note }) {
 
 function Action({ icon, label, onClick, color, active }) {
   return (
-    <button onClick={onClick} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, height: 60, borderRadius: 12, border: `1px solid ${active ? color || T.accent : T.line}`, background: active ? `${color || T.accent}1F` : T.surface2, color: color || T.text }}>
+    <button onClick={onClick} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, height: 60, border: `1px solid ${active ? color || T.accent : T.line}`, background: active ? `${color || T.accent}1F` : T.surface2, color: color || T.text, borderRadius: BTN_RADIUS }}>
       {icon}
       <span style={{ fontSize: 12, fontWeight: 600, maxWidth: "100%", ...ONE_LINE }}>{label}</span>
     </button>
@@ -123,7 +124,7 @@ export default function EditWorkoutCard({
                 <div key={j} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, borderTop: `1px solid ${T.line}` }}>
                   <span style={{ width: 18, color: T.dim, fontSize: 13 }}>{j + 1}</span>
                   <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: T.text, ...ONE_LINE }}>{formatSet(s)}</span>
-                  <button onClick={() => onDeleteSet(j)} style={{ height: 32, padding: "0 10px", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.danger, fontSize: 13, fontWeight: 600 }}>Remove</button>
+                  <button onClick={() => onDeleteSet(j)} style={{ height: 32, padding: "0 10px", border: `1px solid ${T.line}`, background: "none", color: T.danger, fontSize: 14, fontWeight: 600, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Remove</button>
                 </div>
               ))}
             </div>

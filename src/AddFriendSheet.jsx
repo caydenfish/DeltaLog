@@ -4,6 +4,7 @@ import { IconCheck } from "./Icons";
 import { findUserByHandle, sendFriendRequest, displayName } from "./lib/social";
 import { themed, tc } from "./lib/theme";
 
+import { BTN_TEXT, BTN_RADIUS } from "./lib/buttons";
 const T = themed({ surface: "#1B1E23", surface2: "#24282E", line: "#2F343B", text: "#E6E3D9", dim: "#A5A6A3", accent: "#C4A35A", greenText: "#82AD93", danger: "#D0614C", accentDeep: "#8A6F33", spruce: "#3F6E55" });
 const condensed = "'Saira Condensed', sans-serif";
 
@@ -41,13 +42,13 @@ export default function AddFriendSheet({ userId, handle, onClose, onOpenFriends 
           <>
             <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, textTransform: "uppercase", color: T.text }}>Couldn't find @{handle}</span>
             <span style={{ fontSize: 14, color: T.dim, lineHeight: 1.45 }}>{error ? `Something went wrong: ${error}` : "They may have changed their ID. Ask them for a new invite link, or search for them in Friends."}</span>
-            <button onClick={onOpenFriends} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Open Friends</button>
+            <button onClick={onOpenFriends} style={{ height: 50, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Open Friends</button>
           </>
         ) : isSelf ? (
           <>
             <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, textTransform: "uppercase", color: T.text }}>That's your link</span>
             <span style={{ fontSize: 14, color: T.dim, lineHeight: 1.45 }}>Send it to friends. When they open it, they'll be asked to add you.</span>
-            <button onClick={onClose} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Got it</button>
+            <button onClick={onClose} style={{ height: 50, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Got it</button>
           </>
         ) : (
           <>
@@ -62,13 +63,13 @@ export default function AddFriendSheet({ userId, handle, onClose, onOpenFriends 
             {done ? (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, color: T.greenText, fontSize: 14, fontWeight: 600 }}><IconCheck size={16} /> {doneText}</div>
-                <button onClick={onClose} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Done</button>
+                <button onClick={onClose} style={{ height: 50, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>Done</button>
               </>
             ) : (
               <>
                 <span style={{ fontSize: 14, color: T.dim, lineHeight: 1.45 }}>Add them to see each other in Friends and lift together in group workouts.</span>
                 {error && <span role="alert" style={{ fontSize: 13, color: tc("#E08A78") }}>{error}</span>}
-                <button onClick={add} disabled={status === "sending"} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, opacity: status === "sending" ? 0.6 : 1 }}>
+                <button onClick={add} disabled={status === "sending"} style={{ height: 50, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: status === "sending" ? 0.6 : 1, ...BTN_TEXT, borderRadius: BTN_RADIUS }}>
                   {status === "sending" ? "Adding..." : person.friendship_status === "pending" && person.friendship_direction === "incoming" ? "Accept friend request" : "Add friend"}
                 </button>
                 <button onClick={onClose} style={{ height: 44, border: "none", background: "transparent", color: T.dim, fontSize: 15, fontWeight: 600 }}>Not now</button>
