@@ -5,6 +5,13 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.29.1",
+    date: "2026-11-11",
+    items: [
+      "Slogan changed to 'Log it. Beat it. Repeat.' (was 'Log sets, track load, hit the target.'): manifest description, meta description, og:description, and public/og-image.png regenerated from the brand asset set. No customer-facing changelog entry.",
+    ],
+  },
+  {
     version: "1.29.0",
     date: "2026-11-11",
     items: [

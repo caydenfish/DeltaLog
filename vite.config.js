@@ -26,7 +26,7 @@ export default defineConfig({
         id: "/",
         name: "DeltaLog",
         short_name: "DeltaLog",
-        description: "Log sets, track load, hit the target.",
+        description: "Log it. Beat it. Repeat.",
         theme_color: "#121418",
         background_color: "#121418",
         display: "standalone",
