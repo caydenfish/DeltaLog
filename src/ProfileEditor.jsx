@@ -3,16 +3,20 @@ import { saveProfile } from "./lib/queries";
 import { calculateAge } from "./lib/dots";
 import { HEIGHT_UNITS, HEIGHT_UNIT_LABELS, ftInToInches, inchesToFtIn } from "./lib/height";
 import { toLocalDateStr } from "./lib/time";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 export default function ProfileEditor({ profile, units, userId, onClose, onSaved }) {
   const [firstName, setFirstName] = useState(profile?.first_name || "");
@@ -62,7 +66,7 @@ export default function ProfileEditor({ profile, units, userId, onClose, onSaved
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>PROFILE</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>PROFILE</div>
           <div style={{ width: 26 }} />
         </div>
 
@@ -79,7 +83,7 @@ export default function ProfileEditor({ profile, units, userId, onClose, onSaved
               <button key={g} onClick={() => setGender(g)} style={{
                 flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12, fontWeight: 600,
                 border: `1px solid ${gender === g ? T.accent : T.line}`,
-                background: gender === g ? "rgba(232,68,46,0.12)" : T.surface2,
+                background: gender === g ? "rgba(196,163,90,0.12)" : T.surface2,
                 color: gender === g ? T.text : T.dim,
               }}>{g}</button>
             ))}
@@ -110,7 +114,7 @@ export default function ProfileEditor({ profile, units, userId, onClose, onSaved
               <button key={u} onClick={() => setHeightUnit(u)} style={{
                 flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, fontWeight: 600, textAlign: "center",
                 border: `1px solid ${heightUnit === u ? T.accent : T.line}`,
-                background: heightUnit === u ? "rgba(232,68,46,0.12)" : T.surface2,
+                background: heightUnit === u ? "rgba(196,163,90,0.12)" : T.surface2,
                 color: heightUnit === u ? T.text : T.dim,
               }}>{HEIGHT_UNIT_LABELS[u]}</button>
             ))}
@@ -143,13 +147,13 @@ export default function ProfileEditor({ profile, units, userId, onClose, onSaved
           )}
           <div style={{ fontSize: 10, color: T.dim, marginBottom: 12 }}>Not currently used in your strength score — DOTS only factors in bodyweight and gender. Captured here for future use.</div>
 
-          {error && <div style={{ color: T.accent, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
+          {error && <div style={{ color: T.danger, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
 
           <div style={{ fontSize: 10, color: T.dim, marginTop: 4 }}>Used for DOTS strength scoring and to personalize insights. Leaving weight blank uses your last recorded weight where available.</div>
         </div>
 
         <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.bg, padding: 16 }}>
-          <button onClick={handleSave} disabled={saving} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: saving ? T.surface2 : T.accent, color: saving ? T.dim : "#fff", fontSize: 14, fontWeight: 700 }}>
+          <button onClick={handleSave} disabled={saving} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: saving ? T.surface2 : T.accent, color: saving ? T.dim : T.bg, fontSize: 14, fontWeight: 700 }}>
             {saving ? "Saving…" : "Save profile"}
           </button>
         </div>

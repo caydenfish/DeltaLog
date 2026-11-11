@@ -16,17 +16,21 @@ import { computePrescription, computeTodaysProgramDay, estimateFallbackE1RM, def
 import { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconSearch } from "./Icons";
 import ProgramSetup from "./ProgramSetup";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 export default function ProgramView({ user, onClose, onWorkoutStarted }) {
   const [loading, setLoading] = useState(true);
@@ -174,7 +178,7 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
       <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
           <div style={{ width: 26 }} />
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>PROGRAM</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>PROGRAM</div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: T.dim, justifySelf: "end" }}><IconX size={20} /></button>
         </div>
 
@@ -186,7 +190,7 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
             <div style={{ color: T.dim, fontSize: 13, marginBottom: 20 }}>
               Build a multi-week program and get a prescribed weight and reps for every session, with progression built in.
             </div>
-            <button onClick={() => setShowSetup(true)} style={{ padding: "12px 24px", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontWeight: 700, fontSize: 14 }}>
+            <button onClick={() => setShowSetup(true)} style={{ padding: "12px 24px", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontWeight: 700, fontSize: 14 }}>
               Build a Program
             </button>
           </div>
@@ -203,19 +207,19 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
               </div>
 
               {deload && (
-                <div style={{ background: "rgba(232,168,46,0.12)", border: "1px solid rgba(232,168,46,0.35)", borderRadius: 10, padding: 12, marginBottom: 16, color: "#E8A82E", fontSize: 12 }}>
+                <div style={{ background: "rgba(217,137,74,0.12)", border: "1px solid rgba(217,137,74,0.35)", borderRadius: 10, padding: 12, marginBottom: 16, color: tc("#D9894A"), fontSize: 12 }}>
                   This is the block's deload week. Volume and intensity are cut on purpose so you recover before the next program.
                 </div>
               )}
 
               <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Today's session</div>
               {loadError && (
-                <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 12, marginBottom: 10, color: T.accent, fontSize: 12 }}>
-                  Couldn't load today's session ({loadError}). <button onClick={load} style={{ background: "none", border: "none", color: T.accent, textDecoration: "underline", fontSize: 12, padding: 0 }}>Retry</button>
+                <div style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 12, marginBottom: 10, color: T.accent, fontSize: 12 }}>
+                  Couldn't load today's session ({loadError}). <button onClick={load} style={{ background: "none", border: "none", color: T.danger, textDecoration: "underline", fontSize: 12, padding: 0 }}>Retry</button>
                 </div>
               )}
               {completedToday && (
-                <div style={{ background: "rgba(59,165,93,0.12)", border: `1px solid ${T.green}`, borderRadius: 10, padding: 14, marginBottom: 10, textAlign: "center" }}>
+                <div style={{ background: "rgba(106,158,128,0.12)", border: `1px solid ${T.green}`, borderRadius: 10, padding: 14, marginBottom: 10, textAlign: "center" }}>
                   <div style={{ color: T.green, fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Today's session is done ✓</div>
                   <div style={{ color: T.dim, fontSize: 12.5 }}>Nice work. Your next session unlocks tomorrow.</div>
                 </div>
@@ -239,11 +243,11 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
                     </span>
                     <span style={{ color: T.text, fontSize: 13, flexShrink: 0 }}>{item.plannedSets} sets</span>
                   </div>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 600, color: T.text, marginTop: 4 }}>
+                  <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 600, color: T.text, marginTop: 4 }}>
                     {item.prescription.weight} <span style={{ color: T.dim, fontSize: 15 }}>{unit} ×</span> {item.prescription.reps}
                   </div>
                   <div style={{ color: T.dim, fontSize: 12, marginTop: 4 }}>{item.prescription.reasonText}</div>
-                  <div style={{ color: "#5B6270", fontSize: 10, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  <div style={{ color: tc("#5B6270"), fontSize: 10, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
                     {PROGRESSION_MODELS[item.progressionModel || defaultModelForFocus(program.trainingFocus)]}
                   </div>
                 </div>
@@ -263,7 +267,7 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setConfirmingAbandon(true)} style={{ padding: "6px 4px", border: "none", background: "none", color: "#5B6270", fontSize: 11.5, textDecoration: "underline" }}>
+                  <button onClick={() => setConfirmingAbandon(true)} style={{ padding: "6px 4px", border: "none", background: "none", color: tc("#5B6270"), fontSize: 11.5, textDecoration: "underline" }}>
                     Abandon this program
                   </button>
                 )}
@@ -275,7 +279,7 @@ export default function ProgramView({ user, onClose, onWorkoutStarted }) {
                 <button
                   onClick={startSession}
                   disabled={starting || todaysExercises.length === 0}
-                  style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontWeight: 700, fontSize: 15, opacity: starting || todaysExercises.length === 0 ? 0.6 : 1 }}
+                  style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontWeight: 700, fontSize: 15, opacity: starting || todaysExercises.length === 0 ? 0.6 : 1 }}
                 >
                   {starting ? "Starting…" : "Start Today's Session"}
                 </button>

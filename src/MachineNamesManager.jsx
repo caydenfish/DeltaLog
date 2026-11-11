@@ -2,16 +2,20 @@ import { useState, useEffect } from "react";
 import { fetchAllMachineNames, renameMachineNameEverywhere, deleteMachineNameEverywhere } from "./lib/queries";
 import { IconX, IconTrash, IconCheck, IconPencil } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
 
@@ -67,7 +71,7 @@ export default function MachineNamesManager({ user, onClose }) {
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
           <div style={{ width: 26 }} />
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>MACHINE NAMES</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>MACHINE NAMES</div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: T.dim, justifySelf: "end" }}><IconX size={20} /></button>
         </div>
 
@@ -76,7 +80,7 @@ export default function MachineNamesManager({ user, onClose }) {
             Every machine name you've added to any exercise's setup, in one place. Renaming or deleting one here applies everywhere it's used, instead of exercise by exercise.
           </div>
 
-          {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
+          {error && <div style={{ color: T.danger, fontSize: 13, marginBottom: 12 }}>{error}</div>}
           {names === null && <InlineLoading />}
           {names && names.length === 0 && (
             <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No custom machines saved yet. Add one from any exercise's setup mid-workout.</div>
@@ -103,7 +107,7 @@ export default function MachineNamesManager({ user, onClose }) {
                       <div style={{ color: T.text, fontSize: 13, marginBottom: 8 }}>Delete "{name}" and its saved setup from every exercise?</div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => setConfirmingDelete(null)} style={{ flex: 1, ...smallBtn, padding: "8px 0" }}>Cancel</button>
-                        <button onClick={() => confirmDelete(name)} disabled={busyName === name} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.accent, color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                        <button onClick={() => confirmDelete(name)} disabled={busyName === name} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12, fontWeight: 700 }}>
                           {busyName === name ? "…" : "Delete"}
                         </button>
                       </div>

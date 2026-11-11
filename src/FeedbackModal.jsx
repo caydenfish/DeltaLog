@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { submitFeedback } from "./lib/queries";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 export default function FeedbackModal({ user, context, fixedType, onClose }) {
   const [type, setType] = useState(fixedType || "bug");
@@ -47,12 +51,12 @@ export default function FeedbackModal({ user, context, fixedType, onClose }) {
             <div style={{ color: T.dim, fontSize: 13, marginBottom: 16 }}>
               {fixedType === "privacy" ? "We'll take a look and follow up in the app if needed." : "Appreciate you taking the time to report it."}
             </div>
-            <button onClick={onClose} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 700 }}>Done</button>
+            <button onClick={onClose} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>Done</button>
           </div>
         ) : (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{titles[type]}</div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{titles[type]}</div>
               <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
             </div>
 
@@ -65,7 +69,7 @@ export default function FeedbackModal({ user, context, fixedType, onClose }) {
                     style={{
                       flex: 1, padding: "9px 0", borderRadius: 7, fontSize: 13, fontWeight: 600, border: "none",
                       background: type === opt.key ? T.accent : "transparent",
-                      color: type === opt.key ? "#fff" : T.dim,
+                      color: type === opt.key ? T.bg : T.dim,
                     }}
                   >
                     {opt.label}
@@ -83,7 +87,7 @@ export default function FeedbackModal({ user, context, fixedType, onClose }) {
               style={{ width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 14, padding: 12, outline: "none", boxSizing: "border-box", resize: "none", marginBottom: 10, fontFamily: "inherit" }}
             />
 
-            {status === "error" && <div style={{ color: T.accent, fontSize: 12, marginBottom: 10 }}>{error}</div>}
+            {status === "error" && <div style={{ color: T.danger, fontSize: 12, marginBottom: 10 }}>{error}</div>}
 
             <button
               onClick={handleSubmit}
@@ -91,7 +95,7 @@ export default function FeedbackModal({ user, context, fixedType, onClose }) {
               style={{
                 width: "100%", padding: "13px 0", borderRadius: 12, border: "none",
                 background: !message.trim() || status === "sending" ? T.surface2 : T.accent,
-                color: !message.trim() || status === "sending" ? T.dim : "#fff",
+                color: !message.trim() || status === "sending" ? T.dim : T.bg,
                 fontSize: 14, fontWeight: 700,
               }}
             >

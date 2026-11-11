@@ -66,17 +66,21 @@ import OnboardingSimulator from "./onboarding/OnboardingSimulator";
 import VersionHistory from "./VersionHistory";
 import TrainingLoadCard from "./TrainingLoadCard";
 import { version as APP_VERSION } from "../package.json";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 function isoDaysAgo(days) {
   const d = new Date();
@@ -990,14 +994,14 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
   if (error) {
     return (
       <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ color: T.accent, textAlign: "center", maxWidth: 320 }}>{error}</div>
+        <div style={{ color: T.danger, textAlign: "center", maxWidth: 320 }}>{error}</div>
       </div>
     );
   }
 
   const homePage = (
     <div style={{ minHeight: "100vh", background: isDesktop ? T.bg : "#0A0B0D", display: "flex", justifyContent: "center" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap'); button { cursor: pointer; } .home-modules-desktop { column-count: 2; column-gap: 20px; } .home-modules-desktop > * { break-inside: avoid; }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Saira+Condensed:wght@500;600;700&family=Saira:wght@400;500;600;700&display=swap'); button { cursor: pointer; } .home-modules-desktop { column-count: 2; column-gap: 20px; } .home-modules-desktop > * { break-inside: avoid; }`}</style>
       <div style={{ width: "100%", maxWidth: isDesktop ? 1180 : 400, background: T.bg, height: "100dvh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
 
         {/* Header — a fixed flex sibling above the scrolling content, same pattern as the Start Workout bar below, rather than sticky positioning inside the scroll container (which never reliably stuck: the content div's ancestors only had minHeight set, so the whole page scrolled at the window level instead of the div clipping/scrolling internally). */}
@@ -1028,12 +1032,12 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
 
 
           {showUpdateNotice && (
-            <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 12, padding: "12px 14px", marginTop: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 12, padding: "12px 14px", marginTop: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ color: T.text, fontSize: 13, fontWeight: 700, marginBottom: 2 }}>A new version is ready</div>
                 <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.4 }}>Close DeltaLog completely and reopen it to update — or tap Reload now.</div>
               </div>
-              <button onClick={onApplyUpdate} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 12, fontWeight: 700 }}>
+              <button onClick={onApplyUpdate} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 12, fontWeight: 700 }}>
                 Reload now
               </button>
             </div>
@@ -1047,7 +1051,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 </div>
                 <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.4 }}>No matching activity was found automatically. Pick it manually, or dismiss.</div>
               </div>
-              <button onClick={() => setStravaModalWorkoutId(unlinkedStravaWorkouts[0].workout_id)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 12, fontWeight: 700 }}>
+              <button onClick={() => setStravaModalWorkoutId(unlinkedStravaWorkouts[0].workout_id)} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 12, fontWeight: 700 }}>
                 Link
               </button>
             </div>
@@ -1106,7 +1110,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                             <>
                             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <div style={{ flexShrink: 0, textAlign: "center", minWidth: 46 }}>
-                              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1, color: insight.status === "overdue" ? T.accent : T.text }}>
+                              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1, color: insight.status === "overdue" ? T.accent : T.text }}>
                                 {insight.daysSince === null ? "—" : insight.daysSince}
                               </div>
                               <div style={{ fontSize: 9, color: T.dim, textTransform: "uppercase", letterSpacing: 0.5 }}>day{insight.daysSince === 1 ? "" : "s"} ago</div>
@@ -1266,7 +1270,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                                   }
                                   style={{
                                     aspectRatio: "1", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: 10, color: hasWorkout ? "#fff" : isForecast ? T.accent : T.dim,
+                                    fontSize: 10, color: hasWorkout ? T.bg : isForecast ? T.accent : T.dim,
                                     background: hasWorkout ? T.accent : T.surface2,
                                     opacity: 1,
                                     border: cell.isToday ? `1px solid ${T.text}` : isForecast ? `1px dashed ${T.accent}` : "none",
@@ -1319,23 +1323,23 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
         {(!isDesktop || groupInvites.length > 0) && (
         <div style={{ position: "sticky", bottom: 0, borderTop: `1px solid ${T.line}`, background: T.surface, padding: 16 }}>
           {groupInvites.slice(0, 1).map((inv) => (
-            <div key={inv.session_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 12, borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.08)" }}>
+            <div key={inv.session_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 12, borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.08)" }}>
               <span style={{ color: T.accent, display: "flex", flexShrink: 0 }}><IconUsers size={18} /></span>
               <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inv.host_first_name || `@${inv.host_handle}`} invited you to lift</span>
                 <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inv.session_status === "active" ? "Already lifting" : `${inv.member_count} in the lobby`}{inv.plan_name ? ` · ${inv.plan_name}` : ""}</span>
               </div>
               <button onClick={() => declineGroupInvite(inv)} aria-label="Decline invite" style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${T.line}`, background: T.surface2, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconX size={14} /></button>
-              <button onClick={() => acceptGroupInvite(inv)} disabled={inviteBusy === inv.session_id} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, opacity: inviteBusy === inv.session_id ? 0.6 : 1 }}>Join</button>
+              <button onClick={() => acceptGroupInvite(inv)} disabled={inviteBusy === inv.session_id} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, opacity: inviteBusy === inv.session_id ? 0.6 : 1 }}>Join</button>
             </div>
           ))}
           {isDesktop ? null : activeWorkout && !activeWorkout.isPaused ? (
-            <button onClick={onResumeWorkout} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <button onClick={onResumeWorkout} style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, letterSpacing: 0.3, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span>Resume Workout</span>
               <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}>{activeWorkoutElapsed}</span>
             </button>
           ) : (
-            <button onClick={() => setShowStartSheet(true)} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
+            <button onClick={() => setShowStartSheet(true)} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
               Start Workout
             </button>
           )}
@@ -1561,7 +1565,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                       icon={<IconLock size={20} />}
                       onClick={() => setShowAdminHome(true)}
                       title="Admin"
-                      badge={unseenFeedbackCount > 0 ? <span style={{ background: T.accent, color: "#fff", fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "1px 7px", lineHeight: 1.5 }}>{unseenFeedbackCount}</span> : null}
+                      badge={unseenFeedbackCount > 0 ? <span style={{ background: T.accent, color: T.bg, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "1px 7px", lineHeight: 1.5 }}>{unseenFeedbackCount}</span> : null}
                       subtitle="Customs, feedback, versions, testing"
                     />
                   </TileGrid>
@@ -1582,7 +1586,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 {(!user.app_metadata?.provider || user.app_metadata.provider === "email") && (
                   <div style={{ height: 8 }} />
                 )}
-                <button onClick={() => supabase.auth.signOut()} style={{ width: "100%", minHeight: 48, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.1)", color: T.accent, fontSize: 14, fontWeight: 700 }}>
+                <button onClick={() => supabase.auth.signOut()} style={{ width: "100%", minHeight: 48, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.1)", color: T.accent, fontSize: 14, fontWeight: 700 }}>
                   Sign out
                 </button>
               </div>
@@ -1606,7 +1610,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
               </>
               )}
 
-              <button onClick={shareApp} style={{ width: "100%", minHeight: 52, marginTop: 8, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, whiteSpace: "nowrap" }}>
+              <button onClick={shareApp} style={{ width: "100%", minHeight: 52, marginTop: 8, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, whiteSpace: "nowrap" }}>
                 <IconShare size={17} /> {shareNote || "Share DeltaLog"}
               </button>
 
@@ -1780,7 +1784,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
           <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
               <button onClick={() => setShowAnnouncements(false)} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>ANNOUNCEMENTS</div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>ANNOUNCEMENTS</div>
               {effectiveIsAdmin ? (
                 <button onClick={() => openComposeAnnouncement()} aria-label="New announcement" style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface, color: T.dim, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <IconPlus size={16} />
@@ -1863,7 +1867,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
       {composeAnnouncement && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.8)", zIndex: 30, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
           <div style={{ width: "100%", maxWidth: 420, maxHeight: "88vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, marginBottom: 12 }}>
               {composeAnnouncement.id ? "Edit announcement" : "New announcement"}
             </div>
             <textarea
@@ -1914,7 +1918,7 @@ export default function Home({ user, onStartWorkout, onResumeWorkout, activeWork
                 !composeAnnouncement.message.trim() ||
                 (composeAnnouncement.poll && (!composeAnnouncement.poll.question.trim() || composeAnnouncement.poll.options.filter((o) => o.trim()).length < 2))
               }
-              style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 13, fontWeight: 700, opacity: savingAnnouncement ? 0.6 : 1, marginBottom: 8 }}
+              style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 13, fontWeight: 700, opacity: savingAnnouncement ? 0.6 : 1, marginBottom: 8 }}
             >
               {savingAnnouncement ? "Saving…" : composeAnnouncement.id ? "Save changes" : "Post to all users"}
             </button>

@@ -9,6 +9,22 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.25.0": {
+    title: "Themes",
+    items: [
+      "Pick a theme: Iron (graphite and gold) or Chalk (bone, black and bronze). Settings, Theme.",
+      "New logo and app icon.",
+      "New fonts: Chakra Petch for headings and numbers, Saira for everything else.",
+    ],
+  },
+  "1.24.0": {
+    title: "A new look",
+    items: [
+      "New colors: graphite, bone and gold, with green for progress.",
+      "The set logger has two quick-fill buttons: Target and Previous set.",
+      "New exercises use your muscle detail setting. Anatomy is coming soon.",
+    ],
+  },
   "1.23.0": {
     title: "Your workout stays put",
     items: [

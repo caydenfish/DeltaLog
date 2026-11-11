@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
 import { fetchStravaConnection, connectStrava, disconnectStrava } from "./lib/strava";
 import { InlineLoading } from "./LoadingSpinner";
+import { themed } from "./lib/theme";
 
-const T = {
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
+const T = themed({
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
   stravaOrange: "#FC4C02", // Strava's own brand color, used only for their button per their branding guidelines
-};
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 export default function StravaSettings({ user }) {
   const [connection, setConnection] = useState(undefined); // undefined = loading, null = not connected
@@ -85,7 +89,7 @@ export default function StravaSettings({ user }) {
       </div>
 
       {error && (
-        <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10, marginBottom: 14, color: T.text, fontSize: 12.5 }}>
+        <div style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10, marginBottom: 14, color: T.text, fontSize: 12.5 }}>
           {error}
         </div>
       )}
@@ -103,7 +107,7 @@ export default function StravaSettings({ user }) {
           <span style={{ fontSize: 12.5, color: T.text }}>Disconnect Strava? Future workouts won't be pushed until you reconnect.</span>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={() => setConfirmDisconnect(false)} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13 }}>Cancel</button>
-            <button onClick={handleDisconnect} disabled={disconnecting} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: T.accent, color: "#fff", fontSize: 13, fontWeight: 700, opacity: disconnecting ? 0.7 : 1 }}>
+            <button onClick={handleDisconnect} disabled={disconnecting} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: T.accent, color: T.bg, fontSize: 13, fontWeight: 700, opacity: disconnecting ? 0.7 : 1 }}>
               {disconnecting ? "Disconnecting…" : "Disconnect"}
             </button>
           </div>

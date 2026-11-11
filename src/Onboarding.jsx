@@ -5,16 +5,20 @@ import { HEIGHT_UNITS, HEIGHT_UNIT_LABELS, ftInToInches, inchesToFtIn } from "./
 import { toLocalDateStr } from "./lib/time";
 import Logo from "./Logo";
 import IntroShell from "./IntroShell";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 export default function Onboarding({ user, profile, onComplete }) {
   const [firstName, setFirstName] = useState(profile?.first_name || "");
@@ -63,12 +67,12 @@ export default function Onboarding({ user, profile, onComplete }) {
           <button onClick={handleSave} disabled={!valid || saving} style={{
             width: "100%", padding: "15px 0", borderRadius: 14, border: "none",
             background: !valid || saving ? T.surface2 : T.accent,
-            color: !valid || saving ? T.dim : "#fff",
+            color: !valid || saving ? T.dim : T.bg,
             fontSize: 16, fontWeight: 700,
           }}>
             {saving ? "Saving…" : valid ? "Continue" : "Add name, gender, and birthday"}
           </button>
-          {error && <div style={{ color: T.accent, fontSize: 13, marginTop: 10, textAlign: "center" }}>{error}</div>}
+          {error && <div style={{ color: T.danger, fontSize: 13, marginTop: 10, textAlign: "center" }}>{error}</div>}
         </>
       }
     >
@@ -76,7 +80,7 @@ export default function Onboarding({ user, profile, onComplete }) {
         <Logo size={56} />
       </div>
       <div style={{ width: "100%" }}>
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
           A few quick details
         </div>
         <div style={{ color: T.dim, fontSize: 13, textAlign: "center", marginBottom: 28, lineHeight: 1.5 }}>
@@ -105,7 +109,7 @@ export default function Onboarding({ user, profile, onComplete }) {
             <button key={g} onClick={() => setGender(g)} style={{
               flex: 1, padding: "10px 0", borderRadius: 10, fontSize: 13, fontWeight: 600,
               border: `1px solid ${gender === g ? T.accent : T.line}`,
-              background: gender === g ? "rgba(232,68,46,0.12)" : T.surface,
+              background: gender === g ? "rgba(196,163,90,0.12)" : T.surface,
               color: gender === g ? T.text : T.dim,
             }}>{g}</button>
           ))}
@@ -132,7 +136,7 @@ export default function Onboarding({ user, profile, onComplete }) {
               <button key={u} onClick={() => setWeightUnit(u)} style={{
                 padding: "3px 10px", borderRadius: 7, fontSize: 11, fontWeight: 600,
                 border: `1px solid ${weightUnit === u ? T.accent : T.line}`,
-                background: weightUnit === u ? "rgba(232,68,46,0.12)" : T.surface2,
+                background: weightUnit === u ? "rgba(196,163,90,0.12)" : T.surface2,
                 color: weightUnit === u ? T.text : T.dim,
               }}>{u}</button>
             ))}
@@ -155,7 +159,7 @@ export default function Onboarding({ user, profile, onComplete }) {
             <button key={u} onClick={() => setHeightUnit(u)} style={{
               flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, fontWeight: 600, textAlign: "center",
               border: `1px solid ${heightUnit === u ? T.accent : T.line}`,
-              background: heightUnit === u ? "rgba(232,68,46,0.12)" : T.surface2,
+              background: heightUnit === u ? "rgba(196,163,90,0.12)" : T.surface2,
               color: heightUnit === u ? T.text : T.dim,
             }}>{HEIGHT_UNIT_LABELS[u]}</button>
           ))}

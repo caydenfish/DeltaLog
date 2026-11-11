@@ -1,11 +1,15 @@
 import { useState, useEffect, useId } from "react";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // The triangle mark stays put — the loading motion is an orange wave
 // that rises and drains inside the outline, its surface rippling
@@ -80,7 +84,7 @@ export default function LoadingScreen({ label }) {
       {stuck && (
         <button
           onClick={() => window.location.reload()}
-          style={{ position: "absolute", bottom: 32, background: "#1A1D23", border: "1px solid #2C313B", color: T.dim, borderRadius: 999, padding: "10px 18px", fontSize: 13 }}
+          style={{ position: "absolute", bottom: 32, background: tc("#1B1E23"), border: `1px solid ${tc("#2F343B")}`, color: T.dim, borderRadius: 999, padding: "10px 18px", fontSize: 13 }}
         >
           Taking longer than usual — tap to reload
         </button>

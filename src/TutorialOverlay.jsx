@@ -1,14 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTutorial } from "./TutorialContext";
 import { IconCheck } from "./Icons";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#1A1D23",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#1B1E23",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // True if `el` is currently the topmost thing at its own center point —
 // i.e. actually visible, not just present in the DOM but covered by
@@ -175,7 +179,7 @@ export default function TutorialOverlay() {
     width: 30, height: 30, borderRadius: 999, flexShrink: 0,
     border: `1px solid ${disabled ? T.line : T.accent}`,
     background: disabled ? "none" : T.accent,
-    color: disabled ? T.line : "#fff",
+    color: disabled ? T.line : T.bg,
     fontSize: 15, fontWeight: 700, lineHeight: 1,
     display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
   });
@@ -187,14 +191,14 @@ export default function TutorialOverlay() {
       {box && (
         <div style={{
           position: "fixed", pointerEvents: "none", top: box.top, left: box.left, width: box.width, height: box.height,
-          borderRadius: 12, border: `2px solid ${T.accent}`, boxShadow: "0 0 0 4px rgba(232,68,46,0.18)",
+          borderRadius: 12, border: `2px solid ${T.accent}`, boxShadow: "0 0 0 4px rgba(196,163,90,0.18)",
           transition: "top 0.15s, left 0.15s, width 0.15s, height 0.15s",
         }} />
       )}
 
       <div ref={cardRef} style={{ ...cardStyle, maxWidth: `calc(100vw - ${EDGE * 2}px)`, pointerEvents: "auto", background: T.bg, border: `1px solid ${T.line}`, borderRadius: 12, padding: "12px 14px", boxSizing: "border-box", boxShadow: "0 6px 20px rgba(0,0,0,0.45)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 15, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>{step.title}</div>
+          <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 15, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>{step.title}</div>
           <button onClick={skip} style={{ background: "none", border: "none", color: T.dim, fontSize: 10, padding: 0, flexShrink: 0 }}>Skip tour</button>
         </div>
 

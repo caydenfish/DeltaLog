@@ -6,16 +6,20 @@ import { computeRollingWeeklyTotals, computeAverageWeeklyTotals, formatSets } fr
 import { fetchMuscleGroupRanges, saveMuscleGroupRange } from "./lib/queries";
 import { getPrefs } from "./lib/prefs";
 import { PLAN_NEUTRAL, PLAN_ORANGE, PLAN_GREEN, PLAN_BLUE } from "./lib/planStatus";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // Default weekly ranges (fractional hard sets per muscle) by training
 // focus (v1.14.2), each tied to what the research actually supports:
@@ -86,7 +90,7 @@ function RangeBar({ total, range, color }) {
   return (
     <div style={{ position: "relative", height: 7, background: T.surface2, borderRadius: 4, marginTop: 5 }}>
       {range.tracked && (
-        <div style={{ position: "absolute", top: -2, bottom: -2, left: pct(range.min), width: `calc(${pct(range.max)} - ${pct(range.min)})`, border: "1px dashed #565C68", borderRadius: 4 }} />
+        <div style={{ position: "absolute", top: -2, bottom: -2, left: pct(range.min), width: `calc(${pct(range.max)} - ${pct(range.min)})`, border: `1px dashed ${tc("#575B61")}`, borderRadius: 4 }} />
       )}
       {total > 0 && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: pct(total), background: color, borderRadius: 4 }} />}
     </div>
@@ -284,7 +288,7 @@ export function WeeklyTargetsEditor({ userId, options, saved, onClose }) {
       <span style={{ fontSize: 13, color: T.dim }}>{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button onClick={onDec} style={stepBtn} aria-label={`Decrease ${label}`}>−</button>
-        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, minWidth: 28, textAlign: "center" }}>{value}</span>
+        <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, minWidth: 28, textAlign: "center" }}>{value}</span>
         <button onClick={onInc} style={stepBtn} aria-label={`Increase ${label}`}>+</button>
       </div>
     </div>
@@ -295,11 +299,11 @@ export function WeeklyTargetsEditor({ userId, options, saved, onClose }) {
       <div style={{ width: "100%", maxWidth: 420, padding: "16px 16px 40px", boxSizing: "border-box" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button onClick={close} aria-label="Back" style={{ background: "none", border: "none", color: T.text, fontSize: 22, padding: "0 6px 0 0" }}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, flex: 1 }}>Weekly targets</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, flex: 1 }}>Weekly targets</div>
           <button onClick={close} style={{ background: "none", border: "none", color: T.accent, fontSize: 14, fontWeight: 600 }}>Done</button>
         </div>
         <div style={{ fontSize: 13, color: T.dim, marginTop: 6, lineHeight: 1.5 }}>Hard sets per week, per muscle. Apply a focus preset to every tracked muscle, then fine-tune any one. The upper number is where extra sets start adding less, not a limit.</div>
-        {saveNote && <div style={{ marginTop: 10, fontSize: 12.5, color: "#E8A82E", background: "rgba(232,168,46,0.1)", border: "1px solid rgba(232,168,46,0.4)", borderRadius: 10, padding: "8px 10px", lineHeight: 1.45 }}>{saveNote}</div>}
+        {saveNote && <div style={{ marginTop: 10, fontSize: 12.5, color: tc("#D9894A"), background: "rgba(217,137,74,0.1)", border: "1px solid rgba(217,137,74,0.4)", borderRadius: 10, padding: "8px 10px", lineHeight: 1.45 }}>{saveNote}</div>}
         <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
           {Object.entries(FOCUS_RANGES).map(([name, r]) => (
             <button key={name} onClick={() => applyPreset(name)} style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 12.5 }}>

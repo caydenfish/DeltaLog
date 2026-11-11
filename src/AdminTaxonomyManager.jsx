@@ -3,11 +3,15 @@ import { fetchMuscleGroups, fetchMuscleDetailed, fetchMuscleTaxonomy } from "./l
 import { setMuscleTaxonomyCache } from "./lib/muscleTaxonomy";
 import { InlineLoading } from "./LoadingSpinner";
 import MuscleTaxonomyManager from "./MuscleTaxonomyManager";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  dim: "#8B919D",
-};
+const T = themed({
+  bg: "#121418",
+  dim: "#8F949C",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // Self-sufficient wrapper around MuscleTaxonomyManager so it can be
 // opened straight from the Admin menu without depending on Exercise

@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { VERSION_HISTORY } from "./lib/versionHistory";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 };
 
@@ -24,7 +28,7 @@ function Highlight({ text, query }) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === q.toLowerCase() ? (
-          <span key={i} style={{ background: "rgba(232,68,46,0.35)", color: T.text, borderRadius: 3 }}>{part}</span>
+          <span key={i} style={{ background: "rgba(196,163,90,0.35)", color: T.text, borderRadius: 3 }}>{part}</span>
         ) : (
           <span key={i}>{part}</span>
         )
@@ -51,7 +55,7 @@ export default function VersionHistory({ onClose }) {
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={smallBtn}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>VERSION HISTORY</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>VERSION HISTORY</div>
           <div style={{ width: 26 }} />
         </div>
 
@@ -71,7 +75,7 @@ export default function VersionHistory({ onClose }) {
           {filtered.map((entry) => (
             <div key={entry.version} style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>
+                <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>
                   v<Highlight text={entry.version} query={query} />
                 </div>
                 <div style={{ color: T.dim, fontSize: 11 }}>{entry.date}</div>

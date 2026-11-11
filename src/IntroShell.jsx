@@ -1,3 +1,4 @@
+import { tc } from "./lib/theme";
 // Shared full-screen frame for every pre-app screen (Welcome, Onboarding,
 // TermsGate, SetupWizard). Why this exists: html/body/#root are locked to
 // height:100% + overflow:hidden (index.html) so the main app can manage its
@@ -16,7 +17,7 @@ export default function IntroShell({ children, footer, maxWidth = 380, zIndex = 
   return (
     <div
       style={{
-        position: "fixed", inset: 0, zIndex, background: "#101216",
+        position: "fixed", inset: 0, zIndex, background: tc("#121418"),
         display: "flex", flexDirection: "column",
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingLeft: "env(safe-area-inset-left, 0px)",
@@ -30,7 +31,7 @@ export default function IntroShell({ children, footer, maxWidth = 380, zIndex = 
         </div>
       </div>
       {footer && (
-        <div style={{ flexShrink: 0, borderTop: "1px solid #2C313B", background: "#101216", padding: "12px 20px calc(12px + env(safe-area-inset-bottom, 0px))" }}>
+        <div style={{ flexShrink: 0, borderTop: `1px solid ${tc("#2F343B")}`, background: tc("#121418"), padding: "12px 20px calc(12px + env(safe-area-inset-bottom, 0px))" }}>
           <div style={{ width: "100%", maxWidth, margin: "0 auto" }}>{footer}</div>
         </div>
       )}

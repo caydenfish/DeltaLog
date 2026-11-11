@@ -4,17 +4,21 @@ import ExerciseThumb from "./ExerciseThumb";
 import CustomExerciseModal from "./CustomExerciseModal";
 import { IconX } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 function creatorName(r) {
   const full = [r.creator_first_name, r.creator_last_name].filter(Boolean).join(" ");
@@ -158,20 +162,20 @@ export default function AdminExercises({ user, onClose }) {
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>CUSTOM EXERCISES</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>CUSTOM EXERCISES</div>
           <div style={{ width: 26 }} />
         </div>
 
         <div style={{ display: "flex", gap: 8, padding: "12px 16px 0" }}>
           <button
             onClick={() => setTab("queue")}
-            style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${tab === "queue" ? T.accent : T.line}`, background: tab === "queue" ? "rgba(232,68,46,0.1)" : "none", color: tab === "queue" ? T.accent : T.dim, fontSize: 12.5, fontWeight: 700 }}
+            style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${tab === "queue" ? T.accent : T.line}`, background: tab === "queue" ? "rgba(196,163,90,0.1)" : "none", color: tab === "queue" ? T.accent : T.dim, fontSize: 12.5, fontWeight: 700 }}
           >
             Needs Review{rows && rows.length > 0 ? ` (${rows.length})` : ""}
           </button>
           <button
             onClick={() => setTab("history")}
-            style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${tab === "history" ? T.accent : T.line}`, background: tab === "history" ? "rgba(232,68,46,0.1)" : "none", color: tab === "history" ? T.accent : T.dim, fontSize: 12.5, fontWeight: 700 }}
+            style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${tab === "history" ? T.accent : T.line}`, background: tab === "history" ? "rgba(196,163,90,0.1)" : "none", color: tab === "history" ? T.accent : T.dim, fontSize: 12.5, fontWeight: 700 }}
           >
             All Submissions
           </button>
@@ -182,7 +186,7 @@ export default function AdminExercises({ user, onClose }) {
           <div style={{ color: T.dim, fontSize: 11, marginBottom: 16, lineHeight: 1.5 }}>
             Every custom exercise a user creates lands here for review — nothing gets promoted to the shared library automatically. You'll also get a notification (in Announcements) the moment a new one comes in.
           </div>
-          {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
+          {error && <div style={{ color: T.danger, fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
           {rows === undefined && <InlineLoading />}
 
@@ -218,7 +222,7 @@ export default function AdminExercises({ user, onClose }) {
                       <button
                         onClick={() => openReview(r)}
                         disabled={busyId === r.id}
-                        style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: reviewed ? "none" : "rgba(232,68,46,0.1)", color: reviewed ? T.dim : T.accent, fontSize: 13, fontWeight: 600 }}
+                        style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: reviewed ? "none" : "rgba(196,163,90,0.1)", color: reviewed ? T.dim : T.accent, fontSize: 13, fontWeight: 600 }}
                       >
                         {reviewed ? "Edit" : "Review & Edit"}
                       </button>
@@ -226,7 +230,7 @@ export default function AdminExercises({ user, onClose }) {
                         onClick={() => promote(r.id)}
                         disabled={busyId === r.id || !reviewed}
                         title={reviewed ? undefined : "Review the submission first"}
-                        style={{ flex: 2, padding: "8px 0", borderRadius: 8, border: "none", background: !reviewed ? T.surface2 : T.green, color: !reviewed ? T.dim : "#fff", fontSize: 13, fontWeight: 700 }}
+                        style={{ flex: 2, padding: "8px 0", borderRadius: 8, border: "none", background: !reviewed ? T.surface2 : T.green, color: !reviewed ? T.dim : T.bg, fontSize: 13, fontWeight: 700 }}
                       >
                         {busyId === r.id ? "Working…" : "Promote to library"}
                       </button>
@@ -262,14 +266,14 @@ export default function AdminExercises({ user, onClose }) {
               <button
                 key={f}
                 onClick={() => setHistoryFilter(f)}
-                style={{ padding: "5px 10px", borderRadius: 999, border: `1px solid ${historyFilter === f ? T.accent : T.line}`, background: historyFilter === f ? "rgba(232,68,46,0.1)" : "none", color: historyFilter === f ? T.accent : T.dim, fontSize: 11.5, fontWeight: 600, textTransform: "capitalize" }}
+                style={{ padding: "5px 10px", borderRadius: 999, border: `1px solid ${historyFilter === f ? T.accent : T.line}`, background: historyFilter === f ? "rgba(196,163,90,0.1)" : "none", color: historyFilter === f ? T.accent : T.dim, fontSize: 11.5, fontWeight: 600, textTransform: "capitalize" }}
               >
                 {f}
               </button>
             ))}
           </div>
 
-          {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
+          {error && <div style={{ color: T.danger, fontSize: 13, marginBottom: 12 }}>{error}</div>}
           {history === undefined && <InlineLoading />}
           {history && history.length === 0 && (
             <div style={{ color: T.dim, fontSize: 13, textAlign: "center", padding: "24px 0" }}>No submissions logged yet.</div>
@@ -314,14 +318,14 @@ export default function AdminExercises({ user, onClose }) {
                         </div>
                       </div>
                       {stillPrivate && (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(232,68,46,0.08)", border: `1px solid ${T.accent}`, borderRadius: 8, padding: "6px 8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(196,163,90,0.08)", border: `1px solid ${T.accent}`, borderRadius: 8, padding: "6px 8px" }}>
                           <div style={{ color: T.accent, fontSize: 10.5, fontWeight: 600 }}>
                             Marked {h.status}, but never actually promoted — still a private exercise.
                           </div>
                           <button
                             onClick={() => promoteFromHistory(h)}
                             disabled={busyId === h.id}
-                            style={{ flexShrink: 0, marginLeft: 8, padding: "5px 10px", borderRadius: 7, border: "none", background: T.green, color: "#fff", fontSize: 11, fontWeight: 700 }}
+                            style={{ flexShrink: 0, marginLeft: 8, padding: "5px 10px", borderRadius: 7, border: "none", background: T.green, color: T.bg, fontSize: 11, fontWeight: 700 }}
                           >
                             {busyId === h.id ? "Working…" : "Promote now"}
                           </button>

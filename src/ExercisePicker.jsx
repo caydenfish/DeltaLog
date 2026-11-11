@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { muscleLabel, muscleLabelsFor, muscleColor, scientificNameOf, detailedNameOf, genericBucket, muscleOptionsForMode, expandSplit, isSplitActive, CATEGORIES } from "./lib/muscleTaxonomy";
-import { T } from "./lib/theme";
+import { T, tc } from "./lib/theme";
 import { getPrefs, setPref } from "./lib/prefs";
 import { getSplits } from "./lib/splits";
 import { IconStar, IconCheck, IconSearch, IconX, IconClock, IconBody, IconBarbell, IconRefresh, IconSuperset, IconPencil, IconFilter, IconChevronLeft, IconChevronRight, IconPlus } from "./Icons";
@@ -85,9 +85,9 @@ export function splitGroupFor(splitName, mode) {
 // All muscle text is at the person's Muscle Names tier.
 // ============================================================================
 
-const GOLD = "#F2C94C";
-const SOFT = "#B8BDC7";
-const CONDENSED = "'Barlow Condensed', sans-serif";
+const GOLD = tc("#D8BF83");
+const SOFT = tc("#BEBDB6");
+const CONDENSED = "'Saira Condensed', sans-serif";
 const ONE_LINE = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
 const EQUIP_ABBR = { Barbell: "BB", Dumbbell: "DB", Cable: "CB", Machine: "MC", Kettlebell: "KB", Bodyweight: "BW", Other: "OT" };
@@ -142,7 +142,7 @@ export function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, s
     <div style={{ display: "flex", alignItems: "center", gap: 2, background: selectable && selected ? `${T.accent}14` : T.surface, border: `1px solid ${selectable && selected ? `${T.accent}80` : T.line}`, borderRadius: 12, paddingRight: onToggleFavorite ? 2 : 0 }}>
       <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0, minHeight: compact ? 58 : 64, textAlign: "left", background: "none", border: "none", padding: compact ? "8px 10px" : "10px 12px", borderRadius: 12 }}>
         {selectable && (
-          <div aria-hidden="true" style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, boxSizing: "border-box", border: `2px solid ${selected ? T.accent : "#4A505B"}`, background: selected ? T.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+          <div aria-hidden="true" style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, boxSizing: "border-box", border: `2px solid ${selected ? T.accent : tc("#4A4F57")}`, background: selected ? T.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: T.bg }}>
             {selected ? <IconCheck size={13} /> : null}
           </div>
         )}
@@ -150,14 +150,14 @@ export function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, s
         {!compact && !selectable && (l.mediaUrl ? (
           <ExerciseThumb muscle={l.muscle} mediaUrl={l.mediaUrl} size={40} />
         ) : (
-          <div aria-hidden="true" style={{ width: 40, height: 40, borderRadius: 10, background: T.surface2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: CONDENSED, fontWeight: 700, fontSize: 15, color: muscleColor(l.muscle) }}>
+          <div aria-hidden="true" style={{ width: 40, height: 40, borderRadius: 10, background: T.surface2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 15, color: muscleColor(l.muscle) }}>
             {EQUIP_ABBR[l.equipment] || "—"}
           </div>
         ))}
         {/* Name gets the full width on its own line; muscles/equipment and
             the last set share the second line, which truncates first. */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-          <div style={{ fontFamily: CONDENSED, fontSize: compact ? 18 : 19, fontWeight: 600, color: performed ? T.text : "#C9CCD2", ...ONE_LINE }}>{l.name}</div>
+          <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: compact ? 18 : 19, fontWeight: 600, color: performed ? T.text : "#C9CCD2", ...ONE_LINE }}>{l.name}</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
             <span style={{ flex: 1, minWidth: 0, fontSize: compact ? 12 : 13, color: T.dim, ...ONE_LINE }}>{compact ? l.equipment : `${primaryMuscleText(l)} · ${l.equipment}`}</span>
             <span style={{ flexShrink: 0, fontSize: compact ? 12 : 13, fontWeight: 600, color: performed ? SOFT : T.dim, whiteSpace: "nowrap" }}>
@@ -170,7 +170,7 @@ export function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, s
         <button
           onClick={(e) => { e.stopPropagation(); onToggleFavorite(l.id); }}
           aria-label={l.isFavorite ? "Unfavorite" : "Favorite"}
-          style={{ width: 44, height: 44, background: "none", border: "none", color: l.isFavorite ? GOLD : "#5A606B", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          style={{ width: 44, height: 44, background: "none", border: "none", color: l.isFavorite ? GOLD : tc("#5A606B"), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
         >
           <IconStar size={17} filled={l.isFavorite} />
         </button>
@@ -182,7 +182,7 @@ export function ExerciseRow({ l, onClick, badge, onToggleFavorite, selectable, s
 function SectionHeader({ label, count, color }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 4px 2px" }}>
-      <div style={{ fontFamily: CONDENSED, fontSize: 15, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: color || SOFT }}>{label}</div>
+      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 15, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: color || SOFT }}>{label}</div>
       {count != null && <div style={{ fontSize: 12, color: T.dim }}>{count}</div>}
     </div>
   );
@@ -213,12 +213,12 @@ function Tile({ title, sub, count, icon, color, onClick, hero, children }) {
         ) : (
           <div style={{ width: 12, height: 12, borderRadius: 6, background: color || T.dim }} />
         )}
-        {hero && <div style={{ flex: 1, fontFamily: CONDENSED, fontSize: 24, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: color || T.text, ...ONE_LINE }}>{title}</div>}
-        {count != null && <div style={{ fontFamily: CONDENSED, fontSize: 18, fontWeight: 600, color: hero ? color : T.dim }}>{count}</div>}
+        {hero && <div style={{ flex: 1, fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: color || T.text, ...ONE_LINE }}>{title}</div>}
+        {count != null && <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 600, color: hero ? color : T.dim }}>{count}</div>}
       </div>
       {!hero && (
         <div style={{ display: "flex", flexDirection: "column", gap: 2, width: "100%", minWidth: 0 }}>
-          <div style={{ fontFamily: CONDENSED, fontSize: 21, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: T.text, ...ONE_LINE }}>{title}</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 21, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: T.text, ...ONE_LINE }}>{title}</div>
           {sub && <div style={{ fontSize: 13, color: SOFT, ...ONE_LINE }}>{sub}</div>}
         </div>
       )}
@@ -350,9 +350,9 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
   function createButton(label) {
     if (!onCreateCustom) return null;
     return (
-      <button onClick={() => onCreateCustom(q)} style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 56, padding: "8px 14px", borderRadius: 12, border: `1px dashed #4A505B`, background: "transparent", color: T.text, textAlign: "left", width: "100%", boxSizing: "border-box" }}>
+      <button onClick={() => onCreateCustom(q)} style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 56, padding: "8px 14px", borderRadius: 12, border: `1px dashed ${tc("#4A4F57")}`, background: "transparent", color: T.text, textAlign: "left", width: "100%", boxSizing: "border-box" }}>
         <span style={{ width: 32, height: 32, borderRadius: 8, background: T.surface2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconPlus size={16} /></span>
-        <span style={{ fontFamily: CONDENSED, fontSize: 18, fontWeight: 600, ...ONE_LINE }}>{label}</span>
+        <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 600, ...ONE_LINE }}>{label}</span>
       </button>
     );
   }
@@ -382,7 +382,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
         <div key={c.key} style={{ display: "contents" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 2px 2px" }}>
             <div style={{ width: 8, height: 8, borderRadius: 4, background: c.color }} />
-            <div style={{ fontFamily: CONDENSED, fontSize: 14, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: SOFT }}>{c.key}</div>
+            <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 14, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: SOFT }}>{c.key}</div>
           </div>
           {rowsOf(inCat, compact)}
         </div>
@@ -459,14 +459,14 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
             {valueMeta && <div style={{ fontSize: 12, color: T.dim, letterSpacing: 0.6, textTransform: "uppercase", ...ONE_LINE }}>{meta.label}</div>}
             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
               {valueMeta?.color && <div style={{ width: 10, height: 10, borderRadius: 5, background: valueMeta.color, flexShrink: 0 }} />}
-              <div style={{ fontFamily: CONDENSED, fontSize: 22, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: node === "favorites" ? GOLD : T.text, ...ONE_LINE }}>{valueMeta ? valueMeta.label : meta.label}</div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: node === "favorites" ? GOLD : T.text, ...ONE_LINE }}>{valueMeta ? valueMeta.label : meta.label}</div>
             </div>
           </div>
         </div>
         {VALUE_NODES.has(node) && !value ? (
           <div style={TILE_GRID}>
             {valuesFor(node).map((v) => (
-              <Tile key={v.key} title={v.label} sub={v.sub} color={v.color} count={node === "muscle" ? v.count : null} icon={v.color ? null : node === "equipment" ? <span style={{ fontFamily: CONDENSED, fontWeight: 700, fontSize: 15 }}>{EQUIP_ABBR[v.key]}</span> : meta.icon(18)} onClick={() => openValue(v.key)} />
+              <Tile key={v.key} title={v.label} sub={v.sub} color={v.color} count={node === "muscle" ? v.count : null} icon={v.color ? null : node === "equipment" ? <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 15 }}>{EQUIP_ABBR[v.key]}</span> : meta.icon(18)} onClick={() => openValue(v.key)} />
             ))}
           </div>
         ) : (
@@ -543,17 +543,17 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
     return (
       <>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, borderRadius: 14, background: T.surface2, marginBottom: 6 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: `${muscleColor(r.muscle)}26`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: CONDENSED, fontWeight: 700, fontSize: 16, color: muscleColor(r.muscle), flexShrink: 0 }}>{EQUIP_ABBR[r.equipment] || "—"}</div>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: `${muscleColor(r.muscle)}26`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 16, color: muscleColor(r.muscle), flexShrink: 0 }}>{EQUIP_ABBR[r.equipment] || "—"}</div>
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
             <div style={{ fontSize: 12, color: T.dim, letterSpacing: 0.6, textTransform: "uppercase" }}>Swapping out</div>
-            <div style={{ fontFamily: CONDENSED, fontSize: 20, fontWeight: 600, color: T.text, ...ONE_LINE }}>{r.name}</div>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 600, color: T.text, ...ONE_LINE }}>{r.name}</div>
             <div style={{ fontSize: 13, color: SOFT, ...ONE_LINE }}>{primary}{r.pattern ? ` · ${patternLabel(r.pattern)}` : ""}</div>
           </div>
         </div>
         {sameMove.length > 0 && <><SectionHeader label="Same movement" count={patternLabel(r.pattern)} />{rowsOf(sameMove)}</>}
         {sameMuscle.length > 0 && <><SectionHeader label="Same muscle" count={primary} />{rowsOf(sameMuscle)}</>}
         {sameMove.length === 0 && sameMuscle.length === 0 && <div style={{ fontSize: 14, color: T.dim, padding: "12px 4px" }}>No close alternatives found.</div>}
-        <button onClick={() => setBrowseAll(true)} style={{ marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 12, background: "transparent", border: `1px dashed #4A505B`, fontFamily: CONDENSED, fontSize: 18, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: SOFT }}>
+        <button onClick={() => setBrowseAll(true)} style={{ marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 12, background: "transparent", border: `1px dashed ${tc("#4A4F57")}`, fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", color: SOFT }}>
           Browse all exercises <IconChevronRight size={16} />
         </button>
       </>
@@ -564,7 +564,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
   const activeCount = (muscleFilter?.length || 0) + (equipFilter?.length || 0) + (performedFilter && performedFilter !== "all" ? 1 : 0) + (sourceFilter && sourceFilter !== "all" ? 1 : 0);
   const muscleQ = muscleQuery.toLowerCase();
   const muscleOptions = muscleOptionsForMode(mode);
-  const label = (t) => <div style={{ fontFamily: CONDENSED, fontSize: 13, fontWeight: 600, letterSpacing: 1.1, textTransform: "uppercase", color: SOFT, margin: "10px 0 6px" }}>{t}</div>;
+  const label = (t) => <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: 1.1, textTransform: "uppercase", color: SOFT, margin: "10px 0 6px" }}>{t}</div>;
   const filtersPanel = showFilters && onToggleFilters && (
     <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: "4px 12px 12px", marginBottom: 10 }}>
       {onApplySplit && <>{label("Split")}<div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{splitNames.map((n) => <Chip key={n} label={n} active={isSplitActive(n, muscleFilter || [], mode)} onClick={() => onApplySplit(n)} />)}</div></>}
@@ -608,7 +608,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
         {onToggleFilters && (
           <button onClick={onToggleFilters} aria-label="Filters" style={{ position: "relative", width: 46, height: 46, borderRadius: 12, background: T.surface, border: `1px solid ${activeCount ? T.accent : T.line}`, color: activeCount ? T.text : T.dim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <IconFilter size={17} />
-            {activeCount > 0 && <span style={{ position: "absolute", top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, background: T.accent, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>}
+            {activeCount > 0 && <span style={{ position: "absolute", top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, background: T.accent, color: T.bg, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>}
           </button>
         )}
         <LayoutToggle layout={layout} onChange={setLayout} />
@@ -620,7 +620,7 @@ export default function ExercisePicker({ list, search, onSearchChange, muscleFil
       </div>
       {trayItems.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 10, marginTop: 6, borderTop: `1px solid ${T.line}` }}>
-          <div style={{ fontFamily: CONDENSED, fontSize: 14, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: SOFT }}>{trayItems.length} selected</div>
+          <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 14, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: SOFT }}>{trayItems.length} selected</div>
           <ChipRow>
             {trayItems.map((l) => (
               <div key={l.id} style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, height: 34, padding: "0 4px 0 10px", borderRadius: 999, background: T.surface2, fontSize: 13, color: T.text, whiteSpace: "nowrap" }}>

@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
+import { tc } from "./lib/theme";
 
-const ACCENT = "#E8442E";
+const ACCENT = tc("#C4A35A");
 
 // Renders a thin accent-colored line at the exact insertion point for a
 // dragged row, instead of highlighting the row being hovered over.

@@ -7,20 +7,24 @@ import {
   displayName, initialOf, colorFor, lastLiftedLabel,
   shareDeltaLog, inviteText, inviteLink, contactsSupported, pickContacts,
 } from "./lib/social";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
-const condensed = "'Barlow Condensed', sans-serif";
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
+const condensed = "'Saira Condensed', sans-serif";
 const oneLine = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
-const eyebrow = { fontFamily: condensed, fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.dim };
+const eyebrow = { fontFamily: "'Saira Condensed', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.dim };
 
 export function Avatar({ person, size = 34 }) {
   return (
@@ -32,7 +36,7 @@ export function Avatar({ person, size = 34 }) {
 
 function PillButton({ children, onClick, primary, disabled, ariaLabel }) {
   return (
-    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel} style={{ minWidth: 36, height: 36, padding: "0 14px", borderRadius: 9, border: primary ? "none" : `1px solid ${T.line}`, background: primary ? T.accent : T.surface2, color: primary ? "#fff" : T.text, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.5 : 1, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <button onClick={onClick} disabled={disabled} aria-label={ariaLabel} style={{ minWidth: 36, height: 36, padding: "0 14px", borderRadius: 9, border: primary ? "none" : `1px solid ${T.line}`, background: primary ? T.accent : T.surface2, color: primary ? T.bg : T.text, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.5 : 1, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
       {children}
     </button>
   );
@@ -75,10 +79,10 @@ export function HandleSetupCard({ initial = "", onSaved, title = "Pick your ID",
   return (
     <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <span style={{ fontFamily: condensed, fontSize: 20, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: T.text }}>{title}</span>
+        <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: T.text }}>{title}</span>
         <span style={{ fontSize: 13, color: T.dim }}>{subtitle}</span>
       </div>
-      <label style={{ display: "flex", alignItems: "center", gap: 4, height: 48, padding: "0 12px", borderRadius: 10, background: T.bg, border: `1px solid ${error ? T.accent : T.line}` }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 4, height: 48, padding: "0 12px", borderRadius: 10, background: T.bg, border: `1px solid ${error ? T.danger : T.line}` }}>
         <span style={{ color: T.dim, fontSize: 16 }}>@</span>
         <input
           value={value}
@@ -93,10 +97,10 @@ export function HandleSetupCard({ initial = "", onSaved, title = "Pick your ID",
           style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: T.text, fontSize: 16 }}
         />
       </label>
-      <div style={{ fontSize: 12, color: error ? T.accent : T.dim, minHeight: 16, ...oneLine }}>
+      <div style={{ fontSize: 12, color: error ? T.danger : T.dim, minHeight: 16, ...oneLine }}>
         {error || (value && !valid ? "3-20 characters: letters, numbers, _ and ." : "")}
       </div>
-      <button onClick={save} disabled={!valid || saving} style={{ height: 48, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, opacity: !valid || saving ? 0.5 : 1 }}>
+      <button onClick={save} disabled={!valid || saving} style={{ height: 48, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, opacity: !valid || saving ? 0.5 : 1 }}>
         {saving ? "Saving..." : "Save ID"}
       </button>
     </div>
@@ -211,10 +215,10 @@ export default function Friends({ user, onClose }) {
             <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
               <button onClick={() => setEditingHandle(true)} aria-label="Change your ID" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, background: "none", border: "none", padding: 0, textAlign: "left" }}>
                 <span style={eyebrow}>Your ID</span>
-                <span style={{ fontFamily: condensed, fontSize: 24, fontWeight: 700, color: T.text, ...oneLine }}>@{me.handle}</span>
+                <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, ...oneLine }}>@{me.handle}</span>
               </button>
               <button onClick={copyId} aria-label="Copy your ID" style={{ width: 44, height: 44, borderRadius: 10, border: "none", background: T.surface2, color: T.text, display: "flex", alignItems: "center", justifyContent: "center" }}><IconCopy size={18} /></button>
-              <button onClick={shareId} aria-label="Share your ID" style={{ width: 44, height: 44, borderRadius: 10, border: "none", background: T.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><IconShare size={18} /></button>
+              <button onClick={shareId} aria-label="Share your ID" style={{ width: 44, height: 44, borderRadius: 10, border: "none", background: T.accent, color: T.bg, display: "flex", alignItems: "center", justifyContent: "center" }}><IconShare size={18} /></button>
             </div>
           )}
 
@@ -237,7 +241,7 @@ export default function Friends({ user, onClose }) {
             {!hasHandle && query && <div style={{ fontSize: 12, color: T.dim }}>Pick your ID first so people know who's adding them.</div>}
             {results && (
               <div style={{ display: "flex", flexDirection: "column" }}>
-                {searchError && <div role="alert" style={{ fontSize: 13, color: "#FF8A78", padding: "8px 2px" }}>Search isn't working right now: {searchError}</div>}
+                {searchError && <div role="alert" style={{ fontSize: 13, color: tc("#E08A78"), padding: "8px 2px" }}>Search isn't working right now: {searchError}</div>}
                 {!searchError && results.length === 0 && !searching && <div style={{ fontSize: 13, color: T.dim, padding: "8px 2px", lineHeight: 1.45 }}>No one with that ID yet. If they haven't picked an ID, send them your invite link instead.</div>}
                 {results.map((r) => (
                   <PersonRow key={r.id} person={r} sub={`@${r.handle}`} right={searchAction(r)} />

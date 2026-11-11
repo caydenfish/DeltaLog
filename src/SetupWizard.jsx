@@ -5,16 +5,20 @@ import { PROGRESSION_MODELS, PROGRESSION_MODEL_DESCRIPTIONS } from "./lib/progra
 import Logo from "./Logo";
 import IntroShell from "./IntroShell";
 import { NAME_MODES } from "./lib/muscleTaxonomy";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 function PillRow({ options, value, onChange, columns }) {
   return (
@@ -32,7 +36,7 @@ function PillRow({ options, value, onChange, columns }) {
             padding: "13px 6px", borderRadius: 9, fontSize: 14, fontWeight: 700, border: "none",
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             background: value === opt.key ? T.accent : "transparent",
-            color: value === opt.key ? "#fff" : T.dim,
+            color: value === opt.key ? T.bg : T.dim,
           }}
         >
           {opt.label}
@@ -129,7 +133,7 @@ export default function SetupWizard({ onComplete, onClose }) {
       subtitle: "How muscle groups are labeled throughout the app.",
       body: (
         <>
-          <PillRow options={NAME_MODES} value={muscleNameMode} onChange={setMuscleNameMode} columns={3} />
+          <PillRow options={NAME_MODES.filter((m) => !m.comingSoon)} value={muscleNameMode} onChange={setMuscleNameMode} columns={2} />
           <InfoBox>{NAME_MODES.map((m) => `${m.example} (${m.label})`).join(" vs ")}</InfoBox>
         </>
       ),
@@ -160,7 +164,7 @@ export default function SetupWizard({ onComplete, onClose }) {
       footer={
         <button
           onClick={handleNext}
-          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}
+          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}
         >
           {isLast ? "Finish setup" : "Continue"}
         </button>
@@ -190,7 +194,7 @@ export default function SetupWizard({ onComplete, onClose }) {
       <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, textAlign: "center" }}>
         Step {step + 1} of {steps.length}
       </div>
-      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
         {current.title}
       </div>
       <div style={{ color: T.dim, fontSize: 13, textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>

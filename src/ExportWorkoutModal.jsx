@@ -6,16 +6,20 @@ import { getPrefs, setPref } from "./lib/prefs";
 import { fetchWorkoutHistory } from "./lib/queries";
 import { buildExportStats, autoTitle } from "./lib/exportStats";
 import { ExportFrame, LAYOUTS, FORMATS, ACCENTS, W, heightFor, photoBoxFor } from "./exportLayouts";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // Instagram's baseline width; every format exports 1080 px wide (Story
 // 1080x1920, Post 1080x1350, Square 1080x1080). The frame renders at
@@ -197,7 +201,7 @@ export default function ExportWorkoutModal({ data, onClose, userId, history: his
   const chip = (on, disabled) => ({
     padding: "7px 12px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap",
     border: `1px solid ${on && !disabled ? T.accent : T.line}`,
-    background: on && !disabled ? "rgba(232,68,46,0.12)" : "transparent",
+    background: on && !disabled ? "rgba(196,163,90,0.12)" : "transparent",
     color: on && !disabled ? T.accent : T.dim, opacity: disabled ? 0.4 : 1,
   });
 
@@ -205,7 +209,7 @@ export default function ExportWorkoutModal({ data, onClose, userId, history: his
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.85)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div style={{ width: "100%", maxWidth: 440, maxHeight: "94vh", display: "flex", flexDirection: "column", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0" }}>
         <div style={{ padding: "16px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>Save as image</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>Save as image</div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}><IconX size={12} /></button>
         </div>
 
@@ -248,7 +252,7 @@ export default function ExportWorkoutModal({ data, onClose, userId, history: his
           <div style={sectionLabel}>Format</div>
           <div style={{ display: "flex", background: T.surface2, borderRadius: 10, padding: 3, gap: 3, marginBottom: 14 }}>
             {FORMATS.map((f) => (
-              <button key={f.key} onClick={() => setFormat(f.key)} aria-pressed={format === f.key} style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", whiteSpace: "nowrap", background: format === f.key ? T.accent : "transparent", color: format === f.key ? "#fff" : T.dim }}>
+              <button key={f.key} onClick={() => setFormat(f.key)} aria-pressed={format === f.key} style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", whiteSpace: "nowrap", background: format === f.key ? T.accent : "transparent", color: format === f.key ? T.bg : T.dim }}>
                 {f.label} <span style={{ opacity: 0.7, fontWeight: 500 }}>{f.sub}</span>
               </button>
             ))}
@@ -290,14 +294,14 @@ export default function ExportWorkoutModal({ data, onClose, userId, history: his
             <div style={{ fontSize: 11.5, color: T.dim, marginTop: -10, marginBottom: 14 }}>PRs show up once you have earlier workouts to beat.</div>
           )}
 
-          {saveError && <div style={{ color: T.accent, fontSize: 12.5, marginBottom: 10, textAlign: "center" }}>{saveError}</div>}
+          {saveError && <div style={{ color: T.danger, fontSize: 12.5, marginBottom: 10, textAlign: "center" }}>{saveError}</div>}
           <div style={{ display: "flex", gap: 8 }}>
             {canShareFiles && (
               <button onClick={handleShare} disabled={!!saving} style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, whiteSpace: "nowrap", opacity: saving ? 0.7 : 1 }}>
                 <IconShare size={15} /> {saving === "share" ? "Preparing…" : "Share"}
               </button>
             )}
-            <button onClick={handleSave} disabled={!!saving} style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, whiteSpace: "nowrap", opacity: saving ? 0.7 : 1 }}>
+            <button onClick={handleSave} disabled={!!saving} style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, whiteSpace: "nowrap", opacity: saving ? 0.7 : 1 }}>
               <IconDownload size={15} /> {saving === "save" ? "Generating…" : "Save image"}
             </button>
           </div>

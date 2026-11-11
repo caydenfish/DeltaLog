@@ -5,6 +5,29 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.25.0",
+    date: "2026-11-11",
+    items: [
+      "Theme registry. lib/theme.js: THEMES [{ id, name, blurb, light, preview, map }], IRON_KEYS documents every remappable Iron hex. Active theme read synchronously from localStorage dl_theme at import (legacy 'dark'/'light' ids map to iron/chalk); exports THEME, THEME_META, IS_LIGHT, tc(hex), themed(obj), setTheme(id) (writes dl_theme + dl_theme_chosen, reloads on change), themeChosen(). Every file-local `const T = {...}` is now `themed({...})`; hardcoded UI hexes in styles are wrapped in tc(). Device-local on purpose: first paint is right and the synced prefs blob can't flip it mid-session. Switching reloads so module-level style constants stay correct. exportLayouts stays Iron (share images). New theme = one THEMES entry; picker, setup and Settings pick it up.",
+      "Themes: Iron (original) and Chalk: bg #D9D5CA, surface #E4E0D6, surface2 #CDC8BB, line #BFB9AB, text #15171B, dim #4F5257, accent #6E5420 (4.85:1 on bg both ways, so T.bg-on-accent buttons pass), green #335C46, danger #9E3A27. Deliberately not near-white to cut glare. BodyMap tiers flip when IS_LIGHT (#9DBBA9 / #C4A35A / #6B5320) so more volume = more contrast. Onboarding line-art only inverts on dark themes. Photo overlay buttons use T.surface + alpha.",
+      "ThemePicker.jsx: full-screen chooser (cards from THEMES with their own preview swatches). App gates on themeChosen() right after the profile loads, ahead of onboarding: new users pick first, existing users get it once per device on next launch. ThemeChoice embedded in OnboardingFlow's app step as Look (new + redo), saved with setTheme(id, { reload: false }) and applied by a reload when the finish screen exits. ThemeSettings in Settings > Theme (new tile, IconTheme) applies on tap. Onboarding muscle-name options hide comingSoon tiers.",
+      "Type: Chakra Petch for display (every former Barlow Condensed style at fontSize >= 20: headings, big numbers, wordmark), Saira Condensed for small labels/eyebrows/buttons under 20px and as the default for the old CONDENSED/condensed/BC constants, Saira for body (index.html body font). Google Fonts link in index.html plus the in-component @imports in Home and SetLogger updated. exportLayouts uses Saira for SANS/MONO. index.html also paints body + theme-color from the stored theme before React (map must match THEMES[].preview.bg).",
+      "Logo.jsx: final mark on a 120x100 grid: Forged body (miter delta, stroke 9, square plates) + Scan glitch (two opposing tears at 50% height, gold tear, scanlines), useId clip ids, `plain` prop for tiny sizes; follows the active theme in-app. App icons (192/512/maskable/apple-touch) and favicon.svg/.ico use the bone version: #E6E3D9 ground, #15171B delta, #6E5420 barbell; favicon is the plain mark. Cache-busting ?v on favicon.ico and apple-touch-icon.",
+    ],
+  },
+  {
+    version: "1.24.0",
+    date: "2026-11-11",
+    items: [
+      "Palette v2 across every local T object, lib/theme.js, index.html, vite manifest and favicon.svg: bg #121418, surface #1B1E23, surface2 #24282E, line #2F343B, text #E6E3D9, dim #8F949C, accent #C4A35A (gold), green #6A9E80. New tokens danger #D0614C, accentDeep #8A6F33, spruce #3F6E55. Error text, delete/remove/discard/leave controls and SettingsUI danger tiles moved from T.accent to T.danger. White text on filled accent/danger/green controls switched to T.bg (gold fails contrast with white). Secondary hexes remapped: #E8A82E amber -> #D9894A, #FFD166/#F2C94C -> #D8BF83, #7BD69B -> #82AD93, #FF8A78 -> #E08A78, #FF6A55 links -> gold, #C93A26 Done buttons -> gold. Muscle colors, plate colors, training-load and plan-status colors untouched. PNG app icons not yet regenerated (pending final mark).",
+      "BodyMap intensity TIERS re-cut for the new accent: Low #3F6E55, Moderate #8A6F33, High #D8BF83 (lightness rises with volume; old High = accent would have collided with gold Low).",
+      "Fonts: SettingsUI search input used an unloaded 'Barlow' family (fell back to system font) -> inherit. exportLayouts SANS/MONO (system-ui / ui-monospace) -> Barlow Condensed, so export images match the app.",
+      "SetLogger quick fill: 'Copy previous set' + 'Copy last session' chips replaced by a 2-up grid, Target (target.weight x target.reps, gold) and Previous set (lastLogged). Last-session chip removed; the exercise-level 'Copy last session' action is unchanged.",
+      "Muscle detail: NAME_MODES Anatomy gets comingSoon. OptionTiles renders comingSoon options disabled with a Coming soon badge. SetupWizard hides the locked tier (2 columns). getPrefs maps muscleNameMode 'scientific' -> 'detailed' while locked. Admin scientificMode pickers (AdminExercises edit, library + New) still tag at Anatomy.",
+      "CustomExerciseModal (non-scientific): stored primary/secondary tags are normalized to the user's tier on open (deduped), so existing Anatomy tags show and toggle as Region/Category options instead of unmatched names. If the person doesn't change the muscles, the original raw tags are saved back unchanged (no precision loss on a name/equipment edit).",
+    ],
+  },
+  {
     version: "1.23.0",
     date: "2026-11-09",
     items: [

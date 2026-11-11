@@ -5,20 +5,24 @@ import GroupWorkoutSheet from "./GroupWorkoutSheet";
 import { useBackLayer } from "./lib/backNav";
 import { fetchTemplates, fetchTemplateExercises } from "./lib/queries";
 import { useGroupSession, setGroupPlan, startGroupSession, leaveGroupSession, displayName, planLabel } from "./lib/social";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
   ready: "#3FC7B4",
-};
-const condensed = "'Barlow Condensed', sans-serif";
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
+const condensed = "'Saira Condensed', sans-serif";
 const oneLine = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
-const label = { fontFamily: condensed, fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.dim, whiteSpace: "nowrap" };
+const label = { fontFamily: "'Saira Condensed', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.dim, whiteSpace: "nowrap" };
 
 // Group workout lobby (v1.20.0). Everyone lands here before lifting: the
 // host picks the plan (from scratch or a template), watches friends go
@@ -128,7 +132,7 @@ export default function GroupLobby({ user, sessionId, onStart, onExit }) {
       <div style={{ width: "100%", maxWidth: 400, height: "100dvh", display: "flex", flexDirection: "column", paddingTop: "env(safe-area-inset-top, 0px)", boxSizing: "border-box" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 12px 4px" }}>
           <button onClick={() => setConfirmLeave(true)} aria-label="Leave lobby" style={{ width: 44, height: 44, borderRadius: 10, border: "none", background: "transparent", color: T.text, display: "flex", alignItems: "center", justifyContent: "center" }}><IconChevronLeft size={22} /></button>
-          <span style={{ fontFamily: condensed, fontSize: 26, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: T.text, ...oneLine }}>Group Workout</span>
+          <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: T.text, ...oneLine }}>Group Workout</span>
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 16px", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -194,13 +198,13 @@ export default function GroupLobby({ user, sessionId, onStart, onExit }) {
         </div>
 
         <div style={{ padding: "12px 16px calc(16px + env(safe-area-inset-bottom, 0px))", borderTop: `1px solid ${T.line}`, display: "flex", flexDirection: "column", gap: 10 }}>
-          {error && <div style={{ fontSize: 12.5, color: T.accent, ...oneLine }}>{error}</div>}
+          {error && <div style={{ fontSize: 12.5, color: T.danger, ...oneLine }}>{error}</div>}
           {confirmLeave ? (
             <>
               <div style={{ fontSize: 13, color: T.dim, textAlign: "center" }}>{isHost ? "Leaving closes the lobby for everyone." : "You can rejoin if the host invites you again."}</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, height: 50, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 15, fontWeight: 600 }}>Stay</button>
-                <button onClick={leave} style={{ flex: 1, height: 50, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>{isHost ? "Close lobby" : "Leave lobby"}</button>
+                <button onClick={leave} style={{ flex: 1, height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>{isHost ? "Close lobby" : "Leave lobby"}</button>
               </div>
             </>
           ) : isHost ? (
@@ -208,7 +212,7 @@ export default function GroupLobby({ user, sessionId, onStart, onExit }) {
               <div style={{ fontSize: 12.5, color: T.dim, textAlign: "center", ...oneLine }}>
                 {othersReady === 0 ? "No one's ready yet. Friends can still join after you start." : "Anyone still invited can join after you start."}
               </div>
-              <button onClick={start} disabled={starting || !session} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700, opacity: starting || !session ? 0.6 : 1, whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button onClick={start} disabled={starting || !session} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: starting || !session ? 0.6 : 1, whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <IconUsers size={18} /> {starting ? "Starting..." : othersReady === 0 ? "Start now" : "Start for everyone"}
               </button>
             </>

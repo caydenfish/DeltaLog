@@ -1,11 +1,15 @@
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+import { themed } from "./lib/theme";
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const rowStyle = { width: "100%", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" };
 
@@ -16,7 +20,7 @@ function Row({ onClick, title, subtitle, badge }) {
         <div style={{ color: T.text, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
           {title}
           {badge > 0 && (
-            <span style={{ background: T.accent, color: "#fff", fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "1px 7px", lineHeight: 1.5 }}>{badge}</span>
+            <span style={{ background: T.accent, color: T.bg, fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "1px 7px", lineHeight: 1.5 }}>{badge}</span>
           )}
         </div>
         <div style={{ color: T.dim, fontSize: 11, marginTop: 2 }}>{subtitle}</div>
@@ -36,7 +40,7 @@ function ViewModeToggle({ mode, onChange }) {
     borderRadius: 8,
     border: "none",
     background: active ? T.accent : "transparent",
-    color: active ? "#fff" : T.dim,
+    color: active ? T.bg : T.dim,
     fontSize: 13,
     fontWeight: 700,
   });
@@ -57,7 +61,7 @@ export default function AdminHome({ onClose, onOpenExercises, onOpenFeedback, on
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>ADMIN</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>ADMIN</div>
           <div style={{ width: 26 }} />
         </div>
 

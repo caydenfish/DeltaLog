@@ -5,17 +5,21 @@ import CustomExerciseModal from "./CustomExerciseModal";
 import Templates from "./Templates";
 import { IconCheck, IconChevronUp, IconChevronDown } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 export default function MyCustomExercises({ user, onClose }) {
   const [rows, setRows] = useState(undefined); // undefined = loading
@@ -116,7 +120,7 @@ export default function MyCustomExercises({ user, onClose }) {
               width: 18, height: 18, borderRadius: 5, flexShrink: 0,
               border: `1.5px solid ${selected ? T.accent : T.line}`,
               background: selected ? T.accent : "transparent",
-              display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center", color: T.bg,
             }}>
               {selected ? <IconCheck size={11} /> : ""}
             </div>
@@ -163,13 +167,13 @@ export default function MyCustomExercises({ user, onClose }) {
         </div>
 
         {confirmDeleteId === r.id && (
-          <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10 }}>
+          <div style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 10 }}>
             {deleteError ? (
               <>
                 <div style={{ color: T.text, fontSize: 12.5, lineHeight: 1.5, marginBottom: 10 }}>{deleteError}</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => { setConfirmDeleteId(null); setDeleteError(null); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Close</button>
-                  {!archived && <button onClick={() => { handleArchive(r); setConfirmDeleteId(null); setDeleteError(null); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.accent, color: "#fff", fontSize: 12.5, fontWeight: 700 }}>Archive instead</button>}
+                  {!archived && <button onClick={() => { handleArchive(r); setConfirmDeleteId(null); setDeleteError(null); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12.5, fontWeight: 700 }}>Archive instead</button>}
                 </div>
               </>
             ) : (
@@ -178,7 +182,7 @@ export default function MyCustomExercises({ user, onClose }) {
                 <div style={{ color: T.dim, fontSize: 11.5, marginBottom: 10, lineHeight: 1.4 }}>Can't be undone. Only possible if you've never logged a set with it.</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Cancel</button>
-                  <button onClick={() => handleDelete(r.id, archived)} disabled={busyId === r.id} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.accent, color: "#fff", fontSize: 12.5, fontWeight: 700 }}>
+                  <button onClick={() => handleDelete(r.id, archived)} disabled={busyId === r.id} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12.5, fontWeight: 700 }}>
                     {busyId === r.id ? "Deleting…" : "Delete"}
                   </button>
                 </div>
@@ -204,7 +208,7 @@ export default function MyCustomExercises({ user, onClose }) {
           >
             {selectMode ? "Cancel" : "‹"}
           </button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>
             {selectMode ? `${selectedIds.size} SELECTED` : "MY CUSTOM EXERCISES"}
           </div>
           <div style={{ width: 26 }} />
@@ -222,7 +226,7 @@ export default function MyCustomExercises({ user, onClose }) {
         )}
 
         <div style={{ padding: 16, flex: 1 }}>
-          {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
+          {error && <div style={{ color: T.danger, fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
           {rows === undefined && <InlineLoading />}
 
@@ -304,7 +308,7 @@ export default function MyCustomExercises({ user, onClose }) {
               style={{
                 width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
                 background: selectedIds.size === 0 ? T.surface2 : T.accent,
-                color: selectedIds.size === 0 ? T.dim : "#fff",
+                color: selectedIds.size === 0 ? T.dim : T.bg,
                 fontSize: 15, fontWeight: 700,
               }}
             >

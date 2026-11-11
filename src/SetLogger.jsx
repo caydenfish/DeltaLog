@@ -71,16 +71,19 @@ import {
 } from "./lib/queries";
 
 // ---------- Design tokens ----------
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // EQUIPMENT_LIST now lives in ./ExercisePicker (imported above), shared
 // with the template builder's picker.
@@ -285,6 +288,7 @@ const newItem = (hydrated, dbId, planned = defaultWorkingSets(), plannedWarmup =
 // ---------- Reusable pieces (module scope so identity stays stable across renders) ----------
 
 import ExercisePicker, { ExerciseRow, EQUIPMENT_LIST, exerciseMatchesOption, filterLibrary } from "./ExercisePicker";
+import { themed, tc } from "./lib/theme";
 
 // A left/right arrow selector standing in for a <select>, used anywhere
 // someone steps through a short, ordered list of options.
@@ -296,9 +300,9 @@ function ArrowSelect({ options, value, onChange, renderLabel }) {
   };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, padding: "2px 4px" }}>
-      <button type="button" onClick={() => go(-1)} disabled={idx <= 0} aria-label="Previous option" style={{ background: "none", border: "none", color: idx <= 0 ? "#3A404B" : T.dim, fontSize: 13, padding: "4px 4px", flexShrink: 0 }}>‹</button>
+      <button type="button" onClick={() => go(-1)} disabled={idx <= 0} aria-label="Previous option" style={{ background: "none", border: "none", color: idx <= 0 ? tc("#3B4049") : T.dim, fontSize: 13, padding: "4px 4px", flexShrink: 0 }}>‹</button>
       <span style={{ color: T.text, fontSize: 12, textAlign: "center", flex: 1 }}>{renderLabel ? renderLabel(value) : value}</span>
-      <button type="button" onClick={() => go(1)} disabled={idx >= options.length - 1} aria-label="Next option" style={{ background: "none", border: "none", color: idx >= options.length - 1 ? "#3A404B" : T.dim, fontSize: 13, padding: "4px 4px", flexShrink: 0 }}>›</button>
+      <button type="button" onClick={() => go(1)} disabled={idx >= options.length - 1} aria-label="Next option" style={{ background: "none", border: "none", color: idx >= options.length - 1 ? tc("#3B4049") : T.dim, fontSize: 13, padding: "4px 4px", flexShrink: 0 }}>›</button>
     </div>
   );
 }
@@ -422,8 +426,8 @@ function PairedSetRow({ state, label, last, today, unit, deleteMode, selected, o
   const badgeStyle = {
     width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0,
     fontSize: 11, fontWeight: warm ? 700 : 500,
-    background: isNext ? "none" : warm ? "rgba(232,168,46,0.18)" : T.surface,
-    color: isNext ? T.accent : warm ? "#E8A82E" : T.dim,
+    background: isNext ? "none" : warm ? "rgba(217,137,74,0.18)" : T.surface,
+    color: isNext ? T.accent : warm ? tc("#D9894A") : T.dim,
     border: isNext ? `1px solid ${T.accent}` : "none",
   };
   const onClick = isLogged ? () => (deleteMode ? onToggleSelect() : onRowTap()) : isNext ? onLogNext : undefined;
@@ -448,7 +452,7 @@ function PairedSetRow({ state, label, last, today, unit, deleteMode, selected, o
       <div style={{ minWidth: 0, overflow: "hidden" }}>
         {last ? (
           <>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: isNext ? 17 : 14.5, fontWeight: isNext ? 700 : 500, color: isNext ? T.text : T.dim, whiteSpace: "nowrap", lineHeight: 1.1 }}>
+            <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: isNext ? 17 : 14.5, fontWeight: isNext ? 700 : 500, color: isNext ? T.text : T.dim, whiteSpace: "nowrap", lineHeight: 1.1 }}>
               {last.weight} × {last.reps}
             </div>
             <div style={{ fontSize: 10.5, color: T.dim, whiteSpace: "nowrap", opacity: isNext ? 1 : 0.8 }}>RIR {last.rir ?? "?"}</div>
@@ -465,7 +469,7 @@ function PairedSetRow({ state, label, last, today, unit, deleteMode, selected, o
       <div style={{ minWidth: 0, overflow: "hidden" }}>
         {isLogged ? (
           <>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, whiteSpace: "nowrap", lineHeight: 1.05 }}>
+            <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, whiteSpace: "nowrap", lineHeight: 1.05 }}>
               {today.weight} {unit} × {today.reps}
             </div>
             <div style={{ fontSize: 10.5, color: T.dim, whiteSpace: "nowrap" }}>RIR {today.rir} · e1RM {Math.round(e1RM(today.weight, today.reps, today.rir))}</div>
@@ -480,7 +484,7 @@ function PairedSetRow({ state, label, last, today, unit, deleteMode, selected, o
           onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
           style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? T.accent : T.line}`, background: selected ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
         >
-          {selected && <IconCheck size={12} style={{ color: "#fff" }} />}
+          {selected && <IconCheck size={12} style={{ color: T.bg }} />}
         </div>
       )}
     </div>
@@ -536,7 +540,7 @@ function HoldToConfirm({ label, onConfirm, duration = 1000, disabled }) {
       onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") stop(); }}
       disabled={disabled}
       aria-label={`${label} (press and hold)`}
-      style={{ position: "relative", width: "100%", overflow: "hidden", padding: "15px 0", borderRadius: 12, border: `1px solid ${T.accent}`, background: "none", color: "#fff", fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
+      style={{ position: "relative", width: "100%", overflow: "hidden", padding: "15px 0", borderRadius: 12, border: `1px solid ${T.accent}`, background: "none", color: T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
     >
       <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${progress * 100}%`, background: T.accent }} />
       <span style={{ position: "relative" }}>{label}</span>
@@ -1907,7 +1911,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <button
           onClick={() => updateMachineField(`${field}__text`, isText ? "" : "1")}
           title={isText ? "Switch to numeric" : "Switch to text, e.g. \"top notch\""}
-          style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: isText ? "rgba(232,68,46,0.12)" : "none", color: isText ? T.text : T.dim, fontSize: 10, fontWeight: 700, padding: 0, flexShrink: 0 }}
+          style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: isText ? "rgba(196,163,90,0.12)" : "none", color: isText ? T.text : T.dim, fontSize: 10, fontWeight: 700, padding: 0, flexShrink: 0 }}
         >{isText ? "Abc" : "#"}</button>
       </>
     );
@@ -2347,10 +2351,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   }
 
 
-  const inputStyle = { width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 34, fontWeight: 600, textAlign: "center", padding: "6px 8px", outline: "none", boxSizing: "border-box" };
+  const inputStyle = { width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontFamily: "'Chakra Petch', sans-serif", fontSize: 34, fontWeight: 600, textAlign: "center", padding: "6px 8px", outline: "none", boxSizing: "border-box" };
   const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" };
-  const arrowBtn = (disabled) => ({ width: 34, height: 34, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: disabled ? "#3A404B" : T.dim, fontSize: 16, flexShrink: 0, cursor: disabled ? "default" : "pointer" });
-  const fontImport = `@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap');`;
+  const arrowBtn = (disabled) => ({ width: 34, height: 34, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: disabled ? tc("#3B4049") : T.dim, fontSize: 16, flexShrink: 0, cursor: disabled ? "default" : "pointer" });
+  const fontImport = `@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Saira+Condensed:wght@500;600;700&family=Saira:wght@400;500;600;700&display=swap');`;
   const frame = { width: "100%", maxWidth: 400, background: T.bg, height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" };
   const outer = { height: "100dvh", background: "#0A0B0D", display: "flex", justifyContent: "center", overflow: "hidden" };
 
@@ -2395,7 +2399,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <div style={frame}>
           <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
             <button onClick={() => setView("workout")} aria-label="Back" style={smallBtn}>‹</button>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>WORKOUT GENERATOR</div>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>WORKOUT GENERATOR</div>
             <div style={{ width: 26 }} />
           </div>
           <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
@@ -2404,7 +2408,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               {Object.keys(getSplits()).map((splitName) => {
                 const active = isSplitActive(splitName, genMuscles, muscleNameMode);
                 return (
-                  <button key={splitName} onClick={() => applySplit(splitName)} style={{ padding: "9px 2px", borderRadius: 10, fontSize: 12, fontWeight: 700, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(232,68,46,0.15)" : T.surface, color: active ? T.text : T.dim }}>
+                  <button key={splitName} onClick={() => applySplit(splitName)} style={{ padding: "9px 2px", borderRadius: 10, fontSize: 12, fontWeight: 700, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(196,163,90,0.15)" : T.surface, color: active ? T.text : T.dim }}>
                     {splitName}
                   </button>
                 );
@@ -2461,7 +2465,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                       const rank = genPicks.indexOf(l.id);
                       return (
                         <ExerciseRow key={l.name} l={l} onClick={() => toggleGenPick(l.id)}
-                          badge={<div style={{ width: 22, height: 22, borderRadius: 7, background: rank >= 0 ? T.accent : T.surface2, color: rank >= 0 ? "#fff" : T.dim, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{rank >= 0 ? rank + 1 : "·"}</div>} />
+                          badge={<div style={{ width: 22, height: 22, borderRadius: 7, background: rank >= 0 ? T.accent : T.surface2, color: rank >= 0 ? T.bg : T.dim, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{rank >= 0 ? rank + 1 : "·"}</div>} />
                       );
                     };
                     const performed = candidates.filter((l) => l.sessions > 0);
@@ -2493,7 +2497,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   {Object.entries(IDEOLOGIES).map(([name, v]) => {
                     const selected = genIdeology === name;
                     return (
-                      <button key={name} onClick={() => setGenIdeology(name)} style={{ display: "block", width: "100%", textAlign: "left", background: selected ? "rgba(232,68,46,0.12)" : T.surface, border: `1px solid ${selected ? T.accent : T.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 6 }}>
+                      <button key={name} onClick={() => setGenIdeology(name)} style={{ display: "block", width: "100%", textAlign: "left", background: selected ? "rgba(196,163,90,0.12)" : T.surface, border: `1px solid ${selected ? T.accent : T.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 6 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{name} <span style={{ color: T.dim, fontWeight: 400 }}>· {v.low}-{v.high} reps</span></div>
                         <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.4, marginTop: 2 }}>{v.desc}</div>
                       </button>
@@ -2503,14 +2507,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Sets per exercise</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
                   <button onClick={() => setGenSets(Math.max(1, genSets - 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 20, fontWeight: 700 }}>−</button>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, minWidth: 28, textAlign: "center" }}>{genSets}</div>
+                  <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, minWidth: 28, textAlign: "center" }}>{genSets}</div>
                   <button onClick={() => setGenSets(Math.min(8, genSets + 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 20, fontWeight: 700 }}>+</button>
                 </div>
               </>
             )}
           </div>
           <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface }}>
-            <button onClick={generateWorkout} disabled={genPicks.length === 0} style={{ width: "100%", padding: "15px 0", borderRadius: 14, border: "none", background: genPicks.length === 0 ? T.surface2 : T.accent, color: genPicks.length === 0 ? T.dim : "#fff", fontSize: 16, fontWeight: 700 }}>
+            <button onClick={generateWorkout} disabled={genPicks.length === 0} style={{ width: "100%", padding: "15px 0", borderRadius: 14, border: "none", background: genPicks.length === 0 ? T.surface2 : T.accent, color: genPicks.length === 0 ? T.dim : T.bg, fontSize: 16, fontWeight: 700 }}>
               {genPicks.length === 0 ? "Pick at least one exercise" : `Generate workout (${genPicks.length} picked, ${genSets} sets each)`}
             </button>
             <div style={{ fontSize: 11, color: T.dim, textAlign: "center", marginTop: 8 }}>This replaces the current workout.</div>
@@ -2530,8 +2534,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <div style={frame}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 12px 10px", borderBottom: `1px solid ${T.line}` }}>
             <button onClick={handleManageBack} aria-label="Back" style={{ width: 44, height: 44, borderRadius: 10, background: "transparent", border: "none", color: T.text, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconChevronLeft size={22} /></button>
-            <div style={{ flex: 1, minWidth: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Edit Workout</div>
-            <button onClick={finishEditing} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "#C93A26", color: "#fff", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", flexShrink: 0 }}>Done</button>
+            <div style={{ flex: 1, minWidth: 0, fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Edit Workout</div>
+            <button onClick={finishEditing} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: tc("#C4A35A"), color: T.bg, fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", flexShrink: 0 }}>Done</button>
           </div>
           <div style={{ flex: 1, padding: 16, overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {workout.length === 0 && (
@@ -2540,7 +2544,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               </div>
             )}
             {linkingFrom !== null && (
-              <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 12, padding: "8px 8px 8px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 12, padding: "8px 8px 8px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Tap Superset on another exercise</span>
                 <button onClick={() => setLinkingFrom(null)} style={{ height: 36, padding: "0 12px", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 13, flexShrink: 0 }}>Cancel</button>
               </div>
@@ -2590,7 +2594,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 </div>
               );
             })}
-            <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} style={{ marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", flexShrink: 0 }}>
+            <button onClick={() => { setPickerFor("add"); setPickerSearch(""); }} style={{ marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", flexShrink: 0 }}>
               <IconPlus size={16} /> Add exercises
             </button>
           </div>
@@ -2600,7 +2604,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
               <button onClick={closePicker} aria-label="Close" style={smallBtn}>‹</button>
               <div style={{ textAlign: "center", minWidth: 0 }}>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>REPLACE EXERCISE</div>
+                <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>REPLACE EXERCISE</div>
                 <div style={{ fontSize: 11, color: T.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Currently: {workout[pickerFor]?.short || workout[pickerFor]?.name}</div>
               </div>
               <div />
@@ -2634,7 +2638,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           <div style={{ position: "absolute", inset: 0, background: T.bg, zIndex: 20, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
               <button onClick={closePicker} aria-label="Close" style={smallBtn}>‹</button>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>
                 ADD EXERCISES{pickerMultiSelected.length > 0 ? ` (${pickerMultiSelected.length})` : ""}
               </div>
               <div />
@@ -2664,7 +2668,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 style={{
                   width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
                   background: pickerMultiSelected.length === 0 || addingExercises ? T.surface2 : T.accent,
-                  color: pickerMultiSelected.length === 0 || addingExercises ? T.dim : "#fff",
+                  color: pickerMultiSelected.length === 0 || addingExercises ? T.dim : T.bg,
                   fontSize: 15, fontWeight: 700,
                 }}
               >
@@ -2689,7 +2693,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         {discardNewWorkoutConfirm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 55, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
             <div style={{ width: "100%", maxWidth: 340, background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 16 }}>
-              <div style={{ color: T.accent, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Discard this workout?</div>
+              <div style={{ color: T.danger, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Discard this workout?</div>
               <div style={{ color: T.dim, fontSize: 13, marginBottom: 14, lineHeight: 1.4 }}>
                 {(() => {
                   const n = workout.length + pickerMultiSelected.length;
@@ -2698,7 +2702,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => setDiscardNewWorkoutConfirm(false)} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Keep going</button>
-                <button onClick={handleDiscardNewWorkout} disabled={discardingNewWorkout} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>
+                <button onClick={handleDiscardNewWorkout} disabled={discardingNewWorkout} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.danger, color: T.bg, fontSize: 15, fontWeight: 700 }}>
                   {discardingNewWorkout ? "Deleting…" : "Yes, discard it"}
                 </button>
               </div>
@@ -2762,7 +2766,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <div style={frame}>
           <div style={{ padding: "22px 16px 6px" }}>
             <div style={{ color: T.dim, fontSize: 13 }}>{dateStr}</div>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 700, color: T.text, lineHeight: 1.05 }}>Workout complete</div>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 32, fontWeight: 700, color: T.text, lineHeight: 1.05 }}>Workout complete</div>
           </div>
 
           <div style={{ flex: 1, padding: "0 16px 16px", overflowY: "auto" }}>
@@ -2773,7 +2777,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 { label: "Duration", value: `${durationMin} min` },
               ].map((s) => (
                 <div key={s.label} style={{ flex: 1, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>{s.value}</div>
+                  <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>{s.value}</div>
                   <div style={{ fontSize: 12, color: T.dim }}>{s.label}</div>
                   {s.sub && <div style={{ fontSize: 10, color: T.dim, marginTop: 1 }}>{s.sub}</div>}
                 </div>
@@ -2781,15 +2785,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             </div>
 
             {facts.length > 0 && (
-              <div style={{ marginBottom: 14, background: "rgba(59,165,93,0.1)", border: `1px solid ${T.green}`, borderRadius: 12, padding: 12 }}>
+              <div style={{ marginBottom: 14, background: "rgba(106,158,128,0.1)", border: `1px solid ${T.green}`, borderRadius: 12, padding: 12 }}>
                 {facts.map((f, idx) => (
-                  <div key={idx} style={{ fontSize: 13, color: "#7BD69B", marginBottom: idx < facts.length - 1 ? 4 : 0, display: "flex", alignItems: "center", gap: 6 }}><IconCheck size={12} /> {f}</div>
+                  <div key={idx} style={{ fontSize: 13, color: tc("#82AD93"), marginBottom: idx < facts.length - 1 ? 4 : 0, display: "flex", alignItems: "center", gap: 6 }}><IconCheck size={12} /> {f}</div>
                 ))}
               </div>
             )}
 
             {(prResults.weight.length + prResults.reps.length + prResults.volume.length) > 0 && (
-              <div style={{ marginBottom: 14, background: T.surface, border: "1px solid #FFD166", borderRadius: 12, padding: 12 }}>
+              <div style={{ marginBottom: 14, background: T.surface, border: `1px solid ${tc("#D8BF83")}`, borderRadius: 12, padding: 12 }}>
                 <div style={{ fontSize: 13, color: T.dim, marginBottom: 8 }}>Personal records <span style={{ fontSize: 12 }}>· tap to see</span></div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {[
@@ -2803,11 +2807,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                       disabled={cat.list.length === 0}
                       style={{
                         flex: 1, background: expandedPR === cat.key ? "rgba(255,209,102,0.18)" : T.surface2,
-                        border: `1px solid ${cat.list.length > 0 ? "#FFD166" : T.line}`, borderRadius: 10, padding: "10px 6px", textAlign: "center",
+                        border: `1px solid ${cat.list.length > 0 ? tc("#D8BF83") : T.line}`, borderRadius: 10, padding: "10px 6px", textAlign: "center",
                         opacity: cat.list.length === 0 ? 0.4 : 1,
                       }}
                     >
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: cat.list.length > 0 ? "#FFD166" : T.dim }}>{cat.list.length}</div>
+                      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: cat.list.length > 0 ? tc("#D8BF83") : T.dim }}>{cat.list.length}</div>
                       <div style={{ fontSize: 11.5, color: T.dim }}>{cat.label} PR{cat.list.length === 1 ? "" : "s"}</div>
                     </button>
                   ))}
@@ -2817,7 +2821,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     {{ weight: prResults.weight, reps: prResults.reps, volume: prResults.volume }[expandedPR].map((pr, idx) => (
                       <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "4px 0", borderTop: idx > 0 ? `1px solid ${T.line}` : "none" }}>
                         <span style={{ color: T.text }}>{pr.name}</span>
-                        <span style={{ color: "#FFD166", fontWeight: 700 }}>
+                        <span style={{ color: tc("#D8BF83"), fontWeight: 700 }}>
                           {expandedPR === "reps" ? `${pr.value} reps` : `${pr.value} ${unit}`}
                           {pr.previous > 0 && <span style={{ color: T.dim, fontWeight: 400 }}> (prev {pr.previous}{expandedPR === "reps" ? "" : ` ${unit}`})</span>}
                         </span>
@@ -2835,17 +2839,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               const open = summaryOpenEx.has(i);
               const deltaColor = delta > 0.5 ? T.green : delta < -0.5 ? T.accent : T.dim;
               return (
-                <div key={i} style={{ background: T.surface, border: `1px solid ${isPR ? "#FFD166" : T.line}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+                <div key={i} style={{ background: T.surface, border: `1px solid ${isPR ? tc("#D8BF83") : T.line}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
                   <button
                     onClick={() => setSummaryOpenEx((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })}
                     aria-expanded={open}
                     style={{ width: "100%", background: "none", border: "none", padding: "11px 12px", textAlign: "left", color: T.text }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</div>
+                      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</div>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                        {isPR && <span style={{ fontSize: 11, fontWeight: 700, color: "#FFD166", border: "1px solid #FFD166", borderRadius: 999, padding: "2px 8px" }}>e1RM PR</span>}
-                      {twoForTwo && <span style={{ fontSize: 11, fontWeight: 700, color: "#7BD69B", border: `1px solid ${T.green}`, borderRadius: 999, padding: "2px 8px" }}>Progress +2</span>}
+                        {isPR && <span style={{ fontSize: 11, fontWeight: 700, color: tc("#D8BF83"), border: `1px solid ${tc("#D8BF83")}`, borderRadius: 999, padding: "2px 8px" }}>e1RM PR</span>}
+                      {twoForTwo && <span style={{ fontSize: 11, fontWeight: 700, color: tc("#82AD93"), border: `1px solid ${T.green}`, borderRadius: 999, padding: "2px 8px" }}>Progress +2</span>}
                     
                       </div>
                     </div>
@@ -2863,8 +2867,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {exSets.map((s, j) => (
                       <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: T.text }}>
-                        <span style={{ color: s.isWarmup ? "#E8A82E" : T.dim }}>{s.isWarmup ? setLabels(exSets)[j] : `Set ${setLabels(exSets)[j]}${j >= w.planned ? " (extra)" : ""}`}</span>
-                        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 }}>{s.weight} {unit} x {s.reps} <span style={{ color: T.dim, fontWeight: 400 }}>@ RIR {s.rir}</span></span>
+                        <span style={{ color: s.isWarmup ? tc("#D9894A") : T.dim }}>{s.isWarmup ? setLabels(exSets)[j] : `Set ${setLabels(exSets)[j]}${j >= w.planned ? " (extra)" : ""}`}</span>
+                        <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 600 }}>{s.weight} {unit} x {s.reps} <span style={{ color: T.dim, fontWeight: 400 }}>@ RIR {s.rir}</span></span>
                       </div>
                     ))}
                   </div>
@@ -2910,7 +2914,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           </div>
           <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface, display: "flex", gap: 8 }}>
             <button onClick={() => setShowExportImage(true)} aria-label="Save as image" style={{ flex: "0 0 auto", padding: "0 16px", borderRadius: 14, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><IconImage size={15} /> Image</button>
-            <button onClick={onFinished} style={{ flex: 1, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>Done</button>
+            <button onClick={onFinished} style={{ flex: 1, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}>Done</button>
           </div>
         </div>
         {showExportImage && (
@@ -2969,7 +2973,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <style>{`${fontImport} button { cursor: pointer; } input:focus, textarea:focus { border-color: ${T.accent} !important; }`}</style>
         <div style={frame}>
           <div style={{ flex: 1, padding: "24px 16px 16px", overflowY: "auto" }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 32, fontWeight: 700, color: T.text, lineHeight: 1 }}>Nice work</div>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 32, fontWeight: 700, color: T.text, lineHeight: 1 }}>Nice work</div>
             <div style={{ color: T.dim, fontSize: 13.5, marginTop: 6 }}>{ciMinutes} min · {ciSets.length} set{ciSets.length === 1 ? "" : "s"} · {ciVolume.toLocaleString()} {unit}</div>
 
             <div style={{ marginTop: 20, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 14, padding: 14 }}>
@@ -2990,7 +2994,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   onChange={(e) => setBodyWeightInput(e.target.value.replace(/[^0-9.]/g, ""))}
                   placeholder={lastBw != null ? String(lastBw) : "—"}
                   aria-label={`Body weight in ${bwUnit}`}
-                  style={{ flex: 1, minWidth: 0, background: "none", border: `1px solid ${bodyWeightInput !== "" ? T.line : "transparent"}`, borderRadius: 10, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 38, fontWeight: 700, textAlign: "center", padding: "4px 6px", outline: "none", boxSizing: "border-box" }}
+                  style={{ flex: 1, minWidth: 0, background: "none", border: `1px solid ${bodyWeightInput !== "" ? T.line : "transparent"}`, borderRadius: 10, color: T.text, fontFamily: "'Chakra Petch', sans-serif", fontSize: 38, fontWeight: 700, textAlign: "center", padding: "4px 6px", outline: "none", boxSizing: "border-box" }}
                 />
                 <button onClick={() => bumpBw(1)} aria-label="Increase body weight" style={stepBtn}>+</button>
               </div>
@@ -3012,7 +3016,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 <button
                   onClick={() => { setProgressPhotoFile(null); setProgressPhotoPreview(null); }}
                   aria-label="Remove photo"
-                  style={{ position: "absolute", top: 8, right: 8, background: "rgba(16,18,22,0.8)", border: `1px solid ${T.line}`, color: T.text, borderRadius: 999, width: 28, height: 28, fontSize: 14 }}
+                  style={{ position: "absolute", top: 8, right: 8, background: `${T.surface}CC`, border: `1px solid ${T.line}`, color: T.text, borderRadius: 999, width: 28, height: 28, fontSize: 14 }}
                 ><IconX size={13} /></button>
               </div>
             ) : (
@@ -3070,7 +3074,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             </div>
           </div>
           <div style={{ padding: 16, borderTop: `1px solid ${T.line}`, background: T.surface }}>
-            <button onClick={handleSavePostWorkout} disabled={savingSummary} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: savingSummary ? T.surface2 : T.accent, color: savingSummary ? T.dim : "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
+            <button onClick={handleSavePostWorkout} disabled={savingSummary} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: savingSummary ? T.surface2 : T.accent, color: savingSummary ? T.dim : T.bg, fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>
               {savingSummary ? "Saving…" : "See summary"}
             </button>
           </div>
@@ -3087,7 +3091,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         <div style={frame}>
           <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
             <button onClick={() => setView("workout")} aria-label="Back" style={smallBtn}>‹</button>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>TEMPLATES</div>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center" }}>TEMPLATES</div>
             <div style={{ width: 26 }} />
           </div>
           <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
@@ -3100,10 +3104,10 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             {templates?.map((t) => (
               <div key={t.id} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{t.name}</div>
+                  <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>{t.name}</div>
                   <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{t.exerciseCount} exercise{t.exerciseCount === 1 ? "" : "s"}</div>
                 </div>
-                <button onClick={() => loadTemplate(t)} disabled={loadingTemplateId === t.id} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 700 }}>
+                <button onClick={() => loadTemplate(t)} disabled={loadingTemplateId === t.id} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>
                   {loadingTemplateId === t.id ? "Loading…" : "Use"}
                 </button>
               </div>
@@ -3124,13 +3128,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             <button onClick={() => { discardWorkout(user.id, workoutId).catch(() => {}); clearSessionState(workoutId); onFinished(); }} aria-label="Back to home" style={smallBtn}>‹</button>
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 24, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text }}>Start a workout</div>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 28, fontWeight: 700, color: T.text }}>Start a workout</div>
             <div style={{ color: T.dim, fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>Build it yourself or start from one of your templates.</div>
-            <button onClick={() => { setManageFromScratch(true); setView("manage"); }} style={{ width: "100%", maxWidth: 280, marginTop: 24, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>Start from scratch</button>
+            <button onClick={() => { setManageFromScratch(true); setView("manage"); }} style={{ width: "100%", maxWidth: 280, marginTop: 24, padding: "15px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}>Start from scratch</button>
             <button onClick={openTemplates} style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.text, fontSize: 15 }}>Use a Template</button>
             <div style={{ width: "100%", maxWidth: 280, marginTop: 10, padding: "13px 0", borderRadius: 12, border: `1px solid ${T.line}`, color: T.dim, fontSize: 15, opacity: 0.6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><IconBolt size={14} /> Generate workout <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, border: `1px solid ${T.line}`, borderRadius: 999, padding: "2px 7px" }}>Coming soon</span></div>
             {savedWorkout && (
-              <button onClick={handleResumePreviousSaved} disabled={resumingSaved} style={{ width: "100%", maxWidth: 280, marginTop: 18, padding: "13px 0", borderRadius: 12, border: `1px dashed ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.accent, fontSize: 15, fontWeight: 600 }}>
+              <button onClick={handleResumePreviousSaved} disabled={resumingSaved} style={{ width: "100%", maxWidth: 280, marginTop: 18, padding: "13px 0", borderRadius: 12, border: `1px dashed ${T.accent}`, background: "rgba(196,163,90,0.08)", color: T.accent, fontSize: 15, fontWeight: 600 }}>
                 {resumingSaved ? "Resuming…" : "Resume previous workout"}
               </button>
             )}
@@ -3196,9 +3200,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   <button
                     key={i}
                     onClick={() => { setShowJump(false); goTo(i); }}
-                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, minHeight: 52, padding: "8px 2px 8px 10px", background: current ? "rgba(232,68,46,0.08)" : "none", border: "none", borderBottom: `1px solid ${T.line}`, borderLeft: `3px solid ${inSuperset ? "#5B8DEF" : "transparent"}`, borderRadius: current ? 8 : 0, textAlign: "left", color: T.text }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, minHeight: 52, padding: "8px 2px 8px 10px", background: current ? "rgba(196,163,90,0.08)" : "none", border: "none", borderBottom: `1px solid ${T.line}`, borderLeft: `3px solid ${inSuperset ? "#5B8DEF" : "transparent"}`, borderRadius: current ? 8 : 0, textAlign: "left", color: T.text }}
                   >
-                    <span style={{ width: 9, height: 9, borderRadius: 999, flexShrink: 0, background: done ? T.green : current ? T.accent : doneCount > 0 ? "#5A606B" : T.line }} />
+                    <span style={{ width: 9, height: 9, borderRadius: 999, flexShrink: 0, background: done ? T.green : current ? T.accent : doneCount > 0 ? tc("#5A606B") : T.line }} />
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", fontSize: 14.5, fontWeight: current ? 700 : 500, color: current ? T.accent : T.text, lineHeight: 1.3 }}>{w.name}</span>
                       {inSuperset && !prevSame && <span style={{ display: "block", fontSize: 11.5, color: "#5B8DEF", marginTop: 2 }}>Superset</span>}
@@ -3240,14 +3244,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   <button onClick={() => setCancelConfirm(false)} aria-label="Back to menu" style={{ display: "block", width: 64, height: 22, margin: "0 auto 8px", background: "none", border: "none", padding: 0 }}>
                     <span style={{ display: "block", width: 36, height: 4, borderRadius: 4, background: T.line, margin: "0 auto" }} />
                   </button>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: T.accent }}>Discard this workout?</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: T.danger }}>Discard this workout?</div>
                   <div style={{ fontSize: 13.5, color: T.dim, marginTop: 6, lineHeight: 1.5 }}>
                     {totalSets} set{totalSets === 1 ? "" : "s"} logged today will be deleted. This can't be undone.
                   </div>
                   <div style={{ marginTop: 18 }}>
                     <HoldToConfirm label={cancelling ? "Discarding…" : "Hold to discard"} onConfirm={handleConfirmCancel} disabled={cancelling} />
                   </div>
-                  <button onClick={() => setCancelConfirm(false)} style={{ width: "100%", marginTop: 10, padding: "15px 0", borderRadius: 12, border: "none", background: T.green, color: "#fff", fontSize: 15, fontWeight: 700 }}>Keep going</button>
+                  <button onClick={() => setCancelConfirm(false)} style={{ width: "100%", marginTop: 10, padding: "15px 0", borderRadius: 12, border: "none", background: T.green, color: T.bg, fontSize: 15, fontWeight: 700 }}>Keep going</button>
                 </>
               ) : (
               <>
@@ -3262,7 +3266,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 36, fontWeight: 700, lineHeight: 1, color: isPaused ? T.dim : T.text }}>{hhmmss(elapsedSec)}</span>
+                    <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 36, fontWeight: 700, lineHeight: 1, color: isPaused ? T.dim : T.text }}>{hhmmss(elapsedSec)}</span>
                     {isPaused && <span style={{ fontSize: 12, fontWeight: 700, color: T.accent, whiteSpace: "nowrap" }}>Paused</span>}
                   </div>
                   <div style={{ fontSize: 12.5, color: T.dim, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -3314,7 +3318,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 </button>
               {!showSaveTemplate ? (
                 <button onClick={() => { setShowSaveTemplate(true); setTemplateSaved(false); }} style={rowStyle}>
-                  <span style={{ whiteSpace: "nowrap", color: templateSaved ? "#7BD69B" : T.text }}>{templateSaved ? "Saved as template" : "Save as template"}</span>
+                  <span style={{ whiteSpace: "nowrap", color: templateSaved ? tc("#82AD93") : T.text }}>{templateSaved ? "Saved as template" : "Save as template"}</span>
                   <span style={rowValue}>{templateSaved ? <IconCheck size={13} /> : "›"}</span>
                 </button>
               ) : (
@@ -3328,14 +3332,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 10px", outline: "none", boxSizing: "border-box", marginBottom: 10 }}
                   />
                   <button onClick={() => setTemplateIncludeDetails(!templateIncludeDetails)} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, marginBottom: 12, textAlign: "left", width: "100%" }}>
-                    <div style={{ width: 18, height: 18, borderRadius: 5, border: `1px solid ${templateIncludeDetails ? T.accent : T.line}`, background: templateIncludeDetails ? T.accent : "none", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 5, border: `1px solid ${templateIncludeDetails ? T.accent : T.line}`, background: templateIncludeDetails ? T.accent : "none", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: T.bg, fontSize: 12 }}>
                       {templateIncludeDetails && <IconCheck size={11} />}
                     </div>
                     <span style={{ fontSize: 13, color: T.text }}>Include current notes & setup for each exercise</span>
                   </button>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => { setShowSaveTemplate(false); setTemplateName(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
-                    <button onClick={handleSaveTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : "#fff", fontSize: 14, fontWeight: 700 }}>
+                    <button onClick={handleSaveTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : T.bg, fontSize: 14, fontWeight: 700 }}>
                       {savingTemplate ? "Saving…" : "Save Template"}
                     </button>
                   </div>
@@ -3363,13 +3367,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button onClick={() => dismissFlag(f)} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Looks right</button>
-                          <button onClick={() => editFlaggedSet(f)} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.1)", color: T.accent, fontSize: 12.5, fontWeight: 700 }}>Edit set</button>
+                          <button onClick={() => editFlaggedSet(f)} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.1)", color: T.accent, fontSize: 12.5, fontWeight: 700 }}>Edit set</button>
                           <button onClick={() => deleteFlaggedSet(f)} aria-label="Delete set" title="Delete set" style={{ padding: "7px 10px", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}><IconTrash size={13} /></button>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <button onClick={handleConfirmFinish} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 700 }}>
+                  <button onClick={handleConfirmFinish} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>
                     Finish workout anyway
                   </button>
                 </div>
@@ -3378,11 +3382,11 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               {!finishConfirm ? (
                 <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                   {isPaused ? (
-                    <button onClick={handleResumeFromPause} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>Resume</button>
+                    <button onClick={handleResumeFromPause} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>Resume</button>
                   ) : (
                     <button onClick={handlePause} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap" }}>Pause</button>
                   )}
-                  <button onClick={() => { setFinishConfirm(true); setCancelConfirm(false); }} style={{ flex: 1.3, padding: "15px 0", borderRadius: 12, border: "none", background: T.green, color: "#fff", fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>Finish</button>
+                  <button onClick={() => { setFinishConfirm(true); setCancelConfirm(false); }} style={{ flex: 1.3, padding: "15px 0", borderRadius: 12, border: "none", background: T.green, color: T.bg, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>Finish</button>
                 </div>
               ) : (
                 <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 14, marginTop: 14 }}>
@@ -3392,7 +3396,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button onClick={() => { setFinishConfirm(false); setOutlierReview(null); }} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
-                    <button onClick={handleFinishClick} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Yes, finish</button>
+                    <button onClick={handleFinishClick} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Yes, finish</button>
                   </div>
                 </div>
               )}
@@ -3431,7 +3435,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           {workout.map((w, i) => {
             const doneCount = allSets[i].filter((x) => !x.isWarmup).length;
             const pct = w.planned > 0 ? Math.min(100, (doneCount / w.planned) * 100) : 0;
-            const color = pct >= 100 ? T.green : i === exIdx ? T.accent : "#5A606B";
+            const color = pct >= 100 ? T.green : i === exIdx ? T.accent : tc("#5A606B");
             return (
               <span key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: T.line, overflow: "hidden", outline: i === exIdx ? `1px solid ${T.accent}` : "none", outlineOffset: 1 }}>
                 <span style={{ display: "block", height: "100%", width: `${pct}%`, background: color }} />
@@ -3445,7 +3449,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <button onClick={() => goTo(exIdx - 1)} style={arrowBtn(exIdx === 0)} aria-label="Previous exercise">‹</button>
             <button onClick={() => setShowJump(true)} aria-label={`${ex.name}. Show all exercises`} style={{ flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, textAlign: "center", color: T.text }}>
-              <FitTitle text={ex.name} max={24} min={15} style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: 0.3, color: T.text }} />
+              <FitTitle text={ex.name} max={24} min={15} style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, letterSpacing: 0.3, color: T.text }} />
               <div style={{ color: T.dim, fontSize: 12, marginTop: 3 }}>
                 {exIdx + 1} of {workout.length} · {exDone ? `${sets.filter((x) => !x.isWarmup).length}/${planned} sets done` : `set ${setNum} of ${planned}`} <span style={{ color: T.accent }}>▾</span>
               </div>
@@ -3465,15 +3469,15 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             onClick={() => setShowTargetInfo(!showTargetInfo)}
             style={{
               flex: "1 1 150px", minWidth: 0, padding: "8px 12px", borderRadius: 12, flexWrap: "wrap",
-              border: `1px solid ${nextWarmupIndex != null ? "#E8A82E" : showTargetInfo ? T.accent : T.line}`,
-              background: nextWarmupIndex != null ? "rgba(232,168,46,0.12)" : "rgba(232,68,46,0.08)",
+              border: `1px solid ${nextWarmupIndex != null ? tc("#D9894A") : showTargetInfo ? T.accent : T.line}`,
+              background: nextWarmupIndex != null ? "rgba(217,137,74,0.12)" : "rgba(196,163,90,0.08)",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}
           >
-            <span style={{ fontSize: 11, color: nextWarmupIndex != null ? "#E8A82E" : T.dim, fontWeight: nextWarmupIndex != null ? 700 : 400 }}>
+            <span style={{ fontSize: 11, color: nextWarmupIndex != null ? tc("#D9894A") : T.dim, fontWeight: nextWarmupIndex != null ? 700 : 400 }}>
               {nextWarmupIndex != null ? `Warmup ${nextWarmupIndex + 1} of ${ex.plannedWarmup}` : "Target"}
             </span>
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, whiteSpace: "nowrap", color: nextWarmupIndex != null ? "#E8A82E" : T.text, letterSpacing: 0.3 }}>
+            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, whiteSpace: "nowrap", color: nextWarmupIndex != null ? tc("#D9894A") : T.text, letterSpacing: 0.3 }}>
               {nextWarmupIndex != null ? nextWarmupWeight : target.weight} {unit} <span style={{ color: T.dim, fontWeight: 500 }}>×</span> {target.reps}
             </span>
             <span style={{ fontSize: 11, color: T.dim }}>ⓘ</span>
@@ -3512,7 +3516,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               {Object.entries(IDEOLOGIES).map(([name, v]) => {
                 const selected = effIdeology === name;
                 return (
-                  <button key={name} onClick={() => setExerciseIdeology(name)} style={{ display: "block", width: "100%", textAlign: "left", background: selected ? "rgba(232,68,46,0.12)" : "none", border: `1px solid ${selected ? T.accent : "transparent"}`, borderRadius: 8, padding: "8px 10px", marginBottom: 4 }}>
+                  <button key={name} onClick={() => setExerciseIdeology(name)} style={{ display: "block", width: "100%", textAlign: "left", background: selected ? "rgba(196,163,90,0.12)" : "none", border: `1px solid ${selected ? T.accent : "transparent"}`, borderRadius: 8, padding: "8px 10px", marginBottom: 4 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{name} <span style={{ color: T.dim, fontWeight: 400 }}>· {v.low}-{v.high} reps</span></div>
                     <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.4, marginTop: 2 }}>{v.desc}</div>
                   </button>
@@ -3549,7 +3553,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   {machineSetupSummary && <button onClick={clearMachineSetup} style={{ background: "none", border: "none", color: T.accent, fontSize: 11 }}>Clear</button>}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                  <button onClick={() => setActiveMachine("")} style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${!activeMachine ? T.accent : T.line}`, background: !activeMachine ? "rgba(232,68,46,0.12)" : T.surface, color: !activeMachine ? T.text : T.dim }}>Default</button>
+                  <button onClick={() => setActiveMachine("")} style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${!activeMachine ? T.accent : T.line}`, background: !activeMachine ? "rgba(196,163,90,0.12)" : T.surface, color: !activeMachine ? T.text : T.dim }}>Default</button>
                   {savedMachines.map((m) =>
                     renamingMachine === m ? (
                       <div key={m} style={{ display: "flex", gap: 4, alignItems: "center" }}>
@@ -3566,7 +3570,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                         <button onClick={() => { if (renameDraft.trim()) { renameMachine(m, renameDraft); } setRenamingMachine(null); }} aria-label="Save name" style={{ background: "none", border: "none", color: T.accent, fontSize: 11 }}><IconCheck size={11} /></button>
                       </div>
                     ) : (
-                      <button key={m} onClick={() => setActiveMachine(m)} onDoubleClick={() => { setRenamingMachine(m); setRenameDraft(m); }} title="Double-tap to rename" style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${activeMachine === m ? T.accent : T.line}`, background: activeMachine === m ? "rgba(232,68,46,0.12)" : T.surface, color: activeMachine === m ? T.text : T.dim, display: "flex", alignItems: "center", gap: 5 }}>
+                      <button key={m} onClick={() => setActiveMachine(m)} onDoubleClick={() => { setRenamingMachine(m); setRenameDraft(m); }} title="Double-tap to rename" style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 999, border: `1px solid ${activeMachine === m ? T.accent : T.line}`, background: activeMachine === m ? "rgba(196,163,90,0.12)" : T.surface, color: activeMachine === m ? T.text : T.dim, display: "flex", alignItems: "center", gap: 5 }}>
                         {m}
                         <span onClick={(e) => { e.stopPropagation(); removeMachine(m); }} role="button" aria-label={`Remove ${m}`} style={{ color: T.dim, fontSize: 10 }}>✕</span>
                       </button>
@@ -3593,7 +3597,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                       <button
                         onClick={() => { if (newMachineName.trim()) { addMachine(newMachineName); setAddingMachine(false); } }}
                         disabled={!newMachineName.trim()}
-                        style={{ padding: "0 14px", borderRadius: 8, border: "none", background: newMachineName.trim() ? T.accent : T.surface2, color: newMachineName.trim() ? "#fff" : T.dim, fontSize: 13, fontWeight: 700 }}
+                        style={{ padding: "0 14px", borderRadius: 8, border: "none", background: newMachineName.trim() ? T.accent : T.surface2, color: newMachineName.trim() ? T.bg : T.dim, fontSize: 13, fontWeight: 700 }}
                       >Add</button>
                       <button onClick={() => setAddingMachine(false)} aria-label="Cancel" style={{ padding: "0 10px", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13 }}>✕</button>
                     </div>
@@ -3677,7 +3681,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
               <textarea value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Cues, tempo, anything worth remembering..." rows={2} style={{ width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 13, padding: 8, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
               <div style={{ fontSize: 10, color: T.dim, marginTop: 3 }}>Saved per exercise, persists across sessions until deleted.</div>
               <div style={{ display: "flex", gap: 6, marginTop: 6, justifyContent: "flex-end" }}>
-                {ex.notes && <button onClick={() => { deleteNote(); setEditingNote(false); }} style={{ ...smallBtn, color: T.accent }}>Delete</button>}
+                {ex.notes && <button onClick={() => { deleteNote(); setEditingNote(false); }} style={{ ...smallBtn, color: T.danger }}>Delete</button>}
                 <button onClick={() => setEditingNote(false)} style={smallBtn}>Cancel</button>
                 <button onClick={saveNote} style={{ ...smallBtn, color: T.text, borderColor: T.accent }}>Save note</button>
               </div>
@@ -3688,7 +3692,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
         </div>
 
         {!wizardOpen && flash && (
-          <div style={{ margin: "12px 16px 0", padding: "10px 12px", borderRadius: 10, fontSize: 13, lineHeight: 1.4, background: flash.type === "progress" ? "rgba(59,165,93,0.12)" : T.surface2, border: `1px solid ${flash.type === "progress" ? T.green : T.line}`, color: flash.type === "progress" ? "#7BD69B" : T.text }}>{flash.msg}</div>
+          <div style={{ margin: "12px 16px 0", padding: "10px 12px", borderRadius: 10, fontSize: 13, lineHeight: 1.4, background: flash.type === "progress" ? "rgba(106,158,128,0.12)" : T.surface2, border: `1px solid ${flash.type === "progress" ? T.green : T.line}`, color: flash.type === "progress" ? tc("#82AD93") : T.text }}>{flash.msg}</div>
         )}
 
         {!wizardOpen && (
@@ -3706,7 +3710,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                           deleteLoggedSets(exIdx, selectedForDelete);
                           setDeleteMode(false); setSelectedForDelete(new Set()); setConfirmDeleteSets(false);
                         }}
-                        style={{ ...smallBtn, background: T.accent, color: "#fff", borderColor: T.accent }}
+                        style={{ ...smallBtn, background: T.accent, color: T.bg, borderColor: T.accent }}
                       >
                         Delete
                       </button>
@@ -3720,7 +3724,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                       <button
                         onClick={() => selectedForDelete.size > 0 && setConfirmDeleteSets(true)}
                         disabled={selectedForDelete.size === 0}
-                        style={{ ...smallBtn, opacity: selectedForDelete.size === 0 ? 0.5 : 1, color: T.accent, borderColor: T.accent }}
+                        style={{ ...smallBtn, opacity: selectedForDelete.size === 0 ? 0.5 : 1, color: T.danger, borderColor: T.danger }}
                       >
                         Delete ({selectedForDelete.size})
                       </button>
@@ -3829,7 +3833,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
             <div style={{ margin: "0 16px 12px", padding: "12px 14px", borderRadius: 14, background: T.surface, border: `1px solid ${T.green}`, display: "flex", alignItems: "center", gap: 10, animation: "slideIn 0.18s ease" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, color: T.dim, marginBottom: 6 }}>Planned sets complete</div>
-                <button onClick={() => goTo(nextIdx)} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: T.green, color: "#fff", fontSize: 14.5, fontWeight: 700 }}>
+                <button onClick={() => goTo(nextIdx)} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: T.green, color: T.bg, fontSize: 14.5, fontWeight: 700 }}>
                   Next exercise: {workout[nextIdx].short} →
                 </button>
               </div>
@@ -3856,9 +3860,9 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 aria-label={over ? "Dismiss rest timer" : undefined}
                 style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 8, minHeight: 44, padding: "0 6px 0 12px", borderRadius: 999, background: T.surface2, border: `1px solid ${over ? T.accent : T.line}`, cursor: over ? "pointer" : "default" }}
               >
-                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${frac * 100}%`, background: "rgba(232,68,46,0.16)", transition: "width 1s linear" }} />
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${frac * 100}%`, background: "rgba(196,163,90,0.16)", transition: "width 1s linear" }} />
                 <span style={{ position: "relative", width: 8, height: 8, borderRadius: 999, background: T.accent, flexShrink: 0 }} />
-                <span style={{ position: "relative", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, fontVariantNumeric: "tabular-nums" }}>
+                <span style={{ position: "relative", fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, fontVariantNumeric: "tabular-nums" }}>
                   {over ? `+${mmss(restOverSec)}` : mmss(restLeft)}
                 </span>
                 <span style={{ position: "relative", flex: 1, fontSize: 12, color: over ? T.accent : T.dim, whiteSpace: "nowrap" }}>{over ? "Rest's up · tap to dismiss" : isPaused ? "Rest · paused" : "Rest"}</span>
@@ -3886,7 +3890,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
           {!wizardOpen ? (
             <>
               {exDone && workoutDone && (
-                <button onClick={() => { setShowMenu(true); setFinishConfirm(true); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: "#fff", fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Finish workout</button>
+                <button onClick={() => { setShowMenu(true); setFinishConfirm(true); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.green, color: T.bg, fontSize: 17, fontWeight: 700, letterSpacing: 0.3 }}>Finish workout</button>
               )}
             </>
           ) : (
@@ -3906,10 +3910,17 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   {target && editIndex === null && <span>Target <b style={{ color: T.text, fontWeight: 600 }}>{target.weight} × {target.reps}</b></span>}
                 </div>
               </div>
-              {editIndex === null && (lastLogged || lastWeek[sets.length]) && (
-                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-                  {lastLogged && <button onClick={() => fillFrom(lastLogged)} style={{ background: "none", border: `1px solid ${T.line}`, borderRadius: 999, color: T.dim, fontSize: 12, padding: "6px 11px", whiteSpace: "nowrap" }}>Copy previous set · {lastLogged.weight}×{lastLogged.reps}</button>}
-                  {lastWeek[sets.length] && <button onClick={() => fillFrom(lastWeek[sets.length])} style={{ background: "none", border: `1px solid ${T.line}`, borderRadius: 999, color: T.dim, fontSize: 12, padding: "6px 11px", whiteSpace: "nowrap" }}>Copy last session · {lastWeek[sets.length].weight}×{lastWeek[sets.length].reps}</button>}
+              {editIndex === null && (target || lastLogged) && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginBottom: 12 }}>
+                  {[
+                    target && { key: "target", label: "Target", w: target.weight, r: target.reps, fill: () => { setWeight(String(target.weight)); setReps(String(target.reps)); } },
+                    lastLogged && { key: "prev", label: "Previous set", w: lastLogged.weight, r: lastLogged.reps, fill: () => fillFrom(lastLogged) },
+                  ].filter(Boolean).map((o) => (
+                    <button key={o.key} onClick={o.fill} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0, height: 40, padding: "0 12px", background: T.surface2, border: `1px solid ${o.key === "target" ? T.accentDeep : T.line}`, borderRadius: 10, color: T.dim, fontSize: 12, whiteSpace: "nowrap" }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{o.label}</span>
+                      <b style={{ color: o.key === "target" ? T.accent : T.text, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{o.w}×{o.r}</b>
+                    </button>
+                  ))}
                 </div>
               )}
               {(() => {
@@ -3932,7 +3943,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 // full 44px touch size.
                 const stepBtn = { flex: 1, minWidth: 0, height: 44, borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 };
                 const roundBtn = { width: 48, height: 48, borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 22, fontWeight: 500, flexShrink: 0 };
-                const bigNum = (missing) => ({ width: "100%", background: "none", border: `1px solid ${missing ? T.accent : "transparent"}`, borderRadius: 12, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 52, fontWeight: 700, lineHeight: 1.05, textAlign: "center", padding: "2px 0", cursor: "pointer", outline: "none", boxShadow: missing ? "0 0 0 2px rgba(232,68,46,0.25)" : "none" });
+                const bigNum = (missing) => ({ width: "100%", background: "none", border: `1px solid ${missing ? T.accent : "transparent"}`, borderRadius: 12, color: T.text, fontFamily: "'Chakra Petch', sans-serif", fontSize: 52, fontWeight: 700, lineHeight: 1.05, textAlign: "center", padding: "2px 0", cursor: "pointer", outline: "none", boxShadow: missing ? "0 0 0 2px rgba(196,163,90,0.25)" : "none" });
                 return (
                   <>
                     <div style={{ marginBottom: 14 }}>
@@ -4002,8 +4013,8 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.85)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
                     <div style={{ width: "100%", maxWidth: 400, background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "16px 16px 0 0", padding: 16, boxSizing: "border-box" }}>
                       <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{isWeight ? `Weight (${unit})` : "Reps"}</div>
-                      <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, textAlign: "center", padding: "8px 0", marginBottom: 10 }}>
-                        <span style={exactEntryFresh && exactEntryDraft ? { background: "rgba(232,68,46,0.35)", borderRadius: 4, padding: "0 4px" } : undefined}>{exactEntryDraft || "0"}</span>
+                      <div style={{ background: T.surface2, border: `1px solid ${T.accent}`, borderRadius: 10, color: T.text, fontFamily: "'Chakra Petch', sans-serif", fontSize: 30, fontWeight: 700, textAlign: "center", padding: "8px 0", marginBottom: 10 }}>
+                        <span style={exactEntryFresh && exactEntryDraft ? { background: "rgba(196,163,90,0.35)", borderRadius: 4, padding: "0 4px" } : undefined}>{exactEntryDraft || "0"}</span>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
                         {keys.map((k, i) => k === "" ? (
@@ -4012,7 +4023,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                           <button
                             key={i}
                             onClick={() => (k === "⌫" ? backspace() : digit(k))}
-                            style={{ padding: "13px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}
+                            style={{ padding: "13px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}
                           >
                             {k}
                           </button>
@@ -4020,7 +4031,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => setExactEntryField(null)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
-                        <button onClick={commit} style={{ flex: 2, padding: "12px 0", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Done</button>
+                        <button onClick={commit} style={{ flex: 2, padding: "12px 0", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Done</button>
                       </div>
                     </div>
                   </div>
@@ -4044,14 +4055,14 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                     </div>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       {BAR_PRESETS[unit].map((b) => (
-                        <button key={b} onClick={() => { setBarMode(b); setWeight(String(b + 2 * stackSum)); saveStartingWeight(b); }} style={{ padding: "4px 12px", borderRadius: 8, fontSize: 12, border: `1px solid ${barMode === b ? T.accent : T.line}`, background: barMode === b ? "rgba(232,68,46,0.12)" : "none", color: barMode === b ? T.text : T.dim }}>{b} {unit}</button>
+                        <button key={b} onClick={() => { setBarMode(b); setWeight(String(b + 2 * stackSum)); saveStartingWeight(b); }} style={{ padding: "4px 12px", borderRadius: 8, fontSize: 12, border: `1px solid ${barMode === b ? T.accent : T.line}`, background: barMode === b ? "rgba(196,163,90,0.12)" : "none", color: barMode === b ? T.text : T.dim }}>{b} {unit}</button>
                       ))}
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <input inputMode="decimal" placeholder="Custom" value={customBar}
                           onFocus={() => { setBarMode("custom"); const nb = parseFloat(customBar) || 0; setWeight(String(nb + 2 * stackSum)); }}
                           onChange={(e) => { const v = e.target.value.replace(/[^0-9.]/g, ""); setCustomBar(v); setBarMode("custom"); const nb = parseFloat(v) || 0; setWeight(String(nb + 2 * stackSum)); }}
                           onBlur={() => saveStartingWeight(parseFloat(customBar) || 0)}
-                          style={{ width: 62, padding: "4px 8px", borderRadius: 8, fontSize: 12, border: `1px solid ${barMode === "custom" ? T.accent : T.line}`, background: barMode === "custom" ? "rgba(232,68,46,0.12)" : "none", color: T.text, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
+                          style={{ width: 62, padding: "4px 8px", borderRadius: 8, fontSize: 12, border: `1px solid ${barMode === "custom" ? T.accent : T.line}`, background: barMode === "custom" ? "rgba(196,163,90,0.12)" : "none", color: T.text, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
                         {customBar && <span style={{ fontSize: 11, color: T.dim }}>{unit}</span>}
                       </div>
                     </div>
@@ -4064,44 +4075,44 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                   <div style={{ display: "flex", alignItems: "center", height: 104, marginBottom: 8 }}>
                     {/* Left half — mirrors the right, outermost plate furthest from center */}
                     <div style={{ display: "flex", alignItems: "center", flex: 1, justifyContent: "flex-end" }}>
-                      <div style={{ height: 8, width: 24, background: "#565C68", borderRadius: 2 }} />
-                      {[...loaded].reverse().map((v, i) => { const p = plateByValue(unit, v); return <div key={i} onClick={() => removePlate(loaded.length - 1 - i)} title={`${v} ${unit} — tap to remove`} style={{ height: p.h, width: p.w, background: p.color, borderRadius: 3, marginRight: 2, border: p.dark ? "1px solid #3A404B" : "none", cursor: "pointer" }} />; })}
-                      <div style={{ height: 26, width: 8, background: "#565C68", borderRadius: 2, marginRight: 2 }} />
+                      <div style={{ height: 8, width: 24, background: tc("#575B61"), borderRadius: 2 }} />
+                      {[...loaded].reverse().map((v, i) => { const p = plateByValue(unit, v); return <div key={i} onClick={() => removePlate(loaded.length - 1 - i)} title={`${v} ${unit} — tap to remove`} style={{ height: p.h, width: p.w, background: p.color, borderRadius: 3, marginRight: 2, border: p.dark ? `1px solid ${tc("#3B4049")}` : "none", cursor: "pointer" }} />; })}
+                      <div style={{ height: 26, width: 8, background: tc("#575B61"), borderRadius: 2, marginRight: 2 }} />
                     </div>
                     {/* Center grip */}
-                    <div style={{ height: 10, width: 46, background: "#3A404B", borderRadius: 2, flexShrink: 0 }} />
+                    <div style={{ height: 10, width: 46, background: tc("#3B4049"), borderRadius: 2, flexShrink: 0 }} />
                     {/* Right half */}
                     <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
-                      <div style={{ height: 26, width: 8, background: "#565C68", borderRadius: 2, marginLeft: 2 }} />
-                      {loaded.map((v, i) => { const p = plateByValue(unit, v); return <div key={i} onClick={() => removePlate(i)} title={`${v} ${unit} — tap to remove`} style={{ height: p.h, width: p.w, background: p.color, borderRadius: 3, marginLeft: 2, border: p.dark ? "1px solid #3A404B" : "none", cursor: "pointer" }} />; })}
-                      <div style={{ height: 8, width: 24, background: "#565C68", borderRadius: 2, marginLeft: 2 }} />
+                      <div style={{ height: 26, width: 8, background: tc("#575B61"), borderRadius: 2, marginLeft: 2 }} />
+                      {loaded.map((v, i) => { const p = plateByValue(unit, v); return <div key={i} onClick={() => removePlate(i)} title={`${v} ${unit} — tap to remove`} style={{ height: p.h, width: p.w, background: p.color, borderRadius: 3, marginLeft: 2, border: p.dark ? `1px solid ${tc("#3B4049")}` : "none", cursor: "pointer" }} />; })}
+                      <div style={{ height: 8, width: 24, background: tc("#575B61"), borderRadius: 2, marginLeft: 2 }} />
                     </div>
                   </div>
                   <div style={{ fontSize: 13, color: T.text, minHeight: 18, textAlign: "center" }}>
                     {loaded.length > 0 ? <>Per side: {loaded.join(" + ")} · Total <b>{barWeight + 2 * stackSum} {unit}</b></> : (parseFloat(weight) || 0) < barWeight ? <span style={{ color: T.dim }}>Below the {barWeight} {unit} starting weight</span> : <span style={{ color: T.dim }}>Empty · starting weight {barWeight} {unit}</span>}
-                    {plateLeftover > 0 && <div style={{ fontSize: 11.5, color: "#E8A82E", marginTop: 2 }}>{+plateLeftover.toFixed(2)} {unit} per side can't be loaded with your plates</div>}
+                    {plateLeftover > 0 && <div style={{ fontSize: 11.5, color: tc("#D9894A"), marginTop: 2 }}>{+plateLeftover.toFixed(2)} {unit} per side can't be loaded with your plates</div>}
                   </div>
                   <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
                     {availablePlates(unit, ex && ex.muscle).map((p) => (
-                      <button key={p.value} onClick={() => addPlate(p.value)} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: p.dark ? "1px solid #3A404B" : "none", background: p.color, color: (unit === "lb" && p.value === 35) || (unit === "kg" && p.value === 15) ? "#1A1D23" : "#fff" }}>+{p.value}</button>
+                      <button key={p.value} onClick={() => addPlate(p.value)} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: p.dark ? `1px solid ${tc("#3B4049")}` : "none", background: p.color, color: (unit === "lb" && p.value === 35) || (unit === "kg" && p.value === 15) ? tc("#1B1E23") : T.bg }}>+{p.value}</button>
                     ))}
                     <button onClick={clearPlates} style={smallBtn}>Clear</button>
                   </div>
                 </div>
               )}
               <div style={{ position: "sticky", bottom: -16, margin: "14px -16px -16px", padding: "12px 16px 16px", background: T.surface, borderTop: `1px solid ${T.line}`, zIndex: 1 }}>
-              <div style={{ ...(highlightMissing.rir ? { background: "rgba(232,68,46,0.1)", borderRadius: 12, padding: 8, margin: "0 -8px" } : {}) }}>
+              <div style={{ ...(highlightMissing.rir ? { background: "rgba(196,163,90,0.1)", borderRadius: 12, padding: 8, margin: "0 -8px" } : {}) }}>
                 <div style={{ fontSize: 12.5, color: highlightMissing.rir ? T.accent : T.dim, marginBottom: 6, fontWeight: highlightMissing.rir ? 700 : 400 }}>
                   Reps in reserve{highlightMissing.rir ? " — pick one" : ""}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {[0, 1, 2, 3, 4].map((v) => (
-                    <button key={v} onClick={() => { setRir(v); setHighlightMissing((h) => ({ ...h, rir: false })); }} style={{ flex: 1, padding: "12px 0", borderRadius: 10, fontSize: 17, fontWeight: 700, border: `1px solid ${rir === v ? T.accent : (highlightMissing.rir ? T.accent : T.line)}`, background: rir === v ? "rgba(232,68,46,0.15)" : T.surface2, color: rir === v ? T.text : T.dim }}>{v === 4 ? "4+" : v}</button>
+                    <button key={v} onClick={() => { setRir(v); setHighlightMissing((h) => ({ ...h, rir: false })); }} style={{ flex: 1, padding: "12px 0", borderRadius: 10, fontSize: 17, fontWeight: 700, border: `1px solid ${rir === v ? T.accent : (highlightMissing.rir ? T.accent : T.line)}`, background: rir === v ? "rgba(196,163,90,0.15)" : T.surface2, color: rir === v ? T.text : T.dim }}>{v === 4 ? "4+" : v}</button>
                   ))}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={saveSet} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}>
+                <button onClick={saveSet} style={{ flex: 1, padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}>
                   {editIndex !== null ? "Save changes" : "Log set"}
                 </button>
               </div>

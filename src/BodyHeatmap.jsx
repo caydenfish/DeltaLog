@@ -4,14 +4,18 @@ import { muscleColor, muscleOptionsForMode, FULL_BODY } from "./lib/muscleTaxono
 import { computeMuscleSetCounts, effectiveSets, formatSets } from "./lib/volume";
 import { IconChevronUp, IconChevronDown } from "./Icons";
 import BodyMap from "./BodyMap";
+import { themed } from "./lib/theme";
 
-const T = {
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const SETS_FILTER_OPTIONS = [
   { key: "working", label: "Working" },
@@ -51,7 +55,7 @@ function FilterRow({ label, options, value, onChange }) {
               padding: "7px 0",
               fontSize: 11.5,
               fontWeight: 600,
-              color: value === o.key ? "#fff" : T.dim,
+              color: value === o.key ? T.bg : T.dim,
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -161,7 +165,7 @@ function CoverageBreakdown({ primary, secondary, nameMode, onSelectMuscle, view,
                 aria-pressed={tab === o.key}
                 style={{
                   flex: 1, background: tab === o.key ? T.accent : "transparent", border: "none", borderRadius: 7,
-                  padding: "6px 0", fontSize: 11.5, fontWeight: 600, color: tab === o.key ? "#fff" : T.dim,
+                  padding: "6px 0", fontSize: 11.5, fontWeight: 600, color: tab === o.key ? T.bg : T.dim,
                 }}
               >
                 {o.label}

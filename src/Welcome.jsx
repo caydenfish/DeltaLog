@@ -1,14 +1,18 @@
 import Logo from "./Logo";
 import IntroShell from "./IntroShell";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 export default function Welcome({ onContinue }) {
   return (
@@ -17,7 +21,7 @@ export default function Welcome({ onContinue }) {
         <div style={{ marginBottom: 22 }}>
           <Logo size={64} />
         </div>
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, marginBottom: 10, lineHeight: 1.2 }}>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, marginBottom: 10, lineHeight: 1.2 }}>
           Let's set up your training
         </div>
         <div style={{ color: T.dim, fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
@@ -31,7 +35,7 @@ export default function Welcome({ onContinue }) {
         </div>
         <button
           onClick={onContinue}
-          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700 }}
+          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700 }}
         >
           Get started
         </button>

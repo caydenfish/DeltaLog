@@ -20,12 +20,13 @@ export const FORMATS = [
 ];
 export const heightFor = (fmt) => Math.round(W * (FORMATS.find((f) => f.key === fmt)?.ratio ?? 16 / 9));
 
-export const ACCENTS = ["#E8442E", "#E8A82E", "#3BA55D", "#2E8BE8", "#F2F1EC"];
+export const ACCENTS = ["#C4A35A", "#D9894A", "#6A9E80", "#2E8BE8", "#E6E3D9"];
 
-const C = { bg: "#101216", surface: "#1A1D23", surface2: "#22262E", line: "#2C313B", text: "#F2F1EC", dim: "#8B919D", green: "#3BA55D", amber: "#E8A82E", down: "#E8A82E" };
-const BC = "'Barlow Condensed', sans-serif";
-const SANS = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
-const MONO = "ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace";
+const C = { bg: "#121418", surface: "#1B1E23", surface2: "#24282E", line: "#2F343B", text: "#E6E3D9", dim: "#8F949C", green: "#6A9E80", amber: "#D9894A", down: "#D9894A" };
+const BC = "'Saira Condensed', sans-serif";
+// Same faces as the app: Chakra Petch display, Saira text.
+const SANS = "'Saira', sans-serif";
+const MONO = SANS;
 const nowrap = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
 export function alpha(hex, a) {
@@ -64,7 +65,7 @@ function Brand({ size = 13, color }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
       <Logo size={size * 1.5} />
-      {color ? <span style={{ fontFamily: BC, fontWeight: 700, fontSize: size, color, letterSpacing: 0.3 }}>DeltaLog</span> : <Wordmark size={size} />}
+      {color ? <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: size, color, letterSpacing: 0.3 }}>DeltaLog</span> : <Wordmark size={size} />}
     </div>
   );
 }
@@ -72,7 +73,7 @@ function Brand({ size = 13, color }) {
 function Stat({ value, label, size = 20, color = C.text, dim = C.dim }) {
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontFamily: BC, fontSize: size, fontWeight: 700, lineHeight: 1, color, ...nowrap }}>{value}</div>
+      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: size, fontWeight: 700, lineHeight: 1, color, ...nowrap }}>{value}</div>
       <div style={{ fontFamily: SANS, fontSize: 8.5, color: dim, marginTop: 3, ...nowrap }}>{label}</div>
     </div>
   );
@@ -122,7 +123,7 @@ function Scoreboard(k) {
         <Brand />
         {o.showDate && <span style={{ fontFamily: SANS, fontSize: 9, color: C.dim }}>{shortDate(k)}</span>}
       </div>
-      <div style={{ fontFamily: BC, fontWeight: 700, fontSize: fitSize(o.title, 234, k.fmt === "square" ? 30 : 40, 0.5), lineHeight: 0.92, marginTop: 14, textTransform: "uppercase", color: C.text, ...nowrap }}>{o.title}</div>
+      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: fitSize(o.title, 234, k.fmt === "square" ? 30 : 40, 0.5), lineHeight: 0.92, marginTop: 14, textTransform: "uppercase", color: C.text, ...nowrap }}>{o.title}</div>
       <div style={{ height: 3, width: 34, background: o.accent, marginTop: 8 }} />
       <div style={{ display: "flex", gap: 18, marginTop: 12, padding: "9px 0", borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}` }}>
         {stats(k).map((s, i) => <Stat key={i} {...s} />)}
@@ -135,14 +136,14 @@ function Scoreboard(k) {
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, height: 20, padding: "0 6px", margin: "0 -6px", background: pr ? alpha(o.accent, 0.13) : "transparent", borderLeft: pr ? `2px solid ${o.accent}` : "2px solid transparent" }}>
               <span style={{ flex: 1, minWidth: 0, color: C.text, fontWeight: pr ? 600 : 400, ...nowrap }}>{ex.name}</span>
               {pr && <PRTag k={k} />}
-              <span style={{ fontFamily: BC, fontWeight: 700, fontSize: 12, color: C.text, flexShrink: 0 }}>{t ? `${fmtW(t.weight)}×${t.reps}` : ""}</span>
+              <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 12, color: C.text, flexShrink: 0 }}>{t ? `${fmtW(t.weight)}×${t.reps}` : ""}</span>
             </div>
           );
         })}
         <More n={list.length - n} />
       </div>
       <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-        {prCount(k) > 0 ? <span style={{ fontFamily: BC, fontWeight: 700, fontSize: 14, color: o.accent }}>{prCount(k)} new PR{prCount(k) === 1 ? "" : "s"}</span> : <span />}
+        {prCount(k) > 0 ? <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 14, color: o.accent }}>{prCount(k)} new PR{prCount(k) === 1 ? "" : "s"}</span> : <span />}
         {o.showBodyweight && d.bodyWeight != null && <span style={{ fontFamily: SANS, fontSize: 9, color: C.dim }}>BW {d.bodyWeight} {d.unit}</span>}
       </div>
     </div>
@@ -171,10 +172,10 @@ function PRHero(k) {
       <Brand />
       <div style={{ marginTop: k.fmt === "story" ? 40 : 16 }}>
         <div style={{ fontFamily: SANS, fontSize: 10, color: h ? o.accent : C.dim, fontWeight: 600 }}>{h ? `New ${label}` : label}</div>
-        <div style={{ fontFamily: BC, fontSize: 22, fontWeight: 700, color: C.text, marginTop: 2, ...nowrap }}>{name}</div>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: C.text, marginTop: 2, ...nowrap }}>{name}</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 2 }}>
-          <span style={{ fontFamily: BC, fontSize: big, fontWeight: 700, lineHeight: 0.9, color: h ? o.accent : C.text }}>{set ? fmtW(set.weight) : "—"}</span>
-          <span style={{ fontFamily: BC, fontSize: 18, fontWeight: 600, color: C.text }}>{d.unit}</span>
+          <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: big, fontWeight: 700, lineHeight: 0.9, color: h ? o.accent : C.text }}>{set ? fmtW(set.weight) : "—"}</span>
+          <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 600, color: C.text }}>{d.unit}</span>
         </div>
         {set && <div style={{ fontFamily: SANS, fontSize: 10.5, color: C.dim, marginTop: 6 }}>× {set.reps} reps{deltaText ? <span style={{ color: C.green }}>{`   ${deltaText}`}</span> : null}</div>}
       </div>
@@ -187,7 +188,7 @@ function PRHero(k) {
               <div key={i} style={{ background: C.surface, borderRadius: 7, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6, fontFamily: SANS, fontSize: 10 }}>
                 <span style={{ flex: 1, minWidth: 0, color: C.text, ...nowrap }}>{d.exercises[i].name}</span>
                 <PRTag k={k}>{PR_LABEL[p.type]}</PRTag>
-                <span style={{ fontFamily: BC, fontWeight: 700, fontSize: 12, color: C.text }}>{fmtW(s.weight)}×{s.reps}</span>
+                <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 12, color: C.text }}>{fmtW(s.weight)}×{s.reps}</span>
               </div>
             );
           })}
@@ -216,7 +217,7 @@ function StatSheet(k) {
         <Brand size={12} />
         {o.showDate && <span style={{ fontFamily: SANS, fontSize: 9, color: C.dim }}>{shortDate(k)}</span>}
       </div>
-      <div style={{ fontFamily: BC, fontSize: 18, fontWeight: 700, color: C.text, marginTop: 10, ...nowrap }}>{o.title}</div>
+      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: C.text, marginTop: 10, ...nowrap }}>{o.title}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 8 }}>
         <div style={{ background: C.surface, borderRadius: 8, padding: "7px 8px" }}><Stat value={o.showVolume ? d.totalVolume.toLocaleString() : d.totalSets} label={o.showVolume ? `volume, ${d.unit}` : "sets"} size={19} /></div>
         {prCount(k) > 0 ? (
@@ -256,9 +257,9 @@ function Receipt(k) {
   const { d, o } = k;
   const list = worked(d);
   const n = cap(k, 7, 5, 3);
-  const ink = "#1C1F24";
+  const ink = "#1D2025";
   const dash = { borderTop: "1px dashed #9A9A92", margin: "7px 0" };
-  const stamp = o.accent === "#F2F1EC" ? "#C8352B" : o.accent;
+  const stamp = o.accent === "#E6E3D9" ? "#C8352B" : o.accent;
   return (
     <div style={{ height: "100%", boxSizing: "border-box", padding: 14, background: "#2A2E35", display: "flex" }}>
       <div style={{ flex: 1, minWidth: 0, background: "#F4F2EA", color: ink, fontFamily: MONO, fontSize: 9, padding: "12px 12px", display: "flex", flexDirection: "column" }}>
@@ -303,7 +304,7 @@ function PhotoOverlay(k) {
       <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: 60, background: "linear-gradient(180deg, rgba(10,11,13,0.6), rgba(10,11,13,0))" }} />
       <div style={{ position: "absolute", top: 14, left: 14 }}><Brand /></div>
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: "rgba(10,11,13,0.84)", padding: "12px 14px 14px" }}>
-        <div style={{ fontFamily: BC, fontSize: 24, fontWeight: 700, color: C.text, ...nowrap }}>{o.title}{o.showDate ? <span style={{ color: C.dim, fontSize: 16 }}>{`  ${shortDate(k)}`}</span> : null}</div>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: C.text, ...nowrap }}>{o.title}{o.showDate ? <span style={{ color: C.dim, fontSize: 16 }}>{`  ${shortDate(k)}`}</span> : null}</div>
         <div style={{ display: "flex", gap: 16, marginTop: 6 }}>{stats(k).map((s, i) => <Stat key={i} {...s} size={16} />)}</div>
         {prs.slice(0, nPR).map(({ e, i }) => {
           const s = d.exercises[i].sets[e.prs[0].setIndex];
@@ -333,7 +334,7 @@ function Delta(k) {
         <Brand />
         <span style={{ fontFamily: SANS, fontSize: 9, color: C.dim }}>{cmp ? `vs ${new Date(cmp.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : "first time on this lineup"}</span>
       </div>
-      <div style={{ fontFamily: BC, fontSize: 24, fontWeight: 700, color: C.text, marginTop: 10, ...nowrap }}>{o.title}</div>
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: C.text, marginTop: 10, ...nowrap }}>{o.title}</div>
       <div style={{ marginTop: 6, fontFamily: SANS, fontSize: 10.5, lineHeight: "18px" }}>
         {o.showVolume && <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: C.dim }}>Volume</span><b style={{ color: C.text }}>{d.totalVolume.toLocaleString()} {cmp && cmp.volumePct != null && sign(cmp.volumePct, "%")}</b></div>}
         <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: C.dim }}>Sets</span><b style={{ color: C.text }}>{d.totalSets} {cmp && sign(cmp.setsDelta)}</b></div>
@@ -348,7 +349,7 @@ function Delta(k) {
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, height: 20, padding: "0 5px", margin: "0 -5px", background: pr ? alpha(o.accent, 0.13) : "transparent", borderLeft: pr ? `2px solid ${o.accent}` : "2px solid transparent" }}>
               <span style={{ flex: 1, minWidth: 0, color: C.text, ...nowrap }}>{ex.name}</span>
-              <span style={{ fontFamily: BC, fontWeight: 700, fontSize: 12, color: C.text }}>{t ? `${fmtW(t.weight)}×${t.reps}` : ""}</span>
+              <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 12, color: C.text }}>{t ? `${fmtW(t.weight)}×${t.reps}` : ""}</span>
               <span style={{ width: 40, textAlign: "right", fontSize: 9.5, fontWeight: 600, flexShrink: 0 }}>
                 {e?.delta ? (e.delta.kind === "weight" ? up(e.delta.value) : e.delta.value === 0 ? <span style={{ color: C.dim }}>=</span> : up(e.delta.value, " rep")) : <span style={{ color: C.dim }}>new</span>}
               </span>
@@ -376,7 +377,7 @@ function MuscleMap(k) {
         <Brand />
         {o.showDate && <span style={{ fontFamily: SANS, fontSize: 9, color: C.dim }}>{shortDate(k)}</span>}
       </div>
-      <div style={{ fontFamily: BC, fontSize: 22, fontWeight: 700, color: C.text, marginTop: 8, ...nowrap }}>{o.title}</div>
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: C.text, marginTop: 8, ...nowrap }}>{o.title}</div>
       <div style={{ marginTop: 8, pointerEvents: "none" }}>
         <BodyMap primary={mm.primary || {}} secondary={mm.secondary || {}} nameMode={mm.nameMode} maxWidth={mapW} showLegend={false} />
       </div>
@@ -413,7 +414,7 @@ function Streak(k) {
     <div style={{ padding: 18, height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Brand />
-        {st && st.streak > 1 && <span style={{ fontFamily: BC, fontWeight: 700, fontSize: 13, color: o.accent }}>{st.streak}-day streak</span>}
+        {st && st.streak > 1 && <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 13, color: o.accent }}>{st.streak}-day streak</span>}
       </div>
       <div style={{ fontFamily: SANS, fontSize: 9.5, color: C.dim, marginTop: 12 }}>{m ? m.label : date.toLocaleDateString(undefined, { month: "long" })} {y}</div>
       <div style={{ display: "grid", gridTemplateColumns: `repeat(7, ${cell}px)`, gap: 3, marginTop: 5 }}>
@@ -425,7 +426,7 @@ function Streak(k) {
           return <div key={i} style={{ width: cell, height: cell, borderRadius: 3, boxSizing: "border-box", background: active ? (isToday ? o.accent : alpha(o.accent, 0.5)) : future ? "transparent" : C.surface, border: isToday ? `1.5px solid ${C.text}` : future ? `1px solid ${C.surface}` : "none" }} />;
         })}
       </div>
-      <div style={{ fontFamily: BC, fontWeight: 700, fontSize: k.fmt === "square" ? 20 : 28, color: C.text, marginTop: 12, lineHeight: 1 }}>
+      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: k.fmt === "square" ? 20 : 28, color: C.text, marginTop: 12, lineHeight: 1 }}>
         Workout {m ? m.workouts : 1} <span style={{ color: C.dim, fontSize: k.fmt === "square" ? 14 : 18 }}>this month</span>
       </div>
       {m && (
@@ -448,7 +449,7 @@ function TrainingLog(k) {
   return (
     <div style={{ padding: "14px 14px 12px", height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span style={{ fontFamily: BC, fontSize: 16, fontWeight: 700, color: C.text, ...nowrap }}>{o.title}</span>
+        <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: C.text, ...nowrap }}>{o.title}</span>
         <span style={{ fontFamily: SANS, fontSize: 9, color: C.dim, flexShrink: 0 }}>{[o.showDate && shortDate(k), o.showDuration && d.durationMin != null && `${d.durationMin} min`].filter(Boolean).join("   ")}</span>
       </div>
       <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -459,7 +460,7 @@ function TrainingLog(k) {
           return (
             <div key={i} style={{ fontFamily: SANS, fontSize: 9.5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ fontFamily: BC, fontWeight: 700, fontSize: 12, color: C.text, ...nowrap }}>{ex.name}</span>
+                <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 12, color: C.text, ...nowrap }}>{ex.name}</span>
                 {prsOf(k, i).length > 0 && <PRTag k={k} />}
               </div>
               {rows.slice(0, 2).map((row, r) => (
@@ -497,8 +498,8 @@ function Poster(k) {
   return (
     <div style={{ height: "100%", boxSizing: "border-box", padding: 18, background: o.accent, color: ink, display: "flex", flexDirection: "column" }}>
       <Brand color={ink} />
-      <div style={{ fontFamily: BC, fontSize: big, fontWeight: 700, lineHeight: 0.82, marginTop: k.fmt === "story" ? 44 : 14, color: C.bg, letterSpacing: -1 }}>{hero.toUpperCase()}</div>
-      <div style={{ fontFamily: BC, fontSize: 16, fontWeight: 700, marginTop: 6, letterSpacing: 0.5 }}>{heroLabel}</div>
+      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: big, fontWeight: 700, lineHeight: 0.82, marginTop: k.fmt === "story" ? 44 : 14, color: C.bg, letterSpacing: -1 }}>{hero.toUpperCase()}</div>
+      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, marginTop: 6, letterSpacing: 0.5 }}>{heroLabel}</div>
       {prs.length > 0 && (
         <div style={{ marginTop: 14, background: C.bg, borderRadius: 8, padding: "7px 9px", fontFamily: SANS, fontSize: 10, color: C.text }}>
           {prs.slice(0, n).map(({ e, i }) => {
@@ -507,14 +508,14 @@ function Poster(k) {
               <div key={i} style={{ display: "flex", gap: 6, height: 17, alignItems: "center" }}>
                 <span style={{ flex: 1, minWidth: 0, ...nowrap }}>{d.exercises[i].name}</span>
                 <b>{fmtW(s.weight)}×{s.reps}</b>
-                <span style={{ color: o.accent === "#F2F1EC" ? C.green : o.accent, fontWeight: 700 }}>PR</span>
+                <span style={{ color: o.accent === "#E6E3D9" ? C.green : o.accent, fontWeight: 700 }}>PR</span>
               </div>
             );
           })}
           <More n={prs.length - n} />
         </div>
       )}
-      <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", fontFamily: BC, fontWeight: 700, fontSize: 12, gap: 8 }}>
+      <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 12, gap: 8 }}>
         <span style={nowrap}>{o.title.toUpperCase()}</span>
         {o.showDate && <span style={{ flexShrink: 0 }}>{shortDate(k).toUpperCase()}</span>}
         {o.showDuration && d.durationMin != null && <span style={{ flexShrink: 0 }}>{d.durationMin} MIN</span>}
@@ -539,7 +540,7 @@ function Split(k) {
       <div style={{ height: 3, background: o.accent }} />
       <div style={{ flex: 1, padding: "10px 14px 12px", display: "flex", flexDirection: "column", minHeight: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontFamily: BC, fontSize: 20, fontWeight: 700, color: C.text, ...nowrap }}>{o.title}</span>
+          <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: C.text, ...nowrap }}>{o.title}</span>
           {o.showDate && <span style={{ fontFamily: SANS, fontSize: 9, color: C.dim, flexShrink: 0 }}>{shortDate(k)}</span>}
         </div>
         <div style={{ display: "flex", gap: 16, marginTop: 5 }}>{stats(k).map((s, i) => <Stat key={i} {...s} size={15} />)}</div>
@@ -551,7 +552,7 @@ function Split(k) {
               <div key={i} style={{ display: "flex", gap: 6, height: 17, alignItems: "center" }}>
                 <span style={{ flex: 1, minWidth: 0, color: C.text, ...nowrap }}>{ex.name}</span>
                 {pr && <PRTag k={k} />}
-                <b style={{ color: C.text, fontFamily: BC, fontSize: 11.5 }}>{t ? `${fmtW(t.weight)}×${t.reps}` : ""}</b>
+                <b style={{ color: C.text, fontFamily: "'Saira Condensed', sans-serif", fontSize: 11.5 }}>{t ? `${fmtW(t.weight)}×${t.reps}` : ""}</b>
               </div>
             );
           })}
@@ -575,7 +576,7 @@ function Polaroid(k) {
       <div style={{ background: "#F4F2EA", padding: "10px 10px 0", transform: "rotate(-2deg)" }}>
         <Photo k={k} w={box.w} h={box.h} />
         <div style={{ height: 50, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-          <div style={{ fontFamily: BC, fontWeight: 700, fontSize: 18, color: "#1C1F24", maxWidth: box.w, ...nowrap }}>{o.title}</div>
+          <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 18, color: "#1D2025", maxWidth: box.w, ...nowrap }}>{o.title}</div>
           <div style={{ fontFamily: SANS, fontSize: 9, color: "#6A6A64", marginTop: 1, ...nowrap }}>{caption}</div>
         </div>
       </div>
@@ -597,7 +598,7 @@ function Cover(k) {
       <Photo k={k} w={W} h={H} style={{ position: "absolute", inset: 0 }} />
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,11,13,0.55) 0%, rgba(10,11,13,0) 32%, rgba(10,11,13,0) 58%, rgba(10,11,13,0.8) 100%)" }} />
       <div style={{ position: "absolute", top: 12, left: 14, right: 14 }}>
-        <div style={{ fontFamily: BC, fontWeight: 700, fontSize: 40, lineHeight: 0.9, color: C.text, letterSpacing: 1 }}>DELTA<span style={{ color: o.accent }}>LOG</span></div>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: 40, lineHeight: 0.9, color: C.text, letterSpacing: 1 }}>DELTA<span style={{ color: o.accent }}>LOG</span></div>
         <div style={{ display: "flex", justifyContent: "space-between", fontFamily: SANS, fontSize: 8.5, color: C.text, marginTop: 3, opacity: 0.85 }}>
           <span style={nowrap}>{o.title}</span>
           {o.showDate && <span>{new Date(d.completedAt || Date.now()).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</span>}
@@ -607,7 +608,7 @@ function Cover(k) {
         {prs.slice(0, n).map(({ e, i }) => {
           const s = d.exercises[i].sets[e.prs[0].setIndex];
           return (
-            <div key={i} style={{ fontFamily: BC, fontWeight: 700, fontSize: 15, color: C.text, ...nowrap }}>
+            <div key={i} style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 15, color: C.text, ...nowrap }}>
               <span style={{ color: o.accent }}>PR </span>{d.exercises[i].name} {fmtW(s.weight)}×{s.reps}
             </div>
           );

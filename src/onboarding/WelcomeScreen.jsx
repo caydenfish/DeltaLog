@@ -1,7 +1,8 @@
 import { ILLUSTRATIONS } from "./illustrations";
+import { themed, tc, IS_LIGHT } from "../lib/theme";
 
-const T = { bg: "#101216", surface: "#1A1D23", line: "#2C313B", line2: "#3A404B", text: "#F2F1EC", dim: "#A3A9B4", faint: "#8B919D", accent: "#E8442E" };
-const condensed = "'Barlow Condensed', sans-serif";
+const T = themed({ bg: "#121418", surface: "#1B1E23", line: "#2F343B", line2: "#3B4049", text: "#E6E3D9", dim: "#A5A6A3", faint: "#8F949C", accent: "#C4A35A", danger: "#D0614C", accentDeep: "#8A6F33", spruce: "#3F6E55" });
+const condensed = "'Saira Condensed', sans-serif";
 
 const VALUE_ROWS = [
   { d: "M4 19V9M10 19V5M16 19v-7M22 19H2", title: "A target for every set", body: "Built from your last session and how hard it felt." },
@@ -18,14 +19,14 @@ export default function WelcomeScreen({ onGoogle, onEmail, onSignIn, onTerms, on
         {banner}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 24 }}>
           <span style={{ width: 34, height: 34, borderRadius: 9, background: T.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinejoin="round" aria-hidden="true"><path d="M12 4L21 20H3Z" /></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.bg} strokeWidth="2.6" strokeLinejoin="round" aria-hidden="true"><path d="M12 4L21 20H3Z" /></svg>
           </span>
-          <span style={{ fontFamily: condensed, fontSize: 26, fontWeight: 700, letterSpacing: "0.05em" }}>DELTALOG</span>
+          <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: "0.05em" }}>DELTALOG</span>
         </div>
         {ILLUSTRATIONS.welcome && (
-          <img src={ILLUSTRATIONS.welcome} alt="" aria-hidden="true" style={{ display: "block", height: 150, maxWidth: "100%", objectFit: "contain", margin: "28px 0 -8px", filter: "invert(1) opacity(0.9)" }} />
+          <img src={ILLUSTRATIONS.welcome} alt="" aria-hidden="true" style={{ display: "block", height: 150, maxWidth: "100%", objectFit: "contain", margin: "28px 0 -8px", filter: IS_LIGHT ? "opacity(0.9)" : "invert(1) opacity(0.9)" }} />
         )}
-        <h1 style={{ margin: "32px 0 0", fontFamily: condensed, fontSize: 46, fontWeight: 700, lineHeight: 0.98, textTransform: "uppercase" }}>
+        <h1 style={{ margin: "32px 0 0", fontFamily: "'Chakra Petch', sans-serif", fontSize: 46, fontWeight: 700, lineHeight: 0.98, textTransform: "uppercase" }}>
           Log faster.<br />Progress on purpose.
         </h1>
         <div style={{ marginTop: 30, display: "flex", flexDirection: "column", gap: 20 }}>
@@ -55,9 +56,9 @@ export default function WelcomeScreen({ onGoogle, onEmail, onSignIn, onTerms, on
           </button>
           <p style={{ margin: "2px 0 0", textAlign: "center", fontSize: 12.5, lineHeight: 1.5, color: T.faint }}>
             By continuing you agree to the{" "}
-            <button onClick={onTerms} style={{ background: "none", border: "none", padding: 0, color: "#FF6A55", fontSize: 12.5, textDecoration: "underline" }}>Terms</button>
+            <button onClick={onTerms} style={{ background: "none", border: "none", padding: 0, color: tc("#C4A35A"), fontSize: 12.5, textDecoration: "underline" }}>Terms</button>
             {" "}and{" "}
-            <button onClick={onPrivacy} style={{ background: "none", border: "none", padding: 0, color: "#FF6A55", fontSize: 12.5, textDecoration: "underline" }}>Privacy Policy</button>.
+            <button onClick={onPrivacy} style={{ background: "none", border: "none", padding: 0, color: tc("#C4A35A"), fontSize: 12.5, textDecoration: "underline" }}>Privacy Policy</button>.
           </p>
         </div>
       </div>

@@ -12,6 +12,8 @@ import Auth from "./Auth";
 import ResetPassword from "./ResetPassword";
 import TermsGate from "./TermsGate";
 import OnboardingFlow from "./onboarding/OnboardingFlow";
+import ThemePicker from "./ThemePicker";
+import { themeChosen } from "./lib/theme";
 import { capturePendingAdd } from "./lib/social";
 
 // Invite links (?add=<handle>) are captured before anything renders, so
@@ -22,6 +24,7 @@ import SetLogger from "./SetLogger";
 import AppSplash from "./AppSplash";
 import SharedWorkoutView from "./SharedWorkoutView";
 import LoadingScreen from "./LoadingSpinner";
+import { tc } from "./lib/theme";
 
 // Active-workout lookup that survives a flaky first request (v1.23.0).
 // Coming back to a backgrounded PWA, the very first network call often
@@ -70,6 +73,7 @@ export default function App() {
   const [resumePausedDirect, setResumePausedDirect] = useState(false);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [setupSeen, setSetupSeen] = useState(() => getPrefs().setupWizardSeen);
+  const [themePicked, setThemePicked] = useState(() => themeChosen());
   // A ?shared=CODE link should render the read-only shared-workout view
   // immediately, before any auth check — the whole point is that someone
   // without an account (or logged into a different one) can open it.
@@ -349,6 +353,10 @@ export default function App() {
     content = <ResetPassword onDone={() => setPasswordRecovery(false)} />;
   } else if (profile === undefined) {
     content = null; loadingGate = true;
+  } else if (!themePicked) {
+    // v1.25.0: everyone picks Dark or Light once per device, new users
+    // ahead of setup and existing users on their next launch.
+    content = <ThemePicker onDone={() => setThemePicked(true)} />;
   } else if (!profileComplete || (profile.terms_accepted_at && !setupSeen)) {
     // v1.19.0 intro and setup. Brand-new accounts start at About you;
     // older accounts that finished the profile but never ran setup start
@@ -439,7 +447,7 @@ export default function App() {
             <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "0 24px 32px", display: "flex", justifyContent: "center", zIndex: 10000 }}>
               <button
                 onClick={() => window.location.reload()}
-                style={{ background: "#1A1D23", border: "1px solid #2C313B", color: "#8B919D", borderRadius: 999, padding: "10px 18px", fontSize: 13 }}
+                style={{ background: tc("#1B1E23"), border: `1px solid ${tc("#2F343B")}`, color: tc("#8F949C"), borderRadius: 999, padding: "10px 18px", fontSize: 13 }}
               >
                 Taking longer than usual — tap to reload
               </button>

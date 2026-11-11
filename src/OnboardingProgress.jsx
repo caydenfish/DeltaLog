@@ -1,8 +1,12 @@
-const T = {
-  line: "#2C313B",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+import { themed } from "./lib/theme";
+const T = themed({
+  line: "#2F343B",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // One continuous progress bar spans the whole onboarding sequence --
 // profile (Onboarding.jsx), terms (TermsGate.jsx), and the setup wizard's

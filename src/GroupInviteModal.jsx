@@ -2,15 +2,19 @@ import { useEffect, useState } from "react";
 import { IconList, IconPlus, IconX } from "./Icons";
 import { Avatar } from "./Friends";
 import { fetchGroupSessionMembers, displayName } from "./lib/social";
+import { themed } from "./lib/theme";
 
-const T = {
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 const oneLine = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
 // Group workout invite popup (v1.20.0). Shown on Home when a new invite
@@ -63,7 +67,7 @@ export default function GroupInviteModal({ invite, busy, onJoin, onDecline, onDi
           <span style={{ fontSize: 12.5, color: T.dim, whiteSpace: "nowrap" }}>{isTemplate ? `${invite.plan_exercise_count} exercises` : `${invite.host_first_name || "Host"} picks`}</span>
         </div>
 
-        <button onClick={onJoin} disabled={busy} style={{ marginTop: 16, width: "100%", height: 50, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700, opacity: busy ? 0.6 : 1, whiteSpace: "nowrap" }}>
+        <button onClick={onJoin} disabled={busy} style={{ marginTop: 16, width: "100%", height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: busy ? 0.6 : 1, whiteSpace: "nowrap" }}>
           {busy ? "Joining..." : live ? "Join workout" : "Join lobby"}
         </button>
         <button onClick={onDecline} style={{ marginTop: 6, height: 40, padding: "0 16px", border: "none", background: "none", color: T.dim, fontSize: 14, fontWeight: 600 }}>Decline</button>

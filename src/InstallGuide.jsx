@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { IconX } from "./Icons";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 function detectPlatform() {
   const ua = navigator.userAgent || "";
@@ -40,7 +44,7 @@ export default function InstallGuide({ onClose }) {
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.75)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div style={{ width: "100%", maxWidth: 400, maxHeight: "88vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>Put DeltaLog on your home screen</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>Put DeltaLog on your home screen</div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13, flexShrink: 0, marginLeft: 8 }}><IconX size={12} /></button>
         </div>
         <div style={{ color: T.dim, fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
@@ -55,7 +59,7 @@ export default function InstallGuide({ onClose }) {
               style={{
                 flex: 1, padding: "9px 0", borderRadius: 7, fontSize: 13, fontWeight: 600, border: "none",
                 background: platform === opt.key ? T.accent : "transparent",
-                color: platform === opt.key ? "#fff" : T.dim,
+                color: platform === opt.key ? T.bg : T.dim,
               }}
             >
               {opt.label}
@@ -72,7 +76,7 @@ export default function InstallGuide({ onClose }) {
           ))}
         </div>
 
-        <button onClick={onClose} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 700 }}>
+        <button onClick={onClose} style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 700 }}>
           Got it
         </button>
       </div>

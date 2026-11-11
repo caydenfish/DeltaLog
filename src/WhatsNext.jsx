@@ -1,15 +1,19 @@
 import { WHATS_NEXT } from "./lib/whatsNext";
 import { IconX } from "./Icons";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 };
 
@@ -22,7 +26,7 @@ export default function WhatsNext({ onClose }) {
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={smallBtn}><IconX size={12} /></button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>WHAT'S NEXT</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>WHAT'S NEXT</div>
           <div style={{ width: 26 }} />
         </div>
 
@@ -38,8 +42,8 @@ export default function WhatsNext({ onClose }) {
               {WHATS_NEXT.map((item, i) => (
                 <div key={i} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-                    <div style={{ background: "rgba(232,68,46,0.14)", color: T.accent, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, borderRadius: 6, padding: "2px 7px", flexShrink: 0, marginTop: 2 }}>Planned</div>
-                    <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text }}>{item.title}</div>
+                    <div style={{ background: "rgba(196,163,90,0.14)", color: T.accent, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, borderRadius: 6, padding: "2px 7px", flexShrink: 0, marginTop: 2 }}>Planned</div>
+                    <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text }}>{item.title}</div>
                   </div>
                   <div style={{ color: T.dim, fontSize: 13, lineHeight: 1.5 }}>{item.description}</div>
                 </div>

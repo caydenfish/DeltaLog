@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { fetchTemplates } from "./lib/queries";
 import { IconPlus, IconBolt, IconList, IconUsers } from "./Icons";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // Start Workout sheet (v1.14.0). Opens from Home's Start Workout button
 // and decides how the workout starts *before* the workout screen opens,
@@ -51,18 +55,18 @@ export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onCl
         </button>
 
         {savedWorkout && (
-          <button onClick={() => choose({ kind: "resume" })} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 14px", marginBottom: 10, borderRadius: 12, border: `1px dashed ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.accent, fontSize: 14, fontWeight: 600 }}>
+          <button onClick={() => choose({ kind: "resume" })} style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 14px", marginBottom: 10, borderRadius: 12, border: `1px dashed ${T.accent}`, background: "rgba(196,163,90,0.08)", color: T.accent, fontSize: 14, fontWeight: 600 }}>
             <span>Resume saved workout</span>
             <span style={{ fontSize: 12, color: T.dim, fontWeight: 500 }}>›</span>
           </button>
         )}
 
-        <button onClick={() => choose({ kind: "scratch" })} style={{ width: "100%", padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <button onClick={() => choose({ kind: "scratch" })} style={{ width: "100%", padding: "15px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           <IconPlus size={16} /> Start from scratch
         </button>
 
         {freshTemplate && (
-          <button onClick={() => choose({ kind: "template", template: freshTemplate })} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <button onClick={() => choose({ kind: "template", template: freshTemplate })} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.08)", color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><span style={{ color: T.accent, display: "flex", flexShrink: 0 }}><IconList size={16} /></span><span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Start {freshTemplate.name}</span></span>
             <span style={{ fontSize: 13, color: T.dim, fontWeight: 500, whiteSpace: "nowrap" }}>Just saved ›</span>
           </button>
@@ -81,7 +85,7 @@ export default function StartWorkoutSheet({ userId, savedWorkout, onChoose, onCl
         </div>
 
         {onStartGroup && (
-          <button onClick={onStartGroup} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.08)", color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <button onClick={onStartGroup} style={{ width: "100%", marginTop: 10, padding: "14px 16px", borderRadius: 12, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.08)", color: T.text, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}><span style={{ color: T.accent, display: "flex" }}><IconUsers size={18} /></span> Group Workout</span>
             <span style={{ fontSize: 13, color: T.dim, fontWeight: 500, whiteSpace: "nowrap" }}>With friends ›</span>
           </button>

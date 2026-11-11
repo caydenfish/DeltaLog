@@ -584,3 +584,13 @@ export function IconCopy({ size = 16, style }) {
     </svg>
   );
 }
+
+// Half-filled circle: theme / appearance.
+export function IconTheme({ size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style} aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}

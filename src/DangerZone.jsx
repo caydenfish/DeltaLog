@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { resetAllUserData, deleteOwnAccount } from "./lib/queries";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 export default function DangerZone({ user, onClose, onDataReset }) {
   const [resetConfirm, setResetConfirm] = useState(false);
@@ -51,7 +55,7 @@ export default function DangerZone({ user, onClose, onDataReset }) {
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.accent, textAlign: "center" }}>DANGER ZONE</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.accent, textAlign: "center" }}>DANGER ZONE</div>
           <div style={{ width: 26 }} />
         </div>
 
@@ -60,7 +64,7 @@ export default function DangerZone({ user, onClose, onDataReset }) {
             Everything below is permanent and can't be undone. Each action needs its own confirmation before anything actually happens.
           </div>
 
-          {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+          {error && <div style={{ color: T.danger, fontSize: 13, marginBottom: 16 }}>{error}</div>}
 
           <div style={{ background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
             {!resetConfirm ? (
@@ -81,7 +85,7 @@ export default function DangerZone({ user, onClose, onDataReset }) {
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => setResetConfirm(false)} disabled={resetting} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
-                  <button onClick={handleResetData} disabled={resetting} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>
+                  <button onClick={handleResetData} disabled={resetting} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>
                     {resetting ? "Resetting…" : "Yes, delete everything"}
                   </button>
                 </div>
@@ -96,7 +100,7 @@ export default function DangerZone({ user, onClose, onDataReset }) {
                 <div style={{ color: T.dim, fontSize: 12, marginBottom: 12, lineHeight: 1.4 }}>
                   Permanently deletes your account and every piece of data tied to it — workouts, templates, custom exercises, progress photos, and your login itself. You won't be able to sign back in with this email afterward.
                 </div>
-                <button onClick={() => { setDeleteAccountConfirm(true); setDeleteConfirmText(""); }} style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 14, fontWeight: 700 }}>
+                <button onClick={() => { setDeleteAccountConfirm(true); setDeleteConfirmText(""); }} style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: `1px solid ${T.danger}`, background: "none", color: T.danger, fontSize: 14, fontWeight: 700 }}>
                   Delete Account
                 </button>
               </>
@@ -114,7 +118,7 @@ export default function DangerZone({ user, onClose, onDataReset }) {
                 />
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => setDeleteAccountConfirm(false)} disabled={deletingAccount} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 15 }}>Cancel</button>
-                  <button onClick={handleDeleteAccount} disabled={deletingAccount || deleteConfirmText !== "DELETE"} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: deleteConfirmText === "DELETE" ? T.accent : T.surface2, color: deleteConfirmText === "DELETE" ? "#fff" : T.dim, fontSize: 15, fontWeight: 700 }}>
+                  <button onClick={handleDeleteAccount} disabled={deletingAccount || deleteConfirmText !== "DELETE"} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: deleteConfirmText === "DELETE" ? T.danger : T.surface2, color: deleteConfirmText === "DELETE" ? T.bg : T.dim, fontSize: 15, fontWeight: 700 }}>
                     {deletingAccount ? "Deleting…" : "Delete my account"}
                   </button>
                 </div>

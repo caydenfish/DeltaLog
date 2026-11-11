@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Avatar } from "./Friends";
 import { IconCheck } from "./Icons";
 import { findUserByHandle, sendFriendRequest, displayName } from "./lib/social";
+import { themed, tc } from "./lib/theme";
 
-const T = { surface: "#1A1D23", surface2: "#22262E", line: "#2C313B", text: "#F2F1EC", dim: "#A3A9B4", accent: "#E8442E", greenText: "#7BD69B" };
-const condensed = "'Barlow Condensed', sans-serif";
+const T = themed({ surface: "#1B1E23", surface2: "#24282E", line: "#2F343B", text: "#E6E3D9", dim: "#A5A6A3", accent: "#C4A35A", greenText: "#82AD93", danger: "#D0614C", accentDeep: "#8A6F33", spruce: "#3F6E55" });
+const condensed = "'Saira Condensed', sans-serif";
 
 // Opened from an invite link (?add=<handle>, v1.19.1), once the person is
 // signed in and set up: shows who invited them and adds them in one tap.
@@ -38,36 +39,36 @@ export default function AddFriendSheet({ userId, handle, onClose, onOpenFriends 
           <div style={{ color: T.dim, fontSize: 14, padding: "20px 0", textAlign: "center" }}>Looking up @{handle}...</div>
         ) : !person ? (
           <>
-            <span style={{ fontFamily: condensed, fontSize: 24, fontWeight: 700, textTransform: "uppercase", color: T.text }}>Couldn't find @{handle}</span>
+            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, textTransform: "uppercase", color: T.text }}>Couldn't find @{handle}</span>
             <span style={{ fontSize: 14, color: T.dim, lineHeight: 1.45 }}>{error ? `Something went wrong: ${error}` : "They may have changed their ID. Ask them for a new invite link, or search for them in Friends."}</span>
-            <button onClick={onOpenFriends} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Open Friends</button>
+            <button onClick={onOpenFriends} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Open Friends</button>
           </>
         ) : isSelf ? (
           <>
-            <span style={{ fontFamily: condensed, fontSize: 24, fontWeight: 700, textTransform: "uppercase", color: T.text }}>That's your link</span>
+            <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, textTransform: "uppercase", color: T.text }}>That's your link</span>
             <span style={{ fontSize: 14, color: T.dim, lineHeight: 1.45 }}>Send it to friends. When they open it, they'll be asked to add you.</span>
-            <button onClick={onClose} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Got it</button>
+            <button onClick={onClose} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Got it</button>
           </>
         ) : (
           <>
-            <span style={{ fontFamily: condensed, fontSize: 13, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: T.dim }}>Friend invite</span>
+            <span style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: T.dim }}>Friend invite</span>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <Avatar person={person} size={56} />
               <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                <span style={{ fontFamily: condensed, fontSize: 28, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(person)}</span>
+                <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(person)}</span>
                 <span style={{ fontSize: 14, color: T.dim }}>@{person.handle}</span>
               </div>
             </div>
             {done ? (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, color: T.greenText, fontSize: 14, fontWeight: 600 }}><IconCheck size={16} /> {doneText}</div>
-                <button onClick={onClose} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700 }}>Done</button>
+                <button onClick={onClose} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700 }}>Done</button>
               </>
             ) : (
               <>
                 <span style={{ fontSize: 14, color: T.dim, lineHeight: 1.45 }}>Add them to see each other in Friends and lift together in group workouts.</span>
-                {error && <span role="alert" style={{ fontSize: 13, color: "#FF8A78" }}>{error}</span>}
-                <button onClick={add} disabled={status === "sending"} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, opacity: status === "sending" ? 0.6 : 1 }}>
+                {error && <span role="alert" style={{ fontSize: 13, color: tc("#E08A78") }}>{error}</span>}
+                <button onClick={add} disabled={status === "sending"} style={{ height: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, opacity: status === "sending" ? 0.6 : 1 }}>
                   {status === "sending" ? "Adding..." : person.friendship_status === "pending" && person.friendship_direction === "incoming" ? "Accept friend request" : "Add friend"}
                 </button>
                 <button onClick={onClose} style={{ height: 44, border: "none", background: "transparent", color: T.dim, fontSize: 15, fontWeight: 600 }}>Not now</button>

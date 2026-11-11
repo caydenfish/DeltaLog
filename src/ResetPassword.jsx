@@ -1,17 +1,21 @@
 import { useState } from "react";
 import { supabase } from "./lib/supabaseClient";
 import Logo from "./Logo";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const inputStyle = { width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "12px 14px", outline: "none", boxSizing: "border-box", marginBottom: 12 };
 
@@ -55,7 +59,7 @@ export default function ResetPassword({ onDone }) {
         <Logo size={72} />
       </div>
       <div style={{ width: "100%", maxWidth: 360 }}>
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
           Set a new password
         </div>
         <div style={{ color: T.dim, fontSize: 13, textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
@@ -87,13 +91,13 @@ export default function ResetPassword({ onDone }) {
             style={{
               width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
               background: status === "saving" ? T.surface2 : T.accent,
-              color: status === "saving" ? T.dim : "#fff",
+              color: status === "saving" ? T.dim : T.bg,
               fontSize: 16, fontWeight: 700, marginTop: 4,
             }}
           >
             {status === "saving" ? "Saving…" : "Save new password"}
           </button>
-          {status === "error" && <div style={{ color: T.accent, fontSize: 13, marginTop: 10 }}>{errorMsg}</div>}
+          {status === "error" && <div style={{ color: T.danger, fontSize: 13, marginTop: 10 }}>{errorMsg}</div>}
         </form>
       </div>
     </div>

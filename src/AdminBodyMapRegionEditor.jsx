@@ -9,22 +9,26 @@ import { setBodyMapRegionCache } from "./lib/bodyMapRegions";
 import { FRONT_REGIONS, BACK_REGIONS, OUTLINE_FRONT, OUTLINE_BACK, VIEWBOX_FRONT, VIEWBOX_BACK } from "./lib/bodyMapData";
 import { InlineLoading } from "./LoadingSpinner";
 import { IconX, IconSearch } from "./Icons";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
-const NEUTRAL = "#363C46";
-const ASSIGNED = "#3BA55D";
-const SELECTED = "#E8442E";
-const OUTLINE_STROKE = "#4A5261";
+const NEUTRAL = tc("#363C46");
+const ASSIGNED = tc("#6A9E80");
+const SELECTED = tc("#C4A35A");
+const OUTLINE_STROKE = tc("#4A5261");
 
 // Friendly display name per region slug -- deltoids splits front/back
 // into different real body parts, same special case BodyMap.jsx's own
@@ -143,7 +147,7 @@ export default function AdminBodyMapRegionEditor({ onClose }) {
       <div style={{ width: "100%", maxWidth: 420, minHeight: "100vh", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>&#8249;</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, textAlign: "center" }}>BODY MAP REGIONS</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, textAlign: "center" }}>BODY MAP REGIONS</div>
           <div style={{ width: 26 }} />
         </div>
 
@@ -151,7 +155,7 @@ export default function AdminBodyMapRegionEditor({ onClose }) {
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}><InlineLoading /></div>
         ) : (
           <div style={{ padding: 16, flex: 1, boxSizing: "border-box" }}>
-            {error && <div style={{ marginBottom: 12, padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.accent}`, color: T.accent, fontSize: 13 }}>{error}</div>}
+            {error && <div style={{ marginBottom: 12, padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.danger}`, color: T.danger, fontSize: 13 }}>{error}</div>}
 
             <div style={{ color: T.dim, fontSize: 11.5, marginBottom: 14, lineHeight: 1.4 }}>
               Tap a region on the silhouette, then add or remove which muscles light it up. Takes effect everywhere immediately.
@@ -163,7 +167,7 @@ export default function AdminBodyMapRegionEditor({ onClose }) {
                   key={v}
                   onClick={() => { setView(v); setSelectedSlug(null); }}
                   aria-pressed={view === v}
-                  style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12.5, fontWeight: 600, border: "none", textTransform: "capitalize", background: view === v ? T.accent : "transparent", color: view === v ? "#fff" : T.dim }}
+                  style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12.5, fontWeight: 600, border: "none", textTransform: "capitalize", background: view === v ? T.accent : "transparent", color: view === v ? T.bg : T.dim }}
                 >
                   {v}
                 </button>

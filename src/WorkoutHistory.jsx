@@ -13,6 +13,7 @@ import {
   fetchExercises, uploadProgressPhoto, fetchProgressPhoto, deleteProgressPhoto, setSetWarmup, shareWorkout, saveWorkoutSummary,
   saveWorkoutAsTemplate, updateWorkoutTiming,
 } from "./lib/queries";
+import { themed, tc } from "./lib/theme";
 
 // Labels a sorted sets array for display: warmup sets count independently
 // as W1, W2… and the first working set restarts the count at 1, mirroring
@@ -23,20 +24,23 @@ function setLabels(sets) {
   return (sets || []).map((s) => (s.is_warmup ? `W${++warmup}` : `${++working}`));
 }
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
-const prTag = { fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(232,68,46,0.18)", color: "#E8442E", whiteSpace: "nowrap", flexShrink: 0 };
+const prTag = { fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(196,163,90,0.18)", color: tc("#C4A35A"), whiteSpace: "nowrap", flexShrink: 0 };
 const actionBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "12px 0", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" };
-const menuItem = { display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: "#F2F1EC", fontSize: 14, padding: "10px 12px", borderRadius: 8, whiteSpace: "nowrap" };
+const menuItem = { display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: tc("#E6E3D9"), fontSize: 14, padding: "10px 12px", borderRadius: 8, whiteSpace: "nowrap" };
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13, whiteSpace: "nowrap" };
 
 function workoutVolume(w) {
@@ -117,7 +121,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
             onClick={() => setShowFull(true)}
             style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 12, border: `1px solid ${T.line}`, cursor: "pointer" }}
           />
-          <button onClick={handleRemove} disabled={busy} aria-label="Remove photo" style={{ position: "absolute", top: 8, right: 8, background: "rgba(16,18,22,0.8)", border: `1px solid ${T.line}`, color: T.text, borderRadius: 999, width: 28, height: 28, fontSize: 14 }}><IconX size={12} /></button>
+          <button onClick={handleRemove} disabled={busy} aria-label="Remove photo" style={{ position: "absolute", top: 8, right: 8, background: `${T.surface}CC`, border: `1px solid ${T.line}`, color: T.text, borderRadius: 999, width: 28, height: 28, fontSize: 14 }}><IconX size={12} /></button>
         </div>
       ) : (
         <div style={{ display: "flex", gap: 8 }}>
@@ -131,7 +135,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
           </label>
         </div>
       )}
-      {error && <div style={{ color: T.accent, fontSize: 12, marginTop: 6 }}>{error}</div>}
+      {error && <div style={{ color: T.danger, fontSize: 12, marginTop: 6 }}>{error}</div>}
       {showFull && photo && (
         <div
           onClick={() => setShowFull(false)}
@@ -141,7 +145,7 @@ function ProgressPhotoBlock({ userId, dateStr, onPhotoChange }) {
           <button
             onClick={() => setShowFull(false)}
             aria-label="Close"
-            style={{ position: "absolute", top: 16, right: 16, background: "rgba(16,18,22,0.8)", border: `1px solid ${T.line}`, color: T.text, borderRadius: 999, width: 34, height: 34, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ position: "absolute", top: 16, right: 16, background: `${T.surface}CC`, border: `1px solid ${T.line}`, color: T.text, borderRadius: 999, width: 34, height: 34, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
           >
             <IconX size={16} />
           </button>
@@ -507,7 +511,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
   const statCol = { flex: 1, minWidth: 0, textAlign: "center" };
   const timingLab = { fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, whiteSpace: "nowrap" };
   const timingInput = { width: "100%", minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 8px", outline: "none", boxSizing: "border-box", colorScheme: "dark", fontFamily: "inherit" };
-  const statVal = { fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, whiteSpace: "nowrap" };
+  const statVal = { fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, whiteSpace: "nowrap" };
   const statLab = { fontSize: 11, color: T.dim, whiteSpace: "nowrap" };
   const navBtn = { background: "none", border: "none", color: T.dim, fontSize: 13, padding: "6px 2px", whiteSpace: "nowrap" };
 
@@ -519,7 +523,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
         {next ? <button onClick={() => onNavigate(next.id)} style={navBtn}>{shortDate(next)} ›</button> : <span />}
       </div>
 
-      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, lineHeight: 1.05, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, lineHeight: 1.05, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
       {editMode ? (
         <button onClick={startEditTiming} aria-label="Edit date, time and duration" style={{ display: "flex", alignItems: "center", gap: 6, maxWidth: "100%", background: "none", border: "none", padding: 0, marginTop: 3, color: T.text, fontSize: 12.5, textAlign: "left" }}>
           <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dateStr}{startTimeStr ? ` · ${startTimeStr}` : ""}</span>
@@ -565,7 +569,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
           {stats.compare && stats.compare.volumePct != null && (
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, padding: "3px 0" }}>
               <span style={{ color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Volume <span style={{ color: T.dim }}>vs {shortDate({ completed_at: stats.compare.date })}</span></span>
-              <span style={{ color: stats.compare.volumePct > 0 ? T.green : stats.compare.volumePct < 0 ? "#E8A82E" : T.dim, fontWeight: 600, whiteSpace: "nowrap" }}>{stats.compare.volumePct > 0 ? "+" : stats.compare.volumePct < 0 ? "\u2212" : "\u00b1"}{Math.abs(stats.compare.volumePct)}%</span>
+              <span style={{ color: stats.compare.volumePct > 0 ? T.green : stats.compare.volumePct < 0 ? tc("#D9894A") : T.dim, fontWeight: 600, whiteSpace: "nowrap" }}>{stats.compare.volumePct > 0 ? "+" : stats.compare.volumePct < 0 ? "\u2212" : "\u00b1"}{Math.abs(stats.compare.volumePct)}%</span>
             </div>
           )}
           {changes.slice(0, 5).map(({ e, i }) => {
@@ -573,7 +577,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
             return (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13, padding: "3px 0" }}>
                 <span style={{ color: T.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{statsData.exercises[i].name}</span>
-                {dt && <span style={{ color: e.delta.value > 0 ? T.green : "#E8A82E", fontWeight: 600, whiteSpace: "nowrap" }}>{dt}</span>}
+                {dt && <span style={{ color: e.delta.value > 0 ? T.green : tc("#D9894A"), fontWeight: 600, whiteSpace: "nowrap" }}>{dt}</span>}
                 {e.prs.length > 0 && <span style={prTag}>PR</span>}
               </div>
             );
@@ -600,9 +604,9 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
           </div>
           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", marginTop: 8 }}>
             <button onClick={() => setEditingTiming(false)} disabled={savingTiming} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "8px 10px", fontSize: 12, whiteSpace: "nowrap" }}>Cancel</button>
-            <button onClick={saveTimingEdit} disabled={savingTiming} style={{ background: T.accent, border: "none", color: "#fff", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>{savingTiming ? "…" : "Save"}</button>
+            <button onClick={saveTimingEdit} disabled={savingTiming} style={{ background: T.accent, border: "none", color: T.bg, borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>{savingTiming ? "…" : "Save"}</button>
           </div>
-          {timingError && <div style={{ color: T.accent, fontSize: 11, marginTop: 6 }}>{timingError}</div>}
+          {timingError && <div style={{ color: T.danger, fontSize: 11, marginTop: 6 }}>{timingError}</div>}
         </div>
       )}
 
@@ -619,9 +623,9 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
               style={{ flex: 1, minWidth: 0, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 14, padding: "8px 10px", outline: "none", boxSizing: "border-box" }}
             />
             <button onClick={() => setEditingBodyWeight(false)} disabled={savingBodyWeight} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "8px 10px", fontSize: 12 }}>Cancel</button>
-            <button onClick={saveBodyWeightEdit} disabled={savingBodyWeight} style={{ background: T.accent, border: "none", color: "#fff", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 700 }}>{savingBodyWeight ? "…" : "Save"}</button>
+            <button onClick={saveBodyWeightEdit} disabled={savingBodyWeight} style={{ background: T.accent, border: "none", color: T.bg, borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 700 }}>{savingBodyWeight ? "…" : "Save"}</button>
           </div>
-          {bodyWeightError && <div style={{ color: T.accent, fontSize: 11, marginTop: 6 }}>{bodyWeightError}</div>}
+          {bodyWeightError && <div style={{ color: T.danger, fontSize: 11, marginTop: 6 }}>{bodyWeightError}</div>}
         </div>
       )}
 
@@ -633,14 +637,14 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
         const dt = est ? deltaText(est.delta) : null;
         let right = null;
         if (est && est.prs.length > 0) right = <span style={prTag}>{PR_LABEL[est.prs[0].type]}</span>;
-        else if (dt) right = <span style={{ fontSize: 12, fontWeight: 600, color: est.delta.value > 0 ? T.green : "#E8A82E", whiteSpace: "nowrap" }}>{dt}</span>;
+        else if (dt) right = <span style={{ fontSize: 12, fontWeight: 600, color: est.delta.value > 0 ? T.green : tc("#D9894A"), whiteSpace: "nowrap" }}>{dt}</span>;
         else if (est && est.last && est.workingCount > 0) right = <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap" }}>same as last</span>;
         else if (est && stats.hasHistory && !est.last && est.workingCount > 0) right = <span style={{ fontSize: 12, color: T.dim, whiteSpace: "nowrap" }}>first time</span>;
         return (
           <div key={we.id || i} style={{ marginBottom: 6 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${T.line}` }}>
               <ExerciseThumb muscle={ex.muscle_group} mediaUrl={ex.media_url} size={20} />
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ex.name || ex.short || "Exercise"}</div>
+              <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ex.name || ex.short || "Exercise"}</div>
               {right}
             </div>
             {sets.length === 0 ? (
@@ -651,7 +655,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
                   const isPR = !!(est && est.prSetIndexes.has(j));
                   const warm = !!st.is_warmup;
                   return (
-                    <span key={j} style={{ display: "inline-flex", alignItems: "baseline", gap: 4, padding: "4px 9px", borderRadius: 999, whiteSpace: "nowrap", fontSize: 13, border: `1px solid ${isPR ? T.accent : warm ? "rgba(232,168,46,0.45)" : T.line}`, background: isPR ? "rgba(232,68,46,0.10)" : "none", color: isPR ? T.accent : warm ? "#E8A82E" : T.text, fontWeight: isPR ? 700 : 500 }}>
+                    <span key={j} style={{ display: "inline-flex", alignItems: "baseline", gap: 4, padding: "4px 9px", borderRadius: 999, whiteSpace: "nowrap", fontSize: 13, border: `1px solid ${isPR ? T.accent : warm ? "rgba(217,137,74,0.45)" : T.line}`, background: isPR ? "rgba(196,163,90,0.10)" : "none", color: isPR ? T.accent : warm ? tc("#D9894A") : T.text, fontWeight: isPR ? 700 : 500 }}>
                       {warm && <span style={{ fontSize: 11, fontWeight: 700 }}>{labels[j]}</span>}
                       {formatWeight(st.weight, units)}×{st.reps}
                       {st.rir != null && <span style={{ fontSize: 11, color: isPR ? T.accent : T.dim, fontWeight: 400 }}>RIR {st.rir}</span>}
@@ -672,18 +676,18 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
           <div key={i} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
               <ExerciseThumb muscle={ex.muscle_group} mediaUrl={ex.media_url} size={20} />
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, flex: 1 }}>{ex.name || ex.short || "Exercise"}</div>
+              <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, flex: 1 }}>{ex.name || ex.short || "Exercise"}</div>
               {editMode && (
                 <button onClick={() => setRemovingWeId(we.id)} aria-label="Remove exercise" title="Remove exercise" style={{ background: "none", border: "none", color: T.dim, fontSize: 13, padding: "2px 4px" }}><IconTrash size={13} /></button>
               )}
             </div>
 
             {removingWeId === we.id && (
-              <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 8, padding: 10, marginBottom: 8 }}>
+              <div style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 8, padding: 10, marginBottom: 8 }}>
                 <div style={{ color: T.text, fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>Remove {ex.name || ex.short} and all its logged sets from this workout?</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => setRemovingWeId(null)} disabled={removingBusy} style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12 }}>Cancel</button>
-                  <button onClick={confirmRemoveExercise} disabled={removingBusy} style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: "none", background: T.accent, color: "#fff", fontSize: 12, fontWeight: 700 }}>{removingBusy ? "…" : "Remove"}</button>
+                  <button onClick={confirmRemoveExercise} disabled={removingBusy} style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12, fontWeight: 700 }}>{removingBusy ? "…" : "Remove"}</button>
                 </div>
               </div>
             )}
@@ -706,25 +710,25 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
                           <input inputMode="numeric" value={editRir} onChange={(e) => setEditRir(e.target.value.replace(/[^0-9]/g, ""))} placeholder="RIR" style={{ width: 40, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 6, color: T.text, fontSize: 13, padding: "4px 6px", outline: "none", textAlign: "center" }} />
                           <div style={{ flex: 1 }} />
                           <button onClick={() => setEditing(null)} disabled={saving} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "4px 8px", fontSize: 12 }}>Cancel</button>
-                          <button onClick={saveEdit} disabled={saving} style={{ background: T.accent, border: "none", color: "#fff", borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 700 }}>{saving ? "…" : "Save"}</button>
+                          <button onClick={saveEdit} disabled={saving} style={{ background: T.accent, border: "none", color: T.bg, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 700 }}>{saving ? "…" : "Save"}</button>
                         </div>
-                        {saveError && <div style={{ color: T.accent, fontSize: 11 }}>{saveError}</div>}
+                        {saveError && <div style={{ color: T.danger, fontSize: 11 }}>{saveError}</div>}
                       </div>
                     );
                   }
                   if (isRemoving) {
                     return (
-                      <div key={j} style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 8, padding: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                      <div key={j} style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 8, padding: 8, display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: T.text, fontSize: 12.5, flex: 1 }}>Remove set {labels[j]}?</span>
                         <button onClick={() => setRemovingSet(null)} disabled={removingBusy} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "4px 8px", fontSize: 12 }}>Cancel</button>
-                        <button onClick={confirmRemoveSet} disabled={removingBusy} style={{ background: T.accent, border: "none", color: "#fff", borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 700 }}>{removingBusy ? "…" : "Remove"}</button>
+                        <button onClick={confirmRemoveSet} disabled={removingBusy} style={{ background: T.danger, border: "none", color: T.bg, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 700 }}>{removingBusy ? "…" : "Remove"}</button>
                       </div>
                     );
                   }
                   if (!editMode) {
                     return (
                       <div key={j} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0" }}>
-                        <span style={{ width: 26, textAlign: "center", fontSize: 12, fontWeight: s.is_warmup ? 700 : 400, color: s.is_warmup ? "#E8A82E" : T.dim, flexShrink: 0 }}>{labels[j]}</span>
+                        <span style={{ width: 26, textAlign: "center", fontSize: 12, fontWeight: s.is_warmup ? 700 : 400, color: s.is_warmup ? tc("#D9894A") : T.dim, flexShrink: 0 }}>{labels[j]}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: T.dim, flex: 1, minWidth: 0 }}>
                           <span style={{ color: T.text, fontWeight: 600 }}>{formatWeight(s.weight, units)} {units} × {s.reps}</span>
                           {s.rir != null && <span>RIR {s.rir}</span>}
@@ -738,7 +742,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
                         onClick={() => toggleWarmup(we, s)}
                         aria-label={s.is_warmup ? "Unmark as warmup" : "Mark as warmup"}
                         title={s.is_warmup ? "Unmark as warmup" : "Mark as warmup"}
-                        style={{ width: 26, textAlign: "center", fontSize: 12, fontWeight: s.is_warmup ? 700 : 400, color: s.is_warmup ? "#E8A82E" : T.dim, background: s.is_warmup ? "rgba(232,168,46,0.14)" : "none", border: "none", borderRadius: 6, padding: "3px 0", flexShrink: 0 }}
+                        style={{ width: 26, textAlign: "center", fontSize: 12, fontWeight: s.is_warmup ? 700 : 400, color: s.is_warmup ? tc("#D9894A") : T.dim, background: s.is_warmup ? "rgba(217,137,74,0.14)" : "none", border: "none", borderRadius: 6, padding: "3px 0", flexShrink: 0 }}
                       >
                         {labels[j]}
                       </button>
@@ -763,9 +767,9 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
                   <input inputMode="numeric" value={editRir} onChange={(e) => setEditRir(e.target.value.replace(/[^0-9]/g, ""))} placeholder="RIR" style={{ width: 40, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 6, color: T.text, fontSize: 13, padding: "4px 6px", outline: "none", textAlign: "center" }} />
                   <div style={{ flex: 1 }} />
                   <button onClick={() => setAddingSetFor(null)} disabled={saving} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 6, padding: "4px 8px", fontSize: 12 }}>Cancel</button>
-                  <button onClick={() => saveNewSet(we)} disabled={saving} style={{ background: T.accent, border: "none", color: "#fff", borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 700 }}>{saving ? "…" : "Add"}</button>
+                  <button onClick={() => saveNewSet(we)} disabled={saving} style={{ background: T.accent, border: "none", color: T.bg, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 700 }}>{saving ? "…" : "Add"}</button>
                 </div>
-                {saveError && <div style={{ color: T.accent, fontSize: 11 }}>{saveError}</div>}
+                {saveError && <div style={{ color: T.danger, fontSize: 11 }}>{saveError}</div>}
               </div>
             ) : (
               <button onClick={() => startAddSet(we)} style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: `1px dashed ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>+ Add set</button>
@@ -815,7 +819,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
       ))}
 
       {editMode && (
-        <button onClick={onRequestDelete} style={{ width: "100%", marginTop: 10, padding: "12px 0", borderRadius: 10, border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 13, fontWeight: 600 }}>Delete entire workout</button>
+        <button onClick={onRequestDelete} style={{ width: "100%", marginTop: 10, padding: "12px 0", borderRadius: 10, border: `1px solid ${T.danger}`, background: "none", color: T.danger, fontSize: 13, fontWeight: 600 }}>Delete entire workout</button>
       )}
 
       {workout.session_notes && (
@@ -834,7 +838,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
             onClick={() => onRepeat && !repeatBlocked && onRepeat(workout)}
             disabled={repeatBlocked}
             title={repeatBlocked ? "Finish your current workout first" : undefined}
-            style={{ flex: 1.4, padding: "12px 0", borderRadius: 12, border: "none", background: repeatBlocked ? T.surface2 : T.accent, color: repeatBlocked ? T.dim : "#fff", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}
+            style={{ flex: 1.4, padding: "12px 0", borderRadius: 12, border: "none", background: repeatBlocked ? T.surface2 : T.accent, color: repeatBlocked ? T.dim : T.bg, fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}
           >
             {repeatBlocked ? "Workout in progress" : "Do again"}
           </button>
@@ -847,7 +851,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
                 <div onClick={() => setShowMore(false)} style={{ position: "fixed", inset: 0, zIndex: 3 }} />
                 <div style={{ position: "absolute", right: 0, bottom: "calc(100% + 8px)", zIndex: 4, minWidth: 190, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 12, padding: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
                   <button onClick={() => { setShowMore(false); setShowSaveTemplate(true); }} style={menuItem}>Save as template</button>
-                  <button onClick={() => { setShowMore(false); onRequestDelete(); }} style={{ ...menuItem, color: T.accent }}>Delete workout</button>
+                  <button onClick={() => { setShowMore(false); onRequestDelete(); }} style={{ ...menuItem, color: T.danger }}>Delete workout</button>
                 </div>
               </>
             )}
@@ -859,7 +863,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
       {shareUrl && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.75)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 360, background: T.bg, border: `1px solid ${T.line}`, borderRadius: 16, padding: 20 }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 8 }}>Share link</div>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 8 }}>Share link</div>
             <div style={{ color: T.dim, fontSize: 13, marginBottom: 12 }}>Anyone with this link can view this workout — no account needed.</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 16, wordBreak: "break-all" }}>
               <div style={{ fontSize: 12, color: T.text, flex: 1 }}>{shareUrl}</div>
@@ -874,7 +878,7 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
       {showSaveTemplate && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.75)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 360, background: T.bg, border: `1px solid ${T.line}`, borderRadius: 16, padding: 20 }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 4 }}>Save as template</div>
+            <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 4 }}>Save as template</div>
             <div style={{ fontSize: 12, color: T.dim, marginBottom: 14 }}>Carries over this workout's exercise list and set counts, not the specific weights/reps logged.</div>
             <input
               autoFocus
@@ -883,10 +887,10 @@ function DetailView({ workout, history, units, timeFormat, userId, editMode, pre
               placeholder="Template name"
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 14, marginBottom: 12 }}
             />
-            {templateSaveError && <div style={{ color: T.accent, fontSize: 12, marginBottom: 10 }}>{templateSaveError}</div>}
+            {templateSaveError && <div style={{ color: T.danger, fontSize: 12, marginBottom: 10 }}>{templateSaveError}</div>}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { setShowSaveTemplate(false); setTemplateName(""); setTemplateSaveError(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 14 }}>Cancel</button>
-              <button onClick={handleSaveAsTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : "#fff", fontSize: 14, fontWeight: 700 }}>
+              <button onClick={handleSaveAsTemplate} disabled={!templateName.trim() || savingTemplate} style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: !templateName.trim() || savingTemplate ? T.surface2 : T.accent, color: !templateName.trim() || savingTemplate ? T.dim : T.bg, fontSize: 14, fontWeight: 700 }}>
                 {savingTemplate ? "Saving…" : templateSaved ? <><IconCheck size={13} /> Saved</> : "Save Template"}
               </button>
             </div>
@@ -990,11 +994,11 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
           ) : (
             <button onClick={handleBack} aria-label="Back" style={smallBtn}>‹</button>
           )}
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>
             {selectMode ? `${checkedIds.size} SELECTED` : selected && !wide ? "WORKOUT" : dateFilterLabel || "HISTORY"}
           </div>
           {selected ? (
-            <button onClick={() => setEditMode(!editMode)} aria-label={editMode ? "Done editing" : "Edit workout"} style={{ ...smallBtn, color: editMode ? "#fff" : T.text, background: editMode ? T.accent : "none", borderColor: editMode ? T.accent : T.line }}>
+            <button onClick={() => setEditMode(!editMode)} aria-label={editMode ? "Done editing" : "Edit workout"} style={{ ...smallBtn, color: editMode ? T.bg : T.text, background: editMode ? T.accent : "none", borderColor: editMode ? T.accent : T.line }}>
               {editMode ? "Done" : "Edit"}
             </button>
           ) : !selectMode && sorted.length > 0 ? (
@@ -1005,7 +1009,7 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
         </div>
 
         {confirmDeleteIds && (
-          <div style={{ margin: "12px 16px 0", background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 12 }}>
+          <div style={{ margin: "12px 16px 0", background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 12 }}>
             <div style={{ color: T.text, fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
               {confirmDeleteIds.length === 1 ? "Delete this session?" : `Delete ${confirmDeleteIds.length} sessions?`}
             </div>
@@ -1014,7 +1018,7 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setConfirmDeleteIds(null)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Cancel</button>
-              <button onClick={() => handleDeleteMany(confirmDeleteIds)} disabled={deleting} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.accent, color: "#fff", fontSize: 12.5, fontWeight: 700 }}>
+              <button onClick={() => handleDeleteMany(confirmDeleteIds)} disabled={deleting} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 12.5, fontWeight: 700 }}>
                 {deleting ? "Deleting…" : "Delete"}
               </button>
             </div>
@@ -1045,12 +1049,12 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
                     style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}
                   >
                     {selectMode && (
-                      <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${checked ? T.accent : T.line}`, background: checked ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${checked ? T.accent : T.line}`, background: checked ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: T.bg, fontSize: 12, fontWeight: 700 }}>
                         {checked ? <IconCheck size={12} /> : ""}
                       </div>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>{dateStr}{startTimeStr && <span style={{ color: T.dim, fontWeight: 400, fontSize: 13 }}> · {startTimeStr}</span>}</div>
+                      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>{dateStr}{startTimeStr && <span style={{ color: T.dim, fontWeight: 400, fontSize: 13 }}> · {startTimeStr}</span>}</div>
                       <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{exCount} exercise{exCount === 1 ? "" : "s"} · {workoutSetCount(w).working} sets · {Math.round(toDisplay(workoutVolume(w), units)).toLocaleString()} {units}</div>
                     </div>
                     {!selectMode && <div style={{ color: T.dim, fontSize: 16 }}>›</div>}
@@ -1132,12 +1136,12 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
                     style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}
                   >
                     {selectMode && (
-                      <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${checked ? T.accent : T.line}`, background: checked ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff", fontSize: 12, fontWeight: 700 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${checked ? T.accent : T.line}`, background: checked ? T.accent : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: T.bg, fontSize: 12, fontWeight: 700 }}>
                         {checked ? <IconCheck size={12} /> : ""}
                       </div>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>{dateStr}{startTimeStr && <span style={{ color: T.dim, fontWeight: 400, fontSize: 13 }}> · {startTimeStr}</span>}</div>
+                      <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text }}>{dateStr}{startTimeStr && <span style={{ color: T.dim, fontWeight: 400, fontSize: 13 }}> · {startTimeStr}</span>}</div>
                       <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>{exCount} exercise{exCount === 1 ? "" : "s"} · {workoutSetCount(w).working} sets · {Math.round(toDisplay(workoutVolume(w), units)).toLocaleString()} {units}</div>
                     </div>
                     {!selectMode && <div style={{ color: T.dim, fontSize: 16 }}>›</div>}
@@ -1159,7 +1163,7 @@ export default function WorkoutHistory({ wide = false, history, initialWorkoutId
             <button
               onClick={() => setConfirmDeleteIds([...checkedIds])}
               disabled={checkedIds.size === 0}
-              style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: checkedIds.size === 0 ? T.surface2 : T.accent, color: checkedIds.size === 0 ? T.dim : "#fff", fontSize: 14, fontWeight: 700 }}
+              style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: checkedIds.size === 0 ? T.surface2 : T.accent, color: checkedIds.size === 0 ? T.dim : T.bg, fontSize: 14, fontWeight: 700 }}
             >
               Delete {checkedIds.size > 0 ? `(${checkedIds.size})` : ""}
             </button>

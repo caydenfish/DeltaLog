@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { adminSearchUsers, adminSetIsAdmin } from "./lib/queries";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
 
@@ -64,12 +68,12 @@ export default function AdminPermissions({ currentUserId, onClose }) {
       <div style={{ width: "100%", maxWidth: 420, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={smallBtn}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>PERMISSIONS</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>PERMISSIONS</div>
           <div style={{ width: 26 }} />
         </div>
 
         <div style={{ padding: 16, flex: 1 }}>
-          {error && <div style={{ marginBottom: 12, padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.accent}`, color: T.accent, fontSize: 13 }}>{error}</div>}
+          {error && <div style={{ marginBottom: 12, padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.danger}`, color: T.danger, fontSize: 13 }}>{error}</div>}
           <div style={{ color: T.dim, fontSize: 12.5, marginBottom: 12 }}>Search by email or name to grant or remove admin access.</div>
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
             <input
@@ -112,11 +116,11 @@ export default function AdminPermissions({ currentUserId, onClose }) {
       {confirmRemoveSelf && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.8)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ width: "100%", maxWidth: 340, background: T.bg, border: `1px solid ${T.accent}`, borderRadius: 16, padding: 20 }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 8 }}>Remove your own admin access?</div>
+            <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 8 }}>Remove your own admin access?</div>
             <div style={{ color: T.dim, fontSize: 13, marginBottom: 16 }}>You'll lose access to admin screens, including this one. Someone else with admin access can restore it.</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setConfirmRemoveSelf(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13 }}>Cancel</button>
-              <button onClick={() => applyToggle(confirmRemoveSelf)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 13, fontWeight: 700 }}>Remove it</button>
+              <button onClick={() => applyToggle(confirmRemoveSelf)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", background: T.danger, color: T.bg, fontSize: 13, fontWeight: 700 }}>Remove it</button>
             </div>
           </div>
         </div>

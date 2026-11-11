@@ -1,15 +1,19 @@
 import { IconPlus, IconCalendar, IconList, IconBarbell, IconUsers, IconGear, IconHome } from "./Icons";
 import Logo from "./Logo";
+import { themed } from "./lib/theme";
 
-const T = {
+const T = themed({
   side: "#14161B",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  soft: "#A3A9B4",
-  accent: "#E8442E",
-};
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  soft: "#A5A6A3",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 const oneLine = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
 export const DESKTOP_SECTIONS = [
@@ -44,7 +48,7 @@ export default function DesktopSidebar({ active, onNavigate, onStart, startLabel
         );
       })}
       <div style={{ flex: 1 }} />
-      <button onClick={onStart} style={{ minHeight: 50, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, whiteSpace: "nowrap" }}>
+      <button onClick={onStart} style={{ minHeight: 50, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, whiteSpace: "nowrap" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>{!startSub && <IconPlus size={15} />}{startLabel}</span>
         {startSub && <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}>{startSub}</span>}
       </button>

@@ -10,17 +10,21 @@ import {
 } from "./lib/bodyMapShapeQueries";
 import { IconX } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const VIEW_ORDER = ["male_front", "male_back", "female_front", "female_back"];
 
@@ -245,7 +249,7 @@ export default function AdminBodyMapLabeler({ onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 40, display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "14px 16px", borderBottom: `1px solid ${T.line}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ color: T.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>Body Map Labeler</div>
+        <div style={{ color: T.text, fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700 }}>Body Map Labeler</div>
         <button onClick={onClose} style={{ background: "none", border: "none", color: T.dim }}><IconX size={20} /></button>
       </div>
 
@@ -263,7 +267,7 @@ export default function AdminBodyMapLabeler({ onClose }) {
         </div>
       </div>
 
-      {error && <div style={{ color: T.accent, fontSize: 12, padding: "6px 16px" }}>{error}</div>}
+      {error && <div style={{ color: T.danger, fontSize: 12, padding: "6px 16px" }}>{error}</div>}
 
       <div style={{ flex: 1, display: "flex", flexDirection: isNarrow ? "column" : "row", overflow: "hidden" }}>
         <div ref={canvasRef} style={{ flex: isNarrow ? "0 0 55vh" : 1, overflow: "auto", background: "#f4f4f4", padding: 20 }}>

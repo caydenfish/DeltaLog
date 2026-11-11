@@ -5,17 +5,21 @@ import WelcomeScreen from "./onboarding/WelcomeScreen";
 import { getPendingAdd } from "./lib/social";
 import TermsViewer from "./TermsViewer";
 import PrivacyPolicy from "./PrivacyPolicy";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const inputStyle = { width: "100%", background: T.surface2, border: `1px solid ${T.line}`, borderRadius: 10, color: T.text, fontSize: 16, padding: "12px 14px", outline: "none", boxSizing: "border-box", marginBottom: 12 };
 
@@ -124,8 +128,8 @@ export default function Auth() {
           onSignIn={() => { setIsSignUp(false); setMode("password"); setStage("form"); }}
           onTerms={() => setLegal("terms")}
           onPrivacy={() => setLegal("privacy")}
-          banner={status === "error" && errorMsg ? <div role="alert" style={{ color: T.accent, fontSize: 13 }}>{errorMsg}</div>
-            : getPendingAdd() ? <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(232,68,46,0.10)", border: `1px solid ${T.accent}`, color: T.text, fontSize: 14, fontWeight: 600 }}>@{getPendingAdd()} invited you. Create an account and you'll be asked to add them.</div>
+          banner={status === "error" && errorMsg ? <div role="alert" style={{ color: T.danger, fontSize: 13 }}>{errorMsg}</div>
+            : getPendingAdd() ? <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(196,163,90,0.10)", border: `1px solid ${T.accent}`, color: T.text, fontSize: 14, fontWeight: 600 }}>@{getPendingAdd()} invited you. Create an account and you'll be asked to add them.</div>
             : null}
         />
         {legal === "terms" && <TermsViewer onClose={() => setLegal(null)} />}
@@ -208,13 +212,13 @@ export default function Auth() {
                   style={{
                     width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
                     background: status === "sending" || !email.trim() ? T.surface2 : T.accent,
-                    color: status === "sending" || !email.trim() ? T.dim : "#fff",
+                    color: status === "sending" || !email.trim() ? T.dim : T.bg,
                     fontSize: 16, fontWeight: 700, marginBottom: 12,
                   }}
                 >
                   {status === "sending" ? "Sending…" : "Send reset link"}
                 </button>
-                {status === "error" && <div style={{ color: T.accent, fontSize: 13, marginBottom: 10 }}>{errorMsg}</div>}
+                {status === "error" && <div style={{ color: T.danger, fontSize: 13, marginBottom: 10 }}>{errorMsg}</div>}
                 <button type="button" onClick={() => switchMode("password")} style={{ width: "100%", background: "none", border: "none", color: T.dim, fontSize: 13, textDecoration: "underline", padding: 0 }}>
                   Back to sign in
                 </button>
@@ -237,13 +241,13 @@ export default function Auth() {
                   style={{
                     width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
                     background: status === "sending" || !email.trim() ? T.surface2 : T.accent,
-                    color: status === "sending" || !email.trim() ? T.dim : "#fff",
+                    color: status === "sending" || !email.trim() ? T.dim : T.bg,
                     fontSize: 16, fontWeight: 700, marginBottom: 12,
                   }}
                 >
                   {status === "sending" ? "Sending…" : "Send magic link"}
                 </button>
-                {status === "error" && <div style={{ color: T.accent, fontSize: 13, marginBottom: 10 }}>{errorMsg}</div>}
+                {status === "error" && <div style={{ color: T.danger, fontSize: 13, marginBottom: 10 }}>{errorMsg}</div>}
                 <button type="button" onClick={() => switchMode("password")} style={{ width: "100%", background: "none", border: "none", color: T.dim, fontSize: 13, textDecoration: "underline", padding: 0 }}>
                   Use a password instead
                 </button>
@@ -280,13 +284,13 @@ export default function Auth() {
                   style={{
                     width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
                     background: status === "sending" || !email.trim() || !password ? T.surface2 : T.accent,
-                    color: status === "sending" || !email.trim() || !password ? T.dim : "#fff",
+                    color: status === "sending" || !email.trim() || !password ? T.dim : T.bg,
                     fontSize: 16, fontWeight: 700, marginBottom: 12,
                   }}
                 >
                   {status === "sending" ? "Please wait…" : isSignUp ? "Create account" : "Sign in"}
                 </button>
-                {status === "error" && <div style={{ color: T.accent, fontSize: 13, marginBottom: 10 }}>{errorMsg}</div>}
+                {status === "error" && <div style={{ color: T.danger, fontSize: 13, marginBottom: 10 }}>{errorMsg}</div>}
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <button type="button" onClick={() => { setIsSignUp(!isSignUp); setStatus("idle"); setErrorMsg(""); }} style={{ background: "none", border: "none", color: T.dim, fontSize: 12.5, textDecoration: "underline", padding: 0 }}>
                     {isSignUp ? "Already have an account? Sign in" : "New here? Create an account"}
@@ -332,7 +336,7 @@ export default function Auth() {
             ))}
             <button
               onClick={() => setShowWhatIs(false)}
-              style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 15, fontWeight: 700, marginTop: 8 }}
+              style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 15, fontWeight: 700, marginTop: 8 }}
             >
               Let's go
             </button>

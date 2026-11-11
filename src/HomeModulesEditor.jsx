@@ -3,16 +3,20 @@ import { HOME_CARD_LABELS, getPrefs } from "./lib/prefs";
 import { getMuscleGroupOptions } from "./lib/muscleTaxonomy";
 import { IconDragHandle } from "./Icons";
 import { useDragReorder, InsertionLine } from "./DragReorder";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // What each card's row says it contains, from its current settings.
 function describe(id, s) {
@@ -35,7 +39,7 @@ function Toggle({ on, onClick, label }) {
       onClick={onClick}
       aria-label={label}
       aria-pressed={on}
-      style={{ width: 42, height: 24, borderRadius: 999, border: `1px solid ${on ? T.accent : T.line}`, background: on ? "rgba(232,68,46,0.2)" : T.surface2, position: "relative", flexShrink: 0, padding: 0 }}
+      style={{ width: 42, height: 24, borderRadius: 999, border: `1px solid ${on ? T.accent : T.line}`, background: on ? "rgba(196,163,90,0.2)" : T.surface2, position: "relative", flexShrink: 0, padding: 0 }}
     >
       <span style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 18, height: 18, borderRadius: 999, background: on ? T.accent : T.dim, transition: "left 0.15s" }} />
     </button>
@@ -55,7 +59,7 @@ function Segmented({ value, options, onChange }) {
   return (
     <div style={{ display: "flex", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 10, padding: 3, gap: 3 }}>
       {options.map(([v, label]) => (
-        <button key={v} onClick={() => onChange(v)} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "none", background: value === v ? T.accent : "none", color: value === v ? "#fff" : T.dim, fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }}>{label}</button>
+        <button key={v} onClick={() => onChange(v)} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "none", background: value === v ? T.accent : "none", color: value === v ? T.bg : T.dim, fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }}>{label}</button>
       ))}
     </div>
   );
@@ -88,7 +92,7 @@ export default function HomeModulesEditor({ cards, settings, onChange, onSetting
         {!editing ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>Customize home</div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text }}>Customize home</div>
               <button onClick={onClose} style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "6px 12px", fontSize: 13 }}>Done</button>
             </div>
             <div style={{ fontSize: 13, color: T.dim, marginBottom: 14 }}>Drag to reorder. Tap a card to choose what's in it.</div>
@@ -116,7 +120,7 @@ export default function HomeModulesEditor({ cards, settings, onChange, onSetting
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <button onClick={() => setEditing(null)} aria-label="Back" style={{ background: "none", border: "none", color: T.text, fontSize: 22, padding: "0 6px 0 0" }}>‹</button>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, flex: 1 }}>{HOME_CARD_LABELS[editing]}</div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, flex: 1 }}>{HOME_CARD_LABELS[editing]}</div>
               <button onClick={() => setEditing(null)} style={{ background: "none", border: "none", color: T.accent, fontSize: 14, fontWeight: 600 }}>Done</button>
             </div>
             <div style={{ borderTop: `1px solid ${T.line}` }}>

@@ -2,17 +2,21 @@ import { useEffect, useState } from "react";
 import { fetchFeedbackForAdmin, setFeedbackFlagged, setFeedbackStatus, setFeedbackNote, deleteFeedback } from "./lib/queries";
 import { IconStar, IconCheck } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 };
 
@@ -102,7 +106,7 @@ function DetailView({ row, onBack, onChanged }) {
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <button onClick={toggleFlag} disabled={busy} style={{ ...smallBtn, flex: 1, color: row.flagged ? "#F2C94C" : T.dim, borderColor: row.flagged ? "#F2C94C" : T.line, fontWeight: 600 }}>
+        <button onClick={toggleFlag} disabled={busy} style={{ ...smallBtn, flex: 1, color: row.flagged ? tc("#D8BF83") : T.dim, borderColor: row.flagged ? tc("#D8BF83") : T.line, fontWeight: 600 }}>
           {row.flagged ? <><IconStar size={12} filled /> Flagged</> : <><IconStar size={12} /> Flag</>}
         </button>
         <button onClick={() => changeStatus(row.status === "closed" ? "open" : "closed")} disabled={busy} style={{ ...smallBtn, flex: 1, color: row.status === "closed" ? T.green : T.dim, borderColor: row.status === "closed" ? T.green : T.line, fontWeight: 600 }}>
@@ -125,18 +129,18 @@ function DetailView({ row, onBack, onChanged }) {
         {savingNote ? "Saving…" : "Save note"}
       </button>
 
-      {error && <div style={{ color: T.accent, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ color: T.danger, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
 
       {!confirmDelete ? (
-        <button onClick={() => setConfirmDelete(true)} style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: `1px solid ${T.accent}`, background: "none", color: T.accent, fontSize: 14, fontWeight: 700 }}>
+        <button onClick={() => setConfirmDelete(true)} style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: `1px solid ${T.danger}`, background: "none", color: T.danger, fontSize: 14, fontWeight: 700 }}>
           Delete submission
         </button>
       ) : (
-        <div style={{ background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 12 }}>
+        <div style={{ background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}`, borderRadius: 10, padding: 12 }}>
           <div style={{ color: T.text, fontSize: 13, marginBottom: 10 }}>Delete this for good? Can't be undone.</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13 }}>Cancel</button>
-            <button onClick={handleDelete} disabled={busy} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: T.accent, color: "#fff", fontSize: 13, fontWeight: 700 }}>
+            <button onClick={handleDelete} disabled={busy} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: T.danger, color: T.bg, fontSize: 13, fontWeight: 700 }}>
               {busy ? "Deleting…" : "Delete"}
             </button>
           </div>
@@ -183,7 +187,7 @@ export default function AdminFeedback({ onClose }) {
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={() => (selected ? setSelectedId(null) : onClose())} aria-label="Back" style={smallBtn}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>
             {selected ? "SUBMISSION" : "FEEDBACK & BUGS"}
           </div>
           <div style={{ width: 26 }} />
@@ -193,14 +197,14 @@ export default function AdminFeedback({ onClose }) {
           <DetailView row={selected} onBack={handleBack} onChanged={handleChanged} />
         ) : (
           <div style={{ padding: 16, flex: 1 }}>
-            {error && <div style={{ color: T.accent, fontSize: 13, marginBottom: 12 }}>{error}</div>}
+            {error && <div style={{ color: T.danger, fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
             <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
               {[["all", "All"], ["bug", "Bugs"], ["feature", "Features"], ["privacy", "Privacy"]].map(([k, label]) => (
                 <button
                   key={k}
                   onClick={() => setTypeFilter(k)}
-                  style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 11.5, fontWeight: 600, border: `1px solid ${typeFilter === k ? T.accent : T.line}`, background: typeFilter === k ? "rgba(232,68,46,0.12)" : T.surface, color: typeFilter === k ? T.text : T.dim }}
+                  style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 11.5, fontWeight: 600, border: `1px solid ${typeFilter === k ? T.accent : T.line}`, background: typeFilter === k ? "rgba(196,163,90,0.12)" : T.surface, color: typeFilter === k ? T.text : T.dim }}
                 >
                   {label}
                 </button>
@@ -227,12 +231,12 @@ export default function AdminFeedback({ onClose }) {
             {rows && sorted.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {sorted.map((r) => (
-                  <button key={r.id} onClick={() => setSelectedId(r.id)} style={{ display: "block", width: "100%", textAlign: "left", background: T.surface, border: `1px solid ${r.flagged ? "#F2C94C" : T.line}`, borderRadius: 12, padding: 12 }}>
+                  <button key={r.id} onClick={() => setSelectedId(r.id)} style={{ display: "block", width: "100%", textAlign: "left", background: T.surface, border: `1px solid ${r.flagged ? tc("#D8BF83") : T.line}`, borderRadius: 12, padding: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 6 }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <TypeBadge type={r.type} />
                         <StatusBadge status={r.status || "open"} />
-                        {r.flagged && <span style={{ color: "#F2C94C" }}><IconStar size={13} filled /></span>}
+                        {r.flagged && <span style={{ color: tc("#D8BF83") }}><IconStar size={13} filled /></span>}
                       </div>
                       <span style={{ fontSize: 10, color: T.dim, flexShrink: 0 }}>{new Date(r.created_at).toLocaleDateString()}</span>
                     </div>

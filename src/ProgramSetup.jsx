@@ -23,16 +23,20 @@ import {
 } from "./lib/programEngine";
 import { InlineLoading } from "./LoadingSpinner";
 import Logo from "./Logo";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
 
@@ -55,7 +59,7 @@ function PillRow({ options, value, onChange, columns }) {
             flex: columns ? `1 1 calc(${100 / columns}% - 4px)` : 1,
             padding: "14px 6px", borderRadius: 9, fontSize: 14, fontWeight: 700, border: "none",
             background: value === opt.key ? T.accent : "transparent",
-            color: value === opt.key ? "#fff" : T.dim,
+            color: value === opt.key ? T.bg : T.dim,
           }}
         >
           {opt.label}
@@ -121,11 +125,11 @@ function DaySection({ dayIndex, label, picks, onReorder, onRemove, onAdjustSets,
                 <div style={{ color: T.text, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.short || p.name}</div>
               </div>
               <button onClick={() => onOpenReplace(p.id)} aria-label={`Replace ${p.name}`} title="Replace" style={{ ...smallBtn, marginRight: 6, flexShrink: 0 }}>&#8644;</button>
-              <button onClick={() => onRemove(p.id)} aria-label={`Remove ${p.name}`} title="Remove" style={{ ...smallBtn, color: T.accent, borderColor: T.accent, fontSize: 15, padding: "3px 10px", flexShrink: 0 }}>&minus;</button>
+              <button onClick={() => onRemove(p.id)} aria-label={`Remove ${p.name}`} title="Remove" style={{ ...smallBtn, color: T.danger, borderColor: T.danger, fontSize: 15, padding: "3px 10px", flexShrink: 0 }}>&minus;</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
               <button onClick={() => onAdjustSets(p.id, Math.max(1, (p.plannedSets ?? 3) - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>&minus;</button>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, minWidth: 16, textAlign: "center" }}>{p.plannedSets ?? 3}</div>
+              <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, minWidth: 16, textAlign: "center" }}>{p.plannedSets ?? 3}</div>
               <button onClick={() => onAdjustSets(p.id, Math.min(12, (p.plannedSets ?? 3) + 1))} style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14, fontWeight: 700 }}>+</button>
               <div style={{ fontSize: 11, color: T.dim, marginLeft: 2 }}>sets</div>
             </div>
@@ -413,7 +417,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <button
                   onClick={() => setProgressionOverride(null)}
-                  style={{ textAlign: "left", padding: "14px 14px", borderRadius: 12, border: `1px solid ${progressionOverride === null ? T.accent : T.line}`, background: progressionOverride === null ? "rgba(232,68,46,0.1)" : T.surface, color: T.text, fontSize: 14, fontWeight: 600 }}
+                  style={{ textAlign: "left", padding: "14px 14px", borderRadius: 12, border: `1px solid ${progressionOverride === null ? T.accent : T.line}`, background: progressionOverride === null ? "rgba(196,163,90,0.1)" : T.surface, color: T.text, fontSize: 14, fontWeight: 600 }}
                 >
                   Recommended (per Training Focus)
                 </button>
@@ -421,7 +425,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
                   <button
                     key={key}
                     onClick={() => setProgressionOverride(key)}
-                    style={{ textAlign: "left", padding: "14px 14px", borderRadius: 12, border: `1px solid ${progressionOverride === key ? T.accent : T.line}`, background: progressionOverride === key ? "rgba(232,68,46,0.1)" : T.surface, color: T.text, fontSize: 14, fontWeight: 600 }}
+                    style={{ textAlign: "left", padding: "14px 14px", borderRadius: 12, border: `1px solid ${progressionOverride === key ? T.accent : T.line}`, background: progressionOverride === key ? "rgba(196,163,90,0.1)" : T.surface, color: T.text, fontSize: 14, fontWeight: 600 }}
                   >
                     {label}
                   </button>
@@ -480,7 +484,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
         <div style={{ fontSize: 11, color: T.dim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, textAlign: "center" }}>
           Step {step + 1} of {steps.length}
         </div>
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
+        <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 28, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
           {current.title}
         </div>
         <div style={{ color: T.dim, fontSize: 13, textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>
@@ -493,7 +497,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
         <button
           onClick={handleNext}
           disabled={saving || (isLast && totalPicked === 0)}
-          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700, opacity: saving || (isLast && totalPicked === 0) ? 0.6 : 1 }}
+          style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: saving || (isLast && totalPicked === 0) ? 0.6 : 1 }}
         >
           {saving ? "Building…" : isLast ? "Create Program" : "Continue"}
         </button>
@@ -507,7 +511,7 @@ export default function ProgramSetup({ user, onClose, onCreated }) {
           <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.75)", zIndex: 2100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
             <div style={{ width: "100%", maxWidth: 400, maxHeight: "85vh", display: "flex", flexDirection: "column", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0" }}>
               <div style={{ padding: "16px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>
+                <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>
                   Replace {replacingExercise?.short || replacingExercise?.name || "exercise"}
                 </div>
                 <button onClick={() => setReplacing(null)} aria-label="Close" style={smallBtn}><IconX size={12} /></button>

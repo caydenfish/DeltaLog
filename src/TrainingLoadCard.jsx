@@ -3,7 +3,7 @@ import { T } from "./lib/theme";
 import { computeTrainingLoad, LOAD_ZONES, GAUGE_MAX_RATIO } from "./lib/trainingLoad";
 import { IconInfo } from "./Icons";
 
-const display = "'Barlow Condensed', sans-serif";
+const display = "'Saira Condensed', sans-serif";
 
 // Semicircle gauge: 180 degrees = ratio 0 to GAUGE_MAX_RATIO, split into
 // the four load zones. The needle is the only moving part.
@@ -60,7 +60,7 @@ export default function TrainingLoadCard({ history }) {
       <div style={{ position: "relative" }}>
         <Gauge ratio={data.ratio} zone={data.zone} />
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, textAlign: "center" }}>
-          <div style={{ fontFamily: display, fontSize: 34, fontWeight: 700, color: T.text, lineHeight: 1 }}>{data.acute.toLocaleString()}</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 34, fontWeight: 700, color: T.text, lineHeight: 1 }}>{data.acute.toLocaleString()}</div>
           <div style={{ fontSize: 11, color: T.dim, marginTop: 2 }}>last 7 days</div>
         </div>
       </div>
@@ -68,7 +68,7 @@ export default function TrainingLoadCard({ history }) {
       <div style={{ textAlign: "center", marginTop: 10 }}>
         {data.baselineReady ? (
           <>
-            <div style={{ fontFamily: display, fontSize: 19, fontWeight: 700, color: data.zone.color }}>{data.zone.label}</div>
+            <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: data.zone.color }}>{data.zone.label}</div>
             <div style={{ fontSize: 12, color: T.dim, marginTop: 2 }}>
               {vsBase === 0 ? "Right at" : `${Math.abs(vsBase)}% ${vsBase > 0 ? "above" : "below"}`} your 4-week base of {data.base.toLocaleString()}
             </div>

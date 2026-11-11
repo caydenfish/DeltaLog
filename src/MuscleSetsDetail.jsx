@@ -1,20 +1,24 @@
 import { useState } from "react";
 import { muscleLabel, isRealMuscle, isFullBody } from "./lib/muscleTaxonomy";
 import { formatWeight } from "./lib/weight";
+import { themed } from "./lib/theme";
 
 function isWarmupSet(s) {
   return !!(s.is_warmup ?? s.isWarmup);
 }
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const chevron = (open) => ({ display: "inline-block", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "rotate(0deg)", color: T.dim, fontSize: 14, flexShrink: 0 });
 
@@ -27,7 +31,7 @@ function roleTag(role) {
   return {
     fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5,
     color: isPrimary ? T.accent : T.dim,
-    background: isPrimary ? "rgba(232,68,46,0.14)" : T.surface2,
+    background: isPrimary ? "rgba(196,163,90,0.14)" : T.surface2,
     border: `1px solid ${isPrimary ? T.accent : T.line}`,
     borderRadius: 999, padding: "2px 7px", flexShrink: 0,
   };
@@ -85,7 +89,7 @@ export default function MuscleSetsDetail({ muscle, entries, nameMode, units, onC
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.8)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div style={{ width: "100%", maxWidth: 420, maxHeight: "85vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
         <div style={{ marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{muscle}</div>
+          <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 19, fontWeight: 700, color: T.text }}>{muscle}</div>
           <div style={{ fontSize: 12, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>
             {totalSets} set{totalSets === 1 ? "" : "s"} &middot; {totalPrimary} primary, {totalSecondary} secondary
           </div>

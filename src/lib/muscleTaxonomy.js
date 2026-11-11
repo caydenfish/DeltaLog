@@ -33,7 +33,7 @@ import { getSplits, getSplitExclusions } from "./splits";
 export const NAME_MODES = [
   { key: "generic", label: "Category", example: "Chest" },
   { key: "detailed", label: "Region", example: "Upper Chest" },
-  { key: "scientific", label: "Anatomy", example: "Pectoralis Major (Clavicular)" },
+  { key: "scientific", label: "Anatomy", example: "Pectoralis Major (Clavicular)", comingSoon: true },
 ];
 
 export const FULL_BODY = "Full Body";

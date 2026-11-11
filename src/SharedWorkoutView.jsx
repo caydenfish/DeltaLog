@@ -2,17 +2,21 @@ import { useState, useEffect } from "react";
 import Logo, { Wordmark } from "./Logo";
 import { fetchSharedWorkout } from "./lib/queries";
 import { InlineLoading } from "./LoadingSpinner";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // Public, read-only view of a shared workout — no login required. App.jsx
 // renders this straight from the URL, before the auth gate, whenever a
@@ -48,7 +52,7 @@ export default function SharedWorkoutView({ code, onDone }) {
         {snapshot && (
           <>
             <div style={{ textAlign: "center", marginBottom: 16 }}>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text }}>{snapshot.dateLabel}</div>
+              <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text }}>{snapshot.dateLabel}</div>
               <div style={{ color: T.dim, fontSize: 13, marginTop: 2 }}>Shared from DeltaLog</div>
             </div>
 
@@ -59,7 +63,7 @@ export default function SharedWorkoutView({ code, onDone }) {
                 { label: "Duration", value: snapshot.durationMin != null ? `${snapshot.durationMin} min` : "—" },
               ].map((s) => (
                 <div key={s.label} style={{ flex: 1, background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{s.value}</div>
+                  <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 20, fontWeight: 700, color: T.text }}>{s.value}</div>
                   <div style={{ fontSize: 10, color: T.dim, textTransform: "uppercase", letterSpacing: 1 }}>{s.label}</div>
                 </div>
               ))}
@@ -67,11 +71,11 @@ export default function SharedWorkoutView({ code, onDone }) {
 
             {(snapshot.exercises || []).map((ex, i) => (
               <div key={i} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 6 }}>{ex.name}</div>
+                <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 6 }}>{ex.name}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {(ex.sets || []).map((s, j) => (
                     <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                      <span style={{ color: s.isWarmup ? "#E8A82E" : T.dim }}>{s.label}</span>
+                      <span style={{ color: s.isWarmup ? tc("#D9894A") : T.dim }}>{s.label}</span>
                       <span style={{ color: T.text, fontWeight: 600 }}>
                         {s.weight} {snapshot.unit} × {s.reps} <span style={{ color: T.dim, fontWeight: 400 }}>@ RIR {s.rir}</span>
                       </span>

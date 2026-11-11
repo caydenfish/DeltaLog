@@ -106,6 +106,9 @@ export function getPrefs() {
     if (parsed.muscleNameMode === undefined && parsed.scientificNames !== undefined) {
       parsed.muscleNameMode = parsed.scientificNames ? "scientific" : "generic";
     }
+    // Anatomy detail is locked (Coming soon). Anyone who had it falls
+    // back to Region, the next finest tier, until it reopens.
+    if (parsed.muscleNameMode === "scientific") parsed.muscleNameMode = "detailed";
     // The setup wizard is for first-time users only. Anyone who already
     // has other prefs set (i.e. they've used the app before this wizard
     // existed) gets skipped straight past it, once, rather than being

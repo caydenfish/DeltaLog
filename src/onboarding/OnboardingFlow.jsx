@@ -13,6 +13,8 @@ import { ILLUSTRATIONS } from "./illustrations";
 import InstallGuide from "../InstallGuide";
 import TermsViewer from "../TermsViewer";
 import PrivacyPolicy from "../PrivacyPolicy";
+import { themed, tc, IS_LIGHT, THEME, setTheme } from "../lib/theme";
+import { ThemeChoice } from "../ThemePicker";
 
 // Intro and setup (v1.19.0). One component, three modes, so new users,
 // people redoing setup and devs simulating it all see the same screens:
@@ -23,9 +25,9 @@ import PrivacyPolicy from "../PrivacyPolicy";
 // Steps: welcome (simulate only; real users see it in Auth) → about →
 // body → training → app → finish.
 
-const T = { bg: "#101216", surface: "#1A1D23", surface2: "#22262E", line: "#2C313B", line2: "#3A404B", text: "#F2F1EC", dim: "#A3A9B4", faint: "#8B919D", accent: "#E8442E", green: "#3BA55D", greenText: "#7BD69B" };
-const condensed = "'Barlow Condensed', sans-serif";
-const eyebrow = { fontFamily: condensed, fontSize: 13, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: T.dim };
+const T = themed({ bg: "#121418", surface: "#1B1E23", surface2: "#24282E", line: "#2F343B", line2: "#3B4049", text: "#E6E3D9", dim: "#A5A6A3", faint: "#8F949C", accent: "#C4A35A", green: "#6A9E80", greenText: "#82AD93", danger: "#D0614C", accentDeep: "#8A6F33", spruce: "#3F6E55" });
+const condensed = "'Saira Condensed', sans-serif";
+const eyebrow = { fontFamily: "'Saira Condensed', sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: T.dim };
 const inputStyle = { width: "100%", boxSizing: "border-box", height: 50, padding: "0 14px", borderRadius: 12, border: `1px solid ${T.line}`, background: T.surface, color: T.text, fontSize: 17, outline: "none", fontFamily: "inherit" };
 
 export const ONBOARDING_STEPS = ["welcome", "about", "body", "training", "app", "finish"];
@@ -82,7 +84,7 @@ function Segmented({ options, value, onChange, label }) {
         const text = typeof o === "string" ? o : o.label;
         const on = key === value;
         return (
-          <button key={key} onClick={() => onChange(key)} aria-pressed={on} style={{ flex: 1, minWidth: 0, height: 44, border: "none", borderRadius: 9, background: on ? T.accent : "transparent", color: on ? "#fff" : T.dim, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <button key={key} onClick={() => onChange(key)} aria-pressed={on} style={{ flex: 1, minWidth: 0, height: 44, border: "none", borderRadius: 9, background: on ? T.accent : "transparent", color: on ? T.bg : T.dim, fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {text}
           </button>
         );
@@ -109,7 +111,7 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
   const simulate = mode === "simulate";
   const steps = simulate ? ONBOARDING_STEPS : ONBOARDING_STEPS.slice(1);
   const [step, setStep] = useState(() => (steps.includes(startStep) ? startStep : steps[0]));
-  const [a, setA] = useState(() => (fill === "blank" ? blankAnswers() : answersFrom(profile, null)));
+  const [a, setA] = useState(() => ({ ...(fill === "blank" ? blankAnswers() : answersFrom(profile, null)), theme: THEME }));
   const [savedHandle, setSavedHandle] = useState(null); // the handle stored on the account, for availability checks
   const [handleState, setHandleState] = useState("idle"); // idle | checking | available | taken | invalid | mine
   const [busy, setBusy] = useState(false);
@@ -191,6 +193,7 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
         setPref("muscleNameMode", a.muscleNameMode);
         setPref("bodyModelSex", bodyModelSex);
         setPref("setupWizardSeen", true);
+        setTheme(a.theme, { reload: false }); // applied by a reload when they leave setup
       }
       setStep(steps[idx + 1]);
     } catch (e) {
@@ -235,7 +238,7 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
     const hs = handleState;
     const status = hs === "available" ? { c: T.greenText, t: "Available", ok: true }
       : hs === "mine" ? { c: T.greenText, t: "Yours", ok: true }
-      : hs === "taken" ? { c: "#FF8A78", t: "Taken" }
+      : hs === "taken" ? { c: tc("#E08A78"), t: "Taken" }
       : hs === "checking" ? { c: T.faint, t: "Checking" }
       : null;
     body = (
@@ -257,7 +260,7 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
               {HEARD_FROM_OPTIONS.map((o) => {
                 const sel = a.heardFrom === o;
                 return (
-                  <button key={o} type="button" onClick={() => set({ heardFrom: sel ? "" : o })} aria-pressed={sel} style={{ height: 36, padding: "0 14px", borderRadius: 18, border: sel ? `1.5px solid ${T.accent}` : `1px solid ${T.line}`, background: sel ? "rgba(232,68,46,0.12)" : T.surface, color: T.text, fontSize: 14, fontWeight: sel ? 700 : 500, whiteSpace: "nowrap" }}>{o}</button>
+                  <button key={o} type="button" onClick={() => set({ heardFrom: sel ? "" : o })} aria-pressed={sel} style={{ height: 36, padding: "0 14px", borderRadius: 18, border: sel ? `1.5px solid ${T.accent}` : `1px solid ${T.line}`, background: sel ? "rgba(196,163,90,0.12)" : T.surface, color: T.text, fontSize: 14, fontWeight: sel ? 700 : 500, whiteSpace: "nowrap" }}>{o}</button>
                 );
               })}
             </div>
@@ -274,7 +277,7 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
     subtitle = "Sets your strength score and the body on your muscle map. Never shown to friends.";
     body = (
       <>
-        {ILLUSTRATIONS.body && <img src={ILLUSTRATIONS.body} alt="" aria-hidden="true" style={{ height: 96, objectFit: "contain", alignSelf: "flex-start", filter: "invert(1) opacity(0.85)" }} />}
+        {ILLUSTRATIONS.body && <img src={ILLUSTRATIONS.body} alt="" aria-hidden="true" style={{ height: 96, objectFit: "contain", alignSelf: "flex-start", filter: IS_LIGHT ? "opacity(0.85)" : "invert(1) opacity(0.85)" }} />}
         <Field label="Sex"><Segmented label="Sex" options={GENDERS} value={a.gender} onChange={(g) => set({ gender: g })} /></Field>
         <Field label="Birthday" htmlFor="ob-dob"><input id="ob-dob" type="date" value={a.dob} max={new Date().toISOString().slice(0, 10)} onChange={(e) => set({ dob: e.target.value })} style={{ ...inputStyle, colorScheme: "dark" }} /></Field>
         <Field label="Units" hint="Used everywhere you enter or see a weight."><Segmented label="Units" options={["lb", "kg"]} value={a.units} onChange={(u) => set({ units: u })} /></Field>
@@ -308,12 +311,12 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
       const on = a.trainingIdeology === name;
       const art = ILLUSTRATIONS[GOAL_ART[name]];
       return (
-        <button key={name} onClick={() => set({ trainingIdeology: name })} aria-pressed={on} style={{ display: "flex", gap: 14, alignItems: "center", padding: 16, borderRadius: 14, border: on ? `2px solid ${T.accent}` : `1px solid ${T.line}`, background: on ? "rgba(232,68,46,0.10)" : T.surface, color: T.text, textAlign: "left" }}>
-          {art && <img src={art} alt="" aria-hidden="true" style={{ width: 56, height: 56, objectFit: "contain", flexShrink: 0, filter: "invert(1) opacity(0.9)" }} />}
+        <button key={name} onClick={() => set({ trainingIdeology: name })} aria-pressed={on} style={{ display: "flex", gap: 14, alignItems: "center", padding: 16, borderRadius: 14, border: on ? `2px solid ${T.accent}` : `1px solid ${T.line}`, background: on ? "rgba(196,163,90,0.10)" : T.surface, color: T.text, textAlign: "left" }}>
+          {art && <img src={art} alt="" aria-hidden="true" style={{ width: 56, height: 56, objectFit: "contain", flexShrink: 0, filter: IS_LIGHT ? "opacity(0.9)" : "invert(1) opacity(0.9)" }} />}
           <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-              <span style={{ fontFamily: condensed, fontSize: 24, fontWeight: 700, textTransform: "uppercase" }}>{name}</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: on ? "#FF8A78" : T.dim, whiteSpace: "nowrap" }}>{v.low}-{v.high} reps</span>
+              <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, textTransform: "uppercase" }}>{name}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: on ? tc("#E08A78") : T.dim, whiteSpace: "nowrap" }}>{v.low}-{v.high} reps</span>
             </span>
             <span style={{ fontSize: 14, lineHeight: 1.4, color: T.dim }}>{v.desc}</span>
           </span>
@@ -334,11 +337,17 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
         options: Object.entries(PROGRESSION_MODELS).map(([key, label]) => ({ key, label, sub: PROGRESSION_MODEL_DESCRIPTIONS[key].split(". ")[0] + "." })),
         detail: PROGRESSION_MODEL_DESCRIPTIONS[a.targetCalcMethod] },
       { id: "scoreDisplay", label: "Strength score", recommended: "percentile", options: scoreOpts },
-      { id: "muscleNameMode", label: "Muscle names", recommended: "generic", options: NAME_MODES.map((m) => ({ key: m.key, label: m.label, sub: `e.g. ${m.example}` })) },
+      { id: "muscleNameMode", label: "Muscle names", recommended: "generic", options: NAME_MODES.filter((m) => !m.comingSoon).map((m) => ({ key: m.key, label: m.label, sub: `e.g. ${m.example}` })) },
       { id: "bodyModelSex", label: "Body map", recommended: null, value: bodyModelSex,
         options: [{ key: "male", label: "Male", sub: "Male anatomy on your heatmap" }, { key: "female", label: "Female", sub: "Female anatomy on your heatmap" }] },
     ];
-    body = rows.map((r) => {
+    const themeBlock = (
+      <div key="theme" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span style={eyebrow}>Look</span>
+        <ThemeChoice value={a.theme} onChange={(t) => set({ theme: t })} />
+      </div>
+    );
+    body = [themeBlock, ...rows.map((r) => {
       const value = r.value ?? a[r.id];
       const current = r.options.find((o) => o.key === value) || r.options[0];
       const open = openPref === r.id;
@@ -356,7 +365,7 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
                   <span style={{ fontSize: 14.5, fontWeight: 700 }}>{o.label}</span>
                   {o.sub && <span style={{ fontSize: 12.5, color: T.faint, lineHeight: 1.35 }}>{o.sub}</span>}
                 </span>
-                {sel && <span style={{ color: "#FF8A78", display: "flex" }}><CheckIcon /></span>}
+                {sel && <span style={{ color: tc("#E08A78"), display: "flex" }}><CheckIcon /></span>}
               </button>
             );
           })}
@@ -371,14 +380,17 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.faint} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
         </button>
       );
-    });
+    })];
     cta = mode === "redo" ? "Save" : "Looks good";
   }
 
   if (step === "finish") {
     const standalone = typeof window !== "undefined" && (window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone);
     const ideo = IDEOLOGIES[a.trainingIdeology];
-    const done = (choice) => onExit(simulate ? "cancel" : choice);
+    const done = (choice) => {
+      onExit(simulate ? "cancel" : choice);
+      if (write && a.theme !== THEME) setTimeout(() => window.location.reload(), 0);
+    };
     const secondary = { height: 52, borderRadius: 14, border: `1px solid ${T.line2}`, background: T.surface, color: T.text, fontSize: 16, fontWeight: 600, whiteSpace: "nowrap" };
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 60, background: T.bg, color: T.text, display: "flex", justifyContent: "center", overflowY: "auto" }}>
@@ -386,11 +398,11 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
           {banner}
           <div style={{ height: 32 }} />
           {ILLUSTRATIONS.finish ? (
-            <img src={ILLUSTRATIONS.finish} alt="" aria-hidden="true" style={{ height: 120, objectFit: "contain", alignSelf: "flex-start", filter: "invert(1) opacity(0.9)" }} />
+            <img src={ILLUSTRATIONS.finish} alt="" aria-hidden="true" style={{ height: 120, objectFit: "contain", alignSelf: "flex-start", filter: IS_LIGHT ? "opacity(0.9)" : "invert(1) opacity(0.9)" }} />
           ) : (
-            <span style={{ width: 56, height: 56, borderRadius: 28, background: "rgba(59,165,93,0.16)", color: T.greenText, display: "flex", alignItems: "center", justifyContent: "center" }}><CheckIcon size={28} /></span>
+            <span style={{ width: 56, height: 56, borderRadius: 28, background: "rgba(106,158,128,0.16)", color: T.greenText, display: "flex", alignItems: "center", justifyContent: "center" }}><CheckIcon size={28} /></span>
           )}
-          <h1 style={{ margin: "18px 0 0", fontFamily: condensed, fontSize: 40, fontWeight: 700, lineHeight: 1, textTransform: "uppercase" }}>
+          <h1 style={{ margin: "18px 0 0", fontFamily: "'Chakra Petch', sans-serif", fontSize: 40, fontWeight: 700, lineHeight: 1, textTransform: "uppercase" }}>
             {mode === "redo" ? "Setup saved" : `You're set${a.firstName.trim() ? `, ${a.firstName.trim()}` : ""}`}
           </h1>
           <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.45, color: T.dim }}>
@@ -408,13 +420,13 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
           {mode === "redo" ? (
             <>
               <div style={{ flex: 1 }} />
-              <button onClick={() => done("dashboard")} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700 }}>Done</button>
+              <button onClick={() => done("dashboard")} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700 }}>Done</button>
             </>
           ) : (
             <>
               <span style={{ ...eyebrow, marginTop: 26, letterSpacing: "0.1em" }}>Where do you want to start?</span>
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-                <button onClick={() => done("workout")} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, whiteSpace: "nowrap" }}>Start my first workout</button>
+                <button onClick={() => done("workout")} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, whiteSpace: "nowrap" }}>Start my first workout</button>
                 <button onClick={() => done("templates")} style={secondary}>Build a template first</button>
                 <button onClick={() => done("friends")} style={secondary}>Find friends</button>
               </div>
@@ -443,20 +455,20 @@ export default function OnboardingFlow({ user, profile, mode = "new", startStep,
           </div>
         </div>
         <span style={{ ...eyebrow, marginTop: 14, letterSpacing: "0.1em" }}>Step {progressAt + 1} of {PROGRESS_STEPS.length} · {STEP_LABELS[step]}</span>
-        <h1 style={{ margin: "6px 0 0", fontFamily: condensed, fontSize: 34, fontWeight: 700, lineHeight: 1.05, textTransform: "uppercase" }}>{title}</h1>
+        <h1 style={{ margin: "6px 0 0", fontFamily: "'Chakra Petch', sans-serif", fontSize: 34, fontWeight: 700, lineHeight: 1.05, textTransform: "uppercase" }}>{title}</h1>
         <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.45, color: T.dim }}>{subtitle}</p>
         <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: step === "training" || step === "app" ? 10 : 18 }}>{body}</div>
         <div style={{ flex: 1, minHeight: 24 }} />
-        {error && <div role="alert" style={{ marginBottom: 10, fontSize: 13, color: "#FF8A78", lineHeight: 1.4 }}>{error}</div>}
+        {error && <div role="alert" style={{ marginBottom: 10, fontSize: 13, color: tc("#E08A78"), lineHeight: 1.4 }}>{error}</div>}
         {step === "about" && mode === "new" && !profile?.terms_accepted_at && (
           <p style={{ margin: "0 0 10px", textAlign: "center", fontSize: 12.5, lineHeight: 1.5, color: T.faint }}>
             By continuing you agree to the{" "}
-            <button onClick={() => setShowTerms(true)} style={{ background: "none", border: "none", padding: 0, color: "#FF6A55", fontSize: 12.5, textDecoration: "underline" }}>Terms</button>
+            <button onClick={() => setShowTerms(true)} style={{ background: "none", border: "none", padding: 0, color: tc("#C4A35A"), fontSize: 12.5, textDecoration: "underline" }}>Terms</button>
             {" "}and{" "}
-            <button onClick={() => setShowPrivacy(true)} style={{ background: "none", border: "none", padding: 0, color: "#FF6A55", fontSize: 12.5, textDecoration: "underline" }}>Privacy Policy</button>.
+            <button onClick={() => setShowPrivacy(true)} style={{ background: "none", border: "none", padding: 0, color: tc("#C4A35A"), fontSize: 12.5, textDecoration: "underline" }}>Privacy Policy</button>.
           </p>
         )}
-        <button onClick={next} disabled={!canContinue || busy} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: "#fff", fontSize: 17, fontWeight: 700, whiteSpace: "nowrap", opacity: !canContinue || busy ? 0.5 : 1 }}>
+        <button onClick={next} disabled={!canContinue || busy} style={{ height: 54, border: "none", borderRadius: 14, background: T.accent, color: T.bg, fontSize: 17, fontWeight: 700, whiteSpace: "nowrap", opacity: !canContinue || busy ? 0.5 : 1 }}>
           {busy ? "Saving..." : cta}
         </button>
         {mode === "new" && idx === 0 && (

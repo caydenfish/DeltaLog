@@ -6,16 +6,20 @@ import { computeRollingWeeklyTotals, formatSets } from "./lib/volume";
 import { MUSCLE_COLORS } from "./lib/muscleTaxonomy";
 import { statusColorFor } from "./lib/planStatus";
 import { InlineLoading } from "./LoadingSpinner";
+import { themed } from "./lib/theme";
 
-const T = {
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const DEFAULT_TARGET = 10;
 const MIN_TARGET = 0;
@@ -143,7 +147,7 @@ export default function MyPlan({ userId, history }) {
             Your active program suggests weekly set targets for {Object.keys(suggestion.byMuscle).length} muscle group{Object.keys(suggestion.byMuscle).length === 1 ? "" : "s"}. Applying won't change anything else here — you can still adjust any slider afterward.
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={applySuggestion} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.accent, color: "#fff", fontSize: 12.5, fontWeight: 700 }}>Apply suggestion</button>
+            <button onClick={applySuggestion} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: T.accent, color: T.bg, fontSize: 12.5, fontWeight: 700 }}>Apply suggestion</button>
             <button onClick={dismissSuggestion} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 12.5 }}>Dismiss</button>
           </div>
         </div>

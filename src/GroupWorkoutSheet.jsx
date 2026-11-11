@@ -5,19 +5,23 @@ import {
   fetchMyHandle, fetchFriends, fetchFriendGroups, saveFriendGroup, deleteFriendGroup,
   createGroupSession, inviteToGroupSession, searchUsersByHandle, sendFriendRequest, normalizeHandle, displayName,
 } from "./lib/social";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
-const condensed = "'Barlow Condensed', sans-serif";
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
+const condensed = "'Saira Condensed', sans-serif";
 const oneLine = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
-const label = { fontFamily: condensed, fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.dim };
+const label = { fontFamily: "'Saira Condensed', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: T.dim };
 const MAX_FRIENDS = 7; // 8 people including you
 
 // Group Workout friend picker (v1.17.0): pick friends (search by ID first,
@@ -129,7 +133,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
           <button onClick={onClose} aria-label="Close" style={{ display: "block", width: 64, height: 26, margin: "0 auto 4px", background: "none", border: "none", padding: 0 }}>
             <span style={{ display: "block", width: 36, height: 4, borderRadius: 4, background: T.line, margin: "0 auto" }} />
           </button>
-          <div style={{ fontFamily: condensed, fontSize: 26, fontWeight: 700, color: T.text, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>{inviteMode ? "Invite Friends" : "Group Workout"}</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 26, fontWeight: 700, color: T.text, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>{inviteMode ? "Invite Friends" : "Group Workout"}</div>
         </div>
 
         {me === null ? <div style={{ flex: 1 }} /> : needsHandle ? (
@@ -198,7 +202,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
                         <span style={{ fontSize: 15, fontWeight: 600, ...oneLine }}>{displayName(f)}</span>
                         <span style={{ fontSize: 13, color: T.dim, ...oneLine }}>{f.handle ? `@${f.handle}` : ""}</span>
                       </span>
-                      <span style={{ width: 24, height: 24, borderRadius: 7, border: `2px solid ${on ? T.accent : "#4A4F57"}`, background: on ? T.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
+                      <span style={{ width: 24, height: 24, borderRadius: 7, border: `2px solid ${on ? T.accent : tc("#4A4F57")}`, background: on ? T.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: T.bg, flexShrink: 0 }}>
                         {on && <IconCheck size={14} />}
                       </span>
                     </button>
@@ -219,7 +223,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
                           {sent ? (
                             <span style={{ fontSize: 13, color: T.dim, whiteSpace: "nowrap" }}>Requested</span>
                           ) : (
-                            <button onClick={() => request(s)} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Add friend</button>
+                            <button onClick={() => request(s)} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>Add friend</button>
                           )}
                         </div>
                       );
@@ -230,7 +234,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
             </div>
 
             <div style={{ padding: "12px 16px calc(16px + env(safe-area-inset-bottom, 0px))", borderTop: `1px solid ${T.line}`, display: "flex", flexDirection: "column", gap: 10 }}>
-              {error && <div style={{ fontSize: 12.5, color: T.accent, ...oneLine }}>{error}</div>}
+              {error && <div style={{ fontSize: 12.5, color: T.danger, ...oneLine }}>{error}</div>}
               {naming ? (
                 <div style={{ display: "flex", gap: 8 }}>
                   <input
@@ -244,7 +248,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
                     style={{ flex: 1, minWidth: 0, height: 44, padding: "0 12px", borderRadius: 10, background: T.bg, border: `1px solid ${T.line}`, color: T.text, fontSize: 16, outline: "none" }}
                   />
                   <button onClick={() => setNaming(false)} style={{ height: 44, padding: "0 12px", borderRadius: 10, border: `1px solid ${T.line}`, background: T.surface2, color: T.text, fontSize: 14 }}>Cancel</button>
-                  <button onClick={saveGroup} disabled={!groupName.trim()} style={{ height: 44, padding: "0 14px", borderRadius: 10, border: "none", background: T.accent, color: "#fff", fontSize: 14, fontWeight: 600, opacity: groupName.trim() ? 1 : 0.5 }}>Save</button>
+                  <button onClick={saveGroup} disabled={!groupName.trim()} style={{ height: 44, padding: "0 14px", borderRadius: 10, border: "none", background: T.accent, color: T.bg, fontSize: 14, fontWeight: 600, opacity: groupName.trim() ? 1 : 0.5 }}>Save</button>
                 </div>
               ) : (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: 32, gap: 10 }}>
@@ -259,7 +263,7 @@ export default function GroupWorkoutSheet({ user, onClose, onSessionCreated, onO
                   )}
                 </div>
               )}
-              <button onClick={start} disabled={selected.size === 0 || starting} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: "#fff", fontSize: 16, fontWeight: 700, opacity: selected.size === 0 || starting ? 0.5 : 1, whiteSpace: "nowrap" }}>
+              <button onClick={start} disabled={selected.size === 0 || starting} style={{ height: 52, borderRadius: 12, border: "none", background: T.accent, color: T.bg, fontSize: 16, fontWeight: 700, opacity: selected.size === 0 || starting ? 0.5 : 1, whiteSpace: "nowrap" }}>
                 {inviteMode
                   ? (starting ? "Inviting..." : selected.size === 0 ? "Invite" : `Invite ${selected.size} friend${selected.size === 1 ? "" : "s"}`)
                   : (starting ? "Opening lobby..." : selected.size === 0 ? "Open lobby" : `Open lobby with ${selected.size} friend${selected.size === 1 ? "" : "s"}`)}

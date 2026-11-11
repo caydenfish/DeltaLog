@@ -3,16 +3,20 @@ import { acceptTerms } from "./lib/queries";
 import { TermsBody } from "./lib/termsContent";
 import Logo from "./Logo";
 import IntroShell from "./IntroShell";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 export default function TermsGate({ user, onAccepted }) {
   const [checked, setChecked] = useState(false);
@@ -41,11 +45,11 @@ export default function TermsGate({ user, onAccepted }) {
             <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} style={{ marginTop: 2, width: 20, height: 20, flexShrink: 0 }} />
             <span style={{ color: T.text, fontSize: 13, lineHeight: 1.4 }}>I have read and agree to the Terms & Conditions above.</span>
           </label>
-          {error && <div style={{ color: T.accent, fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
+          {error && <div style={{ color: T.danger, fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
           <button
             onClick={handleAccept}
             disabled={!checked || saving}
-            style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: !checked || saving ? T.surface2 : T.accent, color: !checked || saving ? T.dim : "#fff", fontSize: 15, fontWeight: 700 }}
+            style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: !checked || saving ? T.surface2 : T.accent, color: !checked || saving ? T.dim : T.bg, fontSize: 15, fontWeight: 700 }}
           >
             {saving ? "Saving…" : "Accept & Continue"}
           </button>
@@ -55,7 +59,7 @@ export default function TermsGate({ user, onAccepted }) {
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
         <Logo size={48} />
       </div>
-      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
+      <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center", marginBottom: 6 }}>
         Terms & Conditions
       </div>
       <div style={{ color: T.dim, fontSize: 13, textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>

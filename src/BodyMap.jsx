@@ -3,19 +3,23 @@ import { SECONDARY_SET_WEIGHT, effectiveSets, formatSets } from "./lib/volume";
 import { resolveRegions } from "./lib/bodyMapRegions";
 import { statusColorFor, PLAN_NEUTRAL } from "./lib/planStatus";
 import { getDetailedTaxonomyEntries } from "./lib/muscleTaxonomy";
+import { themed, tc, IS_LIGHT } from "./lib/theme";
 
-const T = {
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // Untrained-region fill — a touch lighter than the card border so the
 // silhouette's muscle segments stay visible even at zero volume.
-const NEUTRAL = "#363C46";
-const OUTLINE_STROKE = "#4A5261";
+const NEUTRAL = tc("#363C46");
+const OUTLINE_STROKE = tc("#4A5261");
 
 // Maps each real anatomical region slug (see lib/bodyMapData.js) to the
 // broad generic-tier muscle group (lib/muscleColors.js's 8-value
@@ -80,9 +84,11 @@ function buildRegionKeyMap() {
 // differ in hue, not just brightness.
 const TIERS = [
   { key: "none", label: "None", color: NEUTRAL, max: 0 },
-  { key: "low", label: "Low", color: "#C9A227", max: 1 / 3 },
-  { key: "moderate", label: "Moderate", color: "#E8752E", max: 2 / 3 },
-  { key: "high", label: "High", color: T.accent, max: Infinity },
+  // Lightness climbs with volume on dark and falls with it on light, so
+  // "more" always reads as more contrast against the page.
+  { key: "low", label: "Low", color: IS_LIGHT ? "#9DBBA9" : tc("#3F6E55"), max: 1 / 3 },
+  { key: "moderate", label: "Moderate", color: IS_LIGHT ? tc("#C4A35A") : tc("#8A6F33"), max: 2 / 3 },
+  { key: "high", label: "High", color: IS_LIGHT ? "#6B5320" : tc("#D8BF83"), max: Infinity },
 ];
 
 // Turns TIERS' fixed fractional cutoffs (1/3, 2/3, above) into the
@@ -108,12 +114,12 @@ function intensityTierLegend(maxTotal) {
 const PLAN_TIERS = [
   { key: "none", label: "Not started", color: PLAN_NEUTRAL },
   { key: "under", label: "Under target", color: "#E8752E" },
-  { key: "met", label: "Target met", color: "#3BA55D" },
+  { key: "met", label: "Target met", color: tc("#6A9E80") },
 ];
 const PLAN_TIERS_RANGE = [
   { key: "none", label: "None", color: PLAN_NEUTRAL },
   { key: "under", label: "Under", color: "#E8752E" },
-  { key: "met", label: "On track", color: "#3BA55D" },
+  { key: "met", label: "On track", color: tc("#6A9E80") },
   { key: "over", label: "Over", color: "#5B8DEF" },
 ];
 

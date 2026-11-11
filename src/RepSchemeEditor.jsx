@@ -41,10 +41,10 @@ export default function RepSchemeEditor({ planned, scheme, fallback, focusLabel,
 
   const seg = (active) => ({
     flex: 1, minWidth: 0, padding: "8px 6px", borderRadius: 7, border: "none", fontSize: 12.5, fontWeight: 700,
-    background: active ? T.accent : "transparent", color: active ? "#fff" : T.dim,
+    background: active ? T.accent : "transparent", color: active ? T.bg : T.dim,
     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
   });
-  const numInput = { width: 46, textAlign: "center", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 15, fontWeight: 700, padding: "7px 0", outline: "none", fontFamily: "'Barlow Condensed', sans-serif" };
+  const numInput = { width: 46, textAlign: "center", background: T.surface, border: `1px solid ${T.line}`, borderRadius: 8, color: T.text, fontSize: 15, fontWeight: 700, padding: "7px 0", outline: "none", fontFamily: "'Saira Condensed', sans-serif" };
 
   return (
     <div>

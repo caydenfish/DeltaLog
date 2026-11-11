@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  text: "#F2F1EC",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  text: "#E6E3D9",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 // Timing for each phase. MIN_LOADING_MS keeps the splash from flashing by
 // for a single frame on a fast/cached load — there's always at least a
@@ -130,7 +134,7 @@ export default function AppSplash({ ready }) {
           width: min(140vw, 1100px);
           height: 160px;
           transform: translate(-50%, -50%);
-          background: radial-gradient(ellipse at center, rgba(232,68,46,0.55) 0%, rgba(232,68,46,0.18) 40%, rgba(232,68,46,0) 72%);
+          background: radial-gradient(ellipse at center, rgba(196,163,90,0.55) 0%, rgba(196,163,90,0.18) 40%, rgba(196,163,90,0) 72%);
           filter: blur(2px);
         }
         .dl-splash-horizon-floor {
@@ -142,8 +146,8 @@ export default function AppSplash({ ready }) {
           transform-origin: top center;
           transform: translateX(-50%) perspective(240px) rotateX(66deg);
           background-image:
-            linear-gradient(90deg, rgba(232,68,46,0.55) 1px, transparent 1px),
-            linear-gradient(rgba(232,68,46,0.4) 1px, transparent 1px);
+            linear-gradient(90deg, rgba(196,163,90,0.55) 1px, transparent 1px),
+            linear-gradient(rgba(196,163,90,0.4) 1px, transparent 1px);
           background-size: 46px 46px, 46px 46px;
           -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,1) 12%);
           mask-image: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,1) 12%);

@@ -4,17 +4,21 @@ import { getMuscleGroupOptions } from "./lib/muscleTaxonomy";
 import { getPrefs, setPref } from "./lib/prefs";
 import { InlineLoading } from "./LoadingSpinner";
 import { IconX } from "./Icons";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const DEFAULT_TARGET = 10;
 const MIN_TARGET = 0;
@@ -33,7 +37,7 @@ function Stepper({ value, onChange, min = MIN_TARGET, max = MAX_TARGET }) {
         onClick={() => step(-1)}
         disabled={value <= min}
         aria-label="Decrease"
-        style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: value <= min ? "#3A404B" : T.text, fontSize: 16, flexShrink: 0 }}
+        style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: value <= min ? tc("#3B4049") : T.text, fontSize: 16, flexShrink: 0 }}
       >
         −
       </button>
@@ -51,7 +55,7 @@ function Stepper({ value, onChange, min = MIN_TARGET, max = MAX_TARGET }) {
         onClick={() => step(1)}
         disabled={value >= max}
         aria-label="Increase"
-        style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: value >= max ? "#3A404B" : T.text, fontSize: 16, flexShrink: 0 }}
+        style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${T.line}`, background: T.surface2, color: value >= max ? tc("#3B4049") : T.text, fontSize: 16, flexShrink: 0 }}
       >
         +
       </button>
@@ -146,7 +150,7 @@ export function WeeklySetGoalsEditor({ userId, onClose, nameMode }) {
       <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8 }}>
           <div style={{ width: 26 }} />
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>WEEKLY SET GOALS</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>WEEKLY SET GOALS</div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: T.dim, justifySelf: "end" }}><IconX size={20} /></button>
         </div>
 
@@ -167,7 +171,7 @@ export function WeeklySetGoalsEditor({ userId, onClose, nameMode }) {
                   key={opt.key}
                   onClick={() => switchMode(opt.key)}
                   aria-pressed={mode === opt.key}
-                  style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12.5, fontWeight: 600, border: "none", background: mode === opt.key ? T.accent : "transparent", color: mode === opt.key ? "#fff" : T.dim }}
+                  style={{ flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 12.5, fontWeight: 600, border: "none", background: mode === opt.key ? T.accent : "transparent", color: mode === opt.key ? T.bg : T.dim }}
                 >
                   {opt.label}
                 </button>

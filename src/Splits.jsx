@@ -1,15 +1,19 @@
 import { SPLITS } from "./lib/splits";
 import { muscleLabel } from "./lib/muscleTaxonomy";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const DESCRIPTIONS = {
   Push: "Chest, shoulders, and triceps — everything that pushes weight away from your body.",
@@ -26,7 +30,7 @@ export default function Splits({ onClose }) {
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 13 }}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>SPLITS</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 24, fontWeight: 700, color: T.text, textAlign: "center" }}>SPLITS</div>
           <div style={{ width: 26 }} />
         </div>
 
@@ -38,7 +42,7 @@ export default function Splits({ onClose }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {Object.entries(SPLITS).map(([name, muscles]) => (
               <div key={name} style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: 12, padding: 14 }}>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 4 }}>{name}</div>
+                <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text, marginBottom: 4 }}>{name}</div>
                 <div style={{ color: T.dim, fontSize: 12.5, lineHeight: 1.5, marginBottom: 8 }}>{DESCRIPTIONS[name]}</div>
                 <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                   {muscles.map((m) => (

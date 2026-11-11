@@ -5,17 +5,21 @@ import {
   addMuscleTaxonomyEntry, updateMuscleTaxonomyEntry, deleteMuscleTaxonomyEntry, renameMuscleScientific,
 } from "./lib/queries";
 import { IconX } from "./Icons";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 11 };
 const iconBtn = { background: "none", border: "none", color: T.dim, padding: "4px 6px", cursor: "pointer" };
@@ -158,16 +162,16 @@ export default function MuscleTaxonomyManager({ muscleGroups, muscleDetailed, ta
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.9)", zIndex: 70, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", background: T.bg, borderTop: `1px solid ${T.line}`, borderRadius: "20px 20px 0 0", padding: 20, boxSizing: "border-box" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>Muscle taxonomy</div>
+          <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 18, fontWeight: 700, color: T.text }}>Muscle taxonomy</div>
           <button onClick={onClose} aria-label="Close" style={smallBtn}>Done</button>
         </div>
         <div style={{ color: T.dim, fontSize: 11.5, margin: "6px 0 16px", lineHeight: 1.4 }}>
           Category &rsaquo; Region &rsaquo; Anatomy. Deleting a row with children is blocked until you move or remove them first.
         </div>
-        {error && <div style={{ margin: "0 0 12px", padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.accent}`, color: T.accent, fontSize: 12.5 }}>{error}</div>}
+        {error && <div style={{ margin: "0 0 12px", padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.danger}`, color: T.danger, fontSize: 12.5 }}>{error}</div>}
 
         {suspectDetailed.length > 0 && (
-          <div style={{ margin: "0 0 16px", padding: 12, borderRadius: 10, background: "rgba(232,68,46,0.1)", border: `1px solid ${T.accent}` }}>
+          <div style={{ margin: "0 0 16px", padding: 12, borderRadius: 10, background: "rgba(196,163,90,0.1)", border: `1px solid ${T.accent}` }}>
             <div style={{ color: T.accent, fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
               {suspectDetailed.length} Region {suspectDetailed.length === 1 ? "entry looks" : "entries look"} like a mistagged scientific name
             </div>
@@ -327,7 +331,7 @@ export default function MuscleTaxonomyManager({ muscleGroups, muscleDetailed, ta
       {nameWarning && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,0.9)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box" }}>
           <div style={{ width: "100%", maxWidth: 380, background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 14, padding: 18, boxSizing: "border-box" }}>
-            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 8 }}>That's already a scientific name</div>
+            <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 8 }}>That's already a scientific name</div>
             <div style={{ color: T.dim, fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>
               "{nameWarning.label}" is already tagged as an Anatomy entry somewhere in this list. Creating a Region group with the same name usually means the app will show that scientific name back to people instead of a real label.
               <br /><br />
@@ -337,7 +341,7 @@ export default function MuscleTaxonomyManager({ muscleGroups, muscleDetailed, ta
               <button onClick={() => setNameWarning(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.line}`, background: "none", color: T.dim, fontSize: 13, fontWeight: 600 }}>Cancel</button>
               <button
                 onClick={confirmNameWarning}
-                style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.accent}`, background: "rgba(232,68,46,0.12)", color: T.accent, fontSize: 13, fontWeight: 700 }}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.accent}`, background: "rgba(196,163,90,0.12)", color: T.accent, fontSize: 13, fontWeight: 700 }}
               >
                 Add anyway
               </button>

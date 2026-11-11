@@ -1,4 +1,5 @@
 import { IconImage } from "./Icons";
+import { tc } from "./lib/theme";
 
 // Small square thumbnail showing the exercise's demo photo/gif. Falls
 // back to a neutral stroke-only image-placeholder icon when no media has
@@ -12,7 +13,7 @@ export default function ExerciseThumb({ muscle, mediaUrl, size = 28 }) {
         alt=""
         width={size}
         height={size}
-        style={{ borderRadius: 6, objectFit: "cover", flexShrink: 0, background: "#22262E" }}
+        style={{ borderRadius: 6, objectFit: "cover", flexShrink: 0, background: tc("#24282E") }}
       />
     );
   }
@@ -22,11 +23,11 @@ export default function ExerciseThumb({ muscle, mediaUrl, size = 28 }) {
         width: size,
         height: size,
         borderRadius: 6,
-        background: "#22262E",
+        background: tc("#24282E"),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "#8B919D",
+        color: tc("#8F949C"),
         flexShrink: 0,
       }}
     >

@@ -1,15 +1,19 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
 import { RANGES } from "./lib/ranges";
+import { themed, tc } from "./lib/theme";
 
-const T = {
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-};
+const T = themed({
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
-const rangeArrowBtn = (disabled) => ({ width: 20, height: 20, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface2, color: disabled ? "#3A404B" : T.dim, fontSize: 11, cursor: disabled ? "default" : "pointer", flexShrink: 0 });
+const rangeArrowBtn = (disabled) => ({ width: 20, height: 20, borderRadius: 999, border: `1px solid ${T.line}`, background: T.surface2, color: disabled ? tc("#3B4049") : T.dim, fontSize: 11, cursor: disabled ? "default" : "pointer", flexShrink: 0 });
 
 export function tickFormatter(ts, range) {
   return range === "365d"

@@ -4,17 +4,21 @@ import { setSplitsCache, setSplitExclusionsCache } from "./lib/splits";
 import { muscleLabel } from "./lib/muscleTaxonomy";
 import { IconX } from "./Icons";
 import { InlineLoading } from "./LoadingSpinner";
+import { themed } from "./lib/theme";
 
-const T = {
-  bg: "#101216",
-  surface: "#1A1D23",
-  surface2: "#22262E",
-  line: "#2C313B",
-  text: "#F2F1EC",
-  dim: "#8B919D",
-  accent: "#E8442E",
-  green: "#3BA55D",
-};
+const T = themed({
+  bg: "#121418",
+  surface: "#1B1E23",
+  surface2: "#24282E",
+  line: "#2F343B",
+  text: "#E6E3D9",
+  dim: "#8F949C",
+  accent: "#C4A35A",
+  green: "#6A9E80",
+  danger: "#D0614C",
+  accentDeep: "#8A6F33",
+  spruce: "#3F6E55",
+});
 
 const smallBtn = { background: "none", border: `1px solid ${T.line}`, color: T.dim, borderRadius: 8, padding: "4px 10px", fontSize: 12 };
 
@@ -95,7 +99,7 @@ export default function SplitsManager({ onClose }) {
       <div style={{ width: "100%", maxWidth: 400, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${T.line}`, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 8, position: "sticky", top: 0, background: T.bg, zIndex: 1 }}>
           <button onClick={onClose} aria-label="Close" style={smallBtn}>‹</button>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>SPLITS</div>
+          <div style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: 22, fontWeight: 700, color: T.text, textAlign: "center" }}>SPLITS</div>
           <div style={{ width: 26 }} />
         </div>
 
@@ -104,7 +108,7 @@ export default function SplitsManager({ onClose }) {
             Which muscle groups belong to each split. Used by the workout generator, the exercise picker's split filter, and the Split entry in FAQ &amp; Glossary — changes apply everywhere immediately, for every user.
           </div>
 
-          {error && <div style={{ marginBottom: 12, padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.accent}`, color: T.accent, fontSize: 12.5 }}>{error}</div>}
+          {error && <div style={{ marginBottom: 12, padding: 10, borderRadius: 8, background: T.surface2, border: `1px solid ${T.danger}`, color: T.danger, fontSize: 12.5 }}>{error}</div>}
 
           {splits === null && <InlineLoading padding="16px 0" />}
 
@@ -133,7 +137,7 @@ export default function SplitsManager({ onClose }) {
                     </>
                   ) : (
                     <>
-                      <div style={{ flex: 1, minWidth: 0, color: T.text, fontSize: 14, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                      <div style={{ flex: 1, minWidth: 0, color: T.text, fontSize: 14, fontWeight: 700, fontFamily: "'Saira Condensed', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
                       <span style={{ color: T.dim, fontSize: 11, flexShrink: 0 }}>{s.muscles.length}</span>
                       <button onClick={() => { setEditingId(s.id); setEditName(s.name); }} style={{ ...smallBtn, flexShrink: 0 }}>Rename</button>
                       <button disabled={busy} onClick={() => run(() => deleteSplit(s.id))} aria-label={`Delete ${s.name}`} style={{ background: "none", border: "none", color: T.dim, padding: "4px 6px", flexShrink: 0 }}><IconX size={13} /></button>
@@ -152,7 +156,7 @@ export default function SplitsManager({ onClose }) {
                             key={g.key}
                             disabled={busy}
                             onClick={() => run(() => (active ? removeSplitMuscle(s.id, g.key) : addSplitMuscle(s.id, g.key)))}
-                            style={{ padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(232,68,46,0.15)" : T.surface2, color: active ? T.text : T.dim }}
+                            style={{ padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${active ? T.accent : T.line}`, background: active ? "rgba(196,163,90,0.15)" : T.surface2, color: active ? T.text : T.dim }}
                           >
                             {muscleLabel(g.key, "generic")}
                           </button>
@@ -177,7 +181,7 @@ export default function SplitsManager({ onClose }) {
                                   key={d.key}
                                   disabled={busy}
                                   onClick={() => run(() => (excluded ? removeSplitExclusion(s.id, d.key) : addSplitExclusion(s.id, d.key)))}
-                                  style={{ padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${excluded ? T.accent : T.line}`, background: excluded ? "rgba(232,68,46,0.15)" : "transparent", color: excluded ? T.text : T.dim, textDecoration: excluded ? "line-through" : "none" }}
+                                  style={{ padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, border: `1px solid ${excluded ? T.accent : T.line}`, background: excluded ? "rgba(196,163,90,0.15)" : "transparent", color: excluded ? T.text : T.dim, textDecoration: excluded ? "line-through" : "none" }}
                                 >
                                   {d.label}
                                 </button>
