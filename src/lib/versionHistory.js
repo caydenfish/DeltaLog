@@ -5,6 +5,13 @@
 // this one just says more.
 export const VERSION_HISTORY = [
   {
+    version: "1.30.0",
+    date: "2026-11-11",
+    items: [
+      "Per-exercise training focus override now persists. migration_078 adds exercise_defaults.ideology (text, null = follow global trainingIdeology). fetchExerciseDefaults selects it, hydrateExercise exposes savedIdeology, newItem seeds ex.ideology from it (guarded against names missing from IDEOLOGIES), and setExerciseIdeology upserts it via saveExerciseDefaults' new 7th arg (undefined = untouched). Picking the global focus stores null. Previously the override lived only in workout state and was lost on resume too; resume now restores it through hydrate.",
+    ],
+  },
+  {
     version: "1.29.1",
     date: "2026-11-11",
     items: [

@@ -579,6 +579,7 @@ export async function hydrateExercise(userId, normalizedExercise) {
     savedSetup: defaults.setup,
     savedRestSeconds: defaults.rest_seconds,
     savedWarmupRestSeconds: defaults.warmup_rest_seconds,
+    savedIdeology: defaults.ideology || null,
   };
 }
 
@@ -1202,18 +1203,19 @@ export async function deleteFeedback(id) {
 export async function fetchExerciseDefaults(userId, exerciseId) {
   const { data, error } = await supabase
     .from("exercise_defaults")
-    .select("setup, notes, rest_seconds, warmup_rest_seconds")
+    .select("setup, notes, rest_seconds, warmup_rest_seconds, ideology")
     .eq("user_id", userId)
     .eq("exercise_id", exerciseId)
     .maybeSingle();
   if (error) throw error;
-  return data || { setup: {}, notes: "", rest_seconds: null, warmup_rest_seconds: null };
+  return data || { setup: {}, notes: "", rest_seconds: null, warmup_rest_seconds: null, ideology: null };
 }
 
-export async function saveExerciseDefaults(userId, exerciseId, setup, notes, restSeconds, warmupRestSeconds) {
+export async function saveExerciseDefaults(userId, exerciseId, setup, notes, restSeconds, warmupRestSeconds, ideology) {
   const payload = { user_id: userId, exercise_id: exerciseId, setup, notes };
   if (restSeconds !== undefined) payload.rest_seconds = restSeconds; // omit to leave existing value untouched
   if (warmupRestSeconds !== undefined) payload.warmup_rest_seconds = warmupRestSeconds; // omit to leave existing value untouched
+  if (ideology !== undefined) payload.ideology = ideology; // omit to leave existing value untouched; null = follow the global focus
   const { error } = await supabase.from("exercise_defaults").upsert(payload);
   if (error) throw error;
 }

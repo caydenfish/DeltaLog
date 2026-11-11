@@ -269,7 +269,9 @@ const newItem = (hydrated, dbId, planned = defaultWorkingSets(), plannedWarmup =
   setup: hydrated.savedSetup ? { ...hydrated.savedSetup } : {},
   restSeconds: hydrated.savedRestSeconds || null, // null = use the global default
   warmupRestSeconds: hydrated.savedWarmupRestSeconds || null, // null = use the global warmup default
-  ideology: null,
+  // Sticky per-exercise focus override (exercise_defaults.ideology); null =
+  // follow the global focus. Ignored if the saved name no longer exists.
+  ideology: hydrated.savedIdeology && IDEOLOGIES[hydrated.savedIdeology] ? hydrated.savedIdeology : null,
   supersetGroup: null,
   // Per-set rep targets (lib/repScheme.js), or null to follow the
   // training focus range for every set.
@@ -1927,8 +1929,13 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
   }
 
   function setExerciseIdeology(name) {
-    setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, ideology: name === globalIdeology ? null : name } : w)));
+    // Picking the global focus clears the override (null), so the exercise
+    // follows future global changes again. Either way it's saved to
+    // exercise_defaults and carries into every future session.
+    const stored = name === globalIdeology ? null : name;
+    setWorkout(workout.map((w, k) => (k === exIdx ? { ...w, ideology: stored } : w)));
     setShowIdeology(false);
+    if (ex) saveExerciseDefaults(user.id, ex.id, ex.setup, ex.notes, undefined, undefined, stored).catch((err) => note(`Couldn't save training focus: ${err.message}`));
   }
 
   // exerciseMatchesOption now lives in ./ExercisePicker (imported above),
@@ -3523,7 +3530,7 @@ export default function SetLogger({ user, onFinished, onGoHome, resumeWorkout, s
                 );
               })}
               <div style={{ fontSize: 11, color: T.dim, padding: "4px 10px 2px", lineHeight: 1.4 }}>
-                Applies to {ex.short} only. App default stays {globalIdeology} — change that from the main Preferences menu. Targets recalculate from your estimated 1RM either way.
+                Applies to {ex.short} only, and sticks in future workouts until you change it back. App default stays {globalIdeology}; change that in Preferences. Targets recalculate from your estimated 1RM either way.
               </div>
               <div style={{ height: 1, background: T.line, margin: "10px 4px" }} />
               <div style={{ padding: "0 6px 6px" }}>

@@ -9,6 +9,12 @@
 // anything special) or write a short "small fixes and polish" line.
 
 export const CHANGELOG = {
+  "1.30.0": {
+    title: "Focus that sticks",
+    items: [
+      "Switch an exercise to Strength, Hypertrophy or Endurance and it stays that way in future workouts until you change it back.",
+    ],
+  },
   "1.29.0": {
     title: "New icon, everywhere",
     items: [

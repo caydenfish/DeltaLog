@@ -88,6 +88,7 @@ Favorite name = filename (minus `.sql`), description = the text here.
 | 071 | `migration_071_user_preferences.sql` | Server-synced user preferences (previously localStorage only). |
 | 072 | `migration_072_strava_integration.sql` | Strava integration: `strava_tokens` (service-role only), `strava_connections`, `strava_oauth_state`, `strava_link_status` tables, plus the pg_cron schedule that drives the delayed-retry check. Requires filling in `<PROJECT_REF>`/`<CRON_SECRET>` before running — see the file's own comments. |
 | 073 | `migration_073_rep_schemes.sql` | Per-set rep targets (`rep_scheme jsonb`) on `template_exercises` and `workout_exercises`. Run before deploying v1.13.0. |
+| 078 | `migration_078_exercise_default_ideology.sql` | Per-exercise training focus override (`ideology text`) on `exercise_defaults`, so a switch sticks in future sessions. Run before deploying v1.30.0. |
 
 ## Tools (not part of the sequence — never run automatically, no number)
 
